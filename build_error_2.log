@@ -1,0 +1,155 @@
+
+> eclass@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 8 errors:
+./app/teacher/courses/[courseId]/chapters/[chapterId]/page.tsx:5:1
+Module not found: Can't resolve '@/components/teacher/ChapterTitleForm'
+[0m [90m 3 |[39m [36mimport[39m { redirect[33m,[39m notFound } [36mfrom[39m [32m"next/navigation"[39m
+ [90m 4 |[39m [36mimport[39m [33mLink[39m [36mfrom[39m [32m"next/link"[39m
+[31m[1m>[22m[39m[90m 5 |[39m [36mimport[39m [33mChapterTitleForm[39m [36mfrom[39m [32m"@/components/teacher/ChapterTitleForm"[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 6 |[39m [36mimport[39m [33mLessonsList[39m [36mfrom[39m [32m"@/components/teacher/LessonsList"[39m
+ [90m 7 |[39m [36mimport[39m [33mDeleteChapterButton[39m [36mfrom[39m [32m"@/components/teacher/DeleteChapterButton"[39m
+ [90m 8 |[39m[0m
+
+Import map: aliased to relative './components/teacher/ChapterTitleForm' inside of [project]/
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./app/teacher/courses/[courseId]/chapters/[chapterId]/page.tsx:7:1
+Module not found: Can't resolve '@/components/teacher/DeleteChapterButton'
+[0m [90m  5 |[39m [36mimport[39m [33mChapterTitleForm[39m [36mfrom[39m [32m"@/components/teacher/ChapterTitleForm"[39m
+ [90m  6 |[39m [36mimport[39m [33mLessonsList[39m [36mfrom[39m [32m"@/components/teacher/LessonsList"[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m [33mDeleteChapterButton[39m [36mfrom[39m [32m"@/components/teacher/DeleteChapterButton"[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m
+ [90m  9 |[39m type [33mProps[39m [33m=[39m {
+ [90m 10 |[39m     params[33m:[39m [33mPromise[39m[33m<[39m{ courseId[33m:[39m string[33m;[39m chapterId[33m:[39m string }[33m>[39m[0m
+
+Import map: aliased to relative './components/teacher/DeleteChapterButton' inside of [project]/
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./app/teacher/courses/[courseId]/chapters/[chapterId]/lessons/[lessonId]/page.tsx:9:1
+Module not found: Can't resolve '@/components/teacher/DeleteLessonButton'
+[0m [90m  7 |[39m [36mimport[39m [33mLessonAttachments[39m [36mfrom[39m [32m"@/components/teacher/LessonAttachments"[39m
+ [90m  8 |[39m [36mimport[39m [33mLessonAccessForm[39m [36mfrom[39m [32m"@/components/teacher/LessonAccessForm"[39m
+[31m[1m>[22m[39m[90m  9 |[39m [36mimport[39m [33mDeleteLessonButton[39m [36mfrom[39m [32m"@/components/teacher/DeleteLessonButton"[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 10 |[39m
+ [90m 11 |[39m type [33mProps[39m [33m=[39m {
+ [90m 12 |[39m     params[33m:[39m [33mPromise[39m[33m<[39m{ courseId[33m:[39m string[33m;[39m chapterId[33m:[39m string[33m;[39m lessonId[33m:[39m string }[33m>[39m[0m
+
+Import map: aliased to relative './components/teacher/DeleteLessonButton' inside of [project]/
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./app/teacher/courses/[courseId]/chapters/[chapterId]/lessons/[lessonId]/page.tsx:8:1
+Module not found: Can't resolve '@/components/teacher/LessonAccessForm'
+[0m [90m  6 |[39m [36mimport[39m [33mLessonVideoUpload[39m [36mfrom[39m [32m"@/components/teacher/LessonVideoUpload"[39m
+ [90m  7 |[39m [36mimport[39m [33mLessonAttachments[39m [36mfrom[39m [32m"@/components/teacher/LessonAttachments"[39m
+[31m[1m>[22m[39m[90m  8 |[39m [36mimport[39m [33mLessonAccessForm[39m [36mfrom[39m [32m"@/components/teacher/LessonAccessForm"[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  9 |[39m [36mimport[39m [33mDeleteLessonButton[39m [36mfrom[39m [32m"@/components/teacher/DeleteLessonButton"[39m
+ [90m 10 |[39m
+ [90m 11 |[39m type [33mProps[39m [33m=[39m {[0m
+
+Import map: aliased to relative './components/teacher/LessonAccessForm' inside of [project]/
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./app/teacher/courses/[courseId]/chapters/[chapterId]/lessons/[lessonId]/page.tsx:7:1
+Module not found: Can't resolve '@/components/teacher/LessonAttachments'
+[0m [90m  5 |[39m [36mimport[39m [33mLessonTitleForm[39m [36mfrom[39m [32m"@/components/teacher/LessonTitleForm"[39m
+ [90m  6 |[39m [36mimport[39m [33mLessonVideoUpload[39m [36mfrom[39m [32m"@/components/teacher/LessonVideoUpload"[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m [33mLessonAttachments[39m [36mfrom[39m [32m"@/components/teacher/LessonAttachments"[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m [33mLessonAccessForm[39m [36mfrom[39m [32m"@/components/teacher/LessonAccessForm"[39m
+ [90m  9 |[39m [36mimport[39m [33mDeleteLessonButton[39m [36mfrom[39m [32m"@/components/teacher/DeleteLessonButton"[39m
+ [90m 10 |[39m[0m
+
+Import map: aliased to relative './components/teacher/LessonAttachments' inside of [project]/
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./app/teacher/courses/[courseId]/chapters/[chapterId]/lessons/[lessonId]/page.tsx:5:1
+Module not found: Can't resolve '@/components/teacher/LessonTitleForm'
+[0m [90m 3 |[39m [36mimport[39m { redirect[33m,[39m notFound } [36mfrom[39m [32m"next/navigation"[39m
+ [90m 4 |[39m [36mimport[39m [33mLink[39m [36mfrom[39m [32m"next/link"[39m
+[31m[1m>[22m[39m[90m 5 |[39m [36mimport[39m [33mLessonTitleForm[39m [36mfrom[39m [32m"@/components/teacher/LessonTitleForm"[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 6 |[39m [36mimport[39m [33mLessonVideoUpload[39m [36mfrom[39m [32m"@/components/teacher/LessonVideoUpload"[39m
+ [90m 7 |[39m [36mimport[39m [33mLessonAttachments[39m [36mfrom[39m [32m"@/components/teacher/LessonAttachments"[39m
+ [90m 8 |[39m [36mimport[39m [33mLessonAccessForm[39m [36mfrom[39m [32m"@/components/teacher/LessonAccessForm"[39m[0m
+
+Import map: aliased to relative './components/teacher/LessonTitleForm' inside of [project]/
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./app/teacher/courses/[courseId]/chapters/[chapterId]/lessons/[lessonId]/page.tsx:6:1
+Module not found: Can't resolve '@/components/teacher/LessonVideoUpload'
+[0m [90m 4 |[39m [36mimport[39m [33mLink[39m [36mfrom[39m [32m"next/link"[39m
+ [90m 5 |[39m [36mimport[39m [33mLessonTitleForm[39m [36mfrom[39m [32m"@/components/teacher/LessonTitleForm"[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m [33mLessonVideoUpload[39m [36mfrom[39m [32m"@/components/teacher/LessonVideoUpload"[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m [33mLessonAttachments[39m [36mfrom[39m [32m"@/components/teacher/LessonAttachments"[39m
+ [90m 8 |[39m [36mimport[39m [33mLessonAccessForm[39m [36mfrom[39m [32m"@/components/teacher/LessonAccessForm"[39m
+ [90m 9 |[39m [36mimport[39m [33mDeleteLessonButton[39m [36mfrom[39m [32m"@/components/teacher/DeleteLessonButton"[39m[0m
+
+Import map: aliased to relative './components/teacher/LessonVideoUpload' inside of [project]/
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./app/teacher/courses/[courseId]/chapters/[chapterId]/page.tsx:6:1
+Module not found: Can't resolve '@/components/teacher/LessonsList'
+[0m [90m 4 |[39m [36mimport[39m [33mLink[39m [36mfrom[39m [32m"next/link"[39m
+ [90m 5 |[39m [36mimport[39m [33mChapterTitleForm[39m [36mfrom[39m [32m"@/components/teacher/ChapterTitleForm"[39m
+[31m[1m>[22m[39m[90m 6 |[39m [36mimport[39m [33mLessonsList[39m [36mfrom[39m [32m"@/components/teacher/LessonsList"[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 7 |[39m [36mimport[39m [33mDeleteChapterButton[39m [36mfrom[39m [32m"@/components/teacher/DeleteChapterButton"[39m
+ [90m 8 |[39m
+ [90m 9 |[39m type [33mProps[39m [33m=[39m {[0m
+
+Import map: aliased to relative './components/teacher/LessonsList' inside of [project]/
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (./app/teacher/courses/[courseId]/chapters/[chapterId]/page.tsx:5:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./app/teacher/courses/[courseId]/chapters/[chapterId]/page.tsx:7:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./app/teacher/courses/[courseId]/chapters/[chapterId]/lessons/[lessonId]/page.tsx:9:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./app/teacher/courses/[courseId]/chapters/[chapterId]/lessons/[lessonId]/page.tsx:8:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./app/teacher/courses/[courseId]/chapters/[chapterId]/lessons/[lessonId]/page.tsx:7:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./app/teacher/courses/[courseId]/chapters/[chapterId]/lessons/[lessonId]/page.tsx:5:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./app/teacher/courses/[courseId]/chapters/[chapterId]/lessons/[lessonId]/page.tsx:6:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./app/teacher/courses/[courseId]/chapters/[chapterId]/page.tsx:6:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
