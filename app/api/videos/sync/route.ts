@@ -1,69 +1,78 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import axios from "axios";
 import { prisma } from "@/lib/prisma";
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
-    const session = await auth();
-    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    const libraryId = process.env.BUNNY_STREAM_LIBRARY_ID;
+    const apiKey = process.env.BUNNY_STREAM_API_KEY;
+    const hostname = process.env.NEXT_PUBLIC_BUNNY_STREAM_HOSTNAME;
+
+    if (!libraryId || !apiKey) {
+      return NextResponse.json(
+        { error: "Thiếu cấu hình Bunny Stream" },
+        { status: 500 }
+      );
     }
 
-    const bunnyEndpoint = process.env.S3_ENDPOINT || "https://sg.storage.bunnycdn.com";
-    const bucketName = process.env.S3_BUCKET_NAME || "eclass";
-    const accessKey = process.env.S3_SECRET_ACCESS_KEY;
-    const publicDomain = process.env.NEXT_PUBLIC_S3_DOMAIN || "";
-
-    if (!accessKey) {
-      return new NextResponse("Missing BunnyCDN AccessKey", { status: 500 });
-    }
-
-    const targetUrl = `${bunnyEndpoint}/${bucketName}/`;
-    const response = await fetch(targetUrl, {
-      method: "GET",
-      headers: {
-        "AccessKey": accessKey,
-        "Accept": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      return new NextResponse("Failed to fetch BunnyCDN listing", { status: response.status });
-    }
-
-    const files = await response.json();
-    let syncedCount = 0;
-
-    for (const file of files) {
-      if (!file.ObjectName.endsWith(".mp4") && !file.ObjectName.endsWith(".m3u8")) {
-         continue;
+    // Gọi API của Bunny Stream để lấy danh sách video
+    // Tài liệu API: https://docs.bunny.net/reference/video_list
+    const response = await axios.get(
+      `https://video.bunnycdn.com/library/${libraryId}/videos`,
+      {
+        headers: {
+          AccessKey: apiKey,
+          Accept: "application/json",
+        },
       }
+    );
 
-      const fileName = file.ObjectName;
-      const fileUrl = `${publicDomain}/${fileName}`;
-      let title = fileName.replace(/\.[^/.]+$/, "");
-      title = title.replace(/_/g, " ");
+    const bunnyVideos = response.data.items;
 
+    // Mapping dữ liệu từ Bunny về format ứng dụng của bạn
+    const formattedVideos = bunnyVideos.map((video: any) => ({
+      id: video.guid,
+      title: video.title,
+      fileName: video.title,
+      url: `https://${hostname}/${video.guid}/playlist.m3u8`,
+      size: video.storageSize || 0,
+      status: video.status === 4 ? "READY" : "PROCESSING",
+      thumbnail: `https://${hostname}/${video.guid}/${video.thumbnailFileName}`,
+    }));
+
+    // Lưu `formattedVideos` vào PostgreSQL (Prisma)
+    for (const v of formattedVideos) {
       await prisma.videoAsset.upsert({
-        where: { fileName: fileName },
+        where: { fileName: v.fileName },
         update: {
-          url: fileUrl,
-          size: Math.round(file.Length / 1024),
+          title: v.title,
+          url: v.url,
+          size: BigInt(v.size),
+          status: v.status,
         },
         create: {
-          fileName: fileName,
-          title: title,
-          url: fileUrl,
-          size: Math.round(file.Length / 1024),
-          userId: session.user.id,
-        }
+          fileName: v.fileName,
+          title: v.title,
+          url: v.url,
+          size: BigInt(v.size),
+          status: v.status,
+        },
       });
-      syncedCount++;
     }
 
-    return NextResponse.json({ success: true, count: syncedCount });
-  } catch (error: any) {
-    console.error("SYNC_VIDEOS", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    return NextResponse.json({
+      success: true,
+      count: formattedVideos.length,
+      data: formattedVideos.map((v: any) => ({
+        ...v,
+        size: Number(v.size)
+      })),
+    });
+  } catch (error) {
+    console.error("Lỗi đồng bộ Bunny Stream:", error);
+    return NextResponse.json(
+      { error: "Đã xảy ra lỗi khi đồng bộ" },
+      { status: 500 }
+    );
   }
 }

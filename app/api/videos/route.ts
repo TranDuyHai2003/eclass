@@ -13,7 +13,10 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json(videos);
+    return NextResponse.json(videos.map(v => ({
+      ...v,
+      size: Number(v.size),
+    })));
   } catch (error) {
     console.error("GET_VIDEOS_ERROR", error);
     return new NextResponse("Internal Error", { status: 500 });

@@ -17,6 +17,11 @@ export default async function VideosPage() {
       createdAt: "desc",
     },
   });
+  
+  const formattedVideos = videos.map((video) => ({
+    ...video,
+    size: Number(video.size),
+  }));
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -32,7 +37,7 @@ export default async function VideosPage() {
         </div>
       </div>
 
-      <VideoLibraryClient initialData={videos} />
+      <VideoLibraryClient initialData={formattedVideos} />
     </div>
   );
 }

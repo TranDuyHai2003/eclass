@@ -261,7 +261,7 @@ model VideoAsset {
   fileName  String   @unique
   title     String
   url       String
-  size      Int
+  size      BigInt
   status    String   @default("READY")
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)

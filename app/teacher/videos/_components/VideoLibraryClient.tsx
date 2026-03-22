@@ -32,8 +32,9 @@ export function VideoLibraryClient({ initialData }: { initialData: VideoAsset[] 
     }
   };
 
-  const formatSize = (kb: number) => {
-    return (kb / 1024).toFixed(2) + " MB";
+  const formatSize = (bytes: number) => {
+    if (!bytes) return "0 MB";
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
   };
 
   return (
