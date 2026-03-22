@@ -20,8 +20,10 @@ import {
   deleteAttachment,
 } from "@/actions/course";
 import axios from "axios";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { toast } from "sonner";
-import { Trash2, CheckCircle2, Upload, X } from "lucide-react";
+import { Trash2, CheckCircle2, Upload, X, PlaySquare } from "lucide-react";
+import { LibrarySelect } from "./LibrarySelect";
 
 interface LessonEditModalProps {
   open: boolean;
@@ -279,19 +281,20 @@ export function LessonEditModal({
 
                   {/* Hover controls */}
                   <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <label className="cursor-pointer">
-                      <span className="inline-flex items-center gap-1 bg-white/90 hover:bg-white text-gray-700 text-xs font-medium px-3 py-1.5 rounded-md shadow transition">
-                        <Upload className="w-3.5 h-3.5" />
-                        Thay video
-                      </span>
-                      <Input
-                        type="file"
-                        accept="video/*"
-                        className="hidden"
-                        onChange={handleVideoUpload}
-                        disabled={uploading || isSaving}
-                      />
-                    </label>
+                    <LibrarySelect 
+                      onSelectVideo={(url) => {
+                        setVideoUrl(url);
+                        updateLesson(lesson.id, { videoUrl: url });
+                        toast.success("Thay video thành công!");
+                        onSuccess();
+                      }}
+                      customTrigger={
+                        <button disabled={isSaving} className="inline-flex cursor-pointer items-center gap-1 bg-white/90 hover:bg-white text-gray-700 text-xs font-medium px-3 py-1.5 rounded-md shadow transition disabled:opacity-50">
+                          <PlaySquare className="w-3.5 h-3.5" />
+                          Chọn từ Thư viện
+                        </button>
+                      }
+                    />
                     <button
                       onClick={handleRemoveVideo}
                       disabled={isSaving}
@@ -332,19 +335,20 @@ export function LessonEditModal({
                       <p className="text-xs text-gray-400">Vui lòng không đóng cửa sổ này</p>
                     </div>
                   ) : (
-                    <label className="cursor-pointer">
-                      <span className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow">
-                        <Upload className="w-4 h-4" />
-                        Chọn file video
-                      </span>
-                      <Input
-                        type="file"
-                        accept="video/*"
-                        className="hidden"
-                        onChange={handleVideoUpload}
-                        disabled={uploading}
-                      />
-                    </label>
+                    <LibrarySelect 
+                      onSelectVideo={(url) => {
+                        setVideoUrl(url);
+                        updateLesson(lesson.id, { videoUrl: url });
+                        toast.success("Thêm video thành công!");
+                        onSuccess();
+                      }}
+                      customTrigger={
+                        <button className="cursor-pointer inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow">
+                          <PlaySquare className="w-4 h-4" />
+                          Chọn từ Thư viện
+                        </button>
+                      }
+                    />
                   )}
                 </div>
               )}

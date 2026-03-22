@@ -6,7 +6,7 @@ import { Play } from "lucide-react";
 
 export function LandingHero() {
   const [text, setText] = useState("");
-  const fullText = "Trở thành Thợ Săn Code thực thụ.";
+  const fullText = "Trở thành Thủ Khoa Đại Học.";
   
   useEffect(() => {
     let i = 0;
@@ -28,7 +28,7 @@ export function LandingHero() {
 
       <div className="container relative z-10 px-4 sm:px-6 text-center space-y-8">
         <div className="inline-block px-4 py-1 rounded-full border border-red-500/30 bg-red-500/10 text-red-500 text-xs font-bold uppercase tracking-widest animate-bounce">
-          New Season: Programming 2026
+          New Season: Luyện Thi Đại Học 2026
         </div>
         
         <div className="space-y-4">
@@ -42,8 +42,8 @@ export function LandingHero() {
         </div>
 
         <p className="max-w-2xl mx-auto text-lg text-gray-400 font-medium leading-relaxed">
-          Đừng chỉ học code, hãy học cách tư duy để tạo ra những sản phẩm thay đổi thế giới. 
-          Lộ trình bài bản từ Zero đến Hero.
+          Đừng chỉ học Toán, hãy học cách tư duy để giải quyết mọi bài toán khó. 
+          Lộ trình bài bản từ Mất Gốc đến Vận Dụng Cao.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 pt-8">

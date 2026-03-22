@@ -13,6 +13,12 @@ enum Role {
   TEACHER
 }
 
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -29,6 +35,8 @@ model User {
   comments      Comment[]
   notifications Notification[]
   courses       Course[]
+  enrollments   Enrollment[]
+  videoAssets   VideoAsset[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -97,6 +105,7 @@ model Course {
 
   chapters    Chapter[]
   attachments Attachment[]
+  enrollments Enrollment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -228,5 +237,36 @@ model Notification {
 
   createdAt DateTime @default(now())
 
+  @@index([userId])
+}
+
+model Enrollment {
+  id        String           @id @default(cuid())
+  userId    String
+  courseId  String
+  status    EnrollmentStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model VideoAsset {
+  id        String   @id @default(cuid())
+  fileName  String   @unique
+  title     String
+  url       String
+  size      Int
+  status    String   @default("READY")
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
   @@index([userId])
 }

@@ -11,8 +11,17 @@ interface NavLinksProps {
 export function NavLinks({ role }: NavLinksProps) {
   const pathname = usePathname()
 
+  const isLoggedIn = !!role;
+
   const links = [
-    { href: "/", label: "Trang chủ" },
+    ...(isLoggedIn 
+      ? [
+          { href: "/", label: "Trang cá nhân" },
+          { href: "/home", label: "Trang chủ" },
+        ]
+      : [
+          { href: "/", label: "Trang chủ" },
+        ]),
     { href: "/courses", label: "Khóa học" },
     { href: "/live", label: "Phòng Live" },
     { href: "/practice", label: "Thi thực chiến" },

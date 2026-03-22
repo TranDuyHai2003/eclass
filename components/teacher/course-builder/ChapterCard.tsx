@@ -5,6 +5,7 @@ import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { GripVertical, PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { LessonItem } from "./LessonItem";
+import { LibrarySelect } from "./LibrarySelect";
 import { Button } from "@/components/ui/button";
 import type { CourseWithRelations } from "./types";
 import { useState } from "react";
@@ -118,6 +119,7 @@ export function ChapterCard({
                   <PlusCircle className="h-4 w-4 mr-2" />
                   Thêm bài học
                 </Button>
+                <LibrarySelect chapterId={chapter.id} />
               </div>
             )}
           </Droppable>

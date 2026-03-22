@@ -11,16 +11,18 @@ import {
   Settings, 
   Video,
   CreditCard,
-  ChevronRight
+  ChevronRight,
+  PlaySquare
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const adminLinks = [
   { href: "/teacher/courses", label: "Quản lý Khóa học", icon: BookOpen },
+  { href: "/teacher/videos", label: "Thư viện Video", icon: PlaySquare },
   { href: "/admin/users", label: "Quản lý Người dùng", icon: Users },
   { href: "/admin/analytics", label: "Thống kê hệ thống", icon: BarChart3 },
   { href: "/admin/live", label: "Phòng Live Admin", icon: Video },
-  { href: "/admin/finance", label: "Giao dịch & Doanh thu", icon: CreditCard },
+  { href: "/admin/finance", label: "Quản lý Ghi danh", icon: CreditCard },
   { href: "/admin/settings", label: "Cài đặt hệ thống", icon: Settings },
 ]
 

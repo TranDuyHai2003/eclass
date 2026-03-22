@@ -16,8 +16,15 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "E-Class - Hệ thống học tập trực tuyến",
-  description: "Nền tảng học tập trực tuyến hiện đại",
+  title: "Toán Thầy Đức - Luyện Thi Đại Học",
+  description: "Trang web học Toán luyện thi Đại học hàng đầu, đồng hành cùng học sinh vượt qua kỳ thi THPT Quốc gia.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
+  openGraph: {
+    images: ["/logo.png"],
+  },
 };
 
 export default function RootLayout({

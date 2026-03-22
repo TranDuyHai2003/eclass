@@ -47,9 +47,7 @@ export default function CourseSidebar({
     () => {
       const initialState: Record<string, boolean> = {};
       course.chapters.forEach((ch) => {
-        if (ch.lessons.some((l) => l.id === currentLessonId)) {
-          initialState[ch.id] = true;
-        }
+        initialState[ch.id] = true;
       });
       return initialState;
     },
@@ -64,18 +62,18 @@ export default function CourseSidebar({
   const progress = 35;
 
   return (
-    <div className="bg-white border rounded-2xl shadow-sm overflow-hidden flex flex-col max-h-[calc(100vh-100px)]">
+    <div className="bg-white border-none rounded-3xl shadow-none overflow-hidden flex flex-col max-h-[calc(100vh-100px)] h-full">
       {/* Header Sidebar */}
-      <div className="p-5 border-b bg-white z-10">
-        <h3 className="font-bold text-gray-900 mb-1">Nội dung khóa học</h3>
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-          <span>Đã hoàn thành {progress}%</span>
-          <span>3/12 bài</span>
+      <div className="p-6 bg-white z-10 border-b border-gray-50">
+        <h3 className="font-black text-gray-900 mb-4 text-base uppercase tracking-tight">Nội dung khóa học</h3>
+        <div className="flex items-center justify-between text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">
+          <span>Tiến độ học tập</span>
+          <span className="text-red-600">{progress}%</span>
         </div>
         {/* Progress Bar */}
-        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+        <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden p-0.5">
           <div
-            className="bg-red-600 h-1.5 rounded-full transition-all duration-500"
+            className="bg-gradient-to-r from-red-600 to-orange-500 h-1.5 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(239,68,68,0.2)]"
             style={{ width: `${progress}%` }}
           ></div>
         </div>
@@ -91,16 +89,16 @@ export default function CourseSidebar({
             <button
               onClick={() => toggleChapter(chapter.id)}
               className={cn(
-                "w-full flex items-center justify-between p-4 transition-colors hover:bg-gray-50",
-                openChapters[chapter.id] ? "bg-gray-50/50" : "bg-white",
+                "w-full flex items-center justify-between py-4 px-6 transition-all hover:bg-gray-50/80",
+                openChapters[chapter.id] ? "bg-gray-50/30" : "bg-white",
               )}
             >
-              <span className="font-semibold text-sm text-gray-800 text-left line-clamp-1">
+              <span className="font-black text-[13px] text-gray-900 text-left line-clamp-1 uppercase tracking-tight">
                 {chapter.title}
               </span>
               <ChevronDown
                 className={cn(
-                  "w-4 h-4 text-gray-400 transition-transform duration-200",
+                  "w-4 h-4 text-gray-400 transition-transform duration-300",
                   openChapters[chapter.id] && "transform rotate-180",
                 )}
               />
@@ -118,39 +116,40 @@ export default function CourseSidebar({
                       key={lesson.id}
                       href={isLocked ? "#" : `/watch/${lesson.id}`}
                       className={cn(
-                        "flex items-start gap-x-3 py-3 px-4 text-sm transition-all relative group",
+                        "flex items-start gap-x-3 py-4 px-6 text-[13px] transition-all relative group mx-2 rounded-2xl mb-1",
                         isActive
-                          ? "bg-red-100/50 text-red-700 border-r-4 border-red-600"
-                          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                          ? "bg-red-50 text-red-700 shadow-sm"
+                          : "text-gray-500 hover:bg-gray-100/50 hover:text-gray-900 border-transparent",
                         isLocked &&
                           "opacity-70 cursor-not-allowed hover:bg-transparent",
                       )}
                     >
-                      <div className="mt-0.5">
+                      <div className="mt-1 flex-shrink-0">
                         {isActive ? (
-                          <div className="bg-red-600 rounded-full p-1 animate-pulse">
-                            <PlayCircle className="w-3 h-3 text-white fill-current" />
+                          <div className="bg-red-600 rounded-full p-1.5 shadow-lg shadow-red-200">
+                            <PlayCircle className="w-3.5 h-3.5 text-white fill-current" />
                           </div>
                         ) : isLocked ? (
                           <Lock className="w-4 h-4 text-gray-400" />
                         ) : (
-                          // Nếu completed thì hiện CheckCircle, chưa thì hiện Video Icon
-                          <Video className="w-4 h-4 text-gray-400 group-hover:text-red-500" />
+                          <Video className="w-4 h-4 text-gray-300 group-hover:text-red-500 transition-colors" />
                         )}
                       </div>
 
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <p
                           className={cn(
-                            "font-medium line-clamp-2",
-                            isActive && "font-bold",
+                            "font-bold line-clamp-2 leading-tight",
+                            isActive ? "text-red-700" : "text-gray-700"
                           )}
                         >
                           {lesson.title}
                         </p>
-                        <span className="text-[10px] text-gray-400 font-normal">
-                          12:30 {/* Duration giả định */}
-                        </span>
+                        <div className="flex items-center gap-1.5 mt-1.5 opacity-60">
+                           <span className="text-[10px] font-black uppercase tracking-widest">Video</span>
+                           <span className="text-[10px]">•</span>
+                           <span className="text-[10px] font-bold">12:30</span>
+                        </div>
                       </div>
                     </Link>
                   );

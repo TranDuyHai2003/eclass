@@ -15,19 +15,9 @@ export default async function Header() {
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center gap-3 group shrink-0"
+            className="flex items-center gap-3 shrink-0"
           >
-            <div className="w-11 h-11 bg-gradient-to-br from-red-600 to-orange-500 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-black/10 transform group-hover:rotate-3 transition-transform">
-              E
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight uppercase">
-                E-Class
-              </span>
-              <span className="text-[10px] font-bold text-red-600/90 tracking-[0.22em] uppercase">
-                Academy
-              </span>
-            </div>
+            <img src="/logo.png" alt="Toán Thầy Đức" className="h-10 w-auto" />
           </Link>
 
           {/* Search Bar - Center */}

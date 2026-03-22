@@ -1,53 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "../../../../auth";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { s3Client, BUCKET_NAME } from "@/lib/s3";
+import { auth } from "@/auth";
 import { nanoid } from "nanoid";
 
-export async function POST(req: NextRequest) {
+export async function PUT(req: NextRequest) {
   try {
     const session = await auth();
-
-    // Check auth
-    if (
-      !session ||
-      (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
-    ) {
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { fileName, fileType } = await req.json();
-
-    if (!fileName || !fileType) {
-      return new NextResponse("Missing fileName or fileType", { status: 400 });
+    const { searchParams } = new URL(req.url);
+    const fileName = searchParams.get("fileName");
+    if (!fileName) {
+      return new NextResponse("Missing fileName", { status: 400 });
     }
 
     const uniqueFileName = `${nanoid()}-${fileName}`;
+    const bunnyEndpoint = process.env.S3_ENDPOINT || "";
+    const bunnyZone = process.env.S3_BUCKET_NAME || "";
+    const accessKey = process.env.S3_SECRET_ACCESS_KEY || "";
 
-    const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: uniqueFileName,
-      ContentType: fileType,
+    const targetUrl = `${bunnyEndpoint}/${bunnyZone}/${uniqueFileName}`;
+
+    // Stream the request body directly to BunnyCDN
+    const response = await fetch(targetUrl, {
+      method: "PUT",
+      headers: {
+        "AccessKey": accessKey,
+        "Content-Type": req.headers.get("content-type") || "application/octet-stream",
+      },
+      body: req.body,
+      // @ts-ignore - Required for NextJS fetch streams
+      duplex: "half",
     });
 
-    // Generate a presigned URL valid for 60 minutes
-    const presignedUrl = await getSignedUrl(s3Client, command, {
-      expiresIn: 3600,
-    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("BunnyCDN upload failed:", errorText);
+      return new NextResponse("Upload to CDN failed", { status: 502 });
+    }
 
-    // Construct public URL for after upload
-    const publicUrl = `${process.env.NEXT_PUBLIC_S3_DOMAIN}/${uniqueFileName}`;
+    const publicDomain = process.env.NEXT_PUBLIC_S3_DOMAIN || "";
+    const publicUrl = `${publicDomain}/${uniqueFileName}`;
 
-    return NextResponse.json({
-      presignedUrl,
-      publicUrl,
-      fileName: uniqueFileName,
-    });
+    return NextResponse.json({ publicUrl });
   } catch (error: any) {
-    console.error("Upload presign error:", error);
-    return new NextResponse(error.message || "Internal Server Error", {
-      status: 500,
-    });
+    console.error("Upload proxy error:", error);
+    return new NextResponse(error.message || "Internal Server Error", { status: 500 });
   }
 }

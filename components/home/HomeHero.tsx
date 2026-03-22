@@ -37,7 +37,7 @@ export function HomeHero() {
                     TOÁN - LÝ - HÓA - ANH
                 </div>
                 <p className="text-sm font-bold opacity-90 uppercase tracking-widest max-w-sm">
-                    Luyện thi tốt nghiệp THPT 2027 cùng Tenschool
+                    Luyện thi tốt nghiệp THPT cùng Toán Thầy Đức
                 </p>
             </div>
 

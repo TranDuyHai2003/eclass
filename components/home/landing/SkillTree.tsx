@@ -3,10 +3,10 @@
 import { Code2, Braces, Rocket, ShieldCheck, Trophy } from "lucide-react";
 
 const steps = [
-  { icon: Code2, title: "Tân Binh", desc: "Nắm vững cú pháp cơ bản", position: "left" },
-  { icon: Braces, title: "Chiến Binh", desc: "Xử lý thuật toán phức tạp", position: "right" },
-  { icon: ShieldCheck, title: "Hộ Vệ", desc: "Bảo mật & Tối ưu hệ thống", position: "left" },
-  { icon: Rocket, title: "Huyền Thoại", desc: "Triển khai sản phẩm thực tế", position: "right" },
+  { icon: Code2, title: "Tân Binh", desc: "Nắm vững kiến thức nền tảng", position: "left" },
+  { icon: Braces, title: "Chiến Binh", desc: "Xử lý bài tập vận dụng", position: "right" },
+  { icon: ShieldCheck, title: "Học Bá", desc: "Chinh phục điểm 9+", position: "left" },
+  { icon: Rocket, title: "Thủ Khoa", desc: "Sẵn sàng cho kỳ thi THPT", position: "right" },
 ];
 
 export function SkillTree() {

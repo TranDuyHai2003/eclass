@@ -122,24 +122,24 @@ export default async function WatchPage({ params }: WatchPageProps) {
               />
             </div>
 
-            {/* Navigation & Progress Buttons */}
-            <div className="card-surface flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-2xl">
+            {/* Navigation & Progress Buttons - Engagement Layer */}
+            <div className="card-surface flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-3xl border-gray-100/50 shadow-sm">
               <div className="flex items-center gap-3">
                 {prevLesson && (
                   <Link
                     href={`/watch/${prevLesson.id}`}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-2xl border border-border/70 bg-white/60 hover:bg-white text-sm font-black transition shadow-sm group"
+                    className="flex items-center gap-2 px-6 py-3 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-[10px] font-black uppercase tracking-[0.15em] transition shadow-sm group"
                   >
-                    <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Bài trước
+                    <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" /> Bài trước
                   </Link>
                 )}
                 
                 {nextLesson && (
                   <Link
                     href={`/watch/${nextLesson.id}`}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-2xl border border-border/70 bg-white/60 hover:bg-white text-sm font-black transition shadow-sm group"
+                    className="flex items-center gap-2 px-6 py-3 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-[10px] font-black uppercase tracking-[0.15em] transition shadow-sm group"
                   >
-                    Bài sau <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    Bài sau <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 )}
               </div>
@@ -212,19 +212,19 @@ export default async function WatchPage({ params }: WatchPageProps) {
           <div className="xl:col-span-1">
             <div className="sticky top-20 flex flex-col gap-6 max-h-[calc(100vh-120px)]">
                <div className="bg-white rounded-3xl border shadow-xl flex flex-col overflow-hidden h-full">
-                  <Tabs defaultValue="discussion" className="flex flex-col h-full">
-                     <TabsList className="grid grid-cols-2 h-14 bg-gray-50 border-b p-0 gap-0">
-                        <TabsTrigger 
-                          value="discussion" 
-                          className="data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none h-full font-bold text-sm"
-                        >
-                           Thảo luận
-                        </TabsTrigger>
+                  <Tabs defaultValue="content" className="flex flex-col h-full">
+                     <TabsList className="grid grid-cols-2 h-12 bg-gray-100/80 m-4 mb-2 p-1 gap-1 rounded-2xl border-none shadow-inner">
                         <TabsTrigger 
                           value="content" 
-                          className="data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:border-b-2 data-[state=active]:border-red-600 rounded-none h-full font-bold text-sm"
+                          className="data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-md rounded-xl h-full font-black text-[11px] uppercase tracking-widest transition-all"
                         >
                            Bài học
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="discussion" 
+                          className="data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-md rounded-xl h-full font-black text-[11px] uppercase tracking-widest transition-all"
+                        >
+                           Thảo luận
                         </TabsTrigger>
                      </TabsList>
                      

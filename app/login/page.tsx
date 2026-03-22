@@ -8,9 +8,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-10 shadow-xl border border-gray-100">
         <div className="text-center">
           <Link href="/" className="inline-block mb-4">
-             <span className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600">
-              E-Class
-            </span>
+             <img src="/logo.png" alt="Toán Thầy Đức" className="h-12 w-auto mx-auto" />
           </Link>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-gray-900">
             Chào mừng trở lại

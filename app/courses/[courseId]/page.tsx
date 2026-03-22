@@ -14,6 +14,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Prisma } from "@prisma/client";
 import type { ReactNode, ElementType } from "react";
+import { auth } from "@/auth";
+import { getEnrollmentStatus } from "@/actions/enrollment";
+import { EnrollButton } from "@/components/course/EnrollButton";
 
 type CourseWithRelations = Prisma.CourseGetPayload<{
   include: {
@@ -53,6 +56,13 @@ export default async function CoursePage({
 
   const totalLessons = c.chapters.reduce((acc, ch) => acc + ch.lessons.length, 0);
   const firstLesson = c.chapters[0]?.lessons[0];
+
+  const session = await auth();
+  const enrollmentStatus = await getEnrollmentStatus(courseId);
+
+  const isLoggedIn = !!session?.user;
+  const isAdminOrTeacher = session?.user?.role === "ADMIN" || session?.user?.role === "TEACHER";
+  const userEmail = session?.user?.email || "";
 
   return (
     <div className="page-shell">
@@ -118,7 +128,7 @@ export default async function CoursePage({
                  </div>
                  <div>
                     <p className="text-xs opacity-80 uppercase tracking-widest font-bold">Giảng viên</p>
-                    <p className="font-bold text-lg">{c.user?.name || "Tenschool.vn"}</p>
+                    <p className="font-bold text-lg">{c.user?.name || "Toán Thầy Đức"}</p>
                  </div>
                  <div className="ml-auto bg-white/10 px-4 py-2 rounded-xl flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-accent" />
@@ -127,13 +137,17 @@ export default async function CoursePage({
               </div>
 
               {/* CTA Button */}
-              <div className="pt-4">
-                <Link 
-                  href={firstLesson ? `/watch/${firstLesson.id}` : "#"}
-                  className="inline-flex items-center justify-center px-10 py-5 bg-white text-red-600 font-black text-lg rounded-2xl shadow-xl hover:bg-gray-50 transition-all hover:scale-105 active:scale-95 uppercase tracking-wide"
-                >
-                  Vào học ngay
-                </Link>
+              <div className="pt-4 w-full">
+                <EnrollButton 
+                  courseId={course.id}
+                  courseTitle={course.title}
+                  coursePrice={course.price || 0}
+                  enrollmentStatus={enrollmentStatus}
+                  firstLessonId={firstLesson?.id}
+                  isLoggedIn={isLoggedIn}
+                  isAdminOrTeacher={isAdminOrTeacher}
+                  userEmail={userEmail}
+                />
               </div>
             </div>
           </div>
@@ -201,7 +215,7 @@ export default async function CoursePage({
                      ) : null}
                   </div>
                   <div>
-                     <h3 className="text-xl font-bold text-gray-900">{c.user?.name || "Tenschool.vn"}</h3>
+                     <h3 className="text-xl font-bold text-gray-900">{c.user?.name || "Toán Thầy Đức"}</h3>
                      <p className="text-red-600 font-medium text-sm mt-1">Giảng viên chuyên môn</p>
                      <p className="mt-4 text-gray-600">Thông tin chi tiết về kinh nghiệm và phương pháp giảng dạy của giảng viên sẽ được cập nhật sớm.</p>
                   </div>
