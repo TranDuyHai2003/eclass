@@ -59,7 +59,7 @@ export function CommentSection({ lessonId }: CommentSectionProps) {
       <div className="space-y-6">
         {isLoading ? (
           <div className="flex justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+            <Loader2 className="h-6 w-6 animate-spin text-red-600" />
           </div>
         ) : comments.length === 0 ? (
           <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed text-gray-500">

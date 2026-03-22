@@ -59,7 +59,7 @@ export function CourseProgressButton({
         flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-md hover:shadow-lg disabled:opacity-50
         ${isCompleted 
           ? "bg-green-600 hover:bg-green-700 text-white" 
-          : "bg-purple-600 hover:bg-purple-700 text-white"}
+          : "bg-red-600 hover:bg-red-700 text-white"}
       `}
     >
       {isLoading ? (

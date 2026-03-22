@@ -13,17 +13,20 @@ export function NavLinks({ role }: NavLinksProps) {
 
   const links = [
     { href: "/", label: "Trang chủ" },
+    { href: "/courses", label: "Khóa học" },
+    { href: "/live", label: "Phòng Live" },
+    { href: "/practice", label: "Thi thực chiến" },
+    { href: "/library", label: "Thư viện" },
+    { href: "/books", label: "Gian hàng sách" },
+    { href: "/news", label: "Tin tức" },
     ...(role === "ADMIN" ? [
-      { href: "/teacher/courses", label: "Quản lý Khóa học" },
-      { href: "/admin/analytics", label: "Thống kê" },
-      { href: "/admin/users", label: "Quản lý Người dùng" }
+      { href: "/teacher/courses", label: "Dashboard" }
     ] : [])
   ]
 
   return (
-    <div className="flex items-center gap-6">
+    <nav className="flex flex-wrap md:flex-nowrap items-center gap-1 px-1 py-1">
       {links.map(link => {
-        // Active state logic: exact match for root, startsWith for others to handle sub-routes
         const isActive = link.href === "/" 
           ? pathname === "/" 
           : pathname.startsWith(link.href)
@@ -33,16 +36,17 @@ export function NavLinks({ role }: NavLinksProps) {
             key={link.href}
             href={link.href}
             className={cn(
-              "text-sm font-medium transition-colors",
-              isActive 
-                ? "text-purple-600" 
-                : "text-gray-600 hover:text-purple-600"
+              "relative px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-full text-[11px] sm:text-[13px] font-black uppercase tracking-tight transition-all",
+              "hover:bg-white/10 hover:text-white",
+              isActive
+                ? "text-white bg-white/15 shadow-sm"
+                : "text-white/80"
             )}
           >
             {link.label}
           </Link>
         )
       })}
-    </div>
+    </nav>
   )
 }

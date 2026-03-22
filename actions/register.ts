@@ -25,12 +25,20 @@ export async function register(formData: FormData) {
   // Hash password
   const hashedPassword = await hash(password, 10)
 
+  // Check if there is already an ADMIN in the system
+  const existingAdmin = await prisma.user.findFirst({
+    where: { role: "ADMIN" },
+  })
+
   // Create user
   await prisma.user.create({
     data: {
       name,
       email,
       password: hashedPassword,
+      // If no admin exists yet and this is the special admin email, make this account ADMIN & auto-approved
+      role: !existingAdmin && email === "admin@gmail.com" ? "ADMIN" : undefined,
+      isApproved: !existingAdmin && email === "admin@gmail.com" ? true : undefined,
     },
   })
 

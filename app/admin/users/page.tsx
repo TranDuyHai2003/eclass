@@ -61,10 +61,10 @@ export default function UserManagementPage() {
     if (loading) return <div className="p-8 text-center text-gray-500">Đang tải...</div>
 
     return (
-        <div className="container mx-auto py-10 px-6">
-            <h1 className="text-3xl font-bold mb-6">Quản lý người dùng</h1>
+        <div className="space-y-6">
+            <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Quản lý người dùng</h1>
             
-            <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
+            <div className="card-surface rounded-[2rem] overflow-hidden border border-border/50">
                 <Table>
                     <TableHeader>
                         <TableRow>

@@ -53,7 +53,7 @@ export function NotificationBell() {
           {unreadCount > 0 && (
             <button
               onClick={() => markAllRead()}
-              className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1"
+              className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
             >
               <CheckCheck className="h-3 w-3" />
               Đã đọc tất cả
@@ -64,7 +64,7 @@ export function NotificationBell() {
         <div className="max-h-[300px] overflow-y-auto">
           {isLoading ? (
             <div className="flex justify-center py-4">
-              <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
+              <Loader2 className="h-5 w-5 animate-spin text-red-600" />
             </div>
           ) : notifications.length === 0 ? (
             <div className="py-8 text-center text-gray-500 text-sm">
@@ -80,7 +80,7 @@ export function NotificationBell() {
                   }
                   className={cn(
                     "p-3 cursor-pointer hover:bg-gray-50 transition-colors text-sm",
-                    !notification.isRead && "bg-purple-50/50",
+                    !notification.isRead && "bg-red-50/50",
                   )}
                 >
                   <p

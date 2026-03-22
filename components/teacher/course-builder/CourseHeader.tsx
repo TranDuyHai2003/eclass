@@ -175,14 +175,24 @@ export const CourseHeader = ({
     setUploading(true);
     try {
       const croppedFile = await getCroppedImg(imageToCrop, croppedAreaPixels);
-      const formData = new FormData();
-      formData.append("file", croppedFile);
+      
+      const presignRes = await axios.post<{ presignedUrl: string; publicUrl: string; fileName: string }>(
+        "/api/upload/presign",
+        {
+          fileName: croppedFile.name,
+          fileType: croppedFile.type || "image/jpeg",
+        }
+      );
 
-      const { data } = await axios.post("/api/upload/proxy", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const { presignedUrl, publicUrl } = presignRes.data;
+
+      await axios.put(presignedUrl, croppedFile, {
+        headers: {
+          "Content-Type": croppedFile.type || "image/jpeg",
+        }
       });
 
-      onUpdate({ thumbnail: data.url });
+      onUpdate({ thumbnail: publicUrl });
       setIsCropModalOpen(false);
       setImageToCrop(null);
     } catch (err) {
@@ -228,7 +238,7 @@ export const CourseHeader = ({
               onChange={(e) => setTitle(e.target.value)}
               onBlur={disableEditing}
               onKeyDown={onTitleKeyDown}
-              className="text-2xl font-bold h-auto py-1 px-2 -ml-2 border-purple-200 focus-visible:ring-purple-500"
+              className="text-2xl font-bold h-auto py-1 px-2 -ml-2 border-red-200 focus-visible:ring-red-500"
               placeholder="Nhập tên khóa học..."
             />
           ) : (
@@ -243,7 +253,7 @@ export const CourseHeader = ({
                 onClick={enableEditing}
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-gray-400 hover:text-purple-600 transition-all cursor-pointer"
+                className="h-8 w-8 text-gray-400 hover:text-red-600 transition-all cursor-pointer"
               >
                 <Pencil className="h-4 w-4" />
               </Button>
@@ -275,7 +285,7 @@ export const CourseHeader = ({
             onChange={(e) => setDescription(e.target.value)}
             onBlur={handleDescriptionBlur}
             placeholder="Viết vài dòng giới thiệu về khóa học này..."
-            className="min-h-[150px] resize-none focus-visible:ring-purple-500"
+            className="min-h-[150px] resize-none focus-visible:ring-red-500"
           />
         </div>
 
@@ -283,7 +293,7 @@ export const CourseHeader = ({
           <Label className="text-gray-600 font-medium flex justify-between">
             Ảnh bìa (16:9)
             {uploading && (
-              <span className="text-xs text-purple-600 animate-pulse">
+              <span className="text-xs text-red-600 animate-pulse">
                 Đang xử lý...
               </span>
             )}
@@ -291,7 +301,7 @@ export const CourseHeader = ({
 
           <div
             onClick={() => !uploading && fileInputRef.current?.click()}
-            className="aspect-video bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 hover:bg-purple-50/30 transition-all relative overflow-hidden group"
+            className="aspect-video bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:border-red-400 hover:bg-red-50/30 transition-all relative overflow-hidden group"
           >
             {course.thumbnail ? (
               <>
@@ -335,7 +345,7 @@ export const CourseHeader = ({
         <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-none shadow-2xl">
           <DialogHeader className="p-4 border-b">
             <DialogTitle className="flex items-center gap-2">
-              <ImageIcon className="h-5 w-5 text-purple-600" />
+              <ImageIcon className="h-5 w-5 text-red-600" />
               Căn chỉnh ảnh bìa
             </DialogTitle>
           </DialogHeader>
@@ -382,7 +392,7 @@ export const CourseHeader = ({
             <Button
               onClick={handleUploadFinal}
               disabled={uploading}
-              className="bg-purple-600 hover:bg-purple-700 text-white min-w-[120px]"
+              className="bg-red-600 hover:bg-red-700 text-white min-w-[120px]"
             >
               {uploading ? "Đang tải lên..." : "Lưu ảnh bìa"}
             </Button>

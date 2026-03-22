@@ -28,6 +28,7 @@ model User {
   progress      Progress[]
   comments      Comment[]
   notifications Notification[]
+  courses       Course[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -92,6 +93,7 @@ model Course {
 
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   chapters    Chapter[]
   attachments Attachment[]

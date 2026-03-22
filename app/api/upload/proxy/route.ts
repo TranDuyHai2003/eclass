@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "../../../../auth";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3Client, BUCKET_NAME } from "@/lib/s3";
 import { nanoid } from "nanoid";
 
@@ -16,36 +17,37 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
+    const { fileName, fileType } = await req.json();
 
-    if (!file) {
-      return new NextResponse("No file provided", { status: 400 });
+    if (!fileName || !fileType) {
+      return new NextResponse("Missing fileName or fileType", { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const uniqueFileName = `${nanoid()}-${file.name}`;
+    const uniqueFileName = `${nanoid()}-${fileName}`;
 
     const command = new PutObjectCommand({
       Bucket: BUCKET_NAME,
       Key: uniqueFileName,
-      Body: buffer,
-      ContentType: file.type,
+      ContentType: fileType,
     });
 
-    await s3Client.send(command);
+    // Generate a presigned URL valid for 60 minutes
+    const presignedUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: 3600,
+    });
 
-    // Construct public URL
-    // Use env var or fallback to constructing it manually if needed,
-    // but better to use the one we just fixed in .env
+    // Construct public URL for after upload
     const publicUrl = `${process.env.NEXT_PUBLIC_S3_DOMAIN}/${uniqueFileName}`;
 
     return NextResponse.json({
-      url: publicUrl,
+      presignedUrl,
+      publicUrl,
       fileName: uniqueFileName,
     });
-  } catch (error) {
-    console.error("Upload proxy error:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+  } catch (error: any) {
+    console.error("Upload presign error:", error);
+    return new NextResponse(error.message || "Internal Server Error", {
+      status: 500,
+    });
   }
 }

@@ -92,7 +92,7 @@ export function CommentItem({
                 {comment.user.name}
               </span>
               {comment.user.role === "TEACHER" && (
-                <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded uppercase tracking-wide">
+                <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded uppercase tracking-wide">
                   Giảng viên
                 </span>
               )}
@@ -184,7 +184,7 @@ export function CommentItem({
               className={cn(
                 "text-xs font-medium flex items-center gap-1 transition-colors",
                 isReplying
-                  ? "text-purple-600"
+                  ? "text-red-600"
                   : "text-gray-500 hover:text-gray-900",
               )}
             >
@@ -196,7 +196,7 @@ export function CommentItem({
 
         {/* Reply Form */}
         {isReplying && (
-          <div className="mt-4 pl-4 border-l-2 border-purple-100">
+          <div className="mt-4 pl-4 border-l-2 border-red-100">
             <CommentForm
               lessonId={comment.lessonId}
               parentId={comment.id}

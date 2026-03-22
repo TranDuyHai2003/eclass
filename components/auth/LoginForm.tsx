@@ -47,7 +47,7 @@ export default function LoginForm() {
             type="email"
             autoComplete="email"
             required
-            className="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500 sm:text-sm"
+            className="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-red-500 focus:outline-none focus:ring-red-500 sm:text-sm"
           />
         </div>
         
@@ -61,14 +61,14 @@ export default function LoginForm() {
             type="password"
             autoComplete="current-password"
             required
-            className="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500 sm:text-sm"
+            className="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-red-500 focus:outline-none focus:ring-red-500 sm:text-sm"
           />
         </div>
 
         <button
           type="submit"
           disabled={isPending}
-          className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:from-purple-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50"
+          className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-red-600 to-orange-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:from-red-500 hover:to-orange-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
         >
           {isPending ? "Đang xử lý..." : "Đăng nhập bằng Email"}
         </button>
@@ -86,7 +86,7 @@ export default function LoginForm() {
       <div className="space-y-3">
         <button
           onClick={() => handleSocialLogin("google")}
-          className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:bg-gray-50 hover:text-gray-900 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+          className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:bg-gray-50 hover:text-gray-900 focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
         >
            <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path

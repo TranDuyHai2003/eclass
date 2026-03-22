@@ -75,7 +75,7 @@ export default function CourseSidebar({
         {/* Progress Bar */}
         <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
           <div
-            className="bg-purple-600 h-1.5 rounded-full transition-all duration-500"
+            className="bg-red-600 h-1.5 rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
           ></div>
         </div>
@@ -120,7 +120,7 @@ export default function CourseSidebar({
                       className={cn(
                         "flex items-start gap-x-3 py-3 px-4 text-sm transition-all relative group",
                         isActive
-                          ? "bg-purple-100/50 text-purple-700 border-r-4 border-purple-600"
+                          ? "bg-red-100/50 text-red-700 border-r-4 border-red-600"
                           : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
                         isLocked &&
                           "opacity-70 cursor-not-allowed hover:bg-transparent",
@@ -128,14 +128,14 @@ export default function CourseSidebar({
                     >
                       <div className="mt-0.5">
                         {isActive ? (
-                          <div className="bg-purple-600 rounded-full p-1 animate-pulse">
+                          <div className="bg-red-600 rounded-full p-1 animate-pulse">
                             <PlayCircle className="w-3 h-3 text-white fill-current" />
                           </div>
                         ) : isLocked ? (
                           <Lock className="w-4 h-4 text-gray-400" />
                         ) : (
                           // Nếu completed thì hiện CheckCircle, chưa thì hiện Video Icon
-                          <Video className="w-4 h-4 text-gray-400 group-hover:text-purple-500" />
+                          <Video className="w-4 h-4 text-gray-400 group-hover:text-red-500" />
                         )}
                       </div>
 

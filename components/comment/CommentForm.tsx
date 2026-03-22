@@ -74,7 +74,7 @@ export function CommentForm({
           placeholder={placeholder}
           disabled={isSubmitting}
           className={cn(
-            "min-h-[80px] pr-12 resize-none focus-visible:ring-purple-500",
+            "min-h-[80px] pr-12 resize-none focus-visible:ring-red-500",
             errors.content && "border-red-500 focus-visible:ring-red-500",
           )}
         />
@@ -82,7 +82,7 @@ export function CommentForm({
           type="submit"
           size="sm"
           disabled={isSubmitting}
-          className="absolute bottom-2 right-2 h-8 w-8 p-0 rounded-full bg-purple-600 hover:bg-purple-700"
+          className="absolute bottom-2 right-2 h-8 w-8 p-0 rounded-full bg-red-600 hover:bg-red-700"
         >
           {isSubmitting ? (
             <Loader2 className="h-4 w-4 animate-spin text-white" />

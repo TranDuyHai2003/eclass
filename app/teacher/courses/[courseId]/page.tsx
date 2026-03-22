@@ -21,8 +21,8 @@ export default async function TeacherCourseEditPage({ params }: Props) {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50/50 pb-20">
-             <div className="container mx-auto py-6 max-w-5xl">
+        <div className="page-shell pb-20">
+             <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8 max-w-5xl">
                   {/* Breadcrumb or Back link could go here */}
                   <div className="mb-6">
                       <h1 className="text-2xl font-bold text-gray-900">Quản lý nội dung khóa học</h1>

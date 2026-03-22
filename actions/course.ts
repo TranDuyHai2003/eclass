@@ -22,6 +22,13 @@ export async function getCourses() {
         },
         orderBy: { position: "asc" },
       },
+      category: true,
+      user: {
+        select: {
+          name: true,
+          image: true,
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });

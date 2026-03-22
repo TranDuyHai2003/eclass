@@ -12,8 +12,22 @@ type AnalyticsData = {
         totalCourses: number
         totalViews: number
     }
-    topLessons: any[]
-    topUsers: any[]
+    topLessons: {
+        id: string
+        title: string
+        viewCount: number
+        chapter?: {
+            course?: {
+                title: string
+            } | null
+        } | null
+    }[]
+    topUsers: {
+        id: string
+        name: string | null
+        email: string
+        completedLessons: number
+    }[]
 }
 
 export default function AnalyticsPage() {
@@ -28,7 +42,7 @@ export default function AnalyticsPage() {
         try {
             const res = await getAnalytics()
             setData(res)
-        } catch (error) {
+        } catch {
             toast.error("Không thể tải dữ liệu thống kê")
         } finally {
             setLoading(false)
@@ -39,12 +53,12 @@ export default function AnalyticsPage() {
     if (!data) return <div className="p-8 text-center text-gray-500">Không có dữ liệu.</div>
 
     return (
-        <div className="container mx-auto py-10 px-6">
-            <h1 className="text-3xl font-bold mb-8">Thống kê hệ thống</h1>
+        <div className="space-y-8">
+            <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Thống kê hệ thống</h1>
 
             {/* Overall Stats */}
-            <div className="grid gap-4 md:grid-cols-3 mb-8">
-                <Card>
+            <div className="grid gap-6 md:grid-cols-3">
+                <Card className="card-surface rounded-[2rem] border-border/50 shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Tổng người dùng</CardTitle>
                         <svg
@@ -66,7 +80,7 @@ export default function AnalyticsPage() {
                         <div className="text-2xl font-bold">{data.overall.totalUsers}</div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="card-surface rounded-3xl border-border/60">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Tổng khóa học</CardTitle>
                         <svg
@@ -87,7 +101,7 @@ export default function AnalyticsPage() {
                         <div className="text-2xl font-bold">{data.overall.totalCourses}</div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="card-surface rounded-3xl border-border/60">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Tổng lượt học</CardTitle>
                         <svg
@@ -114,7 +128,7 @@ export default function AnalyticsPage() {
 
             <div className="grid gap-8 md:grid-cols-2">
                 {/* Top Lessons */}
-                <Card className="col-span-1">
+                <Card className="col-span-1 card-surface rounded-3xl border-border/60">
                     <CardHeader>
                         <CardTitle>Bài học xem nhiều nhất</CardTitle>
                     </CardHeader>
@@ -151,7 +165,7 @@ export default function AnalyticsPage() {
                 </Card>
 
                 {/* Top Users */}
-                <Card className="col-span-1">
+                <Card className="col-span-1 card-surface rounded-3xl border-border/60">
                     <CardHeader>
                         <CardTitle>Học viên chăm chỉ nhất</CardTitle>
                     </CardHeader>

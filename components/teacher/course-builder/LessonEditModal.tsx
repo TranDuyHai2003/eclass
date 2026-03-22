@@ -78,36 +78,42 @@ export function LessonEditModal({
     setUploadProgress(0);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      // POST lên /api/upload/proxy → Next.js server → MinIO
-      const { data } = await axios.post<{ url: string; fileName: string }>(
-        "/api/upload/proxy",
-        formData,
+      // Step 1: Request Presigned URL from Next.js Server
+      const presignRes = await axios.post<{ presignedUrl: string; publicUrl: string; fileName: string }>(
+        "/api/upload/presign",
         {
-          headers: { "Content-Type": "multipart/form-data" },
-          onUploadProgress: (progressEvent) => {
-            const pct = Math.round(
-              ((progressEvent.loaded ?? 0) * 100) /
-                (progressEvent.total ?? file.size),
-            );
-            setUploadProgress(pct);
-          },
-        },
+          fileName: file.name,
+          fileType: file.type || "application/octet-stream",
+        }
       );
 
+      const { presignedUrl, publicUrl } = presignRes.data;
+
+      // Step 2: Upload directly to S3 bypassing Next.js server entirely
+      await axios.put(presignedUrl, file, {
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        onUploadProgress: (progressEvent) => {
+          const pct = Math.round(
+            ((progressEvent.loaded ?? 0) * 100) /
+              (progressEvent.total ?? file.size),
+          );
+          setUploadProgress(pct);
+        },
+      });
+
       // Auto-save videoUrl vào DB ngay sau khi upload xong
-      const saveRes = await updateLesson(lesson.id, { videoUrl: data.url });
+      const saveRes = await updateLesson(lesson.id, { videoUrl: publicUrl });
       if (saveRes.success) {
-        setVideoUrl(data.url);
+        setVideoUrl(publicUrl);
         toast.success("Upload video thành công và đã lưu");
         onSuccess();
       } else {
         toast.error("Upload xong nhưng lưu DB thất bại: " + saveRes.error);
       }
     } catch (error) {
-      console.error(error);
+      console.error("Video upload error:", error);
       toast.error("Lỗi upload video");
     } finally {
       setUploading(false);
@@ -142,18 +148,27 @@ export function LessonEditModal({
 
     setAttUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const { data } = await axios.post<{ url: string; fileName: string }>(
-        "/api/upload/proxy",
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } },
+      // Step 1: Request Presigned URL
+      const presignRes = await axios.post<{ presignedUrl: string; publicUrl: string; fileName: string }>(
+        "/api/upload/presign",
+        {
+          fileName: file.name,
+          fileType: file.type || "application/octet-stream",
+        }
       );
+
+      const { presignedUrl, publicUrl } = presignRes.data;
+
+      // Step 2: Upload directly to S3
+      await axios.put(presignedUrl, file, {
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        }
+      });
 
       const res = await createAttachment({
         lessonId: lesson.id,
-        url: data.url,
+        url: publicUrl,
         name: file.name,
         type: file.type,
       });
@@ -226,19 +241,19 @@ export function LessonEditModal({
             <TabsList className="w-full justify-start gap-2 bg-transparent p-0 h-auto">
               <TabsTrigger
                 value="video"
-                className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-purple-600 border border-transparent data-[state=active]:border-gray-200 rounded-md py-2 px-4"
+                className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 border border-transparent data-[state=active]:border-gray-200 rounded-md py-2 px-4"
               >
                 Video bài giảng
               </TabsTrigger>
               <TabsTrigger
                 value="attachments"
-                className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-purple-600 border border-transparent data-[state=active]:border-gray-200 rounded-md py-2 px-4"
+                className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 border border-transparent data-[state=active]:border-gray-200 rounded-md py-2 px-4"
               >
                 Tài liệu đính kèm
               </TabsTrigger>
               <TabsTrigger
                 value="quiz"
-                className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-purple-600 border border-transparent data-[state=active]:border-gray-200 rounded-md py-2 px-4"
+                className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 border border-transparent data-[state=active]:border-gray-200 rounded-md py-2 px-4"
               >
                 Bài tập Quiz
               </TabsTrigger>
@@ -260,7 +275,7 @@ export function LessonEditModal({
               {videoUrl ? (
                 /* ── Đã có video ── */
                 <div className="border rounded-lg overflow-hidden bg-black relative group">
-                  <video src={videoUrl} controls className="w-full aspect-video" />
+                  <video src={videoUrl} controls autoPlay muted className="w-full aspect-video" />
 
                   {/* Hover controls */}
                   <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -307,18 +322,18 @@ export function LessonEditModal({
                     <div className="w-full max-w-xs space-y-2">
                       <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
                         <div
-                          className="bg-purple-600 h-2.5 rounded-full transition-all duration-300"
+                          className="bg-red-600 h-2.5 rounded-full transition-all duration-300"
                           style={{ width: `${uploadProgress}%` }}
                         />
                       </div>
-                      <p className="text-sm text-purple-600 font-medium">
+                      <p className="text-sm text-red-600 font-medium">
                         Đang tải lên... {uploadProgress}%
                       </p>
                       <p className="text-xs text-gray-400">Vui lòng không đóng cửa sổ này</p>
                     </div>
                   ) : (
                     <label className="cursor-pointer">
-                      <span className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow">
+                      <span className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow">
                         <Upload className="w-4 h-4" />
                         Chọn file video
                       </span>
