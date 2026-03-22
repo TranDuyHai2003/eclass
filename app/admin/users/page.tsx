@@ -61,11 +61,12 @@ export default function UserManagementPage() {
     if (loading) return <div className="p-8 text-center text-gray-500">Đang tải...</div>
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Quản lý người dùng</h1>
+        <div className="space-y-6 px-4 md:px-0">
+            <h1 className="text-2xl md:text-3xl font-black text-gray-900 uppercase tracking-tight">Quản lý người dùng</h1>
             
-            <div className="card-surface rounded-[2rem] overflow-hidden border border-border/50">
-                <Table>
+            <div className="card-surface rounded-[2rem] overflow-x-auto border border-border/50">
+                <div className="min-w-[700px] md:min-w-full">
+                    <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Tên</TableHead>
@@ -121,13 +122,8 @@ export default function UserManagementPage() {
                             </TableRow>
                         ))}
                     </TableBody>
-                </Table>
-                
-                {users.length === 0 && (
-                    <div className="p-8 text-center text-gray-500">
-                        Chưa có người dùng nào.
-                    </div>
-                )}
+                    </Table>
+                </div>
             </div>
         </div>
     )

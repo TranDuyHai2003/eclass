@@ -49,9 +49,9 @@ export function Dashboard({
       <main className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Left Column: Profile & Navigation */}
-          <aside className="w-full lg:w-[300px] shrink-0 space-y-6">
-            <div className="card-surface rounded-[2rem] p-8 flex flex-col items-center text-center">
-              <div className="w-24 h-24 rounded-full bg-red-100 ring-4 ring-white shadow-xl flex items-center justify-center mb-6 relative group overflow-hidden">
+          <aside className="w-full lg:w-[300px] shrink-0 space-y-4 sm:space-y-6">
+            <div className="card-surface rounded-[2rem] p-6 sm:p-8 flex flex-col items-center text-center">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-red-100 ring-4 ring-white shadow-xl flex items-center justify-center mb-4 sm:mb-6 relative group overflow-hidden">
                 {user.image ? (
                   <img
                     src={user.image}
@@ -59,28 +59,28 @@ export function Dashboard({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center text-white text-3xl font-black">
+                  <div className="w-full h-full bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center text-white text-2xl sm:text-3xl font-black">
                     {user.name?.[0].toUpperCase()}
                   </div>
                 )}
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <span className="text-[10px] text-white font-black uppercase">
-                    Edit
+                    Sửa
                   </span>
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-[10px] font-black text-red-600 uppercase tracking-[0.2em]">
+                <p className="text-[9px] sm:text-[10px] font-black text-red-600 uppercase tracking-[0.2em]">
                   Tân Binh
                 </p>
-                <h3 className="font-black text-gray-900 text-xl">
+                <h3 className="font-black text-gray-900 text-lg sm:text-xl">
                   {user.name}
                 </h3>
               </div>
 
-              <div className="w-full mt-6 pt-6 border-t border-gray-50">
+              <div className="w-full mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-50">
                 <div className="flex justify-between items-end mb-2">
-                  <span className="text-[10px] font-black text-gray-400 uppercase">
+                  <span className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase">
                     EXP: 1,250 / 2,000
                   </span>
                   <span className="text-xs font-black text-red-600">

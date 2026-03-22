@@ -71,8 +71,8 @@ export default function CourseCard({ course, isLocked = false, progress }: Cours
       </div>
 
       {/* Content */}
-      <div className="p-5 flex-1 flex flex-col">
-        <h3 className="font-black text-gray-900 line-clamp-2 leading-tight group-hover:text-red-600 transition-colors text-balance">
+      <div className="p-4 sm:p-5 flex-1 flex flex-col">
+        <h3 className="font-black text-gray-900 line-clamp-2 leading-tight group-hover:text-red-600 transition-colors text-balance text-sm sm:text-base">
           {course.title}
         </h3>
 

@@ -26,12 +26,22 @@ const adminLinks = [
   { href: "/admin/settings", label: "Cài đặt hệ thống", icon: Settings },
 ]
 
-export function DashboardSidebar() {
+interface DashboardSidebarProps {
+  isMobile?: boolean;
+}
+
+export function DashboardSidebar({ isMobile }: DashboardSidebarProps) {
   const pathname = usePathname()
 
   return (
-    <div className="w-full lg:w-64 shrink-0 space-y-4">
-      <div className="card-surface rounded-3xl p-6">
+    <div className={cn(
+      "shrink-0 space-y-4",
+      isMobile ? "w-full p-4" : "w-64"
+    )}>
+      <div className={cn(
+        "rounded-3xl p-6",
+        isMobile ? "bg-transparent" : "card-surface"
+      )}>
         <div className="flex items-center gap-3 mb-8 px-2">
           <div className="w-10 h-10 bg-black rounded-2xl flex items-center justify-center text-white font-black">
             A

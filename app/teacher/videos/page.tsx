@@ -5,7 +5,10 @@ import { VideoLibraryClient } from "./_components/VideoLibraryClient";
 
 export default async function VideosPage() {
   const session = await auth();
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
+  if (
+    !session ||
+    (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+  ) {
     return redirect("/");
   }
 
@@ -19,13 +22,16 @@ export default async function VideosPage() {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Thư viện Video (BunnyCDN)</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Thư viện Video (BunnyCDN)
+          </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Tải video mp4 lên giao diện BunnyCDN sau đó bấm Đồng bộ để tải danh sách về hệ thống.
+            Tải video mp4 lên giao diện BunnyCDN sau đó bấm Đồng bộ để tải danh
+            sách về hệ thống.
           </p>
         </div>
       </div>
-      
+
       <VideoLibraryClient initialData={videos} />
     </div>
   );
