@@ -7,24 +7,23 @@ services:
     container_name: eclass_postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: password # Đảm bảo khớp với DATABASE_URL trong .env
       POSTGRES_DB: eclass
     ports:
-      - "5433:5432"
+      - "5433:5432" # Máy thật dùng 5433, bên trong Docker dùng 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: always
 
-
-  # 3. WEB APP (Đây là chỗ để nó gọi Dockerfile của bạn)
+  # 2. WEB APP
   app:
-    build: . # Nó sẽ tìm file Dockerfile trong cùng thư mục để build
+    build: .
     container_name: eclass_app
     ports:
       - "3000:3000"
-    env_file: .env # Nó sẽ đọc các biến Bunny/DB từ file .env
+    env_file: .env # Docker sẽ nạp các biến từ file .env vào đây
     depends_on:
-      - postgres
+      - postgres # Đợi Database khởi động xong mới chạy App
     restart: always
 
 volumes:
