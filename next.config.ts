@@ -4,9 +4,13 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: "http",
-        hostname: "localhost",
-        port: "9000",
+        protocol: "https",
+        hostname: "eclass.b-cdn.net",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "vz-7449c6de-22c.b-cdn.net",
         pathname: "/**",
       },
     ],

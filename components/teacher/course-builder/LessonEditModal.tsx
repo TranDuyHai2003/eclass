@@ -70,7 +70,7 @@ export function LessonEditModal({
     }
   };
 
-  // ─── Video Upload — dùng proxy để tránh CORS với MinIO ───────────────────
+  // ─── Video Upload — dùng proxy để tránh CORS với BunnyCDN/S3 ───────────
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;

@@ -1,6 +1,7 @@
-version: '3.8'
+version: "3.8"
 
 services:
+  # 1. DATABASE
   postgres:
     image: postgres:15-alpine
     container_name: eclass_postgres
@@ -14,20 +15,17 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: always
 
-  minio:
-    image: minio/minio
-    container_name: eclass_minio
+
+  # 3. WEB APP (Đây là chỗ để nó gọi Dockerfile của bạn)
+  app:
+    build: . # Nó sẽ tìm file Dockerfile trong cùng thư mục để build
+    container_name: eclass_app
     ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: password123
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
+      - "3000:3000"
+    env_file: .env # Nó sẽ đọc các biến Bunny/DB từ file .env
+    depends_on:
+      - postgres
     restart: always
 
 volumes:
   postgres_data:
-  minio_data:
