@@ -176,21 +176,16 @@ export const CourseHeader = ({
     try {
       const croppedFile = await getCroppedImg(imageToCrop, croppedAreaPixels);
       
-      const presignRes = await axios.post<{ presignedUrl: string; publicUrl: string; fileName: string }>(
-        "/api/upload/presign",
+      const res = await axios.put<{ publicUrl: string }>(
+        `/api/upload/proxy?fileName=${encodeURIComponent(croppedFile.name)}`,
+        croppedFile,
         {
-          fileName: croppedFile.name,
-          fileType: croppedFile.type || "image/jpeg",
+          headers: {
+            "Content-Type": croppedFile.type || "image/jpeg",
+          },
         }
       );
-
-      const { presignedUrl, publicUrl } = presignRes.data;
-
-      await axios.put(presignedUrl, croppedFile, {
-        headers: {
-          "Content-Type": croppedFile.type || "image/jpeg",
-        }
-      });
+      const { publicUrl } = res.data;
 
       onUpdate({ thumbnail: publicUrl });
       setIsCropModalOpen(false);

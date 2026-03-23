@@ -81,29 +81,24 @@ export function LessonEditModal({
 
     try {
       // Step 1: Request Presigned URL from Next.js Server
-      const presignRes = await axios.post<{ presignedUrl: string; publicUrl: string; fileName: string }>(
-        "/api/upload/presign",
+      const res = await axios.put<{ publicUrl: string }>(
+        `/api/upload/proxy?fileName=${encodeURIComponent(file.name)}`,
+        file,
         {
-          fileName: file.name,
-          fileType: file.type || "application/octet-stream",
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+          },
+          onUploadProgress: (progressEvent) => {
+            const pct = Math.round(
+              ((progressEvent.loaded ?? 0) * 100) /
+                (progressEvent.total ?? file.size),
+            );
+            setUploadProgress(pct);
+          },
         }
       );
 
-      const { presignedUrl, publicUrl } = presignRes.data;
-
-      // Step 2: Upload directly to S3 bypassing Next.js server entirely
-      await axios.put(presignedUrl, file, {
-        headers: {
-          "Content-Type": file.type || "application/octet-stream",
-        },
-        onUploadProgress: (progressEvent) => {
-          const pct = Math.round(
-            ((progressEvent.loaded ?? 0) * 100) /
-              (progressEvent.total ?? file.size),
-          );
-          setUploadProgress(pct);
-        },
-      });
+      const { publicUrl } = res.data;
 
       // Auto-save videoUrl vào DB ngay sau khi upload xong
       const saveRes = await updateLesson(lesson.id, { videoUrl: publicUrl });
@@ -151,22 +146,17 @@ export function LessonEditModal({
     setAttUploading(true);
     try {
       // Step 1: Request Presigned URL
-      const presignRes = await axios.post<{ presignedUrl: string; publicUrl: string; fileName: string }>(
-        "/api/upload/presign",
+      const res = await axios.put<{ publicUrl: string }>(
+        `/api/upload/proxy?fileName=${encodeURIComponent(file.name)}`,
+        file,
         {
-          fileName: file.name,
-          fileType: file.type || "application/octet-stream",
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+          }
         }
       );
 
-      const { presignedUrl, publicUrl } = presignRes.data;
-
-      // Step 2: Upload directly to S3
-      await axios.put(presignedUrl, file, {
-        headers: {
-          "Content-Type": file.type || "application/octet-stream",
-        }
-      });
+      const { publicUrl } = res.data;
 
       const res = await createAttachment({
         lessonId: lesson.id,
