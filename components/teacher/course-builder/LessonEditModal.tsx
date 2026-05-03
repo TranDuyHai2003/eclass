@@ -54,7 +54,11 @@ export function LessonEditModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await updateLesson(lesson.id, { title, description, videoUrl });
+      const res = await updateLesson(lesson.id, {
+        title,
+        description,
+        videoUrl,
+      });
       if (res.success) {
         toast.success("Đã lưu thay đổi");
         onSuccess();
@@ -95,7 +99,7 @@ export function LessonEditModal({
             );
             setUploadProgress(pct);
           },
-        }
+        },
       );
 
       const { publicUrl } = uploadRes.data;
@@ -152,8 +156,8 @@ export function LessonEditModal({
         {
           headers: {
             "Content-Type": file.type || "application/octet-stream",
-          }
-        }
+          },
+        },
       );
 
       const { publicUrl } = uploadRes.data;
@@ -195,7 +199,11 @@ export function LessonEditModal({
   // ─── Close guard ─────────────────────────────────────────────────────────
   const handleClose = () => {
     if (uploading || attUploading) {
-      if (!confirm("File đang được tải lên. Nếu đóng, quá trình sẽ bị hủy. Bạn có chắc không?"))
+      if (
+        !confirm(
+          "File đang được tải lên. Nếu đóng, quá trình sẽ bị hủy. Bạn có chắc không?",
+        )
+      )
         return;
     }
     if (
@@ -253,7 +261,10 @@ export function LessonEditModal({
           </div>
 
           {/* ── TAB: VIDEO ──────────────────────────────────────── */}
-          <TabsContent value="video" className="flex-1 p-6 overflow-y-auto space-y-6">
+          <TabsContent
+            value="video"
+            className="flex-1 p-6 overflow-y-auto space-y-6"
+          >
             {/* Tiêu đề */}
             <div className="space-y-2">
               <Label>Tiêu đề bài học</Label>
@@ -267,11 +278,17 @@ export function LessonEditModal({
               {videoUrl ? (
                 /* ── Đã có video ── */
                 <div className="border rounded-lg overflow-hidden bg-black relative group">
-                  <video src={videoUrl} controls autoPlay muted className="w-full aspect-video" />
+                  <video
+                    src={videoUrl}
+                    controls
+                    autoPlay
+                    muted
+                    className="w-full aspect-video"
+                  />
 
                   {/* Hover controls */}
                   <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <LibrarySelect 
+                    <LibrarySelect
                       onSelectVideo={(url) => {
                         setVideoUrl(url);
                         updateLesson(lesson.id, { videoUrl: url });
@@ -279,7 +296,10 @@ export function LessonEditModal({
                         onSuccess();
                       }}
                       customTrigger={
-                        <button disabled={isSaving} className="inline-flex cursor-pointer items-center gap-1 bg-white/90 hover:bg-white text-gray-700 text-xs font-medium px-3 py-1.5 rounded-md shadow transition disabled:opacity-50">
+                        <button
+                          disabled={isSaving}
+                          className="inline-flex cursor-pointer items-center gap-1 bg-white/90 hover:bg-white text-gray-700 text-xs font-medium px-3 py-1.5 rounded-md shadow transition disabled:opacity-50"
+                        >
                           <PlaySquare className="w-3.5 h-3.5" />
                           Chọn từ Thư viện
                         </button>
@@ -298,7 +318,9 @@ export function LessonEditModal({
                   {/* URL bar */}
                   <div className="px-3 py-2 bg-gray-800 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-xs text-gray-300 truncate">{videoUrl}</span>
+                    <span className="text-xs text-gray-300 truncate">
+                      {videoUrl}
+                    </span>
                   </div>
                 </div>
               ) : (
@@ -306,8 +328,12 @@ export function LessonEditModal({
                 <div className="border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center gap-4 bg-gray-50 text-center">
                   <div className="text-4xl text-gray-300">🎥</div>
                   <div>
-                    <p className="font-medium text-gray-700">Tải lên video bài giảng</p>
-                    <p className="text-sm text-gray-400 mt-1">MP4, MOV, AVI, MKV...</p>
+                    <p className="font-medium text-gray-700">
+                      Tải lên video bài giảng
+                    </p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      MP4, MOV, AVI, MKV...
+                    </p>
                   </div>
 
                   {uploading ? (
@@ -322,10 +348,12 @@ export function LessonEditModal({
                       <p className="text-sm text-red-600 font-medium">
                         Đang tải lên... {uploadProgress}%
                       </p>
-                      <p className="text-xs text-gray-400">Vui lòng không đóng cửa sổ này</p>
+                      <p className="text-xs text-gray-400">
+                        Vui lòng không đóng cửa sổ này
+                      </p>
                     </div>
                   ) : (
-                    <LibrarySelect 
+                    <LibrarySelect
                       onSelectVideo={(url) => {
                         setVideoUrl(url);
                         updateLesson(lesson.id, { videoUrl: url });
@@ -365,14 +393,21 @@ export function LessonEditModal({
           </TabsContent>
 
           {/* ── TAB: ATTACHMENTS ────────────────────────────────── */}
-          <TabsContent value="attachments" className="flex-1 p-6 overflow-y-auto">
+          <TabsContent
+            value="attachments"
+            className="flex-1 p-6 overflow-y-auto"
+          >
             <div className="space-y-6">
-              <Label className="text-base font-semibold">Tài liệu học tập</Label>
+              <Label className="text-base font-semibold">
+                Tài liệu học tập
+              </Label>
 
               <div className="border border-dashed rounded-lg p-8 text-center space-y-4 bg-gray-50 relative">
                 {attUploading && (
                   <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center rounded-lg">
-                    <span className="text-blue-600 font-medium animate-pulse">Đang tải lên...</span>
+                    <span className="text-blue-600 font-medium animate-pulse">
+                      Đang tải lên...
+                    </span>
                   </div>
                 )}
                 <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
@@ -380,7 +415,9 @@ export function LessonEditModal({
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">Tải lên tài liệu</p>
-                  <p className="text-sm text-gray-500 mt-1">PDF, DOCX, XLSX, Images...</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    PDF, DOCX, XLSX, Images...
+                  </p>
                 </div>
                 <label className="cursor-pointer">
                   <span className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow">
@@ -420,7 +457,9 @@ export function LessonEditModal({
                           >
                             {att.name}
                           </a>
-                          <span className="text-xs text-gray-400">Đính kèm</span>
+                          <span className="text-xs text-gray-400">
+                            Đính kèm
+                          </span>
                         </div>
                       </div>
                       <Button
@@ -444,11 +483,12 @@ export function LessonEditModal({
               <div className="text-4xl">📝</div>
               <h3 className="font-medium text-gray-900">Bài kiểm tra & Quiz</h3>
               <p className="text-gray-500 max-w-sm mx-auto">
-                Tạo bài kiểm tra qua file PDF, thiết lập ma trận đáp án và chấm điểm tự động.
+                Tạo bài kiểm tra qua file PDF, thiết lập ma trận đáp án và chấm
+                điểm tự động.
               </p>
-              
+
               <div className="pt-4">
-                <Button 
+                <Button
                   onClick={async () => {
                     // Update lesson type to QUIZ if it isn't already
                     if (lesson.type !== "QUIZ") {
