@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import VideoPlayer from "@/components/player/VideoPlayer";
 import CourseSidebar from "@/components/course/CourseSidebar";
+import { DocumentViewer } from "@/components/course/DocumentViewer";
+import { CountdownTimer } from "@/components/course/CountdownTimer";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { Separator } from "@/components/ui/separator"; // Nếu có shadcn, hoặc dùng thẻ hr
+import { Separator } from "@/components/ui/separator"; 
 import {
   FileText,
   Download,
@@ -11,7 +13,11 @@ import {
   ChevronRight,
   Home,
   Menu,
-  BookOpen
+  BookOpen,
+  LayoutList,
+  MessageCircle,
+  FileDown,
+  Info,
 } from "lucide-react";
 import Link from "next/link";
 import { CommentSection } from "@/components/comment/CommentSection";
@@ -24,6 +30,16 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import QuizEntryCard from "./_components/QuizEntryCard";
+import { cn } from "@/lib/utils";
 
 type WatchPageProps = {
   params: Promise<{
@@ -40,7 +56,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
 
   const { lessonId } = await params;
 
-  // 1. Get current lesson details
+  // ... (Keep existing data fetching logic)
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
     include: {
@@ -55,7 +71,6 @@ export default async function WatchPage({ params }: WatchPageProps) {
 
   if (!lesson) return notFound();
 
-  // 2. Fetch full course structure
   const course = await prisma.course.findUnique({
     where: { id: lesson.chapter.courseId },
     include: {
@@ -72,7 +87,6 @@ export default async function WatchPage({ params }: WatchPageProps) {
 
   if (!course) return notFound();
 
-  // 3. Fetch user progress
   const progress = await prisma.progress.findUnique({
     where: {
       userId_lessonId: {
@@ -82,7 +96,6 @@ export default async function WatchPage({ params }: WatchPageProps) {
     },
   });
 
-  // Logic tìm bài trước/sau để điều hướng
   const allLessons = course.chapters.flatMap((c) => c.lessons);
   const currentLessonIndex = allLessons.findIndex((l) => l.id === lessonId);
   const prevLesson =
@@ -92,223 +105,214 @@ export default async function WatchPage({ params }: WatchPageProps) {
       ? allLessons[currentLessonIndex + 1]
       : null;
 
+  let test = null;
+  let quizDuration = 45;
+  if (lesson.type === 'QUIZ') {
+    test = await prisma.test.findUnique({ 
+      where: { lessonId },
+      include: {
+        sections: {
+          include: {
+            questions: {
+              orderBy: { position: "asc" }
+            }
+          },
+          orderBy: { position: "asc" }
+        }
+      }
+    });
+    if (test) quizDuration = test.duration;
+  }
+
   return (
-    <div className="page-shell">
-      {/* Breadcrumb Header */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-border/60 px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 md:relative z-30">
-        <div className="flex items-center gap-2 text-[11px] sm:text-sm text-gray-400">
-          <Link href="/" className="hover:text-red-600 transition flex items-center gap-1">
-            <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Trang chủ</span>
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5" />
-          <Link
-            href={`/courses/${lesson.chapter.courseId}`}
-            className="hover:text-red-600 transition font-black truncate max-w-[100px] sm:max-w-none"
-          >
-            {course.title}
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5" />
-          <span className="font-black text-gray-900 truncate max-w-[120px] sm:max-w-[200px]">
-            {lesson.title}
-          </span>
-        </div>
+    <div className="flex flex-col bg-[#F8F9FB] min-h-screen">
+      {/* Main Content Layout */}
+      <main className="flex-1 flex flex-col lg:flex-row relative">
         
-        {/* Mobile Syllabus Drawer Trigger */}
-        <div className="xl:hidden">
-          <Sheet>
-            <SheetTrigger asChild>
-              <button className="flex items-center gap-2 bg-red-50 text-red-600 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Nội dung</span>
-              </button>
-            </SheetTrigger>
-            <SheetContent side="right" className="p-0 border-none w-[320px]">
-               <SheetHeader className="p-6 border-b bg-gray-50/50">
-                  <SheetTitle className="text-sm font-black uppercase tracking-tight">Danh sách bài học</SheetTitle>
-               </SheetHeader>
-               <div className="h-[calc(100vh-80px)] overflow-y-auto">
-                 <CourseSidebar course={course} currentLessonId={lessonId} />
-               </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </div>
-
-      <div className="container mx-auto pt-4 md:pt-6 pb-12 px-2 sm:px-6 lg:px-8 max-w-[1920px]">
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 md:gap-8">
-          {/* --- LEFT COLUMN: VIDEO & CONTENT --- */}
-          <div className="xl:col-span-3 flex flex-col gap-4 md:gap-6">
-            {/* Video Player Container */}
-            <div className="bg-black rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl ring-1 ring-black/10 aspect-video relative z-10 group">
-              <VideoPlayer
-                src={lesson.videoUrl || ""}
-                title={lesson.title}
-                poster={lesson.chapter.course.thumbnail || undefined}
-              />
+        {/* Left Column: Video & Content - Natural Page Scroll */}
+        <div className="flex-1 flex flex-col min-w-0 bg-white border-r border-slate-100">
+          
+          {/* Video Section - Optimized Height */}
+          <div className="w-full bg-slate-950 shrink-0">
+            <div className="max-w-[1600px] mx-auto aspect-video">
+              {lesson.videoUrl ? (
+                <VideoPlayer
+                  src={lesson.videoUrl}
+                  title={lesson.title}
+                  poster={lesson.chapter.course.thumbnail || undefined}
+                />
+              ) : lesson.type === "QUIZ" ? (
+                <div className="w-full h-full bg-[#0F172A] flex flex-col items-center justify-center gap-6 py-20">
+                  <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10">
+                    <BookOpen className="w-8 h-8 text-red-500" />
+                  </div>
+                  <h2 className="text-white font-black text-2xl">Bài kiểm tra đánh giá</h2>
+                  <div className="px-5 py-2 bg-white/5 rounded-xl border border-white/10 text-slate-300 font-bold text-sm">
+                    {quizDuration} Phút
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full h-full bg-slate-900 flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest">
+                   Không có video bài giảng
+                </div>
+              )}
             </div>
+          </div>
 
-            {/* Navigation & Progress Buttons - Engagement Layer */}
-            <div className="card-surface flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-3xl border-gray-100/50 shadow-sm">
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                {prevLesson && (
-                  <Link
-                    href={`/watch/${prevLesson.id}`}
-                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-3 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-[10px] font-black uppercase tracking-[0.15em] transition shadow-sm group"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" /> 
-                    <span className="hidden sm:inline">Bài trước</span>
-                    <span className="sm:hidden">Trước</span>
-                  </Link>
-                )}
-                
-                {nextLesson && (
-                  <Link
-                    href={`/watch/${nextLesson.id}`}
-                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-3 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-[10px] font-black uppercase tracking-[0.15em] transition shadow-sm group"
-                  >
-                    <span className="hidden sm:inline">Bài sau</span>
-                    <span className="sm:hidden">Sau</span>
-                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                )}
-              </div>
+          {/* Lesson Info & Quick Controls */}
+          <div className="px-4 md:px-10 py-5 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
+             <div className="min-w-0">
+                <p className="text-[12px] font-black text-red-600 uppercase tracking-[0.2em] mb-1">
+                  {lesson.chapter.title}
+                </p>
+                <div className="flex items-center gap-3">
+                   <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-tight">
+                     {lesson.title}
+                   </h1>
+                   <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+                      <span className="text-[10px] font-black uppercase tracking-tight text-slate-500">Đang phát</span>
+                   </div>
+                </div>
+             </div>
 
-              <div className="w-full md:w-auto">
+             <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 mr-3">
+                  {prevLesson && (
+                    <Link href={`/watch/${prevLesson.id}`} className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/50 transition-all shadow-sm">
+                      <ChevronLeft className="w-5 h-5" />
+                    </Link>
+                  )}
+                  {nextLesson && (
+                    <Link href={`/watch/${nextLesson.id}`} className="p-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/50 transition-all shadow-sm">
+                      <ChevronRight className="w-5 h-5" />
+                    </Link>
+                  )}
+                </div>
                 <CourseProgressButton
                   lessonId={lessonId}
                   courseId={course.id}
                   nextLessonId={nextLesson?.id}
                   isCompleted={!!progress?.isCompleted}
                 />
-              </div>
-            </div>
-
-            {/* Main Content info */}
-            <div className="card-surface rounded-3xl p-6 md:p-8 space-y-6">
-              <div className="space-y-2">
-                <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 font-black text-[10px] uppercase tracking-widest inline-block">
-                  {lesson.chapter.title}
-                </span>
-                <h1 className="text-2xl md:text-3xl font-black text-gray-900 leading-tight">
-                  {lesson.title}
-                </h1>
-              </div>
-
-              <Separator className="bg-gray-50" />
-
-              <div className="prose prose-red max-w-none text-gray-600">
-                <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-4">
-                  Nội dung chi tiết
-                </h3>
-                <div className="bg-gray-50/50 p-5 md:p-6 rounded-2xl border border-gray-100 italic text-sm md:text-base">
-                  {lesson.description ||
-                    "Bài học này hiện chưa có nội dung mô tả chi tiết. Hãy theo dõi video bài giảng để nắm bắt kiến thức quan trọng nhất."}
-                </div>
-              </div>
-
-              {lesson.attachments.length > 0 && (
-                <div className="bg-gray-50 rounded-2xl p-5 md:p-6 border border-gray-100">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Download className="w-5 h-5 text-red-600" />
-                    Tài liệu đính kèm
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {lesson.attachments.map((item) => (
-                      <a
-                        key={item.id}
-                        href={item.url}
-                        target="_blank"
-                        className="flex items-center p-4 bg-white border border-gray-100 rounded-2xl hover:border-red-400 hover:shadow-lg transition-all group"
-                      >
-                        <div className="p-3 bg-red-50 rounded-xl text-red-600 mr-4 group-hover:bg-red-600 group-hover:text-white transition-colors">
-                          <FileText className="w-5 h-5" />
-                        </div>
-                        <span className="text-sm font-bold text-gray-700 truncate">
-                          {item.name}
-                        </span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            {/* Mobile Tabs Section (Visible on all screens but integrated for mobile) */}
-            <div className="xl:hidden">
-               <div className="card-surface rounded-3xl overflow-hidden min-h-[400px]">
-                  <Tabs defaultValue="content" className="flex flex-col h-full">
-                     <TabsList className="grid grid-cols-2 h-12 bg-gray-100/80 m-4 mb-2 p-1 gap-1 rounded-2xl border-none shadow-inner">
-                        <TabsTrigger 
-                          value="content" 
-                          className="data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-md rounded-xl h-full font-black text-[11px] uppercase tracking-widest transition-all"
-                        >
-                           Bài học
-                        </TabsTrigger>
-                        <TabsTrigger 
-                          value="discussion" 
-                          className="data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-md rounded-xl h-full font-black text-[11px] uppercase tracking-widest transition-all"
-                        >
-                           Thảo luận
-                        </TabsTrigger>
-                     </TabsList>
-                     
-                     <div className="flex-1 bg-white">
-                        <TabsContent value="content" className="m-0 p-0 h-full">
-                           <CourseSidebar course={course} currentLessonId={lessonId} />
-                        </TabsContent>
-                        <TabsContent value="discussion" className="m-0 p-4 h-full">
-                           <CommentSection lessonId={lessonId} />
-                        </TabsContent>
-                     </div>
-                  </Tabs>
-               </div>
-            </div>
+             </div>
           </div>
 
-          {/* --- RIGHT COLUMN: SIDEBAR TABS (Desktop Only) --- */}
-          <div className="hidden xl:block xl:col-span-1">
-            <div className="sticky top-20 flex flex-col gap-6 max-h-[calc(100vh-120px)]">
-               <div className="bg-white rounded-3xl border shadow-xl flex flex-col overflow-hidden h-full">
-                  <Tabs defaultValue="content" className="flex flex-col h-full">
-                     <TabsList className="grid grid-cols-2 h-12 bg-gray-100/80 m-4 mb-2 p-1 gap-1 rounded-2xl border-none shadow-inner">
-                        <TabsTrigger 
-                          value="content" 
-                          className="data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-md rounded-xl h-full font-black text-[11px] uppercase tracking-widest transition-all"
-                        >
-                           Bài học
-                        </TabsTrigger>
-                        <TabsTrigger 
-                          value="discussion" 
-                          className="data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-md rounded-xl h-full font-black text-[11px] uppercase tracking-widest transition-all"
-                        >
-                           Thảo luận
-                        </TabsTrigger>
-                     </TabsList>
-                     
-                     <div className="flex-1 overflow-y-auto custom-scrollbar">
-                        <TabsContent value="content" className="m-0 p-0 h-full">
-                           <CourseSidebar course={course} currentLessonId={lessonId} />
-                        </TabsContent>
-                        <TabsContent value="discussion" className="m-0 p-4 h-full">
-                           <CommentSection lessonId={lessonId} />
-                        </TabsContent>
-                     </div>
-                  </Tabs>
-               </div>
-               
-               {/* Quick Info / Ad area like reference or just stats */}
-               <div className="bg-gradient-to-br from-red-600 to-orange-500 rounded-3xl p-6 text-white shadow-lg">
-                  <h4 className="font-bold mb-2">Hỗ trợ học tập</h4>
-                  <p className="text-xs opacity-90 leading-relaxed mb-4">Nếu gặp khó khăn, hãy gửi câu hỏi vào phần thảo luận hoặc liên hệ đội ngũ hỗ trợ.</p>
-                  <button className="w-full py-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-xl text-sm font-bold transition-all">
-                     Nhắn tin hỗ trợ
-                  </button>
-               </div>
+          {/* Content Tabs - Sticky to global header height when scrolling */}
+          <Tabs defaultValue={test ? "quiz" : "description"} className="flex-1 flex flex-col">
+            <div className="px-4 md:px-10 py-4 bg-white border-b border-slate-50 sticky top-[108px] lg:top-[108px] z-30 shadow-[0_4px_12px_-4px_rgba(0,0,0,0.02)]">
+              <TabsList className="bg-slate-100/50 p-1.5 rounded-2xl h-12 w-fit">
+                <TabsTrigger value="lessons" className="px-7 rounded-xl text-[14px] font-black uppercase tracking-wider h-full data-[state=active]:bg-white data-[state=active]:text-red-600 transition-all">
+                  Nội dung
+                </TabsTrigger>
+                <TabsTrigger value="description" className="px-7 rounded-xl text-[14px] font-black uppercase tracking-wider h-full data-[state=active]:bg-white data-[state=active]:text-red-600 transition-all">
+                  Mô tả
+                </TabsTrigger>
+                <TabsTrigger value="documents" className="px-7 rounded-xl text-[14px] font-black uppercase tracking-wider h-full data-[state=active]:bg-white data-[state=active]:text-red-600 transition-all">
+                  Tài liệu
+                </TabsTrigger>
+                {test && (
+                   <TabsTrigger value="quiz" className="px-7 rounded-xl text-[14px] font-black uppercase tracking-wider h-full data-[state=active]:bg-white data-[state=active]:text-red-600 transition-all">
+                     Làm Quiz
+                   </TabsTrigger>
+                )}
+              </TabsList>
             </div>
-          </div>
+
+            <div className="p-4 md:p-10 bg-white flex-1 min-h-[600px]">
+              <TabsContent value="lessons" className="m-0 focus-visible:outline-none">
+                <div className="max-w-5xl mx-auto">
+                   <CourseSidebar course={course} currentLessonId={lessonId} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="description" className="m-0 focus-visible:outline-none animate-in fade-in duration-300">
+                <div className="max-w-5xl mx-auto">
+                   <div className="bg-slate-50/50 rounded-[40px] p-8 md:p-14 border border-slate-100 text-slate-800 leading-relaxed text-xl md:text-2xl whitespace-pre-wrap font-bold">
+                      {lesson.description || "Bài học này hiện chưa có mô tả chi tiết."}
+                   </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="documents" className="m-0 focus-visible:outline-none">
+                <div className="max-w-5xl mx-auto">
+                  {lesson.attachments.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {lesson.attachments.map((item) => (
+                        <a
+                          key={item.id}
+                          href={item.url}
+                          target="_blank"
+                          className="flex items-center p-6 bg-white border border-slate-100 rounded-[24px] hover:border-red-500 transition-all group shadow-sm hover:shadow-xl hover:shadow-red-500/5"
+                        >
+                          <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 mr-5 group-hover:bg-red-600 group-hover:text-white transition-colors">
+                            <FileText className="w-7 h-7" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                             <p className="font-black text-slate-900 truncate text-lg md:text-xl mb-1">{item.name}</p>
+                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tải xuống tài liệu</span>
+                          </div>
+                          <Download className="w-5 h-5 text-slate-300 ml-auto group-hover:text-red-600" />
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-center py-16 text-slate-400 text-lg font-black uppercase tracking-widest opacity-50">Không có tài liệu đính kèm</p>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="quiz" className="m-0 focus-visible:outline-none">
+                <div className="max-w-4xl mx-auto">
+                  <QuizEntryCard
+                    lessonId={lessonId}
+                    course={course}
+                    lesson={lesson}
+                    duration={quizDuration}
+                    test={test}
+                  />
+                </div>
+              </TabsContent>
+            </div>
+          </Tabs>
         </div>
-      </div>
+
+        {/* Right Column: Discussion - Sticky Sidebar with Independent Scroll */}
+        <aside className="w-full lg:w-[380px] xl:w-[440px] shrink-0 bg-white border-l border-slate-100 lg:sticky lg:top-[108px] lg:h-[calc(100vh-108px)] flex flex-col">
+           <div className="h-12 px-6 border-b border-slate-50 flex items-center justify-between bg-white shrink-0">
+              <div className="flex items-center gap-2">
+                 <MessageCircle className="w-4 h-4 text-red-600" />
+                 <span className="text-xs font-black text-slate-900 uppercase tracking-widest">Thảo luận</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                 <span className="text-[9px] text-slate-500 font-bold uppercase">Online</span>
+              </div>
+           </div>
+           <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+              <CommentSection lessonId={lessonId} />
+           </div>
+        </aside>
+      </main>
     </div>
+  );
+}
+
+function ChevronDown(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
   );
 }

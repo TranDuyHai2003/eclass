@@ -3,7 +3,8 @@
 import { useState, useCallback, useRef } from "react";
 import axios from "axios";
 import Cropper from "react-easy-crop";
-import { Pencil, Upload, ImageIcon, Trash } from "lucide-react";
+import { Pencil, Upload, ImageIcon, Trash, Trophy } from "lucide-react";
+import Link from "next/link";
 
 import { CourseWithRelations } from "./types";
 import { Input } from "@/components/ui/input";
@@ -79,6 +80,7 @@ interface CourseUpdateData {
   description?: string;
   isStructured?: boolean;
   thumbnail?: string;
+  examDate?: Date | null;
 }
 
 interface CourseHeaderProps {
@@ -97,6 +99,9 @@ export const CourseHeader = ({
   // --- States quản lý dữ liệu ---
   const [title, setTitle] = useState(course.title || "");
   const [description, setDescription] = useState(course.description || "");
+  const [examDate, setExamDate] = useState(
+    course.examDate ? new Date(course.examDate).toISOString().slice(0, 16) : "",
+  );
 
   // --- States quản lý UI ---
   const [isDeleting, setIsDeleting] = useState(false);
@@ -153,6 +158,12 @@ export const CourseHeader = ({
     onUpdate({ isStructured: value === "hierarchical" });
   };
 
+  const handleExamDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setExamDate(value);
+    onUpdate({ examDate: value ? new Date(value) : null });
+  };
+
   // --- HANDLERS: Upload & Crop ảnh ---
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -175,7 +186,7 @@ export const CourseHeader = ({
     setUploading(true);
     try {
       const croppedFile = await getCroppedImg(imageToCrop, croppedAreaPixels);
-      
+
       const res = await axios.put<{ publicUrl: string }>(
         `/api/upload/proxy?fileName=${encodeURIComponent(croppedFile.name)}`,
         croppedFile,
@@ -183,7 +194,7 @@ export const CourseHeader = ({
           headers: {
             "Content-Type": croppedFile.type || "image/jpeg",
           },
-        }
+        },
       );
       const { publicUrl } = res.data;
 
@@ -199,8 +210,18 @@ export const CourseHeader = ({
 
   return (
     <div className="bg-white p-6 rounded-xl border shadow-sm space-y-6 relative">
-      {/* Nút Xóa Khóa Học (Góc trên phải) */}
-      <div className="absolute top-6 right-6 z-10">
+      {/* Action Buttons */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Link href={`/teacher/courses/${course.id}/final-test`}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-yellow-300 text-yellow-700 hover:bg-yellow-50 gap-1.5"
+          >
+            <Trophy className="h-4 w-4" />
+            Bài kiểm tra cuối khóa
+          </Button>
+        </Link>
         <ConfirmModal
           onConfirm={onConfirmDelete}
           disabled={isDeleting || isLoading}
@@ -219,7 +240,7 @@ export const CourseHeader = ({
       </div>
 
       {/* --- Row 1: Title & Structure --- */}
-      <div className="flex flex-col md:flex-row justify-between items-start gap-4 pr-36">
+      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
         <div className="space-y-1 flex-1 w-full">
           <Label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
             Tên khóa học
@@ -269,6 +290,18 @@ export const CourseHeader = ({
             <SelectItem value="flat">📄 Danh sách bài</SelectItem>
           </SelectContent>
         </Select>
+
+        <div className="flex flex-col gap-1 w-full md:w-[220px]">
+          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+            Ngày thi mục tiêu
+          </Label>
+          <Input
+            type="datetime-local"
+            value={examDate}
+            onChange={handleExamDateChange}
+            className="bg-gray-50 border-gray-100 focus:ring-red-500 h-9 text-xs font-bold"
+          />
+        </div>
       </div>
 
       {/* --- Row 2: Description & Thumbnail --- */}

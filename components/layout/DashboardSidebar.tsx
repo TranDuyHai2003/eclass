@@ -12,12 +12,14 @@ import {
   Video,
   CreditCard,
   ChevronRight,
-  PlaySquare
+  PlaySquare,
+  ClipboardList
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const adminLinks = [
   { href: "/teacher/courses", label: "Quản lý Khóa học", icon: BookOpen },
+  { href: "/teacher/tests", label: "Quản lý Bài kiểm tra", icon: ClipboardList },
   { href: "/teacher/videos", label: "Thư viện Video", icon: PlaySquare },
   { href: "/admin/users", label: "Quản lý Người dùng", icon: Users },
   { href: "/admin/analytics", label: "Thống kê hệ thống", icon: BarChart3 },

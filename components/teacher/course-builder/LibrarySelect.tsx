@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PlaySquare, Loader2 } from "lucide-react";
 import { createLesson, updateLesson } from "@/actions/course";
-import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
@@ -14,13 +13,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { VideoExplorer } from "@/components/teacher/videos/VideoExplorer";
 
-interface VideoAsset {
-  id: string;
-  title: string;
-  fileName: string;
+interface FileItem {
+  name: string;
+  key: string;
   url: string;
   size: number;
+  type: "FILE";
 }
 
 interface LibrarySelectProps {
@@ -31,53 +31,33 @@ interface LibrarySelectProps {
 
 export function LibrarySelect({ chapterId, onSelectVideo, customTrigger }: LibrarySelectProps) {
   const [open, setOpen] = useState(false);
-  const [videos, setVideos] = useState<VideoAsset[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const router = useRouter();
 
-  const fetchVideos = async () => {
-    try {
-      setIsLoading(true);
-      const res = await axios.get("/api/videos");
-      setVideos(res.data);
-    } catch (error) {
-      toast.error("Lỗi khi tải thư viện video");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleOpen = (isOpen: boolean) => {
-    setOpen(isOpen);
-    if (isOpen) {
-      fetchVideos();
-    }
-  };
-
-  const handleSelect = async (video: VideoAsset) => {
+  const handleSelect = async (file: FileItem) => {
     try {
       setIsAdding(true);
       
       if (onSelectVideo) {
         // Mode 2: Just return the selected video URL to the parent component
-        onSelectVideo(video.url);
+        onSelectVideo(file.url);
         toast.success("Đã chọn video!");
         setOpen(false);
       } else if (chapterId) {
         // Mode 1: Create a brand new lesson in the chapter
-        const createRes = await createLesson(chapterId, video.title);
+        const title = file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
+        const createRes = await createLesson(chapterId, title);
         if (!createRes.success || !createRes.lesson) {
           toast.error("Không thể tạo bài học");
           return;
         }
         
         await updateLesson(createRes.lesson.id, { 
-          videoUrl: video.url, 
+          videoUrl: file.url, 
           isPublished: false 
         });
         
-        toast.success("Đã thả video vào chương!");
+        toast.success("Đã thêm video vào chương!");
         setOpen(false);
         router.refresh();
       }
@@ -88,12 +68,8 @@ export function LibrarySelect({ chapterId, onSelectVideo, customTrigger }: Libra
     }
   };
 
-  const formatSize = (kb: number) => {
-    return (kb / 1024).toFixed(2) + " MB";
-  };
-
   return (
-    <Dialog open={open} onOpenChange={handleOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {customTrigger ? customTrigger : (
           <Button
@@ -105,41 +81,24 @@ export function LibrarySelect({ chapterId, onSelectVideo, customTrigger }: Libra
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Thư viện Video của bạn</DialogTitle>
+      <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-2">
+          <DialogTitle>Thư viện Video (Cloud Explorer)</DialogTitle>
         </DialogHeader>
         
-        {isLoading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          </div>
-        ) : videos.length === 0 ? (
-          <div className="py-10 text-center text-muted-foreground flex flex-col items-center">
-            <PlaySquare className="h-10 w-10 text-gray-300 mb-3" />
-            <p>Chưa có video nào trong thư viện.</p>
-            <p className="text-sm mt-1">Hãy sang tab "Thư viện Video" bên trái để đồng bộ file từ BunnyCDN nhé.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
-            {videos.map(video => (
-              <div key={video.id} className="border rounded-md p-3 flex flex-col justify-between hover:border-orange-200 bg-gray-50/50 group">
-                <div>
-                  <h4 className="font-semibold text-sm line-clamp-2 text-gray-800" title={video.title}>{video.title}</h4>
-                  <p className="text-xs text-gray-500 mt-1">{formatSize(video.size)}</p>
-                </div>
-                <Button 
-                  size="sm" 
-                  onClick={() => handleSelect(video)} 
-                  disabled={isAdding}
-                  className="mt-4 w-full bg-orange-600 hover:bg-orange-700 text-white font-medium"
-                >
-                  {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : "Thêm vào bài học"}
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex-1 overflow-hidden p-6 pt-0">
+          {isAdding ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+              <Loader2 className="h-10 w-10 animate-spin text-orange-600" />
+              <p className="text-gray-500 font-medium">Đang xử lý bài học...</p>
+            </div>
+          ) : (
+            <VideoExplorer 
+              onSelect={handleSelect} 
+              className="h-full border-none shadow-none"
+            />
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

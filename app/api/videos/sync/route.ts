@@ -1,75 +1,89 @@
 import { NextResponse } from "next/server";
-import axios from "axios";
 import { prisma } from "@/lib/prisma";
+import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
 
 export async function POST(req: Request) {
   try {
-    const libraryId = process.env.BUNNY_STREAM_LIBRARY_ID;
-    const apiKey = process.env.BUNNY_STREAM_API_KEY;
-    const hostname = process.env.NEXT_PUBLIC_BUNNY_STREAM_HOSTNAME;
+    const keyId = process.env.B2_KEY_ID;
+    const applicationKey = process.env.B2_APP_KEY;
+    const endpoint = process.env.B2_ENDPOINT;
+    const bucketName = process.env.B2_BUCKET_NAME;
+    const cdnDomain = process.env.NEXT_PUBLIC_VIDEO_DOMAIN;
 
-    if (!libraryId || !apiKey) {
+    if (!keyId || !applicationKey || !endpoint || !bucketName || !cdnDomain) {
       return NextResponse.json(
-        { error: "Thiếu cấu hình Bunny Stream" },
+        { error: "Thiếu cấu hình Backblaze B2 hoặc CDN" },
         { status: 500 }
       );
     }
 
-    // Gọi API của Bunny Stream để lấy danh sách video
-    // Tài liệu API: https://docs.bunny.net/reference/video_list
-    const response = await axios.get(
-      `https://video.bunnycdn.com/library/${libraryId}/videos`,
-      {
-        headers: {
-          AccessKey: apiKey,
-          Accept: "application/json",
-        },
-      }
-    );
+    const s3Client = new S3Client({
+      endpoint: `https://s3.${process.env.B2_REGION}.backblazeb2.com`,
+      region: process.env.B2_REGION || "us-west-004",
+      credentials: {
+        accessKeyId: keyId,
+        secretAccessKey: applicationKey,
+      },
+      forcePathStyle: true,
+    });
 
-    const bunnyVideos = response.data.items;
+    // List all objects recursively (no delimiter)
+    const command = new ListObjectsV2Command({
+      Bucket: bucketName,
+      // We can keep a Prefix like "videos/" if we want to restrict the sync
+      // Prefix: "videos/", 
+    });
 
-    // Mapping dữ liệu từ Bunny về format ứng dụng của bạn
-    const formattedVideos = bunnyVideos.map((video: any) => ({
-      id: video.guid,
-      title: video.title,
-      fileName: video.title,
-      url: `https://${hostname}/${video.guid}/playlist.m3u8`,
-      size: video.storageSize || 0,
-      status: video.status === 4 ? "READY" : "PROCESSING",
-      thumbnail: `https://${hostname}/${video.guid}/${video.thumbnailFileName}`,
-    }));
+    const response = await s3Client.send(command);
+    const objects = response.Contents || [];
 
-    // Lưu `formattedVideos` vào PostgreSQL (Prisma)
-    for (const v of formattedVideos) {
+    // Filter for video files (.m3u8, .mp4)
+    const videoFiles = objects.filter(obj => {
+      const key = obj.Key || "";
+      return key.endsWith(".m3u8") || key.endsWith(".mp4");
+    });
+
+    console.log(`Tìm thấy ${videoFiles.length} tệp video từ B2.`);
+
+    let updatedCount = 0;
+    for (const obj of videoFiles) {
+      const key = obj.Key!;
+      const parts = key.split("/");
+      const fileName = parts[parts.length - 1];
+      
+      // Derive a title from the path if possible, or just use the filename
+      // e.g. "lesson1/intro/master.m3u8" -> "lesson1 intro master"
+      const title = key
+        .replace(/\.[^/.]+$/, "") // remove extension
+        .replace(/\//g, " ")     // replace slashes with spaces
+        .replace(/_/g, " ");      // replace underscores with spaces
+
       await prisma.videoAsset.upsert({
-        where: { fileName: v.fileName },
+        where: { fileName: key }, // Use full key as unique identifier
         update: {
-          title: v.title,
-          url: v.url,
-          size: BigInt(v.size),
-          status: v.status,
+          title: title,
+          url: `${cdnDomain}/${key}`,
+          size: BigInt(obj.Size || 0),
+          status: "READY",
         },
         create: {
-          fileName: v.fileName,
-          title: v.title,
-          url: v.url,
-          size: BigInt(v.size),
-          status: v.status,
+          fileName: key,
+          title: title,
+          url: `${cdnDomain}/${key}`,
+          size: BigInt(obj.Size || 0),
+          status: "READY",
         },
       });
+      updatedCount++;
     }
 
     return NextResponse.json({
       success: true,
-      count: formattedVideos.length,
-      data: formattedVideos.map((v: any) => ({
-        ...v,
-        size: Number(v.size)
-      })),
+      count: updatedCount,
+      message: `Đã đồng bộ ${updatedCount} video vào Database.`
     });
   } catch (error) {
-    console.error("Lỗi đồng bộ Bunny Stream:", error);
+    console.error("Lỗi đồng bộ Backblaze B2:", error);
     return NextResponse.json(
       { error: "Đã xảy ra lỗi khi đồng bộ" },
       { status: 500 }

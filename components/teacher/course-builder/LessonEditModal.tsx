@@ -28,7 +28,7 @@ import { LibrarySelect } from "./LibrarySelect";
 interface LessonEditModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  lesson: Lesson & { attachments: Attachment[] };
+  lesson: Lesson & { attachments: Attachment[]; type: string };
   onSuccess: () => void;
 }
 
@@ -81,7 +81,7 @@ export function LessonEditModal({
 
     try {
       // Step 1: Request Presigned URL from Next.js Server
-      const res = await axios.put<{ publicUrl: string }>(
+      const uploadRes = await axios.put<{ publicUrl: string }>(
         `/api/upload/proxy?fileName=${encodeURIComponent(file.name)}`,
         file,
         {
@@ -98,7 +98,7 @@ export function LessonEditModal({
         }
       );
 
-      const { publicUrl } = res.data;
+      const { publicUrl } = uploadRes.data;
 
       // Auto-save videoUrl vào DB ngay sau khi upload xong
       const saveRes = await updateLesson(lesson.id, { videoUrl: publicUrl });
@@ -146,7 +146,7 @@ export function LessonEditModal({
     setAttUploading(true);
     try {
       // Step 1: Request Presigned URL
-      const res = await axios.put<{ publicUrl: string }>(
+      const uploadRes = await axios.put<{ publicUrl: string }>(
         `/api/upload/proxy?fileName=${encodeURIComponent(file.name)}`,
         file,
         {
@@ -156,17 +156,17 @@ export function LessonEditModal({
         }
       );
 
-      const { publicUrl } = res.data;
+      const { publicUrl } = uploadRes.data;
 
-      const res = await createAttachment({
+      const attachmentRes = await createAttachment({
         lessonId: lesson.id,
         url: publicUrl,
         name: file.name,
         type: file.type,
       });
 
-      if (res.success && res.attachment) {
-        setAttachments((prev) => [...prev, res.attachment!]);
+      if (attachmentRes.success && attachmentRes.attachment) {
+        setAttachments((prev) => [...prev, attachmentRes.attachment!]);
         toast.success("Đã thêm tài liệu");
       } else {
         toast.error("Lỗi lưu tài liệu");
@@ -442,10 +442,27 @@ export function LessonEditModal({
           <TabsContent value="quiz" className="flex-1 p-6 overflow-y-auto">
             <div className="text-center py-10 space-y-4">
               <div className="text-4xl">📝</div>
-              <h3 className="font-medium text-gray-900">Bài tập Quiz</h3>
+              <h3 className="font-medium text-gray-900">Bài kiểm tra & Quiz</h3>
               <p className="text-gray-500 max-w-sm mx-auto">
-                Tính năng tạo câu hỏi trắc nghiệm sẽ sớm được cập nhật.
+                Tạo bài kiểm tra qua file PDF, thiết lập ma trận đáp án và chấm điểm tự động.
               </p>
+              
+              <div className="pt-4">
+                <Button 
+                  onClick={async () => {
+                    // Update lesson type to QUIZ if it isn't already
+                    if (lesson.type !== "QUIZ") {
+                      await updateLesson(lesson.id, { type: "QUIZ" });
+                      onSuccess();
+                    }
+                    // Navigate to the test builder
+                    window.location.href = `/teacher/tests/${lesson.id}`;
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8"
+                >
+                  Mở Trình tạo Bài kiểm tra
+                </Button>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

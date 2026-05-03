@@ -8,6 +8,7 @@ export async function createComment(
   lessonId: string,
   content: string,
   parentId?: string,
+  images?: string[],
 ) {
   try {
     const session = await auth();
@@ -21,6 +22,7 @@ export async function createComment(
         lessonId,
         userId: session.user.id,
         parentId,
+        images: images || [],
       },
       include: {
         user: {

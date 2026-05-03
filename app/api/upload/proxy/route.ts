@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { nanoid } from "nanoid";
+import { b2Client, B2_BUCKET_NAME, CDN_DOMAIN, sanitizeFileName } from "@/lib/b2";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 export async function PUT(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
+    if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -15,37 +17,41 @@ export async function PUT(req: NextRequest) {
       return new NextResponse("Missing fileName", { status: 400 });
     }
 
-    const uniqueFileName = `${nanoid()}-${fileName}`;
-    const bunnyEndpoint = process.env.S3_ENDPOINT || "";
-    const bunnyZone = process.env.S3_BUCKET_NAME || "";
-    const accessKey = process.env.S3_SECRET_ACCESS_KEY || "";
+    const sanitizedName = sanitizeFileName(fileName);
+    const uniqueFileName = `${nanoid()}-${sanitizedName}`;
+    
+    // Phân loại folder dựa trên đuôi file
+    const extension = fileName.split(".").pop()?.toLowerCase();
+    const folder = ["pdf", "doc", "docx", "xls", "xlsx", "txt"].includes(extension || "") 
+      ? "documents" 
+      : "images";
+    
+    const key = `${folder}/${uniqueFileName}`;
+    
+    // Get body as a buffer/Uint8Array for S3 client
+    // Next.js App Router req.body is a ReadableStream
+    const arrayBuffer = await req.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    const targetUrl = `${bunnyEndpoint}/${bunnyZone}/${uniqueFileName}`;
+    console.log(`[Proxy Upload] B2 Uploading: ${key}`);
 
-    // Stream the request body directly to BunnyCDN
-    const response = await fetch(targetUrl, {
-      method: "PUT",
-      headers: {
-        "AccessKey": accessKey,
-        "Content-Type": req.headers.get("content-type") || "application/octet-stream",
-      },
-      body: req.body,
-      // @ts-ignore - Required for NextJS fetch streams
-      duplex: "half",
-    });
+    await b2Client.send(
+      new PutObjectCommand({
+        Bucket: B2_BUCKET_NAME,
+        Key: key,
+        Body: buffer,
+        ContentType: req.headers.get("content-type") || "application/octet-stream",
+        CacheControl: "public, max-age=31536000",
+      })
+    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("BunnyCDN upload failed:", errorText);
-      return new NextResponse("Upload to CDN failed", { status: 502 });
-    }
+    const publicUrl = `${CDN_DOMAIN}/${key}`;
 
-    const publicDomain = process.env.NEXT_PUBLIC_S3_DOMAIN || "";
-    const publicUrl = `${publicDomain}/${uniqueFileName}`;
+    console.log(`[Proxy Upload] B2 Success: ${publicUrl}`);
 
     return NextResponse.json({ publicUrl });
   } catch (error: any) {
-    console.error("Upload proxy error:", error);
+    console.error("[Proxy Upload] S3 Error:", error);
     return new NextResponse(error.message || "Internal Server Error", { status: 500 });
   }
 }

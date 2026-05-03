@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { ContinueMission } from "./ContinueMission";
 import { StatsWidget } from "./StatsWidget";
 import { Leaderboard } from "./Leaderboard";
@@ -26,6 +27,7 @@ type DashboardCourse = {
   category?: {
     name: string;
   } | null;
+  examDate?: Date | null;
 };
 
 function stablePercentFromId(id: string) {
@@ -44,6 +46,13 @@ export function Dashboard({
   user: DashboardUser;
   courses: DashboardCourse[];
 }) {
+  const soonestExamDate = useMemo(() => {
+    const dates = courses
+      .map((c) => c.examDate)
+      .filter((d): d is Date => !!d)
+      .sort((a, b) => a.getTime() - b.getTime());
+    return dates[0] || null;
+  }, [courses]);
   return (
     <div className="page-shell">
       <main className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -94,11 +103,12 @@ export function Dashboard({
             </div>
 
             <HomeSidebar />
-            <HomePromo />
           </aside>
 
           {/* Center/Right Content */}
           <section className="flex-1 space-y-8">
+            <HomePromo targetDate={soonestExamDate} />
+
             {/* Hero Section: Continue Mission */}
             <ContinueMission
               lastLesson={{

@@ -28,10 +28,10 @@ export default async function VideosPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Thư viện Video (BunnyCDN)
+            Thư viện Video (Backblaze B2)
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Tải video mp4 lên giao diện BunnyCDN sau đó bấm Đồng bộ để tải danh
+            Tải video mp4/m3u8 lên Backblaze B2 sau đó bấm Đồng bộ để tải danh
             sách về hệ thống.
           </p>
         </div>

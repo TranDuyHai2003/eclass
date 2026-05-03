@@ -9,7 +9,6 @@ import {
   Users,
   Star,
   Calendar,
-  ChevronRight,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Prisma } from "@prisma/client";
@@ -17,6 +16,8 @@ import type { ReactNode, ElementType } from "react";
 import { auth } from "@/auth";
 import { getEnrollmentStatus } from "@/actions/enrollment";
 import { EnrollButton } from "@/components/course/EnrollButton";
+import { Trophy, FileCheck } from "lucide-react";
+import { CourseAccordion } from "./_components/CourseAccordion";
 
 type CourseWithRelations = Prisma.CourseGetPayload<{
   include: {
@@ -25,6 +26,7 @@ type CourseWithRelations = Prisma.CourseGetPayload<{
     };
     user: true;
     category: true;
+    finalTest: true;
   };
 }>;
 
@@ -48,6 +50,7 @@ export default async function CoursePage({
       },
       user: true,
       category: true,
+      finalTest: true,
     },
   });
 
@@ -226,31 +229,31 @@ export default async function CoursePage({
                   </p>
                 </div>
 
-                <div className="space-y-4">
-                  {c.chapters.map((chapter, idx) => (
-                    <div
-                      key={chapter.id}
-                      className="border rounded-2xl overflow-hidden"
-                    >
-                      <div className="bg-red-50/50 px-6 py-4 flex items-center justify-between border-b cursor-pointer hover:bg-red-50 transition">
-                        <div className="flex items-center gap-4">
-                          <span className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-sm">
-                            {String.fromCharCode(65 + idx)}
-                          </span>
-                          <h3 className="font-bold text-gray-900 uppercase tracking-tight">
-                            {chapter.title}
-                          </h3>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">
-                            {chapter.lessons.length}
-                          </span>
-                          <ChevronRight className="w-4 h-4 text-gray-400" />
-                        </div>
+                <CourseAccordion
+                  chapters={c.chapters}
+                  isEnrolled={enrollmentStatus === "ACTIVE"}
+                />
+                {/* Final Test Banner */}
+                {c.finalTest && (
+                  <div className="mt-4 rounded-2xl border border-yellow-200 bg-gradient-to-r from-yellow-50 to-amber-50 p-5 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                        <Trophy className="w-5 h-5 text-yellow-600" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900 text-sm">Bài kiểm tra cuối khóa</p>
+                        <p className="text-xs text-gray-500">Thời gian: {c.finalTest.duration} phút</p>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    <Link
+                      href={`/courses/${c.id}/final-test`}
+                      className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors flex-shrink-0"
+                    >
+                      <FileCheck className="w-4 h-4" />
+                      Làm bài
+                    </Link>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="instructor">

@@ -1,30 +1,47 @@
 version: "3.8"
 
 services:
-  # 1. DATABASE
+  # --- DATABASE SERVICE ---
   postgres:
     image: postgres:15-alpine
     container_name: eclass_postgres
+    restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password # Đảm bảo khớp với DATABASE_URL trong .env
-      POSTGRES_DB: eclass
+      # Docker sẽ lấy giá trị từ file .env tương ứng
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
-      - "5433:5432" # Máy thật dùng 5433, bên trong Docker dùng 5432
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: always
+    networks:
+      - eclass_network
 
-  # 2. WEB APP
+  # --- NEXT.JS APP SERVICE ---
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: eclass_app
+    restart: always
     ports:
       - "3000:3000"
-    env_file: .env # Docker sẽ nạp các biến từ file .env vào đây
+    # File .env sẽ được nạp trực tiếp vào App
+    env_file:
+      - .env
+    environment:
+      # Ép App dùng DATABASE_URL đã khai báo trong .env
+      DATABASE_URL: ${DATABASE_URL}
     depends_on:
-      - postgres # Đợi Database khởi động xong mới chạy App
-    restart: always
+      - postgres
+    networks:
+      - eclass_network
 
 volumes:
   postgres_data:
+    driver: local
+
+networks:
+  eclass_network:
+    driver: bridge

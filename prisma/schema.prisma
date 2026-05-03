@@ -19,6 +19,18 @@ enum EnrollmentStatus {
   REJECTED
 }
 
+enum LessonType {
+  VIDEO
+  DOCUMENT
+  QUIZ
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  SHORT_ANSWER
+  ESSAY
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -37,6 +49,8 @@ model User {
   courses       Course[]
   enrollments   Enrollment[]
   videoAssets   VideoAsset[]
+  attempts      StudentAttempt[]
+  tests         Test[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -90,14 +104,15 @@ model Category {
 }
 
 model Course {
-  id           String  @id @default(cuid())
+  id           String    @id @default(cuid())
   userId       String // Add userId to track who created the course (Teacher)
   title        String
   description  String?
   thumbnail    String?
   price        Float?
-  isPublished  Boolean @default(false)
-  isStructured Boolean @default(true) // true = hierarchical (chapters), false = flat (lessons only)
+  examDate     DateTime?
+  isPublished  Boolean   @default(false)
+  isStructured Boolean   @default(true) // true = hierarchical (chapters), false = flat (lessons only)
 
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
@@ -106,6 +121,8 @@ model Course {
   chapters    Chapter[]
   attachments Attachment[]
   enrollments Enrollment[]
+
+  finalTest Test? @relation("CourseFinalTest")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -133,13 +150,14 @@ model Chapter {
 }
 
 model Lesson {
-  id          String  @id @default(cuid())
+  id          String     @id @default(cuid())
   title       String
   description String?
   videoUrl    String?
-  position    Int     @default(0)
-  isPublished Boolean @default(false)
-  isFree      Boolean @default(false)
+  position    Int        @default(0)
+  isPublished Boolean    @default(false)
+  isFree      Boolean    @default(false)
+  type        LessonType @default(VIDEO)
 
   muxData  String?
   duration Int?
@@ -150,6 +168,7 @@ model Lesson {
   attachments Attachment[] // Attachments specific to a lesson
   progress    Progress[]
   comments    Comment[]
+  test        Test?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -210,6 +229,8 @@ model Comment {
   parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   children Comment[] @relation("CommentReplies")
 
+  images String[] // Added to support image uploads in comments
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -267,6 +288,105 @@ model VideoAsset {
   user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([userId])
+}
+
+model Test {
+  id String @id @default(cuid())
+
+  title       String?
+  subject     String?
+  description String?
+  passScore   Float?
+  accessCode  String?
+  userId      String?
+  user        User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  lessonId String? @unique
+  lesson   Lesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  courseId String? @unique
+  course   Course? @relation("CourseFinalTest", fields: [courseId], references: [id], onDelete: Cascade)
+
+  pdfUrl      String
+  duration    Int // Thời gian làm bài (phút)
+  showAnswers Boolean @default(false) // Cho phép xem đáp án ngay sau khi nộp
+
+  explanation String? // Lời giải toàn bài
+  videoUrl    String? // Video lời giải toàn bài
+  audioUrl    String? // File nghe lời giải toàn bài
+
+  sections TestSection[]
+  attempts StudentAttempt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TestSection {
+  id       String @id @default(cuid())
+  testId   String
+  test     Test   @relation(fields: [testId], references: [id], onDelete: Cascade)
+  name     String // VD: "Phần 1: Đại số"
+  position Int    @default(0)
+
+  questions Question[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([testId])
+}
+
+model Question {
+  id                 String       @id @default(cuid())
+  sectionId          String
+  section            TestSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  position           Int          @default(0)
+  type               QuestionType @default(MULTIPLE_CHOICE)
+  correctAnswer      String? // Dành cho MULTIPLE_CHOICE và SHORT_ANSWER
+  points             Float        @default(1.0)
+  explanation        String? // Giải thích chi tiết
+  videoUrl           String? // Video lời giải từng câu
+  audioUrl           String? // File nghe lời giải từng câu
+  needsManualGrading Boolean      @default(false) // Dành cho ESSAY
+
+  studentAnswers StudentAnswer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sectionId])
+}
+
+model StudentAttempt {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  testId String
+  test   Test   @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  score       Float? // Điểm tổng
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  answers StudentAnswer[]
+
+  @@index([userId])
+  @@index([testId])
+}
+
+model StudentAnswer {
+  id         String         @id @default(cuid())
+  attemptId  String
+  attempt    StudentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  answerProvided String? // Đáp án học sinh điền
+  isCorrect      Boolean? // True nếu đúng, false nếu sai, null nếu chưa chấm
+  pointsAwarded  Float    @default(0)
+
+  @@unique([attemptId, questionId])
 }

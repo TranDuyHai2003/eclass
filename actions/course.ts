@@ -62,14 +62,30 @@ export async function createCourse(data: {
   isStructured?: boolean;
 }) {
   const session = await auth();
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+  if (
+    !session ||
+    (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+  )
     throw new Error("Unauthorized");
+
+  if (!session.user.id) {
+    throw new Error("Session expired. Please sign in again.");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true },
+  });
+
+  if (!user) {
+    throw new Error("Session expired. Please sign in again.");
+  }
 
   const { title, description, thumbnail, isStructured = true } = data;
 
   const course = await prisma.course.create({
     data: {
-      userId: session.user.id!,
+      userId: user.id,
       title,
       description,
       thumbnail,
@@ -103,7 +119,10 @@ export async function getDefaultChapter(courseId: string) {
 
 export async function getOrCreateFlatChapter(courseId: string) {
   const session = await auth();
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+  if (
+    !session ||
+    (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+  )
     throw new Error("Unauthorized");
 
   let chapter = await prisma.chapter.findFirst({
@@ -133,10 +152,15 @@ export async function updateCourse(
     categoryId?: string;
     isPublished?: boolean;
     isStructured?: boolean;
+    examDate?: Date | null;
   },
 ) {
   const session = await auth();
-  if (!session || !session.user?.id || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+  if (
+    !session ||
+    !session.user?.id ||
+    (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+  )
     throw new Error("Unauthorized");
 
   // Validation for publishing
@@ -239,7 +263,10 @@ export async function updateCourse(
 export async function deleteCourse(courseId: string) {
   try {
     const session = await auth();
-    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+    if (
+      !session ||
+      (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+    )
       throw new Error("Unauthorized");
 
     // Find all lessons to delete their files from R2
@@ -282,7 +309,10 @@ export async function deleteCourse(courseId: string) {
 
 export async function createChapter(courseId: string, title: string) {
   const session = await auth();
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+  if (
+    !session ||
+    (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+  )
     throw new Error("Unauthorized");
 
   const lastChapter = await prisma.chapter.findFirst({
@@ -307,7 +337,10 @@ export async function updateChapter(
   },
 ) {
   const session = await auth();
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+  if (
+    !session ||
+    (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+  )
     throw new Error("Unauthorized");
 
   // Validation for publishing
@@ -336,7 +369,10 @@ export async function updateChapter(
 export async function deleteChapter(chapterId: string) {
   try {
     const session = await auth();
-    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+    if (
+      !session ||
+      (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+    )
       throw new Error("Unauthorized");
 
     const chapter = await prisma.chapter.findUnique({
@@ -369,7 +405,10 @@ export async function reorderChapters(
   list: { id: string; position: number }[],
 ) {
   const session = await auth();
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+  if (
+    !session ||
+    (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+  )
     throw new Error("Unauthorized");
 
   // Use a transaction to update all positions atomically
@@ -390,7 +429,10 @@ export async function reorderChapters(
 
 export async function createLesson(chapterId: string, title: string) {
   const session = await auth();
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+  if (
+    !session ||
+    (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+  )
     throw new Error("Unauthorized");
 
   const lastLesson = await prisma.lesson.findFirst({
@@ -421,11 +463,15 @@ export async function updateLesson(
     description?: string;
     videoUrl?: string;
     isPublished?: boolean;
-    isFree?: boolean; // THÊM DÒNG NÀY
+    isFree?: boolean;
+    type?: "VIDEO" | "DOCUMENT" | "QUIZ";
   },
 ) {
   const session = await auth();
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+  if (
+    !session ||
+    (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+  )
     throw new Error("Unauthorized");
 
   // 1. Kiểm tra điều kiện khi Publish
@@ -434,12 +480,20 @@ export async function updateLesson(
 
     // Lưu ý: Phải kiểm tra cả dữ liệu mới đang update (data) và dữ liệu cũ trong DB
     const finalTitle = data.title || lesson?.title;
+    const finalType = data.type || lesson?.type;
     const finalVideoUrl = data.videoUrl || lesson?.videoUrl;
 
-    if (!finalTitle || !finalVideoUrl) {
+    if (!finalTitle) {
       return {
         success: false,
-        error: "Bài giảng cần có tiêu đề và video trước khi duyệt (publish).",
+        error: "Bài giảng cần có tiêu đề trước khi duyệt (publish).",
+      };
+    }
+
+    if (finalType === "VIDEO" && !finalVideoUrl) {
+      return {
+        success: false,
+        error: "Bài giảng cần có video trước khi duyệt (publish).",
       };
     }
   }
@@ -466,7 +520,10 @@ export async function updateLesson(
 export async function deleteLesson(lessonId: string) {
   try {
     const session = await auth();
-    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+    if (
+      !session ||
+      (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+    )
       throw new Error("Unauthorized");
 
     const lesson = await prisma.lesson.findUnique({
@@ -501,7 +558,10 @@ export async function deleteLesson(lessonId: string) {
  */
 export async function reorderLessons(list: { id: string; position: number }[]) {
   const session = await auth();
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+  if (
+    !session ||
+    (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+  )
     throw new Error("Unauthorized");
 
   const updates = list.map((item) =>
@@ -566,7 +626,10 @@ export async function createAttachment(data: {
   lessonId?: string;
 }) {
   const session = await auth();
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+  if (
+    !session ||
+    (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+  )
     throw new Error("Unauthorized");
 
   const attachment = await prisma.attachment.create({ data });
@@ -577,7 +640,10 @@ export async function createAttachment(data: {
 
 export async function deleteAttachment(attachmentId: string) {
   const session = await auth();
-  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER"))
+  if (
+    !session ||
+    (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
+  )
     throw new Error("Unauthorized");
 
   const attachment = await prisma.attachment.findUnique({

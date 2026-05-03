@@ -1,7 +1,5 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
+# --- DEPENDENCIES ---
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -10,34 +8,44 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
-
-# next.js
+# --- NEXT.JS & BUILD ---
 /.next/
 /out/
-
-# production
 /build
+*.tsbuildinfo
+next-env.d.ts
 
-# misc
-.DS_Store
+# --- IMPORTANT: SECURITY & ENV ---
+# Chặn tất cả các file .env để không lộ mật khẩu Database và API Keys
+.env
+.env.local
+.env.production
+.env.development
+.env*.local
+
+# Chặn file chứa các chứng chỉ bảo mật, key cá nhân
 *.pem
+*.key
+*.pub
+*.cert
+.ssh/
 
-# debug
+# --- DATABASE / PRISMA ---
+# Không đẩy file SQLite cục bộ (nếu có dùng)
+*.db
+*.db-journal
+/app/generated/prisma
+
+# --- OS & DEBUG ---
+.DS_Store
+Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
+# --- VERCEL / DOCKER ---
 .vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-/app/generated/prisma
+.docker/
+# Không chặn docker-compose.yml vì cần để deploy, 
+# nhưng mật khẩu nên để trong .env thay vì viết thẳng vào compose.
