@@ -11,8 +11,139 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 // COURSE ACTIONS
 // =============================================
 
-export async function getCourses() {
+export async function getDashboardData() {
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  // 1. Fetch all published courses
+  const allCourses = await prisma.course.findMany({
+    where: { isPublished: true },
+    include: {
+      chapters: {
+        include: {
+          lessons: {
+            select: { id: true },
+          },
+        },
+      },
+      user: {
+        select: { name: true, image: true },
+      },
+      category: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!userId) {
+    return {
+      courses: allCourses.map((course) => ({
+        ...course,
+        progress: 0,
+        isEnrolled: false,
+      })),
+      lastLesson: null,
+      stats: {
+        completedLessons: 0,
+        totalLessons: 0,
+        courseCount: 0,
+      },
+    };
+  }
+
+  // 2. Fetch user enrollment and progress
+  const enrollments = await prisma.enrollment.findMany({
+    where: { userId, status: "ACTIVE" },
+    select: { courseId: true },
+  });
+
+  const enrolledCourseIds = enrollments.map((e) => e.courseId);
+
+  const userProgress = await prisma.progress.findMany({
+    where: { userId, isCompleted: true },
+    include: {
+      lesson: {
+        select: {
+          id: true,
+          title: true,
+          chapter: {
+            select: {
+              course: {
+                select: { id: true, title: true },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  // Calculate progress for each course
+  const coursesWithProgress = allCourses.map((course) => {
+    const isEnrolled = enrolledCourseIds.includes(course.id);
+    const courseLessonIds = course.chapters.flatMap((chap) =>
+      chap.lessons.map((l) => l.id),
+    );
+    const completedInCourse = userProgress.filter((p) =>
+      courseLessonIds.includes(p.lessonId),
+    ).length;
+
+    const progressPercent =
+      courseLessonIds.length > 0
+        ? Math.round((completedInCourse / courseLessonIds.length) * 100)
+        : 0;
+
+    return {
+      ...course,
+      progress: progressPercent,
+      isEnrolled,
+    };
+  });
+
+  // Find last watched lesson
+  const lastProgress = userProgress[0];
+  const lastLesson = lastProgress
+    ? {
+        id: lastProgress.lesson.id,
+        title: lastProgress.lesson.title,
+        courseTitle: lastProgress.lesson.chapter.course.title,
+      }
+    : null;
+
+  return {
+    courses: coursesWithProgress,
+    lastLesson,
+    stats: {
+      completedLessons: userProgress.length,
+      totalLessons: allCourses.reduce(
+        (acc, c) => acc + c.chapters.reduce((a, ch) => a + ch.lessons.length, 0),
+        0,
+      ),
+      courseCount: enrolledCourseIds.length,
+    },
+  };
+}
+
+export async function getCourses(options?: {
+  search?: string;
+  isPublished?: boolean;
+  userId?: string;
+}) {
+  const { search, isPublished, userId } = options || {};
+
   const courses = await prisma.course.findMany({
+    where: {
+      ...(isPublished !== undefined ? { isPublished } : {}),
+      ...(userId ? { userId } : {}),
+      ...(search
+        ? {
+            OR: [
+              { title: { contains: search, mode: "insensitive" } },
+              { description: { contains: search, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
     include: {
       chapters: {
         include: {

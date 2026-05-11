@@ -26,6 +26,25 @@ export default async function CourseFinalTestPage({
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course) return notFound();
 
+  // Access Control Check
+  const isAdmin = session.user.role === "ADMIN";
+  const isOwner = course.userId === session.user.id;
+  
+  if (!isAdmin && !isOwner) {
+    const enrollment = await prisma.enrollment.findUnique({
+      where: {
+        userId_courseId: {
+          userId: session.user.id!,
+          courseId,
+        },
+      },
+    });
+
+    if (!enrollment || enrollment.status !== "ACTIVE") {
+      return redirect(`/courses/${courseId}`);
+    }
+  }
+
   if (!test) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-64px)]">
@@ -42,7 +61,11 @@ export default async function CourseFinalTestPage({
   };
 
   return (
-    <div className="h-[calc(100vh-64px)] overflow-hidden flex flex-col">
+    <div className="h-screen overflow-hidden flex flex-col relative z-[60]">
+      {/* Hide Global Header on Final Test Page */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        header { display: none !important; }
+      `}} />
       <TestTakerClient
         test={test}
         lesson={lessonProxy}

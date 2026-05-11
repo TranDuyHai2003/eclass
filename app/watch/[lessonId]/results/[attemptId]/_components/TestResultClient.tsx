@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { GradeEssay } from "@/components/teacher/test-builder/GradeEssay";
 
 const PDFViewer = dynamic(() => import("@/components/ui/pdf-viewer"), {
   ssr: false,
@@ -25,7 +26,7 @@ const PDFViewer = dynamic(() => import("@/components/ui/pdf-viewer"), {
   ),
 });
 
-export default function TestResultClient({ attempt }: { attempt: any }) {
+export default function TestResultClient({ attempt, isTeacher = false }: { attempt: any, isTeacher?: boolean }) {
   const router = useRouter();
   const test = attempt.test;
 
@@ -182,17 +183,17 @@ export default function TestResultClient({ attempt }: { attempt: any }) {
                     {section.questions.map((q: any, qIdx: number) => {
                       const ansRecord = answerMap.get(q.id);
                       const isCorrect = ansRecord?.isCorrect;
-                      const isPending = isCorrect === null;
+                      const isPending = q.type === "ESSAY" && isCorrect === null;
                       return (
                         <div key={q.id} className="space-y-3">
                           <div
                             className={cn(
                               "flex items-center gap-4 p-4 rounded-[20px] border transition-all",
-                              isCorrect
+                              isCorrect === true
                                 ? "bg-emerald-50/50 border-emerald-100"
-                                : isCorrect === false
-                                  ? "bg-red-50/50 border-red-100"
-                                  : "bg-slate-50 border-slate-100",
+                                : isPending
+                                  ? "bg-blue-50/50 border-blue-100"
+                                  : "bg-red-50/50 border-red-100",
                             )}
                           >
                             <div className="w-8 text-center text-xs font-black text-slate-400">
@@ -202,23 +203,23 @@ export default function TestResultClient({ attempt }: { attempt: any }) {
                             <div className="flex-1 flex items-center gap-8">
                               <div className="space-y-0.5">
                                 <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                                  Bạn chọn
+                                  {q.type === "ESSAY" ? "Hình thức" : "Bạn chọn"}
                                 </p>
                                 <p
                                   className={cn(
                                     "font-black text-lg",
-                                    isCorrect
+                                    isCorrect === true
                                       ? "text-emerald-600"
-                                      : isCorrect === false
-                                        ? "text-red-600"
-                                        : "text-slate-400",
+                                      : isPending
+                                        ? "text-blue-600"
+                                        : "text-red-600",
                                   )}
                                 >
-                                  {ansRecord?.answerProvided || "Bỏ trống"}
+                                  {q.type === "ESSAY" ? "Làm ra giấy" : (ansRecord?.answerProvided || "Bỏ trống")}
                                 </p>
                               </div>
 
-                              {!isCorrect && !isPending && (
+                              {isCorrect === false && q.type !== "ESSAY" && (
                                 <div className="space-y-0.5">
                                   <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
                                     Đáp án đúng
@@ -231,15 +232,27 @@ export default function TestResultClient({ attempt }: { attempt: any }) {
                             </div>
 
                             <div className="shrink-0">
-                              {isCorrect ? (
+                              {isCorrect === true ? (
                                 <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                              ) : isCorrect === false ? (
-                                <XCircle className="w-6 h-6 text-red-500" />
+                              ) : isPending ? (
+                                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                                   <Clock className="w-4 h-4 text-blue-600" />
+                                </div>
                               ) : (
-                                <Clock className="w-6 h-6 text-orange-400" />
+                                <XCircle className="w-6 h-6 text-red-500" />
                               )}
                             </div>
                           </div>
+
+                          {/* Teacher Grading UI */}
+                          {isTeacher && q.type === "ESSAY" && ansRecord && (
+                            <GradeEssay 
+                              answerId={ansRecord.id}
+                              initialPoints={ansRecord.pointsAwarded}
+                              maxPoints={q.points}
+                              isCorrect={ansRecord.isCorrect}
+                            />
+                          )}
 
                           {(q.explanation || q.videoUrl || q.audioUrl) && (
                             <div className="ml-12 space-y-3">
@@ -267,6 +280,11 @@ export default function TestResultClient({ attempt }: { attempt: any }) {
                                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex gap-3">
                                   <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                                   <div className="text-sm text-slate-600">
+                                    {q.type === "ESSAY" && (
+                                      <p className="font-bold text-slate-900 mb-1">
+                                        Câu hỏi tự luận:
+                                      </p>
+                                    )}
                                     <p className="whitespace-pre-wrap">
                                       {q.explanation}
                                     </p>

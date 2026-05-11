@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Lesson, Attachment } from "@prisma/client";
 import {
   Dialog,
@@ -15,6 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   updateLesson,
   createAttachment,
   deleteAttachment,
@@ -22,8 +29,9 @@ import {
 import axios from "axios";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { toast } from "sonner";
-import { Trash2, CheckCircle2, Upload, X, PlaySquare } from "lucide-react";
+import { Trash2, CheckCircle2, Upload, X, PlaySquare, Youtube, Link as LinkIcon } from "lucide-react";
 import { LibrarySelect } from "./LibrarySelect";
+import VideoPlayer from "@/components/player/VideoPlayer";
 
 interface LessonEditModalProps {
   open: boolean;
@@ -32,6 +40,10 @@ interface LessonEditModalProps {
   onSuccess: () => void;
 }
 
+const isYoutubeUrl = (url: string) => {
+  return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)/.test(url);
+};
+
 export function LessonEditModal({
   open,
   onOpenChange,
@@ -39,6 +51,7 @@ export function LessonEditModal({
   onSuccess,
 }: LessonEditModalProps) {
   const [title, setTitle] = useState(lesson.title);
+  const [type, setType] = useState<string>(lesson.type || "VIDEO");
   const [description, setDescription] = useState(lesson.description || "");
   const [videoUrl, setVideoUrl] = useState(lesson.videoUrl || "");
   const [attachments, setAttachments] = useState<Attachment[]>(
@@ -49,8 +62,25 @@ export function LessonEditModal({
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [attUploading, setAttUploading] = useState(false);
+  
+  const [showYoutubeInput, setShowYoutubeInput] = useState(false);
+  const [youtubeInput, setYoutubeInput] = useState("");
 
-  // ─── Save title / description / videoUrl ──────────────────────────────────
+  const [showPlayer, setShowPlayer] = useState(false);
+  useEffect(() => {
+    if (open) {
+      console.log("[LessonEditModal] Opening modal for lesson:", lesson.id, "videoUrl:", videoUrl);
+      const timer = setTimeout(() => {
+        console.log("[LessonEditModal] Showing player now");
+        setShowPlayer(true);
+      }, 400);
+      return () => clearTimeout(timer);
+    } else {
+      setShowPlayer(false);
+    }
+  }, [open, lesson.id, videoUrl]);
+
+  // ─── Save ──────────────────────────────────
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -58,6 +88,7 @@ export function LessonEditModal({
         title,
         description,
         videoUrl,
+        type: type as any,
       });
       if (res.success) {
         toast.success("Đã lưu thay đổi");
@@ -74,57 +105,32 @@ export function LessonEditModal({
     }
   };
 
-  // ─── Video Upload — dùng proxy để tránh CORS với BunnyCDN/S3 ───────────
-  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleAddYoutube = async () => {
+    if (!youtubeInput) return;
+    if (!isYoutubeUrl(youtubeInput)) {
+      toast.error("Link YouTube không hợp lệ");
+      return;
+    }
 
-    e.target.value = ""; // reset để chọn lại cùng file
-    setUploading(true);
-    setUploadProgress(0);
-
+    setIsSaving(true);
     try {
-      // Step 1: Request Presigned URL from Next.js Server
-      const uploadRes = await axios.put<{ publicUrl: string }>(
-        `/api/upload/proxy?fileName=${encodeURIComponent(file.name)}`,
-        file,
-        {
-          headers: {
-            "Content-Type": file.type || "application/octet-stream",
-          },
-          onUploadProgress: (progressEvent) => {
-            const pct = Math.round(
-              ((progressEvent.loaded ?? 0) * 100) /
-                (progressEvent.total ?? file.size),
-            );
-            setUploadProgress(pct);
-          },
-        },
-      );
-
-      const { publicUrl } = uploadRes.data;
-
-      // Auto-save videoUrl vào DB ngay sau khi upload xong
-      const saveRes = await updateLesson(lesson.id, { videoUrl: publicUrl });
-      if (saveRes.success) {
-        setVideoUrl(publicUrl);
-        toast.success("Upload video thành công và đã lưu");
+      const res = await updateLesson(lesson.id, { videoUrl: youtubeInput });
+      if (res.success) {
+        setVideoUrl(youtubeInput);
+        setYoutubeInput("");
+        setShowYoutubeInput(false);
+        toast.success("Đã gắn link YouTube");
         onSuccess();
       } else {
-        toast.error("Upload xong nhưng lưu DB thất bại: " + saveRes.error);
+        toast.error(res.error || "Lỗi khi gắn link");
       }
-    } catch (error) {
-      console.error("Video upload error:", error);
-      toast.error("Lỗi upload video");
     } finally {
-      setUploading(false);
-      setUploadProgress(0);
+      setIsSaving(false);
     }
   };
 
-  // ─── Xóa video ───────────────────────────────────────────────────────────
   const handleRemoveVideo = async () => {
-    if (!confirm("Xóa video này? Hành động này không thể hoàn tác.")) return;
+    if (!confirm("Xóa video này?")) return;
     setIsSaving(true);
     try {
       const res = await updateLesson(lesson.id, { videoUrl: "" });
@@ -140,43 +146,28 @@ export function LessonEditModal({
     }
   };
 
-  // ─── Attachment Upload ────────────────────────────────────────────────────
-  const handleAttachmentUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setAttUploading(true);
     try {
-      // Step 1: Request Presigned URL
       const uploadRes = await axios.put<{ publicUrl: string }>(
         `/api/upload/proxy?fileName=${encodeURIComponent(file.name)}`,
         file,
-        {
-          headers: {
-            "Content-Type": file.type || "application/octet-stream",
-          },
-        },
+        { headers: { "Content-Type": file.type || "application/octet-stream" } }
       );
-
       const { publicUrl } = uploadRes.data;
-
       const attachmentRes = await createAttachment({
         lessonId: lesson.id,
         url: publicUrl,
         name: file.name,
         type: file.type,
       });
-
       if (attachmentRes.success && attachmentRes.attachment) {
         setAttachments((prev) => [...prev, attachmentRes.attachment!]);
         toast.success("Đã thêm tài liệu");
-      } else {
-        toast.error("Lỗi lưu tài liệu");
       }
     } catch (error) {
-      console.error("Upload failed", error);
       toast.error("Upload thất bại");
     } finally {
       setAttUploading(false);
@@ -184,7 +175,6 @@ export function LessonEditModal({
     }
   };
 
-  // ─── Xóa attachment ──────────────────────────────────────────────────────
   const handleDeleteAttachment = async (attachmentId: string) => {
     if (!confirm("Xóa tài liệu này?")) return;
     try {
@@ -196,23 +186,9 @@ export function LessonEditModal({
     }
   };
 
-  // ─── Close guard ─────────────────────────────────────────────────────────
   const handleClose = () => {
     if (uploading || attUploading) {
-      if (
-        !confirm(
-          "File đang được tải lên. Nếu đóng, quá trình sẽ bị hủy. Bạn có chắc không?",
-        )
-      )
-        return;
-    }
-    if (
-      title !== lesson.title ||
-      description !== (lesson.description || "") ||
-      videoUrl !== (lesson.videoUrl || "")
-    ) {
-      if (!confirm("Bạn có thay đổi chưa lưu. Bạn có chắc muốn đóng không?"))
-        return;
+      if (!confirm("File đang được tải lên. Bạn có chắc muốn đóng?")) return;
     }
     onOpenChange(false);
   };
@@ -227,9 +203,6 @@ export function LessonEditModal({
     >
       <DialogContent
         className="max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden"
-        onInteractOutside={(e) => {
-          if (uploading || attUploading) e.preventDefault();
-        }}
       >
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle>Chỉnh sửa bài học</DialogTitle>
@@ -239,283 +212,185 @@ export function LessonEditModal({
         <Tabs defaultValue="video" className="flex-1 flex flex-col min-h-0">
           <div className="px-6 py-2 border-b bg-gray-50 overflow-x-auto">
             <TabsList className="w-full justify-start gap-2 bg-transparent p-0 h-auto">
-              <TabsTrigger
-                value="video"
-                className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 border border-transparent data-[state=active]:border-gray-200 rounded-md py-2 px-4"
-              >
-                Video bài giảng
-              </TabsTrigger>
-              <TabsTrigger
-                value="attachments"
-                className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 border border-transparent data-[state=active]:border-gray-200 rounded-md py-2 px-4"
-              >
-                Tài liệu đính kèm
-              </TabsTrigger>
-              <TabsTrigger
-                value="quiz"
-                className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 border border-transparent data-[state=active]:border-gray-200 rounded-md py-2 px-4"
-              >
-                Bài tập Quiz
-              </TabsTrigger>
+              <TabsTrigger value="video" className="data-[state=active]:bg-white data-[state=active]:text-red-600 rounded-md py-2 px-4">Nội dung chính</TabsTrigger>
+              <TabsTrigger value="attachments" className="data-[state=active]:bg-white data-[state=active]:text-red-600 rounded-md py-2 px-4">Tài liệu đính kèm</TabsTrigger>
+              <TabsTrigger value="quiz" className="data-[state=active]:bg-white data-[state=active]:text-red-600 rounded-md py-2 px-4">Bài tập Quiz</TabsTrigger>
             </TabsList>
           </div>
 
-          {/* ── TAB: VIDEO ──────────────────────────────────────── */}
-          <TabsContent
-            value="video"
-            className="flex-1 p-6 overflow-y-auto space-y-6"
-          >
-            {/* Tiêu đề */}
-            <div className="space-y-2">
-              <Label>Tiêu đề bài học</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-            </div>
-
-            {/* Video Upload Area */}
-            <div className="space-y-2">
-              <Label>Video bài giảng</Label>
-
-              {videoUrl ? (
-                /* ── Đã có video ── */
-                <div className="border rounded-lg overflow-hidden bg-black relative group">
-                  <video
-                    src={videoUrl}
-                    controls
-                    autoPlay
-                    muted
-                    className="w-full aspect-video"
-                  />
-
-                  {/* Hover controls */}
-                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <LibrarySelect
-                      onSelectVideo={(url) => {
-                        setVideoUrl(url);
-                        updateLesson(lesson.id, { videoUrl: url });
-                        toast.success("Thay video thành công!");
-                        onSuccess();
-                      }}
-                      customTrigger={
-                        <button
-                          disabled={isSaving}
-                          className="inline-flex cursor-pointer items-center gap-1 bg-white/90 hover:bg-white text-gray-700 text-xs font-medium px-3 py-1.5 rounded-md shadow transition disabled:opacity-50"
-                        >
-                          <PlaySquare className="w-3.5 h-3.5" />
-                          Chọn từ Thư viện
-                        </button>
-                      }
-                    />
-                    <button
-                      onClick={handleRemoveVideo}
-                      disabled={isSaving}
-                      className="inline-flex items-center gap-1 bg-red-500/90 hover:bg-red-600 text-white text-xs font-medium px-3 py-1.5 rounded-md shadow transition disabled:opacity-50"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      Xóa
-                    </button>
-                  </div>
-
-                  {/* URL bar */}
-                  <div className="px-3 py-2 bg-gray-800 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    <span className="text-xs text-gray-300 truncate">
-                      {videoUrl}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                /* ── Chưa có video ── */
-                <div className="border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center gap-4 bg-gray-50 text-center">
-                  <div className="text-4xl text-gray-300">🎥</div>
-                  <div>
-                    <p className="font-medium text-gray-700">
-                      Tải lên video bài giảng
-                    </p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      MP4, MOV, AVI, MKV...
-                    </p>
-                  </div>
-
-                  {uploading ? (
-                    /* Progress */
-                    <div className="w-full max-w-xs space-y-2">
-                      <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                        <div
-                          className="bg-red-600 h-2.5 rounded-full transition-all duration-300"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                      <p className="text-sm text-red-600 font-medium">
-                        Đang tải lên... {uploadProgress}%
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        Vui lòng không đóng cửa sổ này
-                      </p>
-                    </div>
-                  ) : (
-                    <LibrarySelect
-                      onSelectVideo={(url) => {
-                        setVideoUrl(url);
-                        updateLesson(lesson.id, { videoUrl: url });
-                        toast.success("Thêm video thành công!");
-                        onSuccess();
-                      }}
-                      customTrigger={
-                        <button className="cursor-pointer inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow">
-                          <PlaySquare className="w-4 h-4" />
-                          Chọn từ Thư viện
-                        </button>
-                      }
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Mô tả */}
-            <div className="space-y-2">
-              <Label>Mô tả ngắn</Label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="min-h-[100px]"
-                placeholder="Mô tả tóm tắt nội dung bài học..."
-              />
-            </div>
-
-            {/* Rich Text placeholder */}
-            <div className="space-y-2">
-              <Label>Nội dung chi tiết (Văn bản)</Label>
-              <div className="border rounded-md p-2 bg-gray-50 min-h-[150px] text-gray-400 flex items-center justify-center text-sm">
-                Rich Text Editor (Coming Soon)
+          <TabsContent value="video" className="flex-1 p-6 overflow-y-auto space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2 space-y-2">
+                <Label>Tiêu đề bài học</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} />
               </div>
-            </div>
-          </TabsContent>
-
-          {/* ── TAB: ATTACHMENTS ────────────────────────────────── */}
-          <TabsContent
-            value="attachments"
-            className="flex-1 p-6 overflow-y-auto"
-          >
-            <div className="space-y-6">
-              <Label className="text-base font-semibold">
-                Tài liệu học tập
-              </Label>
-
-              <div className="border border-dashed rounded-lg p-8 text-center space-y-4 bg-gray-50 relative">
-                {attUploading && (
-                  <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center rounded-lg">
-                    <span className="text-blue-600 font-medium animate-pulse">
-                      Đang tải lên...
-                    </span>
-                  </div>
-                )}
-                <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">📎</span>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Tải lên tài liệu</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    PDF, DOCX, XLSX, Images...
-                  </p>
-                </div>
-                <label className="cursor-pointer">
-                  <span className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow">
-                    <Upload className="w-4 h-4" />
-                    Chọn tài liệu
-                  </span>
-                  <Input
-                    type="file"
-                    className="hidden"
-                    onChange={handleAttachmentUpload}
-                    disabled={attUploading}
-                  />
-                </label>
-              </div>
-
               <div className="space-y-2">
-                {attachments.length === 0 ? (
-                  <div className="text-sm text-gray-500 italic text-center py-4">
-                    Chưa có tài liệu nào được đính kèm.
+                <Label>Loại bài học</Label>
+                <Select value={type} onValueChange={setType}>
+                  <SelectTrigger className="rounded-xl font-bold border-slate-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="VIDEO">🎥 Video bài giảng</SelectItem>
+                    <SelectItem value="DOCUMENT">📄 Tài liệu / PDF</SelectItem>
+                    <SelectItem value="QUIZ">📝 Bài tập Quiz</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {type === "VIDEO" && (
+              <div className="space-y-4 animate-in fade-in duration-500">
+                <Label>Video bài giảng</Label>
+
+                {videoUrl ? (
+                  <div className="border rounded-xl overflow-hidden bg-black relative shadow-2xl group">
+                    <div className="w-full aspect-video flex items-center justify-center">
+                       {showPlayer ? (
+                         <VideoPlayer key={videoUrl} src={videoUrl} title={title} autoPlay={false} muted={true} />
+                       ) : (
+                         <div className="flex flex-col items-center gap-2">
+                            <div className="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                            <p className="text-white text-[10px] font-black uppercase">Khởi tạo...</p>
+                         </div>
+                       )}
+                    </div>
+                    {/* Hover Buttons Overlay - High Z-index */}
+                    <div className="absolute top-3 right-3 flex gap-2 z-[70] opacity-0 group-hover:opacity-100 transition-opacity">
+                      <LibrarySelect
+                        onSelectVideo={(url) => {
+                          setVideoUrl(url);
+                          updateLesson(lesson.id, { videoUrl: url });
+                          toast.success("Đã thay đổi video");
+                          onSuccess();
+                        }}
+                        customTrigger={
+                          <button className="bg-white/95 hover:bg-white text-gray-900 text-[10px] font-black px-3 py-2 rounded-lg shadow-xl uppercase tracking-wider">
+                            Thư viện
+                          </button>
+                        }
+                      />
+                      <button 
+                        onClick={() => setShowYoutubeInput(!showYoutubeInput)}
+                        className="bg-white/95 hover:bg-white text-red-600 text-[10px] font-black px-3 py-2 rounded-lg shadow-xl uppercase tracking-wider"
+                      >
+                        YouTube
+                      </button>
+                      <button 
+                        onClick={handleRemoveVideo}
+                        className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-black px-3 py-2 rounded-lg shadow-xl uppercase tracking-wider"
+                      >
+                        Xóa
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  attachments.map((att) => (
-                    <div
-                      key={att.id}
-                      className="flex items-center justify-between p-3 bg-white border rounded-lg shadow-sm"
-                    >
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-8 h-8 flex-shrink-0 bg-blue-100 text-blue-600 rounded flex items-center justify-center">
-                          📄
-                        </div>
-                        <div className="flex flex-col overflow-hidden">
-                          <a
-                            href={att.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-sm text-blue-600 hover:underline truncate"
-                          >
-                            {att.name}
-                          </a>
-                          <span className="text-xs text-gray-400">
-                            Đính kèm
-                          </span>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteAttachment(att.id)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
+                  <div className="border-2 border-dashed rounded-xl p-12 flex flex-col items-center justify-center gap-6 bg-slate-50 text-center">
+                    <div className="text-5xl">🎥</div>
+                    <div>
+                      <p className="font-black text-slate-900 uppercase">Chưa có video</p>
+                      <p className="text-sm text-slate-500 mt-1">Chọn từ thư viện hoặc gắn link YouTube</p>
+                    </div>
+                    <div className="flex gap-4">
+                        <LibrarySelect
+                          onSelectVideo={(url) => {
+                            setVideoUrl(url);
+                            updateLesson(lesson.id, { videoUrl: url });
+                            onSuccess();
+                          }}
+                          customTrigger={
+                            <Button className="bg-red-600 hover:bg-red-700 font-black uppercase text-xs rounded-xl px-6 h-11">
+                               Thư viện
+                            </Button>
+                          }
+                        />
+                        <Button 
+                          onClick={() => setShowYoutubeInput(!showYoutubeInput)}
+                          className="bg-slate-900 hover:bg-black font-black uppercase text-xs rounded-xl px-6 h-11"
+                        >
+                           YouTube
+                        </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Common YouTube Input Area */}
+                {showYoutubeInput && (
+                  <div className="p-6 bg-white border-2 border-red-100 rounded-[2rem] shadow-2xl space-y-4 animate-in slide-in-from-top-4 duration-500 relative z-[80]">
+                    <div className="flex items-center gap-2 text-red-600">
+                      <Youtube className="w-5 h-5" />
+                      <span className="font-black uppercase tracking-tight">Nhập link YouTube mới</span>
+                    </div>
+                    <div className="flex gap-3">
+                      <Input 
+                        placeholder="Dán đường dẫn vào đây..." 
+                        value={youtubeInput}
+                        onChange={(e) => setYoutubeInput(e.target.value)}
+                        className="h-12 bg-slate-50 border-slate-200 rounded-2xl font-bold"
+                      />
+                      <Button onClick={handleAddYoutube} disabled={isSaving || !youtubeInput} className="bg-red-600 hover:bg-red-700 h-12 px-8 font-black rounded-2xl uppercase">
+                        Xác nhận
                       </Button>
                     </div>
-                  ))
+                  </div>
                 )}
               </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Mô tả bài học</Label>
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[120px] rounded-2xl" placeholder="Nội dung bài học..." />
             </div>
           </TabsContent>
 
-          {/* ── TAB: QUIZ ────────────────────────────────────────── */}
-          <TabsContent value="quiz" className="flex-1 p-6 overflow-y-auto">
-            <div className="text-center py-10 space-y-4">
-              <div className="text-4xl">📝</div>
-              <h3 className="font-medium text-gray-900">Bài kiểm tra & Quiz</h3>
-              <p className="text-gray-500 max-w-sm mx-auto">
-                Tạo bài kiểm tra qua file PDF, thiết lập ma trận đáp án và chấm
-                điểm tự động.
-              </p>
-
-              <div className="pt-4">
-                <Button
-                  onClick={async () => {
-                    // Update lesson type to QUIZ if it isn't already
-                    if (lesson.type !== "QUIZ") {
-                      await updateLesson(lesson.id, { type: "QUIZ" });
-                      onSuccess();
-                    }
-                    // Navigate to the test builder
-                    window.location.href = `/teacher/tests/${lesson.id}`;
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-8"
-                >
-                  Mở Trình tạo Bài kiểm tra
-                </Button>
-              </div>
+          <TabsContent value="attachments" className="flex-1 p-6 overflow-y-auto space-y-6">
+            <Label className="text-lg font-black uppercase tracking-tight">Tài liệu học tập</Label>
+            <div className="border-2 border-dashed rounded-2xl p-10 text-center space-y-4 bg-slate-50 relative group">
+              {attUploading && <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center rounded-2xl font-black text-red-600 animate-pulse">ĐANG TẢI LÊN...</div>}
+              <div className="text-4xl">📎</div>
+              <p className="font-black text-slate-900 uppercase">Tải lên tài liệu mới</p>
+              <label className="cursor-pointer inline-block">
+                <span className="bg-slate-900 hover:bg-red-600 text-white font-black uppercase text-[11px] px-8 py-3 rounded-2xl transition-all shadow-xl">Chọn File</span>
+                <Input type="file" className="hidden" onChange={handleAttachmentUpload} disabled={attUploading} />
+              </label>
             </div>
+            <div className="space-y-3">
+              {attachments.map((att) => (
+                <div key={att.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-4 overflow-hidden">
+                    <div className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center font-black text-xs">PDF</div>
+                    <div className="overflow-hidden">
+                      <a href={att.url} target="_blank" className="font-bold text-sm text-slate-900 hover:text-red-600 truncate block">{att.name}</a>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tài liệu đính kèm</span>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => handleDeleteAttachment(att.id)} className="text-slate-300 hover:text-red-600 transition-colors"><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="quiz" className="flex-1 p-12 text-center space-y-6 animate-in zoom-in-95 duration-500">
+            <div className="text-6xl">📝</div>
+            <div className="space-y-2">
+               <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Bài tập & Quiz trực tuyến</h3>
+               <p className="text-slate-500 max-w-sm mx-auto font-medium">Tạo đề thi từ PDF, thiết lập đáp án và chấm điểm tự động.</p>
+            </div>
+            <Button 
+              onClick={async () => {
+                if (lesson.type !== "QUIZ") await updateLesson(lesson.id, { type: "QUIZ" });
+                window.location.href = `/teacher/tests/${lesson.id}`;
+              }}
+              className="bg-slate-900 hover:bg-red-600 h-14 px-10 font-black uppercase text-xs tracking-widest rounded-2xl shadow-2xl transition-all"
+            >
+              Mở Trình tạo Bài tập
+            </Button>
           </TabsContent>
         </Tabs>
 
-        {/* Footer */}
-        <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
-          <Button variant="outline" onClick={handleClose}>
-            Hủy
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving || uploading || attUploading}
-          >
+        <div className="p-6 border-t bg-slate-50 flex justify-end gap-3">
+          <Button variant="ghost" onClick={handleClose} className="font-bold uppercase text-xs">Hủy bỏ</Button>
+          <Button onClick={handleSave} disabled={isSaving || uploading || attUploading} className="bg-red-600 hover:bg-red-700 font-black uppercase text-xs px-8 h-11 rounded-xl shadow-xl shadow-red-200">
             {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
           </Button>
         </div>

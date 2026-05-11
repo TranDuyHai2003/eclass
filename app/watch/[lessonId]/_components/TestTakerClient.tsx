@@ -155,52 +155,39 @@ export default function TestTakerClient({
   }
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50 overflow-y-auto custom-scrollbar">
-      {/* Header */}
-      <div className="sticky top-0 z-40 flex items-center justify-between border-b bg-white px-6 shadow-sm shrink-0 h-16">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.push(backPath || `/courses/${course.id}`)}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="font-bold text-gray-900 leading-none">{lesson.title}</h1>
-            <p className="text-[10px] text-gray-500 mt-1">{course.title}</p>
-          </div>
-        </div>
+    <div className="flex h-screen flex-col bg-gray-50 overflow-hidden relative z-[60] w-full max-w-full">
+      {/* Hide Global Header on Test Page */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        header { display: none !important; }
+      `}} />
 
-        <div className="flex items-center gap-6">
-          {/* Timer */}
-          <div className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-lg font-mono font-bold border border-red-200">
-            <Clock className="w-4 h-4" />
-            {!startedAt || loadingInitial
-              ? "--:--:--"
-              : isTimeUp
-                ? "00:00:00"
-                : `${String(timeLeft.hours).padStart(2, "0")}:${String(timeLeft.minutes).padStart(2, "0")}:${String(timeLeft.seconds).padStart(2, "0")}`}
-          </div>
-
-          <Button
-            onClick={handleSubmit}
-            disabled={isPending || (timeLeft.isFinished && isPending)}
-            className="gap-2 bg-blue-600 hover:bg-blue-700"
-          >
-            <Send className="h-4 w-4" />
-            {isPending ? "Đang nộp..." : "Nộp bài"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Split */}
-      <div className="flex flex-1 relative">
-        {/* Left: PDF */}
-        <div className="min-w-0 w-2/3 lg:w-[70%] border-r relative bg-gray-50">
+      {/* Main Split - 60/40 vertical on mobile, flex-1/fixed-width on desktop */}
+      <div className="flex flex-col md:flex-row flex-1 relative overflow-hidden w-full max-w-full">
+        {/* Left/Top: PDF (60% height on mobile, flex-1 on desktop) */}
+        <div className="min-w-0 w-full flex-1 h-[60%] md:h-full border-r relative bg-gray-50 overflow-y-auto custom-scrollbar">
           {test.pdfUrl ? (
-            <div className="min-h-full">
-              <PDFViewer url={test.pdfUrl} noScroll flat />
+            <div className="min-h-full w-full">
+              <PDFViewer 
+                url={test.pdfUrl} 
+                noScroll 
+                flat 
+                renderLeft={
+                  <div className="flex items-center gap-2 md:gap-4 min-w-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => router.push(backPath || `/courses/${course.id}`)}
+                      className="h-8 w-8 md:h-9 md:w-9 rounded-lg hover:bg-slate-100 shrink-0"
+                    >
+                      <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 text-slate-600" />
+                    </Button>
+                    <div className="min-w-0">
+                      <h1 className="font-black text-slate-900 leading-none truncate text-[11px] md:text-sm uppercase tracking-tight">{lesson.title}</h1>
+                      <p className="hidden sm:block text-[9px] text-slate-400 mt-0.5 truncate font-bold uppercase tracking-widest">{course.title}</p>
+                    </div>
+                  </div>
+                }
+              />
             </div>
           ) : (
             <div className="flex items-center justify-center h-full">
@@ -209,13 +196,32 @@ export default function TestTakerClient({
           )}
         </div>
 
-        {/* Right: Bubble Sheet */}
-        <div className="min-w-0 w-1/3 lg:w-[30%] bg-white flex flex-col sticky top-16 h-[calc(100vh-64px)] overflow-hidden z-20">
-          <div className="h-12 border-b border-slate-200 bg-white flex items-center justify-center font-black text-slate-800 shadow-sm shrink-0 uppercase tracking-widest text-[10px]">
-            PHIẾU TRẢ LỜI
+        {/* Right/Bottom: Bubble Sheet (40% height on mobile, fixed-width on desktop) */}
+        <div className="min-w-0 w-full md:w-[350px] xl:w-[400px] shrink-0 h-[40%] md:h-full bg-white flex flex-col md:sticky md:top-0 overflow-hidden z-20 border-t md:border-t-0 shadow-[-4px_0_12px_rgba(0,0,0,0.02)]">
+          <div className="h-14 md:h-16 border-b border-slate-200 bg-white flex items-center justify-between px-3 md:px-4 font-black text-slate-800 shadow-sm shrink-0">
+            <div className="flex flex-col min-w-0">
+               <span className="uppercase tracking-widest text-[8px] md:text-[10px] text-slate-400">PHIẾU TRẢ LỜI</span>
+               <div className="flex items-center gap-1.5 md:gap-2 text-red-600 font-mono font-bold text-xs md:text-base">
+                  <Clock className="w-3 md:w-4 h-3 md:h-4" />
+                  {!startedAt || loadingInitial
+                    ? "--:--:--"
+                    : isTimeUp
+                      ? "00:00:00"
+                      : `${String(timeLeft.hours).padStart(2, "0")}:${String(timeLeft.minutes).padStart(2, "0")}:${String(timeLeft.seconds).padStart(2, "0")}`}
+               </div>
+            </div>
+            
+            <Button
+              onClick={handleSubmit}
+              disabled={isPending || (timeLeft.isFinished && isPending)}
+              className="gap-1.5 md:gap-2 bg-blue-600 hover:bg-blue-700 h-9 md:h-11 text-xs md:text-sm px-4 md:px-6 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-blue-500/20"
+            >
+              <Send className="h-3.5 md:h-4 w-3.5 md:h-4" />
+              <span>{isPending ? "..." : "Nộp bài"}</span>
+            </Button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-4 md:space-y-6 custom-scrollbar w-full">
             {test.sections.map((section: any, sIdx: number) => (
               <div key={section.id} className="space-y-3">
                 <h3 className="font-bold text-blue-800 border-b pb-2 uppercase tracking-wide text-[10px]">

@@ -1,0 +1,126 @@
+Chào bạn, để team lập trình (Dev), thiết kế (UI/UX) và kiểm thử (QA) hiểu rõ và làm đúng ý bạn, tính năng này cần được viết dưới dạng một **Bản Kế hoạch & Đặc tả sản phẩm (PRD - Product Requirements Document)**. 
+
+Dưới đây là bản kế hoạch chi tiết, rõ ràng từng luồng để bạn có thể gửi thẳng cho team phát triển.
+
+---
+
+# BẢN KẾ HOẠCH TÍNH NĂNG: TỰ ĐỘNG BÓC TÁCH CẤU TRÚC ĐỀ THI TỪ PDF
+
+## 1. Tổng quan & Mục tiêu
+*   **Vấn đề hiện tại:** Giáo viên sau khi tải file PDF đề thi lên phải tạo thủ công từng câu, nhập số câu và dạng bài. Việc này lặp đi lặp lại, tốn nhiều thời gian (đặc biệt với đề 40-50 câu).
+*   **Giải pháp:** Hệ thống tự động đọc file PDF, nhận diện các từ khóa `Câu X (Dạng Y)` để tự động sinh ra Form điền đáp án.
+*   **Mục tiêu:** Tiết kiệm 90% thời gian thao tác cho giáo viên. Tăng trải nghiệm người dùng (UX) cho nền tảng.
+
+## 2. Phạm vi tính năng
+*   **Có làm:** Bóc tách số thứ tự câu và Dạng bài từ file PDF (dạng Text) bằng Regex. Linh hoạt với các lỗi gõ phím của giáo viên (khoảng trắng, ngoặc vuông/tròn, viết hoa/thường). Cho phép giáo viên điền đáp án và kiểu câu sau khi bóc tách.
+*   **Không làm (trong phase này):** Không tự động lấy đáp án A,B,C,D từ trong file (giáo viên tự click chọn trên form). Không xử lý file PDF dạng ảnh chụp (Scanned PDF - yêu cầu giáo viên dùng PDF xuất từ Word).
+
+---
+
+## 3. Luồng hoạt động chi tiết (Workflow)
+
+Đây là luồng tương tác giữa **Giáo viên** và **Hệ thống**:
+
+### Bước 1: Tải đề thi (Upload)
+*   **Giáo viên:** Vào trang "Tạo bài kiểm tra", nhập Tên bài kiểm tra. Nhấn nút **"Tải lên PDF đề thi"**. Chọn file từ máy tính.
+*   **Hệ thống:** Frontend nhận file PDF, hiển thị thanh trạng thái (Loading/Spinner) với dòng chữ *"Đang phân tích cấu trúc đề thi..."*. Backend tiếp nhận file.
+
+### Bước 2: Phân tích file (Processing - Chạy ngầm)
+*   **Hệ thống (Backend):**
+    1. Dùng thư viện đọc text từ file PDF vừa tải lên.
+    2. Sử dụng thuật toán Regex để quét toàn bộ văn bản.
+    3. Trích xuất ra danh sách các câu hỏi kèm dạng bài.
+    4. Trả mảng dữ liệu (JSON) về cho Frontend. *(Thời gian xử lý < 2 giây).*
+
+### Bước 3: Render Form điền đáp án
+*   **Hệ thống (Frontend):** Dựa vào dữ liệu Backend trả về, tự động vẽ ra một danh sách (Table/Form) với số dòng tương ứng số câu bắt được. Tự động điền sẵn "Số câu" và "Dạng bài".
+*   **Giao diện hiển thị các cột:**
+    *   Cột 1: Câu số (Đã tự điền)
+    *   Cột 2: Dạng bài (Đã tự điền, cho phép sửa text nếu muốn)
+    *   Cột 3: Kiểu câu (Dropdown chọn: Trắc nghiệm / Điền đáp án) - *Để trống cho GV chọn.*
+    *   Cột 4: Đáp án đúng (4 nút radio A,B,C,D hoặc ô Text nhập tay) - *Để trống cho GV chọn.*
+    *   Cột 5: Thao tác (Nút Xóa câu).
+
+### Bước 4: Giáo viên thao tác trên Form
+*   **Giáo viên:** 
+    *   Nhìn lướt qua để kiểm tra xem hệ thống bắt đúng số câu chưa.
+    *   Chọn "Kiểu câu" và Click chọn "Đáp án" cho từng câu.
+    *   Nếu hệ thống quét thiếu câu (do GV gõ sai cú pháp nặng), GV bấm nút **"+ Thêm câu hỏi thủ công"** ở cuối Form.
+*   **Hệ thống:** Lưu trữ tạm thời các thao tác của GV.
+
+### Bước 5: Hoàn tất
+*   **Giáo viên:** Bấm nút **"Lưu bài kiểm tra"**.
+*   **Hệ thống:** Lưu toàn bộ thông tin (File PDF + Cấu trúc đáp án + Dạng câu) vào Database. Hiển thị thông báo thành công.
+
+---
+
+## 4. Đặc tả kỹ thuật (Dành cho Lập trình viên)
+
+### 4.1. Thuật toán trích xuất (Core Logic)
+Sử dụng **Regular Expression (Regex)** để quét nội dung. Bắt buộc phải dùng mẫu Regex bao dung với thói quen gõ phím của giáo viên.
+
+*   **Pattern chuẩn:** `/(?:Câu|Bài)\s*(\d+)\s*[\[\(](.*?)[\]\)]/gi`
+*   **Các trường hợp Regex này BẮT ĐƯỢC:**
+    *   `Câu 1(Dạng toán)` -> Bắt chuẩn.
+    *   `Câu   2  [ Dạng lý ]` -> Dư dấu cách, dùng ngoặc vuông -> Bắt chuẩn.
+    *   `câu 3 (Dạng hóa]` -> Không viết hoa chữ C, mở ngoặc tròn đóng ngoặc vuông -> Bắt chuẩn.
+    *   `Bài 4 (Dạng sinh)` -> Dùng chữ "Bài" thay chữ "Câu" -> Bắt chuẩn.
+
+### 4.2. Giao tiếp API (Frontend - Backend)
+**Request (FE gửi lên BE):** 
+`POST /api/exams/parse-pdf` (Form-data: file PDF)
+
+**Response (BE trả về FE):**
+```json
+{
+  "status": "success",
+  "message": "Phân tích thành công",
+  "data": {
+    "total_questions": 3,
+    "questions": [
+      {
+        "order": 1,
+        "question_label": "Câu 1",
+        "question_category": "Dạng hàm số"
+      },
+      {
+        "order": 2,
+        "question_label": "Câu 2",
+        "question_category": "Dạng lượng giác"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 5. Xử lý ngoại lệ (Edge Cases) - Dành cho QA Test
+
+Để tránh hệ thống bị lỗi (crash), cần xử lý các tình huống sau:
+
+1.  **File PDF là ảnh scan (Không có text):**
+    *   *Xử lý:* Backend nhận file, nếu không đọc ra chữ nào, trả về status `warning`. Frontend hiện thông báo: *"Hệ thống không nhận diện được chữ trong PDF này. Vui lòng tạo danh sách câu hỏi thủ công hoặc sử dụng PDF xuất từ Word"*. Vẫn cho phép giáo viên tạo form bằng tay.
+2.  **Giáo viên quên gõ định dạng "Dạng bài" (VD chỉ gõ `Câu 1:`):**
+    *   *Xử lý:* Hệ thống sẽ bỏ qua câu đó. Yêu cầu có nút **"+ Thêm câu hỏi"** để giáo viên tự bổ sung.
+3.  **PDF bị lỗi mã hóa font chữ (Font VNI, TCVN3 cũ):**
+    *   *Xử lý:* Hiển thị text lỗi, cho phép GV sửa lại tay trực tiếp trên ô "Dạng bài" ở Frontend.
+
+---
+
+## 6. Hướng dẫn UI/UX (Giao diện)
+
+*   **Khu vực Upload:** Thiết kế to, rõ ràng, có hướng dẫn nhỏ: *"Tip: Để hệ thống tự tạo form đáp án, hãy định dạng đề thi theo chuẩn: Câu 1 (Tên dạng bài)..."*
+*   **Giao diện Form List:** Không dùng bảng (table) quá cứng nhắc. Thiết kế dạng các **Card** hoặc **Row** nối tiếp nhau để hiển thị tốt trên cả màn hình Laptop nhỏ.
+*   **Tính năng hàng loạt:** Cần có nút *"Chỉnh tất cả thành Trắc nghiệm"* để GV không phải chọn "Kiểu câu" 50 lần.
+
+---
+
+## 7. Lộ trình thực hiện (Timeline dự kiến)
+
+*   **Phase 1 (1 ngày):** Backend thiết lập thư viện đọc PDF, viết hàm Regex và test thử với 10 file PDF các loại đề khác nhau để tinh chỉnh Regex.
+*   **Phase 2 (1-2 ngày):** Frontend xây dựng giao diện Upload, nhận JSON từ Backend và render ra Form điền đáp án động.
+*   **Phase 3 (1 ngày):** Tích hợp ghép nối luồng FE - BE, viết luồng lưu trữ vào Database.
+*   **Phase 4 (1 ngày):** Kiểm thử (QA) các trường hợp file lỗi, file lớn, file sai cú pháp. Sửa lỗi và Release.
+
+*(Tổng thời gian dự kiến: 4 - 5 ngày làm việc cho 1 team cơ bản).*

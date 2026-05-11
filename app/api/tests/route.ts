@@ -84,6 +84,15 @@ export async function POST(req: NextRequest) {
     return new NextResponse("Invalid passScore", { status: 400 });
   }
 
+  const questionsData = body.questions as
+    | {
+        order: number;
+        question_category?: string;
+        type: "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "ESSAY";
+        correctAnswer?: string;
+      }[]
+    | undefined;
+
   const test = await prisma.test.create({
     data: {
       title,
@@ -95,6 +104,27 @@ export async function POST(req: NextRequest) {
       duration,
       showAnswers: showResultAfterSubmit,
       userId: session.user.id,
+      ...(questionsData && questionsData.length > 0
+        ? {
+            sections: {
+              create: [
+                {
+                  name: "Phần 1",
+                  position: 0,
+                  questions: {
+                    create: questionsData.map((q) => ({
+                      position: q.order - 1,
+                      type: q.type || "MULTIPLE_CHOICE",
+                      correctAnswer: q.correctAnswer || null,
+                      points: 1.0,
+                      explanation: q.question_category || null,
+                    })),
+                  },
+                },
+              ],
+            },
+          }
+        : {}),
     },
     select: {
       id: true,

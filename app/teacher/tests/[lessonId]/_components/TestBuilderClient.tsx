@@ -103,6 +103,39 @@ export default function TestBuilderClient({
       );
       setPdfUrl(res.data.publicUrl);
       toast.success("Tải file PDF thành công!");
+
+      const parseFormData = new FormData();
+      parseFormData.append("file", file);
+      const parseRes = await fetch("/api/exams/parse-pdf", {
+        method: "POST",
+        body: parseFormData,
+      });
+      const parseData = await parseRes.json();
+
+      if (parseData.data?.questions?.length > 0 && !test) {
+        const parsed = parseData.data.questions;
+        const newQuestions = parsed.map((q: any, i: number) => ({
+          id: `parsed-${Date.now()}-${i}`,
+          position: i,
+          type: "MULTIPLE_CHOICE" as const,
+          correctAnswer: "",
+          points: 1.0,
+          explanation: q.question_category || "",
+          videoUrl: "",
+          audioUrl: "",
+        }));
+        setSections([
+          {
+            id: `section-${Date.now()}`,
+            name: "Phần 1: Trắc nghiệm",
+            position: 0,
+            questions: newQuestions,
+          },
+        ]);
+        toast.success(`Đã phát hiện ${parsed.length} câu hỏi từ PDF`);
+      } else if (parseData.status === "warning") {
+        toast.warning(parseData.message);
+      }
     } catch {
       toast.error("Lỗi tải file PDF");
     } finally {
@@ -362,7 +395,7 @@ export default function TestBuilderClient({
       {/* Main Split Body */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left: PDF View */}
-        <div className="w-1/2 border-r bg-slate-100 relative group">
+        <div className="w-1/2 h-full border-r bg-slate-100 relative group">
           <PDFViewer url={test.pdfUrl} />
           {/* Floating settings shortcut */}
           <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">

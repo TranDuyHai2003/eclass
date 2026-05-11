@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { FileText, FileUp, Clock, ListChecks, Loader2 } from "lucide-react";
+import { FileText, FileUp, Clock, ListChecks, Loader2, Sparkles, FileWarning } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  ParsedQuestionsForm,
+  type ParsedQuestion,
+} from "@/components/teacher/test-builder/ParsedQuestionsForm";
 
 export default function CreateTestBankForm() {
   const router = useRouter();
@@ -29,8 +33,14 @@ export default function CreateTestBankForm() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [isParsing, setIsParsing] = useState(false);
+  const [parsedQuestions, setParsedQuestions] = useState<ParsedQuestion[]>([]);
+  const [parseWarning, setParseWarning] = useState("");
+
   const handleUpload = async (file: File) => {
     setIsUploading(true);
+    setParseWarning("");
+    setParsedQuestions([]);
     try {
       const presignRes = await fetch("/api/upload/presigned", {
         method: "POST",
@@ -53,8 +63,43 @@ export default function CreateTestBankForm() {
         throw new Error("Upload that bai");
       }
 
-      setPdfUrl(presignData.fileUrl);
+      const fileUrl = presignData.fileUrl;
+      setPdfUrl(fileUrl);
       toast.success("Tai PDF thanh cong");
+
+      setIsParsing(true);
+      try {
+        const parseFormData = new FormData();
+        parseFormData.append("file", file);
+        const parseRes = await fetch("/api/exams/parse-pdf", {
+          method: "POST",
+          body: parseFormData,
+        });
+        const parseData = await parseRes.json();
+
+        if (parseData.status === "warning") {
+          setParseWarning(parseData.message);
+        }
+
+        if (parseData.data?.questions?.length > 0) {
+          const mapped: ParsedQuestion[] = parseData.data.questions.map(
+            (q: any, i: number) => ({
+              id: `parsed-${i}`,
+              order: q.order,
+              question_label: q.question_label,
+              question_category: q.question_category,
+              type: "MULTIPLE_CHOICE" as const,
+              correctAnswer: "",
+            }),
+          );
+          setParsedQuestions(mapped);
+          toast.success(`Phat hien ${mapped.length} cau hoi`);
+        }
+      } catch {
+        toast.error("Khong the phan tich PDF");
+      } finally {
+        setIsParsing(false);
+      }
     } catch (error: any) {
       toast.error(error.message || "Khong the tai PDF");
     } finally {
@@ -75,6 +120,15 @@ export default function CreateTestBankForm() {
 
     setIsSaving(true);
     try {
+      const questionsPayload = parsedQuestions.length > 0
+        ? parsedQuestions.map((q) => ({
+            order: q.order,
+            question_category: q.question_category,
+            type: q.type,
+            correctAnswer: q.correctAnswer || undefined,
+          }))
+        : undefined;
+
       const res = await fetch("/api/tests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -86,6 +140,7 @@ export default function CreateTestBankForm() {
           description,
           pdfUrl,
           settings: { showResultAfterSubmit: true, password: "" },
+          questions: questionsPayload,
         }),
       });
 
@@ -238,12 +293,38 @@ export default function CreateTestBankForm() {
                   <Loader2 className="w-3 h-3 animate-spin" /> Dang tai PDF...
                 </p>
               )}
+              {isParsing && (
+                <p className="text-xs text-blue-600 flex items-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Dang phan tich cau truc de thi...
+                </p>
+              )}
+              {parseWarning && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-800">
+                  <FileWarning className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{parseWarning}</span>
+                </div>
+              )}
               {pdfUrl && (
                 <p className="text-xs text-emerald-600">
                   PDF da san sang: {pdfUrl}
                 </p>
               )}
             </div>
+
+            {parsedQuestions.length > 0 && (
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-bold text-slate-800">
+                    Ket qua phan tich tu dong
+                  </span>
+                </div>
+                <ParsedQuestionsForm
+                  questions={parsedQuestions}
+                  onChange={setParsedQuestions}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label className="font-bold">Mo ta / Ghi chu</Label>

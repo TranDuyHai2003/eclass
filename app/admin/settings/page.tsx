@@ -6,7 +6,7 @@ export default function AdminSettingsPage() {
     <div className="page-shell">
       <ComingSoon 
         title="Cài đặt hệ thống" 
-        description="Quản lý các cấu hình chung, thông tin website và các cài đặt bảo mật cho toàn bộ hệ thống Toán Thầy Đức."
+        description="Quản lý các cấu hình chung, thông tin website và các cài đặt bảo mật cho toàn bộ hệ thống thatdehoctoan."
       />
     </div>
   );

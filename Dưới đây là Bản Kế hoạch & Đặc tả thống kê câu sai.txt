@@ -1,0 +1,112 @@
+Dưới đây là **Bản Kế hoạch & Đặc tả sản phẩm (PRD)** chi tiết cho tính năng "Thống kê & Phân tích điểm yếu của học sinh". Bạn có thể dùng bản này để giao việc trực tiếp cho team Lập trình (Dev) và Thiết kế (UI/UX).
+
+---
+
+# BẢN KẾ HOẠCH: HỆ THỐNG PHÂN TÍCH ĐIỂM YẾU HỌC SINH (DASHBOARD)
+
+## 1. Tổng quan & Mục tiêu
+*   **Vấn đề:** Đa số học sinh làm xong đề chỉ biết được điểm số (VD: 7/10 điểm) nhưng không biết mình mất 3 điểm ở đâu, hổng kiến thức phần nào để ôn tập lại.
+*   **Giải pháp:** Hệ thống tự động tổng hợp dữ liệu các lần làm bài, phân tích các **"Dạng bài"** học sinh thường làm sai và hiển thị cảnh báo trên Dashboard.
+*   **Mục tiêu kinh doanh:** Tăng thời gian lưu lại trang (Time on site), tạo động lực để học sinh luyện thêm đề (Tăng Retention rate), mang lại cảm giác "được chăm sóc cá nhân hóa" mà không tốn chi phí vận hành AI.
+
+## 2. Phạm vi tính năng
+*   **Có làm:** Tính toán Tỷ lệ làm sai (%) theo từng Dạng bài. Hiển thị Top 3 điểm yếu lớn nhất và Top 3 điểm mạnh nhất. Có nút kêu gọi hành động (Call-to-action) để làm lại các dạng bài yếu.
+*   **Không làm:** Không dùng AI sinh câu hỏi tự động. Không tính toán điểm yếu nếu học sinh chưa làm đủ số lượng câu hỏi tối thiểu (tránh dữ liệu bị nhiễu).
+
+---
+
+## 3. Luồng trải nghiệm người dùng (User Flow)
+
+1.  **Học sinh đăng nhập:** Vào trang chủ (Dashboard) của tài khoản học sinh.
+2.  **Kiểm tra điều kiện:** Hệ thống kiểm tra xem học sinh đã hoàn thành tối thiểu 2 bài kiểm tra (hoặc tổng số câu đã làm > 20 câu) hay chưa.
+    *   *Nếu chưa đủ:* Hiển thị thông báo khuyến khích: *"Hoàn thành thêm X bài kiểm tra nữa để mở khóa bảng Phân tích năng lực nhé!"*
+    *   *Nếu đã đủ:* Hiển thị khu vực **"Phân tích năng lực cá nhân"**.
+3.  **Xem thống kê:** Học sinh nhìn thấy 2 cột:
+    *   🔴 **Báo động đỏ (Cần ôn tập gấp):** Top 3 dạng bài sai nhiều nhất.
+    *   🟢 **Thế mạnh của bạn:** Top 3 dạng bài làm tốt nhất.
+4.  **Hành động (Action):** Dưới mỗi Dạng bài yếu, học sinh bấm nút **"Luyện tập dạng này"**. Hệ thống sẽ lọc trong ngân hàng đề (hoặc các đề giáo viên đã giao) những câu thuộc đúng dạng đó để học sinh làm lại.
+
+---
+
+## 4. Đặc tả logic kỹ thuật (Dành cho Backend Dev)
+
+**LƯU Ý QUAN TRỌNG:** KHÔNG thống kê dựa trên "Số lượng câu sai", mà phải dựa trên **"TỶ LỆ % CÂU SAI"**.
+*(Ví dụ: Dạng A làm 10 câu sai 5 -> Lỗi 50%. Dạng B làm 2 câu sai 2 -> Lỗi 100%. Phải cảnh báo Dạng B nặng hơn Dạng A).*
+
+### 4.1. Công thức tính toán
+*   `Tổng số câu đã làm của Dạng X` = Câu đúng + Câu sai (chỉ tính các bài thi đã Nộp bài).
+*   `Tỷ lệ sai của Dạng X (%)` = `(Số câu sai / Tổng số câu đã làm) * 100`.
+
+### 4.2. Bộ lọc chống nhiễu dữ liệu (Filter logic)
+*   **Điều kiện 1:** Chỉ phân tích dữ liệu trong **30 ngày gần nhất** (hoặc 5 đề gần nhất) để phản ánh đúng năng lực *hiện tại* của học sinh (vì học sinh có thể đã tiến bộ so với 6 tháng trước).
+*   **Điều kiện 2:** Chỉ tính toán tỷ lệ % cho những Dạng bài mà học sinh đã làm **tối thiểu 3 câu**. *(Nếu mới làm 1 câu Dạng C mà sai, báo tỷ lệ sai 100% là không khách quan).*
+
+### 4.3. Cấu trúc API (GET /api/student/statistics/weaknesses)
+**Response Backend trả về cho Frontend:**
+```json
+{
+  "status": "success",
+  "data": {
+    "is_eligible": true, // false nếu chưa làm đủ số đề tối thiểu
+    "total_tests_completed": 4,
+    "weaknesses": [
+      {
+        "category": "Dạng đại số tuyến tính",
+        "wrong_count": 8,
+        "total_attempted": 10,
+        "error_rate": 80.0
+      },
+      {
+        "category": "Dạng hình học không gian",
+        "wrong_count": 5,
+        "total_attempted": 8,
+        "error_rate": 62.5
+      }
+    ],
+    "strengths": [
+      {
+        "category": "Dạng xác suất",
+        "wrong_count": 0,
+        "total_attempted": 12,
+        "error_rate": 0.0
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 5. Đặc tả Giao diện (Dành cho UI/UX Designer)
+
+Khu vực Widget trên Dashboard cần thiết kế trực quan, sinh động (Gamification):
+
+*   **Tiêu đề:** "Radar Năng Lực" hoặc "Khám Bệnh Kiến Thức".
+*   **Biểu đồ (Chart):** 
+    *   Nên dùng **Bar chart (Biểu đồ cột ngang)**: Cột màu đỏ thể hiện % sai, phần xám/xanh thể hiện % đúng.
+    *   Hoặc **Radar Chart (Biểu đồ màng nhện)**: Phù hợp nếu có từ 5 dạng bài trở lên, chỗ nào màng nhện lõm vào là điểm yếu.
+*   **Khu vực hiển thị Text:**
+    *   Hiển thị icon cảnh báo (🚨) cạnh Top 1 Dạng bài yếu nhất. Kèm dòng chữ: *"Bạn đang mất nhiều điểm ở dạng [Tên dạng bài]. Tỷ lệ sai: 80%."*
+*   **Nút Call-to-action (CTA):** Nút *"Ôn tập ngay"* phải được đặt nổi bật bên cạnh các cảnh báo điểm yếu.
+
+---
+
+## 6. Xử lý các trường hợp ngoại lệ (Edge Cases - Dành cho QA Test)
+
+1.  **Học sinh là thiên tài (Đúng 100% tất cả các dạng):**
+    *   *Xử lý:* Mảng `weaknesses` rỗng. Giao diện ẩn cột "Báo động đỏ". Hiển thị hộp thoại vinh danh: 🏆 *"Tuyệt vời! Hệ thống không tìm thấy điểm yếu nào của bạn. Hãy tiếp tục giữ vững phong độ nhé!"*
+2.  **Chưa làm đủ điều kiện số câu/số đề:**
+    *   *Xử lý:* API trả về `is_eligible: false`. Hiển thị một khung mờ (blur) đè lên biểu đồ, kèm icon ổ khóa 🔒: *"Làm thêm 2 bài thi nữa để mở khóa tính năng này"*.
+3.  **Giáo viên đổi tên Dạng bài ở đề thi sau (VD: Đề 1 ghi "Hình học", Đề 2 ghi "HÌNH HỌC"):**
+    *   *Xử lý:* Backend ở bước gom nhóm (GROUP BY) phải chuẩn hóa chuỗi text (chuyển hết về chữ thường, bỏ khoảng trắng thừa) để tránh tính nhầm thành 2 dạng khác nhau.
+
+---
+
+## 7. Lộ trình phát triển dự kiến (Timeline)
+
+Tổng thời gian phát triển ước tính: **3 - 4 ngày làm việc**.
+
+*   **Ngày 1:** Backend viết câu lệnh SQL/Query gom nhóm dữ liệu. Tạo API trả về dữ liệu mẫu (Mock data) cho FE.
+*   **Ngày 2:** Frontend tìm và cài đặt thư viện vẽ biểu đồ (VD: *Chart.js*, *Recharts* hoặc *ApexCharts*). Dựng UI trên Dashboard.
+*   **Ngày 3:** Ghép API. Đấu nối sự kiện khi bấm nút "Ôn tập ngay" (chuyển hướng sang trang danh sách bài tập được lọc theo đúng Dạng bài đó).
+*   **Ngày 4:** Test các Edge cases, tối ưu tốc độ truy vấn DB (thêm Index cho các cột `hoc_sinh_id`, `ket_qua`, `dang_bai` để truy vấn không bị chậm khi có hàng triệu bản ghi). Release tính năng.

@@ -1,8 +1,22 @@
 import { LandingPage } from "@/components/home/landing/LandingPage";
-import { getCourses } from "@/actions/course";
+import { Dashboard } from "@/components/home/dashboard/Dashboard";
+import { getDashboardData } from "@/actions/course";
+import { auth } from "@/auth";
 
 export default async function HomePage() {
-  const courses = await getCourses();
+  const session = await auth();
+  const { courses, lastLesson, stats } = await getDashboardData();
 
-  return <LandingPage courses={courses} />;
+  if (!session) {
+    return <LandingPage courses={courses} />;
+  }
+
+  return (
+    <Dashboard 
+      user={session.user} 
+      courses={courses} 
+      lastLesson={lastLesson}
+      stats={stats}
+    />
+  );
 }
