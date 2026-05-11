@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { ClipboardList, Clock, AlertTriangle, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import {
+  ClipboardList,
+  Clock,
+  AlertTriangle,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import TestTakerClient from "./TestTakerClient";
 
 interface QuizEntryCardProps {
   lessonId: string;
@@ -20,35 +24,24 @@ export default function QuizEntryCard({
   duration,
   test,
 }: QuizEntryCardProps) {
-  const [started, setStarted] = useState(false);
-
-  if (started && test) {
-    return (
-      <div className="fixed inset-0 z-[200] bg-white">
-        <TestTakerClient 
-          test={test} 
-          lesson={lesson} 
-          course={course} 
-          backPath={`/watch/${lessonId}`} 
-        />
-      </div>
-    );
-  }
-
-  if (!test && !started) {
+  if (!test) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-            <AlertTriangle className="w-8 h-8 text-slate-400" />
-         </div>
-         <h2 className="text-xl font-black text-slate-900 mb-2">Bài kiểm tra chưa sẵn sàng</h2>
-         <p className="text-slate-500 max-w-xs">Giảng viên hiện chưa thiết lập nội dung câu hỏi cho bài kiểm tra này.</p>
+        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+          <AlertTriangle className="w-8 h-8 text-slate-400" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 mb-2">
+          Bài kiểm tra chưa sẵn sàng
+        </h2>
+        <p className="text-slate-500 max-w-xs">
+          Giảng viên hiện chưa thiết lập nội dung câu hỏi cho bài kiểm tra này.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4">
+    <div className="flex flex-col items-center justify-center py-2 px-4">
       <div className="max-w-lg w-full bg-white rounded-3xl border border-blue-100 shadow-xl p-8 text-center space-y-6">
         {/* Icon */}
         <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
@@ -57,7 +50,9 @@ export default function QuizEntryCard({
 
         {/* Title */}
         <div>
-          <p className="text-xs font-black uppercase tracking-widest text-blue-500 mb-2">Bài kiểm tra</p>
+          <p className="text-xs font-black uppercase tracking-widest text-blue-500 mb-2">
+            Bài kiểm tra
+          </p>
           <h2 className="text-2xl font-black text-gray-900">{lesson.title}</h2>
         </div>
 
@@ -84,11 +79,13 @@ export default function QuizEntryCard({
 
         {/* CTA */}
         <Button
-          onClick={() => setStarted(true)}
+          asChild
           className="w-full h-14 text-base font-black bg-blue-600 hover:bg-blue-700 rounded-2xl gap-2 shadow-lg shadow-blue-200"
         >
-          Bắt đầu làm bài
-          <ChevronRight className="w-5 h-5" />
+          <Link href={`/watch/${lessonId}/quiz`}>
+            Bắt đầu làm bài
+            <ChevronRight className="w-5 h-5" />
+          </Link>
         </Button>
       </div>
     </div>

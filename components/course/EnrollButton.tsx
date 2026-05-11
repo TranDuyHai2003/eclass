@@ -40,7 +40,7 @@ export function EnrollButton({
     try {
       const res = await createEnrollment(courseId);
       if (res.success) {
-        toast.success("Đã gửi yêu cầu ghi danh. Vui lòng chờ Admin duyệt!");
+        toast.success("Tuyệt vời! Yêu cầu của bạn đã được gửi. Vui lòng chờ Admin duyệt nhé!");
         router.refresh();
       } else {
         toast.error(res.error || "Có lỗi xảy ra");
@@ -57,9 +57,10 @@ export function EnrollButton({
     return (
       <Link
         href={firstLessonId ? `/watch/${firstLessonId}` : "#"}
-        className="inline-flex w-full items-center justify-center px-10 py-5 bg-white text-red-600 font-black text-lg rounded-2xl shadow-xl hover:bg-gray-50 transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-wide"
+        className="group relative inline-flex w-full items-center justify-center px-10 py-5 bg-slate-900 text-white font-black text-lg rounded-[2rem] shadow-2xl shadow-slate-200 transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-widest overflow-hidden"
       >
-        Vào học ngay
+        <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <span className="relative z-10">Bắt đầu học ngay</span>
       </Link>
     );
   }
@@ -69,9 +70,10 @@ export function EnrollButton({
     return (
       <button
         disabled
-        className="inline-flex w-full items-center justify-center px-10 py-5 bg-orange-100 text-orange-600 font-black text-lg rounded-2xl shadow-inner opacity-90 cursor-not-allowed uppercase tracking-wide border-2 border-orange-200"
+        className="relative inline-flex w-full items-center justify-center px-10 py-5 bg-slate-100 text-slate-400 font-black text-lg rounded-[2rem] shadow-inner opacity-90 cursor-not-allowed uppercase tracking-widest border-2 border-slate-200"
       >
-        Đang chờ duyệt
+        <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse mr-3" />
+        Đang chờ duyệt...
       </button>
     );
   }
@@ -81,9 +83,10 @@ export function EnrollButton({
     <button
       onClick={handleEnrollClick}
       disabled={isLoading}
-      className="inline-flex w-full items-center justify-center px-10 py-5 bg-white text-red-600 font-black text-lg rounded-2xl shadow-xl hover:bg-gray-50 transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-wide disabled:opacity-70 disabled:cursor-not-allowed"
+      className="group relative inline-flex w-full items-center justify-center px-10 py-5 bg-red-600 text-white font-black text-lg rounded-[2rem] shadow-xl shadow-red-200 transition-all hover:scale-[1.02] active:scale-[0.98] hover:shadow-2xl hover:shadow-red-500/20 uppercase tracking-widest disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
     >
-      {isLoading ? "Đang xử lý..." : "Ghi danh ngay"}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+      <span className="relative z-10">{isLoading ? "Đang xử lý..." : "Ghi danh khóa học"}</span>
     </button>
   );
 }

@@ -8,7 +8,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-10 shadow-xl border border-gray-100">
         <div className="text-center">
           <Link href="/" className="inline-block mb-4">
-             <img src="/logo.png" alt="Toán Thầy Đức" className="h-12 w-auto mx-auto" />
+             <img src="/logo.png" alt="thatdehoctoan" className="h-12 w-auto mx-auto" />
           </Link>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-gray-900">
             Tạo tài khoản mới

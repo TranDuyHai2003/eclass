@@ -32,7 +32,7 @@ export function CourseProgressButton({
       });
 
       if (res.success) {
-        toast.success(isCompleted ? "Đã bỏ đánh dấu hoàn thành" : "Đã hoàn thành bài học!");
+        toast.success(isCompleted ? "Đã gỡ hoàn thành" : "Tuyệt vời! Bạn đã hoàn thành bài học này.");
         
         if (!isCompleted && nextLessonId) {
           router.push(`/watch/${nextLessonId}`);
@@ -49,25 +49,33 @@ export function CourseProgressButton({
     }
   };
 
-  const Icon = isCompleted ? CheckCircle : CheckCircle; // Different icon logic if needed
-
   return (
     <button
       onClick={onClick}
       disabled={isLoading}
       className={`
-        flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-md hover:shadow-lg disabled:opacity-50
+        relative overflow-hidden group flex items-center gap-3 px-6 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 shadow-xl
         ${isCompleted 
-          ? "bg-green-600 hover:bg-green-700 text-white" 
-          : "bg-red-600 hover:bg-red-700 text-white"}
+          ? "bg-slate-900 text-white shadow-slate-200" 
+          : "bg-red-600 text-white shadow-red-200 hover:bg-red-700"}
       `}
     >
+      {/* Glow Effect */}
+      <div className={`absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity bg-white`} />
+      
       {isLoading ? (
         <Loader2 className="w-4 h-4 animate-spin" />
       ) : (
-        <Icon className={`w-4 h-4 ${isCompleted ? "fill-white text-green-600" : ""}`} />
+        <div className={`
+          w-6 h-6 rounded-lg flex items-center justify-center transition-all
+          ${isCompleted ? "bg-emerald-500 text-white" : "bg-white/20 text-white"}
+        `}>
+          <CheckCircle className={`w-3.5 h-3.5 ${isCompleted ? "fill-current" : ""}`} />
+        </div>
       )}
-      {isCompleted ? "Đã hoàn thành" : "Đánh dấu hoàn thành"}
+      <span className="relative z-10">
+        {isCompleted ? "Đã hoàn thành" : "Hoàn thành bài"}
+      </span>
     </button>
   );
 }

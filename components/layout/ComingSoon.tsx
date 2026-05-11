@@ -41,7 +41,7 @@ export function ComingSoon({
       <div className="mt-20 flex gap-12 text-gray-400 font-bold text-xs uppercase tracking-[0.2em]">
         <span className="animate-pulse">Loading...</span>
         <span>Coming Soon 2027</span>
-        <span>Toán Thầy Đức</span>
+        <span>thatdehoctoan</span>
       </div>
     </div>
   );

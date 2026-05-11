@@ -16,8 +16,8 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "Toán Thầy Đức - Luyện Thi Đại Học",
-  description: "Trang web học Toán luyện thi Đại học hàng đầu, đồng hành cùng học sinh vượt qua kỳ thi THPT Quốc gia.",
+  title: "thatdehoctoan - Luyện Thi Đại Học",
+  description: "Trang web học Toán luyện thi Đại học hàng đầu, đồng hành cùng học sinh vượt qua kỳ thi THPT Quốc gia với thatdehoctoan.",
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",

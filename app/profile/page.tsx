@@ -1,5 +1,6 @@
 import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
+import { StudentSidebar } from "@/components/layout/StudentSidebar";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -11,65 +12,72 @@ export default async function ProfilePage() {
   const { user } = session;
 
   return (
-    <div className="page-shell">
-      <main className="container mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-10">
-        <div className="card-surface rounded-3xl p-6 sm:p-8 space-y-8">
-          <header className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center text-white text-3xl font-black">
-              {user.name?.[0]?.toUpperCase() || "U"}
-            </div>
-            <div className="text-center sm:text-left space-y-1">
-              <h1 className="text-2xl sm:text-3xl font-black text-gray-900">
-                {user.name || "Hồ sơ của bạn"}
-              </h1>
-              <p className="text-sm text-gray-500">{user.email}</p>
-              <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-red-600 bg-red-50 px-3 py-1 rounded-full mt-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                {user.role === "ADMIN"
-                  ? "Quản trị viên"
-                  : user.role === "TEACHER"
-                  ? "Giáo viên"
-                  : "Học viên"}
-              </p>
-            </div>
-          </header>
+    <div className="page-shell bg-[#F8FAFC] min-h-screen">
+      <main className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Sidebar - PC Only */}
+          <div className="hidden lg:block w-[280px] shrink-0 sticky top-24 h-fit">
+            <StudentSidebar user={user} />
+          </div>
 
-          <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 text-sm">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                Họ và tên
-              </p>
-              <p className="font-medium text-gray-900">{user.name || "Chưa cập nhật"}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                Email
-              </p>
-              <p className="font-medium text-gray-900 break-all">{user.email}</p>
-            </div>
-          </section>
+          {/* Main Content */}
+          <div className="flex-1">
+            <div className="card-surface bg-white rounded-[2.5rem] p-8 sm:p-10 space-y-10 shadow-sm border border-slate-100">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-red-50 text-red-600 text-[9px] font-black uppercase tracking-widest border border-red-100">
+                  <div className="w-1 h-1 bg-red-600 rounded-full animate-pulse" />
+                  Cá nhân
+                </div>
+                <h1 className="text-3xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter leading-none">
+                   Hồ sơ của bạn
+                </h1>
+                <p className="text-slate-500 font-medium uppercase text-xs tracking-widest">Quản lý thông tin tài khoản và quyền truy cập của bạn.</p>
+              </div>
 
-          <section className="pt-4 border-t border-border/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-            <p className="text-xs text-gray-500">
-              Nếu bạn muốn thay đổi thông tin tài khoản hoặc cấp quyền khoá học, vui lòng liên hệ trực tiếp với giáo viên/admin.
-            </p>
-            <form
-              action={async () => {
-                "use server";
-                await signOut();
-              }}
-            >
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center px-5 py-2.5 rounded-2xl border border-red-200 bg-red-50 text-red-700 text-sm font-semibold hover:bg-red-100 transition-colors"
-              >
-                Đăng xuất
-              </button>
-            </form>
-          </section>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1.5 p-6 bg-slate-50 rounded-3xl border border-slate-100 group hover:bg-white hover:border-red-100 hover:shadow-xl hover:shadow-red-500/5 transition-all duration-300">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-red-600 transition-colors">
+                    Họ và tên
+                  </p>
+                  <p className="text-lg font-black text-slate-900 uppercase tracking-tight">{user.name || "Chưa cập nhật"}</p>
+                </div>
+                <div className="space-y-1.5 p-6 bg-slate-50 rounded-3xl border border-slate-100 group hover:bg-white hover:border-red-100 hover:shadow-xl hover:shadow-red-500/5 transition-all duration-300">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-red-600 transition-colors">
+                    Email đăng ký
+                  </p>
+                  <p className="text-lg font-black text-slate-900 break-all uppercase tracking-tight">{user.email}</p>
+                </div>
+              </div>
+
+              <div className="pt-10 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-6">
+                <div className="flex items-center gap-4 max-w-md">
+                   <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0 border border-amber-100 text-2xl shadow-sm">
+                      💡
+                   </div>
+                   <p className="text-[10px] font-black text-slate-400 leading-relaxed uppercase tracking-wider">
+                    Muốn thay đổi thông tin tài khoản hoặc cấp quyền khoá học? Vui lòng liên hệ trực tiếp với giáo viên.
+                   </p>
+                </div>
+                
+                <form
+                  action={async () => {
+                    "use server";
+                    await signOut();
+                  }}
+                >
+                  <button
+                    type="submit"
+                    className="group relative inline-flex items-center justify-center px-10 py-4 rounded-2xl bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-xl shadow-slate-200 overflow-hidden"
+                  >
+                    <span className="relative z-10">Đăng xuất hệ thống</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </div>
   );
 }
-

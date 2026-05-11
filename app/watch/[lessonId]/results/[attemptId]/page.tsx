@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { PDFViewerClientWrapper } from "@/components/course/PDFViewerClientWrapper";
+import { GradeEssay } from "@/components/teacher/test-builder/GradeEssay";
 
 export default async function TestResultPage({
   params,
@@ -123,7 +124,7 @@ export default async function TestResultPage({
       {/* Main Split Body */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left: PDF View */}
-        <div className="w-1/2 border-r bg-slate-100">
+        <div className="w-1/2 h-full border-r bg-slate-100">
           <PDFViewerClientWrapper url={test.pdfUrl} />
         </div>
 
@@ -194,15 +195,18 @@ export default async function TestResultPage({
                   {section.questions.map((q, qIdx: number) => {
                     const studentAns = answerMap.get(q.id);
                     const isCorrect = studentAns?.isCorrect;
+                    const isPending = q.type === "ESSAY" && isCorrect === null;
 
                     return (
                       <div key={q.id} className="space-y-3">
                         <div
                           className={cn(
                             "flex items-center gap-4 p-4 rounded-[20px] border transition-all",
-                            isCorrect
+                            isCorrect === true
                               ? "bg-emerald-50/50 border-emerald-100"
-                              : "bg-red-50/50 border-red-100",
+                              : isPending
+                                ? "bg-blue-50/50 border-blue-100"
+                                : "bg-red-50/50 border-red-100",
                           )}
                         >
                           <div className="w-8 text-center text-xs font-black text-slate-400">
@@ -212,19 +216,19 @@ export default async function TestResultPage({
                           <div className="flex-1 flex items-center gap-8">
                             <div className="space-y-0.5">
                               <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                                Đáp án của bạn
+                                {q.type === "ESSAY" ? "Hình thức" : "Đáp án của bạn"}
                               </p>
                               <p
                                 className={cn(
                                   "font-black text-lg",
-                                  isCorrect ? "text-emerald-600" : "text-red-600",
+                                  isCorrect === true ? "text-emerald-600" : isPending ? "text-blue-600" : "text-red-600",
                                 )}
                               >
-                                {studentAns?.answerProvided || "Bỏ trống"}
+                                {q.type === "ESSAY" ? "Làm ra giấy" : (studentAns?.answerProvided || "Bỏ trống")}
                               </p>
                             </div>
 
-                            {!isCorrect && (
+                            {isCorrect === false && q.type !== "ESSAY" && (
                               <div className="space-y-0.5">
                                 <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
                                   Đáp án đúng
@@ -237,13 +241,27 @@ export default async function TestResultPage({
                           </div>
 
                           <div className="shrink-0">
-                            {isCorrect ? (
+                            {isCorrect === true ? (
                               <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                            ) : isPending ? (
+                              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                                 <Clock className="w-4 h-4 text-blue-600" />
+                              </div>
                             ) : (
                               <XCircle className="w-6 h-6 text-red-500" />
                             )}
                           </div>
                         </div>
+
+                        {/* Teacher Grading UI */}
+                        {isTeacher && q.type === "ESSAY" && studentAns && (
+                          <GradeEssay 
+                            answerId={studentAns.id}
+                            initialPoints={studentAns.pointsAwarded}
+                            maxPoints={q.points}
+                            isCorrect={studentAns.isCorrect}
+                          />
+                        )}
 
                         {(q.explanation || q.videoUrl || q.audioUrl) && (
                           <div className="ml-12 space-y-3">

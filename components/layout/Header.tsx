@@ -2,149 +2,88 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { NavLinks } from "./NavLinks";
 import { NotificationBell } from "@/components/notification/NotificationBell";
-import { Search, Phone, Menu, Globe, User } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Search, Phone, Globe, User } from "lucide-react";
+import { MobileMenu } from "./MobileMenu";
+
+import { SearchBar } from "./SearchBar";
 
 export default async function Header() {
   const session = await auth();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-white/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-white/80 backdrop-blur-xl transition-all">
       {/* Top Tier: Logo, Search, Hotline, Auth */}
-      <div className="border-b border-border/50">
-        <div className="container mx-auto flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          {/* Mobile Menu Trigger */}
-          <div className="flex md:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <button className="p-2 -ml-2 text-gray-600 hover:text-red-700 transition-colors">
-                  <Menu className="w-6 h-6" />
-                </button>
-              </SheetTrigger>
-              <SheetContent
-                side="left"
-                className="p-0 border-none bg-white w-[200px]"
-              >
-                <SheetHeader className="p-6 border-b bg-gray-50/50">
-                  <SheetTitle className="flex items-center gap-3">
-                    <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
-                    <span className="text-sm font-black text-red-600 uppercase tracking-tighter">
-                      E-Class
-                    </span>
-                  </SheetTitle>
-                </SheetHeader>
-                <div className="py-4 h-[calc(100vh-80px)] overflow-y-auto">
-                  <NavLinks role={session?.user?.role} vertical />
-
-                  {/* Mobile Hotline info in Menu */}
-                  <div className="mt-8 px-6 space-y-4">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                      Hỗ trợ 24/7
-                    </p>
-                    <div className="flex items-center gap-3 text-red-600">
-                      <div className="p-2 bg-red-50 rounded-lg">
-                        <Phone className="w-4 h-4" />
-                      </div>
-                      <span className="text-sm font-black">024 89998668</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-red-600">
-                      <div className="p-2 bg-red-50 rounded-lg">
-                        <Phone className="w-4 h-4" />
-                      </div>
-                      <span className="text-sm font-black">0968668799</span>
-                    </div>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
+      <div className="border-b border-border/40">
+        <div className="container mx-auto flex h-14 sm:h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          {/* Left: Mobile Menu & Logo Group */}
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 md:flex-none">
+            <MobileMenu role={session?.user?.role} />
+            
+            <Link
+              href="/"
+              className="flex items-center gap-2 shrink-0 group"
+            >
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-600 rounded-lg sm:rounded-xl shadow-lg shadow-red-200 flex items-center justify-center transform group-hover:rotate-6 transition-transform duration-500">
+                <img
+                  src="/logo.png"
+                  alt="thatdehoctoan"
+                  className="h-5 sm:h-7 w-auto brightness-0 invert"
+                />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs sm:text-base font-black tracking-tighter text-slate-900 uppercase leading-none">
+                  thatdehoctoan
+                </span>
+                <span className="hidden sm:block text-[8px] font-bold text-red-600 uppercase tracking-widest mt-0.5">Học toán thật dễ</span>
+              </div>
+            </Link>
           </div>
 
-          {/* Logo - Centered on mobile, Left on desktop */}
-          <Link
-            href="/"
-            className="flex items-center gap-3 shrink-0 absolute left-1/2 -translate-x-1/2 md:relative md:left-0 md:translate-x-0"
-          >
-            <img
-              src="/logo.png"
-              alt="Toán Thầy Đức"
-              className="h-8 sm:h-9 md:h-10 w-auto"
-            />
-            <span className="hidden lg:block text-lg font-black tracking-tighter text-gray-900">
-              Toán Thầy Đức
-            </span>
-          </Link>
-
-          {/* Search Bar - Hidden on mobile, Center on desktop */}
-          <div className="hidden md:flex flex-1 max-w-xl lg:max-w-2xl relative mx-8">
-            <input
-              type="text"
-              placeholder="Tìm kiếm khóa học..."
-              className="w-full h-11 pl-5 pr-12 rounded-2xl bg-white/70 border border-border/70 focus:border-red-500 focus:bg-white focus:outline-none transition-all text-sm font-medium shadow-sm"
-            />
-            <button className="absolute right-1.5 top-1.5 w-8 h-8 bg-red-600 rounded-xl flex items-center justify-center text-white hover:bg-red-700 transition-colors shadow-md shadow-black/10">
-              <Search className="w-4 h-4" />
-            </button>
+          {/* Center: Search Bar - Hidden on mobile, Center on desktop */}
+          <div className="hidden md:flex flex-1 justify-center max-w-xl">
+            <SearchBar />
           </div>
 
-          {/* Icons/Auth Bar - Right */}
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            {/* Mobile Search Icon */}
-            <button className="md:hidden p-2 text-gray-600 hover:text-red-700">
-              <Search className="w-5 h-5" />
-            </button>
-
-            {/* Desktop Hotline - Hidden on mobile/tablet */}
-            <div className="hidden lg:flex items-center gap-6 mr-4">
-              <div className="flex items-center gap-2 text-red-600 group cursor-pointer">
-                <div className="p-2 bg-red-50 rounded-xl group-hover:bg-red-600 group-hover:text-white transition-colors">
-                  <Phone className="w-3.5 h-3.5 fill-current" />
+          {/* Right: Icons/Auth Bar */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-1 md:flex-none justify-end">
+            {/* Desktop Hotline Group */}
+            <div className="hidden xl:flex items-center gap-4 mr-2 border-r border-slate-100 pr-4">
+              <a href="tel:02489998668" className="flex items-center gap-2.5 text-slate-600 group hover:text-red-600 transition-colors">
+                <div className="p-1.5 bg-slate-50 rounded-lg group-hover:bg-red-600 group-hover:text-white transition-all duration-300">
+                  <Phone className="w-3 h-3" />
                 </div>
-                <span className="text-sm font-black tracking-tight">
-                  024 89998668
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-red-600 group cursor-pointer">
-                <div className="p-2 bg-red-50 rounded-xl group-hover:bg-red-600 group-hover:text-white transition-colors">
-                  <Phone className="w-3.5 h-3.5 fill-current" />
+                <div className="flex flex-col">
+                   <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none">Hotline</span>
+                   <span className="text-xs font-black tracking-tight mt-0.5">024 8999 8668</span>
                 </div>
-                <span className="text-sm font-black tracking-tight">
-                  0968668799
-                </span>
-              </div>
+              </a>
             </div>
 
             {session ? (
-              <div className="flex items-center gap-2 sm:gap-4">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <NotificationBell />
                 <Link
                   href="/profile"
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/70 text-gray-900 flex items-center justify-center hover:bg-white transition-colors border border-border/70 shadow-sm overflow-hidden"
+                  className="group relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-white text-gray-900 flex items-center justify-center hover:bg-slate-50 transition-all border border-slate-100 shadow-sm overflow-hidden"
                 >
                   {session.user.image ? (
                     <img
                       src={session.user.image}
                       alt="Avatar"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform"
                     />
                   ) : (
-                    <span className="font-black text-xs sm:text-sm">
+                    <div className="w-full h-full bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center text-white font-black text-xs">
                       {session.user.name?.[0].toUpperCase()}
-                    </span>
+                    </div>
                   )}
                 </Link>
               </div>
             ) : (
               <Link
                 href="/login"
-                className="h-9 sm:h-10 px-4 sm:px-6 inline-flex items-center rounded-2xl border border-red-100 bg-red-50 text-[11px] sm:text-xs font-black text-red-700 hover:bg-red-600 hover:text-white transition-all uppercase tracking-widest shadow-sm"
+                className="h-9 sm:h-10 px-4 sm:px-6 inline-flex items-center rounded-xl bg-slate-900 text-[10px] sm:text-xs font-black text-white hover:bg-red-600 transition-all uppercase tracking-widest shadow-lg shadow-slate-200"
               >
-                <User className="w-3.5 h-3.5 mr-2 hidden sm:block" />
                 Đăng nhập
               </Link>
             )}
@@ -152,8 +91,8 @@ export default async function Header() {
         </div>
       </div>
 
-      {/* Bottom Tier: Desktop Main Nav - Hidden on mobile */}
-      <div className="hidden md:block bg-gradient-to-r from-red-700 to-red-600 text-white overflow-x-auto whitespace-nowrap">
+      {/* Bottom Tier: Desktop Main Nav */}
+      <div className="hidden md:block bg-white overflow-x-auto whitespace-nowrap border-b border-border/40">
         <div className="container mx-auto flex h-11 items-center justify-center px-4">
           <NavLinks role={session?.user?.role} />
         </div>

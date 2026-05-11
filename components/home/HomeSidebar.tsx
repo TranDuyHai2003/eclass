@@ -1,50 +1,76 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { 
   BookOpen, 
-  Video, 
-  Target, 
-  Library, 
-  Newspaper, 
-  Users,
-  ChevronRight
+  ChevronRight,
+  LayoutDashboard,
+  User,
+  Home as HomeIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const menuItems = [
-  { icon: BookOpen, label: "Khóa Học", href: "/courses", color: "text-red-600" },
-  { icon: Video, label: "Phòng Live", href: "/live", color: "text-red-600" },
-  { icon: Target, label: "Thi thực chiến", href: "/practice", color: "text-red-600" },
-  { icon: Library, label: "Gian hàng sách", href: "/books", color: "text-orange-500" },
-  { icon: Newspaper, label: "Tin tức", href: "/news", color: "text-red-600" },
-  { icon: Users, label: "Cộng đồng", href: "/community", color: "text-red-600" },
-];
+import { useSession } from "next-auth/react";
 
 export function HomeSidebar() {
+  const pathname = usePathname();
+  const { data: session } = useSession();
+  const role = session?.user?.role;
+
+  const isAdmin = role === "ADMIN";
+  const isTeacher = role === "TEACHER" || isAdmin;
+
+  const dashboardHref = isAdmin ? "/admin/analytics" : "/teacher/courses";
+
+  const menuItems = [
+    { icon: HomeIcon, label: "Trang chủ", href: "/", exact: true },
+    ...(isTeacher ? [{ icon: LayoutDashboard, label: "Dashboard", href: dashboardHref }] : []),
+    { icon: BookOpen, label: "Khóa Học", href: "/courses" },
+    { icon: User, label: "Trang cá nhân", href: "/profile" },
+  ];
+
   return (
-    <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <nav className="flex flex-col">
-        {menuItems.map((item, index) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            className={cn(
-              "flex items-center justify-between p-4 transition-colors hover:bg-red-50 group",
-              index !== menuItems.length - 1 && "border-b border-gray-50"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <div className={cn("p-1", item.color)}>
-                <item.icon className="w-5 h-5" />
+    <div className="w-full bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden p-2">
+      <nav className="flex flex-col gap-1">
+        {menuItems.map((item) => {
+          const isActive = item.exact 
+            ? pathname === item.href 
+            : (item.href !== "/" && pathname.startsWith(item.href));
+
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={cn(
+                "flex items-center justify-between p-3.5 transition-all rounded-2xl group",
+                isActive 
+                  ? "bg-red-50 text-red-600 shadow-sm shadow-red-100/50" 
+                  : "hover:bg-slate-50 text-slate-500 hover:text-slate-900"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "p-1.5 rounded-xl transition-colors shadow-sm border",
+                  isActive 
+                    ? "bg-white border-red-100 text-red-600" 
+                    : "bg-white border-slate-100 text-slate-400 group-hover:text-slate-900 group-hover:border-slate-200"
+                )}>
+                  <item.icon className="w-4 h-4" />
+                </div>
+                <span className={cn(
+                  "text-[13px] font-black uppercase tracking-tight transition-colors",
+                  isActive ? "text-red-600" : "text-slate-700 group-hover:text-slate-900"
+                )}>
+                  {item.label}
+                </span>
               </div>
-              <span className="text-sm font-bold text-gray-700 group-hover:text-red-600">
-                {item.label}
-              </span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-red-400" />
-          </Link>
-        ))}
+              <ChevronRight className={cn(
+                "w-3.5 h-3.5 transition-all",
+                isActive ? "text-red-600 translate-x-0" : "text-slate-300 group-hover:text-red-600 group-hover:translate-x-0.5"
+              )} />
+            </Link>
+          );
+        })}
       </nav>
     </div>
   );

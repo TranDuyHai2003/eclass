@@ -48,7 +48,11 @@ export default async function TestBuilderPage({
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-white">
+    <div className="h-screen flex flex-col overflow-hidden bg-white relative z-[60]">
+      {/* Hide Global Header on Test Builder Page */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        header { display: none !important; }
+      `}} />
       <TestBuilderClient 
         lesson={lesson} 
         initialTest={lesson.test} 

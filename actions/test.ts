@@ -297,7 +297,88 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
         completedAt: new Date(),
       }
     });
+
+    // Auto-mark lesson as completed if this is a lesson-level quiz
+    if (attempt.test.lessonId) {
+      await tx.progress.upsert({
+        where: {
+          userId_lessonId: {
+            userId: session.user.id!,
+            lessonId: attempt.test.lessonId,
+          },
+        },
+        update: { isCompleted: true },
+        create: {
+          userId: session.user.id!,
+          lessonId: attempt.test.lessonId,
+          isCompleted: true,
+        },
+      });
+    }
   });
 
+  if (attempt.test.lessonId) {
+    revalidatePath(`/watch/${attempt.test.lessonId}`);
+  }
+
   return { success: true, score: totalScore };
+}
+
+export async function gradeStudentAnswer(
+  answerId: string,
+  points: number,
+  isCorrect: boolean,
+) {
+  const session = await requireTeacherOrAdmin();
+
+  const answer = await prisma.studentAnswer.findUnique({
+    where: { id: answerId },
+    include: {
+      attempt: {
+        include: {
+          test: {
+            include: {
+              lesson: { include: { chapter: { include: { course: true } } } },
+              course: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!answer) throw new Error("Answer not found");
+
+  const ownerId =
+    answer.attempt.test.lesson?.chapter?.course?.userId ??
+    answer.attempt.test.course?.userId;
+  if (ownerId !== session.user.id && session.user.role !== "ADMIN") {
+    throw new Error("Unauthorized access");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Update the answer
+    await tx.studentAnswer.update({
+      where: { id: answerId },
+      data: {
+        pointsAwarded: points,
+        isCorrect,
+      },
+    });
+
+    // 2. Recalculate total score for the attempt
+    const allAnswers = await tx.studentAnswer.findMany({
+      where: { attemptId: answer.attemptId },
+    });
+
+    const totalScore = allAnswers.reduce((acc, curr) => acc + curr.pointsAwarded, 0);
+
+    await tx.studentAttempt.update({
+      where: { id: answer.attemptId },
+      data: { score: totalScore },
+    });
+  });
+
+  revalidatePath(`/watch/${answer.attempt.test.lessonId}/results/${answer.attemptId}`);
+  return { success: true };
 }

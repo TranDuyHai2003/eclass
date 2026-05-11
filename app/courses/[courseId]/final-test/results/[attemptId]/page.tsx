@@ -40,9 +40,11 @@ export default async function CourseFinalTestResultPage({
     redirect("/");
   }
 
+  const isTeacher = session.user.role === "ADMIN" || session.user.role === "TEACHER";
+
   return (
     <div className="h-[calc(100vh-64px)] overflow-hidden flex flex-col bg-gray-50">
-      <TestResultClient attempt={attempt} />
+      <TestResultClient attempt={attempt} isTeacher={isTeacher} />
     </div>
   );
 }
