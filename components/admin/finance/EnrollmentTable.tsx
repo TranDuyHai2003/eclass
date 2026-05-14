@@ -66,56 +66,65 @@ export function EnrollmentTable({ initialEnrollments }: EnrollmentProps) {
       <table className="w-full text-sm text-left align-middle">
         <thead className="text-xs text-gray-500 uppercase bg-gray-50">
           <tr>
-            <th className="px-6 py-4 font-bold">Học viên</th>
-            <th className="px-6 py-4 font-bold">Khóa học</th>
-            <th className="px-6 py-4 font-bold">Ngày yêu cầu</th>
-            <th className="px-6 py-4 font-bold text-right">Thao tác</th>
+            <th className="px-4 sm:px-6 py-4 font-bold">Học viên</th>
+            <th className="px-4 sm:px-6 py-4 font-bold hidden sm:table-cell">Khóa học</th>
+            <th className="px-4 sm:px-6 py-4 font-bold hidden sm:table-cell">Ngày yêu cầu</th>
+            <th className="px-4 sm:px-6 py-4 font-bold text-right">Thao tác</th>
           </tr>
         </thead>
         <tbody className="bg-white">
           {enrollments.map((enrollment) => (
             <tr key={enrollment.id} className="border-b last:border-0 hover:bg-gray-50/50 transition-colors">
-              <td className="px-6 py-4">
+              <td className="px-4 sm:px-6 py-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center shrink-0">
                     {enrollment.user.image ? (
                       <Image src={enrollment.user.image} alt={enrollment.user.name || "User"} width={40} height={40} className="w-full h-full object-cover" />
                     ) : (
-                      <User className="w-5 h-5 text-gray-400" />
+                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-bold text-gray-900 truncate">{enrollment.user.name || "Học viên"}</p>
+                    <p className="font-bold text-gray-900 truncate text-sm sm:text-base">{enrollment.user.name || "Học viên"}</p>
                     <p className="text-xs text-gray-500 truncate">{enrollment.user.email}</p>
+                    <p className="text-xs text-gray-400 font-medium truncate sm:hidden mt-0.5">
+                      {enrollment.course.title}
+                    </p>
+                    <p className="text-[10px] text-gray-400 sm:hidden">
+                      {new Date(enrollment.createdAt).toLocaleDateString("vi-VN", {
+                         hour: "2-digit", minute: "2-digit",
+                         day: "2-digit", month: "2-digit", year: "numeric"
+                      })}
+                    </p>
                   </div>
                 </div>
               </td>
-              <td className="px-6 py-4 font-bold text-gray-900">
-                {enrollment.course.title}
+              <td className="px-4 sm:px-6 py-4 font-bold text-gray-900 hidden sm:table-cell">
+                <span className="line-clamp-2">{enrollment.course.title}</span>
               </td>
-              <td className="px-6 py-4 text-gray-500 font-medium">
+              <td className="px-4 sm:px-6 py-4 text-gray-500 font-medium hidden sm:table-cell whitespace-nowrap">
                 {new Date(enrollment.createdAt).toLocaleDateString("vi-VN", {
                    hour: "2-digit", minute: "2-digit",
                    day: "2-digit", month: "2-digit", year: "numeric"
                 })}
               </td>
-              <td className="px-6 py-4 text-right">
-                <div className="flex justify-end gap-2">
+              <td className="px-4 sm:px-6 py-4 text-right">
+                <div className="flex justify-end gap-1.5 sm:gap-2">
                   <button
                     onClick={() => handleApprove(enrollment.id)}
                     disabled={loadingId === enrollment.id}
-                    className="flex items-center justify-center w-10 h-10 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 hover:text-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-green-200 shadow-sm"
+                    className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 hover:text-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-green-200 shadow-sm"
                     title="Duyệt yêu cầu"
                   >
-                    <Check className="w-5 h-5" />
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                   <button
                     onClick={() => handleReject(enrollment.id)}
                     disabled={loadingId === enrollment.id}
-                    className="flex items-center justify-center w-10 h-10 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 hover:text-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-red-200 shadow-sm"
+                    className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 hover:text-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-red-200 shadow-sm"
                     title="Từ chối yêu cầu"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                 </div>
               </td>

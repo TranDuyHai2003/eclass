@@ -53,14 +53,14 @@ export default function AnalyticsPage() {
     if (!data) return <div className="p-8 text-center text-gray-500">Không có dữ liệu.</div>
 
     return (
-        <div className="space-y-8">
-            <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Thống kê hệ thống</h1>
+        <div className="space-y-6 sm:space-y-8">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-gray-900 uppercase tracking-tight">Thống kê hệ thống</h1>
 
             {/* Overall Stats */}
-            <div className="grid gap-6 md:grid-cols-3">
-                <Card className="card-surface rounded-[2rem] border-border/50 shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Tổng người dùng</CardTitle>
+            <div className="grid gap-3 sm:gap-6 md:grid-cols-3">
+                <Card className="card-surface rounded-2xl sm:rounded-[2rem] border-border/50 shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
+                        <CardTitle className="text-xs sm:text-sm font-medium">Tổng người dùng</CardTitle>
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -76,13 +76,13 @@ export default function AnalyticsPage() {
                             <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
                         </svg>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{data.overall.totalUsers}</div>
+                    <CardContent className="px-4 sm:px-6">
+                        <div className="text-xl sm:text-2xl font-bold">{data.overall.totalUsers}</div>
                     </CardContent>
                 </Card>
-                <Card className="card-surface rounded-3xl border-border/60">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Tổng khóa học</CardTitle>
+                <Card className="card-surface rounded-2xl sm:rounded-3xl border-border/60">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
+                        <CardTitle className="text-xs sm:text-sm font-medium">Tổng khóa học</CardTitle>
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -97,13 +97,13 @@ export default function AnalyticsPage() {
                             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                         </svg>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{data.overall.totalCourses}</div>
+                    <CardContent className="px-4 sm:px-6">
+                        <div className="text-xl sm:text-2xl font-bold">{data.overall.totalCourses}</div>
                     </CardContent>
                 </Card>
-                <Card className="card-surface rounded-3xl border-border/60">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Tổng lượt học</CardTitle>
+                <Card className="card-surface rounded-2xl sm:rounded-3xl border-border/60">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
+                        <CardTitle className="text-xs sm:text-sm font-medium">Tổng lượt học</CardTitle>
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -117,8 +117,8 @@ export default function AnalyticsPage() {
                             <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                         </svg>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{data.overall.totalViews}</div>
+                    <CardContent className="px-4 sm:px-6">
+                        <div className="text-xl sm:text-2xl font-bold">{data.overall.totalViews}</div>
                         <p className="text-xs text-muted-foreground">
                              Số bài học đã được xem
                         </p>
@@ -126,13 +126,13 @@ export default function AnalyticsPage() {
                 </Card>
             </div>
 
-            <div className="grid gap-8 md:grid-cols-2">
+            <div className="grid gap-4 sm:gap-8 md:grid-cols-2">
                 {/* Top Lessons */}
-                <Card className="col-span-1 card-surface rounded-3xl border-border/60">
-                    <CardHeader>
-                        <CardTitle>Bài học xem nhiều nhất</CardTitle>
+                <Card className="col-span-1 card-surface rounded-2xl sm:rounded-3xl border-border/60">
+                    <CardHeader className="px-4 sm:px-6">
+                        <CardTitle className="text-sm sm:text-base">Bài học xem nhiều nhất</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="px-4 sm:px-6 overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -165,11 +165,11 @@ export default function AnalyticsPage() {
                 </Card>
 
                 {/* Top Users */}
-                <Card className="col-span-1 card-surface rounded-3xl border-border/60">
-                    <CardHeader>
-                        <CardTitle>Học viên chăm chỉ nhất</CardTitle>
+                <Card className="col-span-1 card-surface rounded-2xl sm:rounded-3xl border-border/60">
+                    <CardHeader className="px-4 sm:px-6">
+                        <CardTitle className="text-sm sm:text-base">Học viên chăm chỉ nhất</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="px-4 sm:px-6 overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>

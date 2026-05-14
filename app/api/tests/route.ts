@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
     typeof body?.settings?.password === "string"
       ? body.settings.password.trim()
       : null;
+  const dueDate = body.dueDate ? new Date(body.dueDate) : null;
 
   if (!title) {
     return new NextResponse("Missing title", { status: 400 });
@@ -104,6 +105,7 @@ export async function POST(req: NextRequest) {
       duration,
       showAnswers: showResultAfterSubmit,
       userId: session.user.id,
+      dueDate,
       ...(questionsData && questionsData.length > 0
         ? {
             sections: {
@@ -114,10 +116,10 @@ export async function POST(req: NextRequest) {
                   questions: {
                     create: questionsData.map((q) => ({
                       position: q.order - 1,
+                      category: q.question_category || null,
                       type: q.type || "MULTIPLE_CHOICE",
                       correctAnswer: q.correctAnswer || null,
                       points: 1.0,
-                      explanation: q.question_category || null,
                     })),
                   },
                 },

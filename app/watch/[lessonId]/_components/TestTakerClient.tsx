@@ -233,6 +233,13 @@ export default function TestTakerClient({
                     const val = answers[q.id] || "";
                     const isFlagged = flags[q.id] || false;
                     const qNumber = qIdx + 1;
+                    const rawType = q?.type ?? "MULTIPLE_CHOICE";
+                    const normalizedType = typeof rawType === "string"
+                      ? rawType.trim().toUpperCase()
+                      : "MULTIPLE_CHOICE";
+                    const isChoice = normalizedType === "MULTIPLE_CHOICE" || normalizedType === "MCQ" || normalizedType === "MULTIPLE_CHOICE_SINGLE";
+                    const isShort = normalizedType === "SHORT_ANSWER";
+                    const isEssay = normalizedType === "ESSAY";
 
                     return (
                       <div
@@ -258,12 +265,12 @@ export default function TestTakerClient({
                         </div>
 
                         <div className="flex-1">
-                          {q.type === "MULTIPLE_CHOICE" && (
+                          {isChoice && (
                             <div className="flex gap-1.5">
                               {["A", "B", "C", "D"].map((opt) => (
                                 <button
                                   key={opt}
-                                  onClick={() => handleSelectAnswer(q.id, opt)}
+                                   onClick={() => handleSelectAnswer(q.id, opt)}
                                   className={cn(
                                     "w-8 h-8 rounded-lg border text-xs font-black transition-all",
                                     val === opt
@@ -277,7 +284,7 @@ export default function TestTakerClient({
                             </div>
                           )}
 
-                          {q.type === "SHORT_ANSWER" && (
+                          {isShort && (
                             <Input
                               value={val}
                               onChange={(e) =>
@@ -288,10 +295,16 @@ export default function TestTakerClient({
                             />
                           )}
 
-                          {q.type === "ESSAY" && (
+                          {isEssay && (
                             <div className="text-xs text-orange-500 font-bold flex items-center gap-1.5 py-2">
                               <AlertTriangle className="w-3.5 h-3.5" />
                               Tự luận: Làm ra giấy
+                            </div>
+                          )}
+
+                          {!isChoice && !isShort && !isEssay && (
+                            <div className="text-xs text-slate-500 font-bold py-2">
+                              Không xác định loại câu hỏi
                             </div>
                           )}
                         </div>

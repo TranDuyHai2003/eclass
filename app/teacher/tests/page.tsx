@@ -19,6 +19,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { DeleteTestButton } from "./_components/DeleteTestButton";
 
 export default async function TeacherTestsPage() {
   const session = await auth();
@@ -158,20 +159,22 @@ export default async function TeacherTestsPage() {
           </div>
         </div>
 
-        <div className="p-8 grid gap-6 lg:grid-cols-[2.2fr_1fr]">
-          <div className="grid gap-4">
+        <div className="p-8 flex justify-center items-center">
+          {/* <div className="grid gap-4">
             {testBank.map((test) => (
-              <Link
+              <div
                 key={test.id}
-                href={`/teacher/tests/bank/${test.id}`}
                 className="group rounded-[28px] border border-slate-100 bg-white p-6 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/5"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">
-                      <h3 className="font-black text-slate-900 text-lg group-hover:text-blue-600 transition-colors">
+                      <Link
+                        href={`/teacher/tests/bank/${test.id}`}
+                        className="font-black text-slate-900 text-lg group-hover:text-blue-600 transition-colors"
+                      >
                         {test.title}
-                      </h3>
+                      </Link>
                       <Badge
                         className={cn(
                           "rounded-full text-[10px] font-black uppercase tracking-widest",
@@ -188,30 +191,41 @@ export default async function TeacherTestsPage() {
                     </p>
                     <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
                       <span className="flex items-center gap-2">
-                        <ClipboardList className="w-4 h-4" /> {test.questions}{" "}
-                        câu
+                        <ClipboardList className="w-4 h-4" /> {test.questions} câu
                       </span>
                       <span className="flex items-center gap-2">
-                        <CalendarClock className="w-4 h-4" /> {test.duration}{" "}
-                        phút
+                        <CalendarClock className="w-4 h-4" /> {test.duration} phút
                       </span>
                       <span className="flex items-center gap-2">
                         <Link2 className="w-4 h-4" /> {test.usageCount} khóa học
                       </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      Cập nhật
-                    </p>
-                    <p className="text-sm font-bold text-slate-700">
-                      {test.lastUpdated}
-                    </p>
+                  <div className="flex items-center gap-2 md:flex-col md:items-end">
+                    <div className="text-right">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        Cập nhật
+                      </p>
+                      <p className="text-sm font-bold text-slate-700">
+                        {test.lastUpdated}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-xl font-bold border-slate-200"
+                        asChild
+                      >
+                        <Link href={`/teacher/tests/bank/${test.id}`}>Chỉnh sửa</Link>
+                      </Button>
+                      <DeleteTestButton testId={test.id} />
+                    </div>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
-          </div>
+          </div> */}
 
           <div className="rounded-[28px] border border-slate-100 bg-slate-50/60 p-6 space-y-4">
             <div className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">
@@ -286,6 +300,7 @@ export default async function TeacherTestsPage() {
               .flatMap((c) =>
                 c.lessons.map((l) => ({
                   id: l.id,
+                  testId: l.test?.id,
                   title: l.title,
                   type: "LESSON",
                   test: l.test,
@@ -297,6 +312,7 @@ export default async function TeacherTestsPage() {
             const finalTest = course.finalTest
               ? {
                   id: course.id,
+                  testId: course.finalTest.id,
                   title: "Bài kiểm tra cuối khóa",
                   type: "FINAL",
                   test: course.finalTest,
@@ -427,6 +443,9 @@ export default async function TeacherTestsPage() {
                                   kê
                                 </Link>
                               </Button>
+                              {t.testId && (
+                                <DeleteTestButton testId={t.testId} />
+                              )}
                             </div>
                           </div>
                         </div>

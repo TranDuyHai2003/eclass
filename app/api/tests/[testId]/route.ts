@@ -111,6 +111,7 @@ export async function PATCH(
     typeof body.accessCode === "string" ? body.accessCode.trim() : undefined;
   const showAnswers =
     typeof body.showAnswers === "boolean" ? body.showAnswers : undefined;
+  const dueDate = body.dueDate ? new Date(body.dueDate) : undefined;
 
   if (duration !== undefined && (!Number.isFinite(duration) || duration <= 0)) {
     return new NextResponse("Invalid duration", { status: 400 });
@@ -134,6 +135,7 @@ export async function PATCH(
       passScore,
       accessCode,
       showAnswers,
+      dueDate,
     },
   });
 

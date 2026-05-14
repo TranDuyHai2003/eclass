@@ -41,8 +41,7 @@ export async function GET() {
 
   attempts.forEach((attempt) => {
     attempt.answers.forEach((ans) => {
-      // @ts-ignore - 'category' doesn't exist on Question yet, using title/placeholder
-      const category = (ans.question as any).category || "Chưa phân loại";
+      const category = ans.question.category || "Chưa phân loại";
       // Normalize category name
       const normalized = category.trim().toLowerCase();
       

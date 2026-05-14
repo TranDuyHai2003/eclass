@@ -50,8 +50,6 @@ export default async function QuizPage({
   const isOwner = lesson.chapter.course.userId === session.user.id;
   
   if (!isAdmin && !isOwner) {
-    // Quizzes are generally not free unless the lesson is marked free, 
-    // but even then, it's safer to require enrollment for the full quiz experience.
     const enrollment = await prisma.enrollment.findUnique({
       where: {
         userId_courseId: {
@@ -61,9 +59,10 @@ export default async function QuizPage({
       },
     });
 
-    if (!enrollment || enrollment.status !== "ACTIVE") {
-      return redirect(`/courses/${courseId}`);
-    }
+    // TEMPORARILY DISABLED: Match WatchPage behavior to allow all students
+    // if (!enrollment || enrollment.status !== "ACTIVE") {
+    //   return redirect(`/courses/${courseId}`);
+    // }
   }
 
   const course = lesson.chapter.course;

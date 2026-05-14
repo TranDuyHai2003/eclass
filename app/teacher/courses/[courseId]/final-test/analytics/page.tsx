@@ -7,19 +7,19 @@ import {
   Target,
   Award,
   BarChart3,
-  Calendar,
   ChevronRight,
-  Trophy,
-  CheckCircle2,
-  XCircle,
   Clock,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { PDFViewerClientWrapper } from "@/components/course/PDFViewerClientWrapper";
+import ScoreboardTable, {
+  type ScoreboardAttempt,
+} from "@/components/teacher/tests/ScoreboardTable";
 
 export default async function CourseFinalTestAnalyticsPage({
   params,
@@ -66,13 +66,13 @@ export default async function CourseFinalTestAnalyticsPage({
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 bg-white rounded-3xl shadow-sm flex items-center justify-center mb-6">
-          <Trophy className="w-10 h-10 text-slate-300" />
+          <BarChart3 className="w-10 h-10 text-slate-300" />
         </div>
         <h1 className="text-2xl font-black text-slate-900 mb-2">
-          Chưa có bài kiểm tra cuối khóa
+          Chua co bai kiem tra cuoi khoa
         </h1>
         <p className="text-slate-500 max-w-sm mb-8">
-          Khóa học này chưa có bài kiểm tra cuối khóa được tạo.
+          Khoa hoc nay chua co bai kiem tra cuoi khoa duoc tao.
         </p>
         <Button
           asChild
@@ -80,7 +80,7 @@ export default async function CourseFinalTestAnalyticsPage({
           className="rounded-2xl px-8 font-bold"
         >
           <Link href={`/teacher/courses/${courseId}/final-test`}>
-             Quay lại thiết lập
+             Quay lai thiet lap
           </Link>
         </Button>
       </div>
@@ -95,33 +95,9 @@ export default async function CourseFinalTestAnalyticsPage({
   const courseTitle = course.title;
 
   // 2. Process Analytics Data
-  const finishedAttempts = test.attempts.filter((a) => a.completedAt !== null);
+  const allAttempts = test.attempts;
+  const finishedAttempts = allAttempts.filter((a) => a.completedAt !== null);
   const totalAttempts = finishedAttempts.length;
-
-  if (totalAttempts === 0) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-20 h-20 bg-white rounded-3xl shadow-sm flex items-center justify-center mb-6">
-          <BarChart3 className="w-10 h-10 text-slate-300" />
-        </div>
-        <h1 className="text-2xl font-black text-slate-900 mb-2">
-          Chưa có dữ liệu thống kê
-        </h1>
-        <p className="text-slate-500 max-w-sm mb-8">
-          Hiện chưa có học sinh nào hoàn thành bài kiểm tra cuối khóa này.
-        </p>
-        <Button
-          asChild
-          variant="outline"
-          className="rounded-2xl px-8 font-bold"
-        >
-          <Link href={`/teacher/courses/${courseId}/final-test`}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Quay lại
-          </Link>
-        </Button>
-      </div>
-    );
-  }
 
   const averageScore =
     finishedAttempts.reduce((acc, curr) => acc + (curr.score || 0), 0) /
@@ -138,6 +114,7 @@ export default async function CourseFinalTestAnalyticsPage({
     else if (score < 8) distribution[3]++;
     else distribution[4]++;
   });
+  const maxDistribution = Math.max(1, ...distribution);
 
   // Question Analysis
   const questionStats = new Map<string, { correct: number; total: number }>();
@@ -157,281 +134,429 @@ export default async function CourseFinalTestAnalyticsPage({
     });
   });
 
+  const scoreboardAttempts: ScoreboardAttempt[] = allAttempts.map((a) => ({
+    id: a.id,
+    user: {
+      name: a.user.name,
+      email: a.user.email,
+      image: a.user.image,
+    },
+    score: a.score ?? null,
+    startedAt: a.startedAt.toISOString(),
+    completedAt: a.completedAt ? a.completedAt.toISOString() : null,
+    answersCount: a.answers.length,
+  }));
+
   return (
-    <div className="min-h-screen bg-[#F8F9FB] pb-20">
-      {/* Analytics Header */}
+    <Tabs defaultValue="scores" className="min-h-screen bg-[#F8F9FB] pb-20 flex flex-col">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="container mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild className="rounded-2xl">
+          <div className="flex items-center gap-4 min-w-0">
+            <Button variant="ghost" size="icon" asChild className="rounded-2xl shrink-0">
               <Link href={`/teacher/courses/${courseId}/final-test`}>
                 <ArrowLeft className="w-5 h-5 text-slate-600" />
               </Link>
             </Button>
             <div className="min-w-0">
-              <h1 className="text-xl font-black text-slate-900 truncate max-w-[400px]">
-                Thống kê: Bài kiểm tra cuối khóa
+              <h1 className="text-xl font-black text-slate-900 truncate max-w-[300px] lg:max-w-[400px]">
+                Bai kiem tra cuoi khoa
               </h1>
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest truncate max-w-[300px]">
                 {courseTitle}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="px-4 py-2 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-3">
-              <Calendar className="w-4 h-4 text-slate-400" />
-              <span className="text-xs font-bold text-slate-600">
-                Cập nhật: {format(new Date(), "dd/MM/yyyy", { locale: vi })}
-              </span>
-            </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <TabsList className="bg-slate-100/80 p-1 rounded-xl h-auto flex flex-wrap gap-0.5">
+              <TabsTrigger
+                value="scores"
+                className="rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white"
+              >
+                Bang diem
+              </TabsTrigger>
+              <TabsTrigger
+                value="overview"
+                className="rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white"
+              >
+                Tong quan
+              </TabsTrigger>
+              <TabsTrigger
+                value="questions"
+                className="rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white"
+              >
+                Thong so cau
+              </TabsTrigger>
+              <TabsTrigger
+                value="exam"
+                className="rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white"
+              >
+                De bai
+              </TabsTrigger>
+              <TabsTrigger
+                value="solutions"
+                className="rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white"
+              >
+                Loi giai
+              </TabsTrigger>
+            </TabsList>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 md:px-6 py-10 space-y-8">
-        {/* Overview Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            icon={Users}
-            label="Tổng số lượt nộp"
-            value={totalAttempts.toString()}
-            color="bg-blue-500"
+      <main className="container mx-auto px-4 md:px-6 py-8 space-y-8 flex-1">
+        <TabsContent value="scores" className="mt-0">
+          <ScoreboardTable
+            attempts={scoreboardAttempts}
+            resultsBasePath={`/courses/${courseId}/final-test/results`}
           />
-          <StatCard
-            icon={Target}
-            label="Điểm trung bình"
-            value={averageScore.toFixed(1)}
-            color="bg-purple-500"
-          />
-          <StatCard
-            icon={Award}
-            label="Tỉ lệ Giỏi (≥8.0)"
-            value={`${Math.round((highScores / totalAttempts) * 100)}%`}
-            color="bg-emerald-500"
-          />
-          <StatCard
-            icon={Clock}
-            label="Thời gian TB"
-            value="32p" 
-            color="bg-orange-500"
-          />
-        </div>
+        </TabsContent>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Score Distribution Chart */}
-          <div className="lg:col-span-2 bg-white rounded-[32px] border border-slate-200 p-8 shadow-sm">
-            <div className="flex items-center justify-between mb-10">
-              <h3 className="font-black text-slate-900 uppercase tracking-tight">
-                Phổ điểm học sinh
-              </h3>
-              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                Đơn vị: Học sinh
+        <TabsContent value="overview" className="mt-0 space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard
+              icon={Users}
+              label="Tong so luot nop"
+              value={totalAttempts.toString()}
+              color="bg-blue-500"
+            />
+            <StatCard
+              icon={Target}
+              label="Diem trung binh"
+              value={totalAttempts > 0 ? averageScore.toFixed(1) : "--"}
+              color="bg-purple-500"
+            />
+            <StatCard
+              icon={Award}
+              label="Ti le Gioi (>=8.0)"
+              value={totalAttempts > 0 ? `${Math.round((highScores / totalAttempts) * 100)}%` : "--"}
+              color="bg-emerald-500"
+            />
+            <StatCard
+              icon={Clock}
+              label="Thoi gian TB"
+              value="--"
+              color="bg-orange-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 bg-white rounded-[32px] border border-slate-200 p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-10">
+                <h4 className="font-black text-slate-900 uppercase tracking-tight">
+                  Pho diem hoc sinh
+                </h4>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  Don vi: Hoc sinh
+                </div>
+              </div>
+
+              <div className="flex items-end justify-between h-[300px] gap-4 px-4">
+                {distribution.map((count, i) => {
+                  const ranges = ["0-2", "2-4", "4-6", "6-8", "8-10"];
+                  const height =
+                    totalAttempts > 0 ? (count / maxDistribution) * 100 : 0;
+                  return (
+                    <div
+                      key={i}
+                      className="flex-1 flex flex-col items-center gap-4 group"
+                    >
+                      <div className="w-full relative flex flex-col justify-end h-full">
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                          {count} hoc sinh
+                        </div>
+                        <div
+                          className={cn(
+                            "w-full rounded-t-xl transition-all duration-700 delay-100 shadow-lg",
+                            i === 4
+                              ? "bg-emerald-500 shadow-emerald-100"
+                              : "bg-blue-500 shadow-blue-100",
+                          )}
+                          style={{ height: `${height}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                        {ranges[i]}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="flex items-end justify-between h-[300px] gap-4 px-4">
-              {distribution.map((count, i) => {
-                const ranges = ["0-2", "2-4", "4-6", "6-8", "8-10"];
-                const height =
-                  totalAttempts > 0
-                    ? (count / Math.max(...distribution)) * 100
-                    : 0;
-                return (
+            <div className="bg-white rounded-[32px] border border-slate-200 p-8 shadow-sm">
+              <h4 className="font-black text-slate-900 uppercase tracking-tight mb-6">
+                Luot lam gan day
+              </h4>
+              <div className="space-y-4">
+                {finishedAttempts.slice(0, 6).map((a) => (
                   <div
-                    key={i}
-                    className="flex-1 flex flex-col items-center gap-4 group"
+                    key={a.id}
+                    className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200 group"
                   >
-                    <div className="w-full relative flex flex-col justify-end h-full">
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                        {count} học sinh
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full overflow-hidden border border-white shadow-sm">
+                        <img
+                          src={
+                            a.user.image ||
+                            `https://ui-avatars.com/api/?name=${encodeURIComponent(a.user.name || "User")}`
+                          }
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                      <div
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800 truncate w-32">
+                          {a.user.name}
+                        </p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase">
+                          {format(a.completedAt!, "HH:mm dd/MM")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
                         className={cn(
-                          "w-full rounded-t-xl transition-all duration-700 delay-100 shadow-lg",
-                          i === 4
-                            ? "bg-emerald-500 shadow-emerald-100"
-                            : "bg-blue-500 shadow-blue-100",
+                          "text-sm font-black",
+                          (a.score || 0) >= 8
+                            ? "text-emerald-600"
+                            : (a.score || 0) >= 5
+                              ? "text-blue-600"
+                              : "text-red-500",
                         )}
-                        style={{ height: `${height}%` }}
-                      />
-                    </div>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
-                      {ranges[i]}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Student List Sidebar */}
-          <div className="bg-white rounded-[32px] border border-slate-200 p-8 shadow-sm flex flex-col">
-            <h3 className="font-black text-slate-900 uppercase tracking-tight mb-6">
-              Lượt làm bài
-            </h3>
-            <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
-              {finishedAttempts.map((a) => (
-                <div
-                  key={a.id}
-                  className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200 group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full overflow-hidden border border-white shadow-sm shrink-0">
-                      <img
-                        src={
-                          a.user.image ||
-                          `https://ui-avatars.com/api/?name=${encodeURIComponent(a.user.name || "User")}`
-                        }
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-800 truncate w-24">
-                        {a.user.name}
-                      </p>
-                      <p className="text-[9px] font-black text-slate-400 uppercase">
-                        {format(a.completedAt!, "HH:mm dd/MM")}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "text-sm font-black",
-                        (a.score || 0) >= 8
-                          ? "text-emerald-600"
-                          : (a.score || 0) >= 5
-                            ? "text-blue-600"
-                            : "text-red-500",
-                      )}
-                    >
-                      {a.score?.toFixed(1)}
-                    </span>
-                    <Link href={`/courses/${courseId}/final-test/results/${a.id}`}>
-                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors" />
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Detailed Question Analytics */}
-        <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
-          <div className="p-8 border-b border-slate-100">
-            <h3 className="font-black text-slate-900 uppercase tracking-tight">
-              Phân tích độ khó câu hỏi
-            </h3>
-            <p className="text-xs text-slate-500 mt-1 font-medium">
-              Thống kê tỉ lệ Đúng/Sai để xác định các câu hỏi học sinh thường
-              mắc lỗi.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-slate-50/50">
-                  <th className="px-8 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                    Câu hỏi
-                  </th>
-                  <th className="px-8 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                    Độ khó
-                  </th>
-                  <th className="px-8 py-4 text-center text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                    Tỉ lệ đúng
-                  </th>
-                  <th className="px-8 py-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                    Thao tác
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {test.sections
-                  .flatMap((s) => s.questions)
-                  .map((q, idx) => {
-                    const stats = questionStats.get(q.id) || {
-                      correct: 0,
-                      total: 0,
-                    };
-                    const correctRate =
-                      stats.total > 0 ? (stats.correct / stats.total) * 100 : 0;
-
-                    return (
-                      <tr
-                        key={q.id}
-                        className="hover:bg-slate-50/50 transition-colors"
                       >
-                        <td className="px-8 py-5">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500">
-                              #{idx + 1}
-                            </div>
-                            <span className="text-sm font-bold text-slate-700">
-                              Câu hỏi {q.type === 'MULTIPLE_CHOICE' ? 'trắc nghiệm' : 'điền khuyết'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-8 py-5">
-                          <span
-                            className={cn(
-                              "px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest",
-                              correctRate < 40
-                                ? "bg-red-50 text-red-600"
-                                : correctRate < 70
-                                  ? "bg-orange-50 text-orange-600"
-                                  : "bg-emerald-50 text-emerald-600",
-                            )}
-                          >
-                            {correctRate < 40
-                              ? "Khó"
-                              : correctRate < 70
-                                ? "Trung bình"
-                                : "Dễ"}
-                          </span>
-                        </td>
-                        <td className="px-8 py-5">
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="w-32 bg-slate-100 h-2 rounded-full overflow-hidden">
-                              <div
-                                className={cn(
-                                  "h-full rounded-full transition-all duration-1000",
-                                  correctRate < 40
-                                    ? "bg-red-500"
-                                    : correctRate < 70
-                                      ? "bg-orange-500"
-                                      : "bg-emerald-500",
-                                )}
-                                style={{ width: `${correctRate}%` }}
-                              />
-                            </div>
-                            <span className="text-[10px] font-black text-slate-500">
-                              {Math.round(correctRate)}% ({stats.correct}/
-                              {stats.total})
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-8 py-5 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-blue-600 font-bold hover:bg-blue-50"
-                          >
-                            Chi tiết câu hỏi
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
+                        {a.score?.toFixed(1)}
+                      </span>
+                      <Link href={`/courses/${courseId}/final-test/results/${a.id}`}>
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors" />
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  variant="ghost"
+                  className="w-full rounded-xl text-slate-400 font-bold text-xs"
+                >
+                  Xem toan bo danh sach
+                </Button>
+              </div>
+            </div>
           </div>
-        </div>
+        </TabsContent>
+
+        <TabsContent value="questions" className="mt-0">
+          <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
+            <div className="p-8 border-b border-slate-100">
+              <h4 className="font-black text-slate-900 uppercase tracking-tight">
+                Thong so cau hoi
+              </h4>
+              <p className="text-xs text-slate-500 mt-1 font-medium">
+                Thong ke ti le dung/sai de xac dinh cac cau hoi hoc sinh thuong
+                mac loi.
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50/50">
+                    <th className="px-8 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                      Cau hoi
+                    </th>
+                    <th className="px-8 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                      Do kho
+                    </th>
+                    <th className="px-8 py-4 text-center text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                      Ti le dung
+                    </th>
+                    <th className="px-8 py-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                      Thao tac
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {test.sections
+                    .flatMap((s) => s.questions)
+                    .map((q, idx) => {
+                      const stats = questionStats.get(q.id) || {
+                        correct: 0,
+                        total: 0,
+                      };
+                      const correctRate =
+                        stats.total > 0
+                          ? (stats.correct / stats.total) * 100
+                          : 0;
+
+                      return (
+                        <tr
+                          key={q.id}
+                          className="hover:bg-slate-50/50 transition-colors"
+                        >
+                          <td className="px-8 py-5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500">
+                                #{idx + 1}
+                              </div>
+                              <span className="text-sm font-bold text-slate-700">
+                                Cau hoi {q.type === "MULTIPLE_CHOICE" ? "trac nghiem" : "dien khuyet"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-8 py-5">
+                            <span
+                              className={cn(
+                                "px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest",
+                                correctRate < 40
+                                  ? "bg-red-50 text-red-600"
+                                  : correctRate < 70
+                                    ? "bg-orange-50 text-orange-600"
+                                    : "bg-emerald-50 text-emerald-600",
+                              )}
+                            >
+                              {correctRate < 40
+                                ? "Kho"
+                                : correctRate < 70
+                                  ? "Trung binh"
+                                  : "De"}
+                            </span>
+                          </td>
+                          <td className="px-8 py-5">
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="w-32 bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div
+                                  className={cn(
+                                    "h-full rounded-full transition-all duration-1000",
+                                    correctRate < 40
+                                      ? "bg-red-500"
+                                      : correctRate < 70
+                                        ? "bg-orange-500"
+                                        : "bg-emerald-500",
+                                  )}
+                                  style={{ width: `${correctRate}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] font-black text-slate-500">
+                                {Math.round(correctRate)}% ({stats.correct}/
+                                {stats.total})
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-8 py-5 text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-blue-600 font-bold hover:bg-blue-50"
+                            >
+                              Chi tiet cau hoi
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="exam" className="mt-0">
+          <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
+            <div className="p-8 border-b border-slate-100">
+              <h4 className="font-black text-slate-900 uppercase tracking-tight">
+                De bai
+              </h4>
+              <p className="text-xs text-slate-500 mt-1 font-medium">
+                Xem nhanh noi dung goc cua de thi.
+              </p>
+            </div>
+            {test.pdfUrl ? (
+              <div className="h-[70vh]">
+                <PDFViewerClientWrapper url={test.pdfUrl} />
+              </div>
+            ) : (
+              <div className="p-8 text-sm text-slate-500">
+                Chua co file PDF de bai. Vui long tai len de bai trong phan thiet lap.
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="solutions" className="mt-0">
+          <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
+            <div className="p-8 border-b border-slate-100">
+              <h4 className="font-black text-slate-900 uppercase tracking-tight">
+                Loi giai
+              </h4>
+              <p className="text-xs text-slate-500 mt-1 font-medium">
+                Xem dap an chuan va loi giai chi tiet cho tung cau hoi.
+              </p>
+            </div>
+            {test.sections.length > 0 ? (
+              <div className="divide-y divide-slate-100">
+                {test.sections.map((section) => (
+                  <div key={section.id}>
+                    <div className="px-8 py-4 bg-slate-50/50">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        {section.name}
+                      </p>
+                    </div>
+                    {section.questions.map((q, idx) => (
+                      <div key={q.id} className="px-8 py-6 space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-xs font-black text-blue-600">
+                            #{idx + 1}
+                          </div>
+                          <span className="text-sm font-bold text-slate-800">
+                            Cau hoi {q.type === "MULTIPLE_CHOICE" ? "trac nghiem" : "dien khuyet"}
+                          </span>
+                          <span className={cn(
+                            "px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest",
+                            q.type === "MULTIPLE_CHOICE"
+                              ? "bg-blue-50 text-blue-600"
+                              : "bg-purple-50 text-purple-600",
+                          )}>
+                            {q.points} diem
+                          </span>
+                        </div>
+                        {q.correctAnswer && (
+                          <div className="ml-11 flex items-center gap-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                              Dap an:
+                            </span>
+                            <span className="text-sm font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg">
+                              {q.correctAnswer}
+                            </span>
+                          </div>
+                        )}
+                        {q.explanation && (
+                          <div className="ml-11">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                              Giai thich:
+                            </span>
+                            <p className="text-sm text-slate-600 mt-1 leading-relaxed">
+                              {q.explanation}
+                            </p>
+                          </div>
+                        )}
+                        {!q.correctAnswer && !q.explanation && (
+                          <div className="ml-11 text-sm text-slate-400 italic">
+                            Chua co dap an hoac loi giai cho cau hoi nay.
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-sm text-slate-500">
+                Chua co cau hoi de hien thi loi giai.
+              </div>
+            )}
+          </div>
+        </TabsContent>
       </main>
-    </div>
+    </Tabs>
   );
 }
 

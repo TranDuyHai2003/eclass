@@ -54,6 +54,7 @@ export async function upsertTest(
     explanation?: string;
     videoUrl?: string;
     audioUrl?: string;
+    dueDate?: Date | null;
   },
 ) {
   const session = await requireTeacherOrAdmin();
@@ -92,6 +93,7 @@ export async function upsertCourseTest(
     explanation?: string;
     videoUrl?: string;
     audioUrl?: string;
+    dueDate?: Date | null;
   },
 ) {
   const session = await requireTeacherOrAdmin();
@@ -121,6 +123,20 @@ export async function upsertCourseTest(
 export async function saveTestMatrix(testId: string, sections: any[]) {
   const session = await requireTeacherOrAdmin();
 
+  const normalizeType = (raw: unknown) => {
+    if (typeof raw !== "string") return "MULTIPLE_CHOICE";
+    const type = raw.trim().toUpperCase();
+    if (type === "MCQ" || type === "MULTIPLE_CHOICE_SINGLE") return "MULTIPLE_CHOICE";
+    if (type === "SHORT_ANSWER" || type === "ESSAY" || type === "MULTIPLE_CHOICE") return type;
+    return "MULTIPLE_CHOICE";
+  };
+
+  const normalizeAnswer = (raw: unknown) => {
+    if (typeof raw !== "string") return null;
+    const value = raw.trim();
+    return value.length > 0 ? value.toUpperCase() : null;
+  };
+
   // Course ownership validation — supports both lesson-level and course-level tests
   const test = await prisma.test.findUnique({
     where: { id: testId },
@@ -145,27 +161,28 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
     });
 
     // Create new sections and questions
-    for (const section of sections) {
-      const createdSection = await tx.testSection.create({
-        data: {
-          testId,
-          name: section.name,
-          position: section.position,
-        },
-      });
+     for (const [sectionIndex, section] of sections.entries()) {
+       const createdSection = await tx.testSection.create({
+         data: {
+           testId,
+           name: section.name,
+           position: Number.isFinite(section.position) ? section.position : sectionIndex,
+         },
+       });
 
-      if (section.questions && section.questions.length > 0) {
-        const questionsData = section.questions.map((q: any) => ({
-          sectionId: createdSection.id,
-          position: q.position,
-          type: q.type,
-          correctAnswer: q.correctAnswer,
-          points: q.points,
-          explanation: q.explanation,
-          videoUrl: q.videoUrl,
-          audioUrl: q.audioUrl,
-          needsManualGrading: q.needsManualGrading || false,
-        }));
+       if (section.questions && section.questions.length > 0) {
+         const questionsData = section.questions.map((q: any, qIndex: number) => ({
+           sectionId: createdSection.id,
+           position: Number.isFinite(q.position) ? q.position : qIndex,
+           category: q.category ?? q.question_category ?? null,
+           type: normalizeType(q.type),
+           correctAnswer: normalizeAnswer(q.correctAnswer),
+           points: Number.isFinite(q.points) ? q.points : 1.0,
+           explanation: q.explanation,
+           videoUrl: q.videoUrl,
+           audioUrl: q.audioUrl,
+           needsManualGrading: q.needsManualGrading || false,
+         }));
 
         await tx.question.createMany({
           data: questionsData,
@@ -238,13 +255,20 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
 
   // Map questions for quick lookup
   const questionMap = new Map<string, any>();
+  let maxPointsPossible = 0;
   attempt.test.sections.forEach(s => {
     s.questions.forEach(q => {
       questionMap.set(q.id, q);
+      maxPointsPossible += (q.points || 0);
     });
   });
 
-  let totalScore = 0;
+  // Check due date
+  if (attempt.test.dueDate && new Date() > new Date(attempt.test.dueDate)) {
+    throw new Error("Hạn nộp bài đã kết thúc.");
+  }
+
+  let rawTotalScore = 0;
   const answersData = studentAnswers.map(ans => {
     const q = questionMap.get(ans.questionId);
     let isCorrect = false;
@@ -266,7 +290,7 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
     }
 
     if (pointsAwarded > 0) {
-      totalScore += pointsAwarded;
+      rawTotalScore += pointsAwarded;
     }
 
     return {
@@ -277,6 +301,8 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
       pointsAwarded
     };
   });
+
+  const finalScore = maxPointsPossible > 0 ? (rawTotalScore / maxPointsPossible) * 10 : 0;
 
   await prisma.$transaction(async (tx) => {
     // Delete any previous drafted answers for this attempt just in case
@@ -293,7 +319,7 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
     await tx.studentAttempt.update({
       where: { id: attemptId },
       data: {
-        score: totalScore,
+        score: finalScore,
         completedAt: new Date(),
       }
     });
@@ -321,7 +347,7 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
     revalidatePath(`/watch/${attempt.test.lessonId}`);
   }
 
-  return { success: true, score: totalScore };
+  return { success: true, score: finalScore };
 }
 
 export async function gradeStudentAnswer(
@@ -340,6 +366,7 @@ export async function gradeStudentAnswer(
             include: {
               lesson: { include: { chapter: { include: { course: true } } } },
               course: true,
+              sections: { include: { questions: true } }
             },
           },
         },
@@ -371,11 +398,21 @@ export async function gradeStudentAnswer(
       where: { attemptId: answer.attemptId },
     });
 
-    const totalScore = allAnswers.reduce((acc, curr) => acc + curr.pointsAwarded, 0);
+    const rawTotalScore = allAnswers.reduce((acc, curr) => acc + curr.pointsAwarded, 0);
+    
+    // Calculate max points possible
+    let maxPointsPossible = 0;
+    answer.attempt.test.sections.forEach(s => {
+      s.questions.forEach(q => {
+        maxPointsPossible += (q.points || 0);
+      });
+    });
+
+    const finalScore = maxPointsPossible > 0 ? (rawTotalScore / maxPointsPossible) * 10 : 0;
 
     await tx.studentAttempt.update({
       where: { id: answer.attemptId },
-      data: { score: totalScore },
+      data: { score: finalScore },
     });
   });
 

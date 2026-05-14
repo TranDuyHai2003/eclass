@@ -8,7 +8,8 @@ import {
   ArrowRight, 
   Zap, 
   BarChart3,
-  Dna
+  Dna,
+  Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -42,6 +43,7 @@ interface AnalyticsData {
 export function PersonalAnalytics() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     fetch("/api/student/statistics/weaknesses")
@@ -54,20 +56,86 @@ export function PersonalAnalytics() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const res = await fetch("/api/student/statistics/export");
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Thong_ke_nang_luc_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error("Export failed", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (loading) {
-    return null;
+    return (
+      <div className="bg-white rounded-[3rem] p-12 shadow-sm border border-slate-100 animate-pulse">
+        <div className="h-8 w-48 bg-slate-100 rounded-full mb-8" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          <div className="lg:col-span-7 h-[300px] bg-slate-50 rounded-3xl" />
+          <div className="lg:col-span-5 space-y-4">
+             <div className="h-20 bg-slate-50 rounded-3xl" />
+             <div className="h-20 bg-slate-50 rounded-3xl" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  if (!data?.is_eligible) {
-    return null;
+  // If not eligible or no data, show locked state
+  if (!data || !data.is_eligible) {
+    const testsLeft = Math.max(0, 2 - (data?.total_tests_completed ?? 0));
+    
+    return (
+      <div className="bg-white rounded-[3rem] p-8 sm:p-12 shadow-sm border border-slate-100 relative overflow-hidden group">
+        <div className="absolute inset-0 bg-slate-50/50 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center text-center p-6">
+           <div className="w-16 h-16 bg-white rounded-2xl shadow-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <Lock className="w-8 h-8 text-slate-400" />
+           </div>
+           <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2">Radar Năng Lực Đang Khóa</h3>
+           <p className="text-slate-500 text-sm font-medium max-w-md leading-relaxed">
+             Hãy hoàn thành ít nhất <span className="text-red-600 font-bold">2 bài kiểm tra</span> (hoặc 20 câu hỏi) để hệ thống có đủ dữ liệu phân tích điểm mạnh, điểm yếu của bạn.
+           </p>
+           {testsLeft > 0 && (
+             <div className="mt-6 px-6 py-2 bg-red-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest">
+               Cần thêm {testsLeft} bài kiểm tra nữa
+             </div>
+           )}
+        </div>
+
+        <div className="opacity-20 blur-[4px] pointer-events-none grayscale">
+          <div className="flex justify-between items-end mb-10">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                 <div className="w-1.5 h-6 bg-slate-300 rounded-full" />
+                 <h3 className="text-2xl font-black text-slate-400 uppercase tracking-tighter">Radar Năng Lực</h3>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+            <div className="lg:col-span-7 h-[300px] bg-slate-100 rounded-3xl" />
+            <div className="lg:col-span-5 space-y-4">
+               <div className="h-20 bg-slate-100 rounded-3xl" />
+               <div className="h-20 bg-slate-100 rounded-3xl" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  const hasData = data.weaknesses.length > 0 || data.strengths.length > 0;
-  if (!hasData) {
-    return null;
-  }
-
-  const chartData = [...data.weaknesses, ...data.strengths].map(s => ({
+  const chartData = [...(data?.weaknesses ?? []), ...(data?.strengths ?? [])].map(s => ({
     name: s.category,
     val: Math.round(100 - s.error_rate),
     original: s
@@ -79,9 +147,21 @@ export function PersonalAnalytics() {
       
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 relative z-10">
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-             <div className="w-1.5 h-6 bg-red-600 rounded-full" />
-             <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Radar Năng Lực</h3>
+          <div className="flex items-center gap-4">
+             <div className="flex items-center gap-2">
+                <div className="w-1.5 h-6 bg-red-600 rounded-full" />
+                <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Radar Năng Lực</h3>
+             </div>
+             <Button
+               variant="outline"
+               size="sm"
+               onClick={handleExport}
+               disabled={isExporting}
+               className="h-8 rounded-xl border-slate-200 text-[10px] font-black uppercase tracking-widest px-4 hover:bg-slate-50 transition-all"
+             >
+               <Download className={cn("w-3 h-3 mr-2", isExporting && "animate-bounce")} />
+               {isExporting ? "Đang xuất..." : "Xuất báo cáo"}
+             </Button>
           </div>
           <p className="text-slate-500 font-bold text-xs uppercase tracking-widest ml-4">Khám bệnh kiến thức 30 ngày qua</p>
         </div>

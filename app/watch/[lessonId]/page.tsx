@@ -11,18 +11,17 @@ import {
   FileText,
   Download,
   MessageSquare,
-  Layout,
-  Menu,
-  Home as HomeIcon,
+  ArrowLeft,
+  GraduationCap,
+  ListVideo,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import QuizEntryCard from "./_components/QuizEntryCard";
 import { CourseProgressButton } from "@/components/course/CourseProgressButton";
 import { PDFViewerClientWrapper } from "@/components/course/PDFViewerClientWrapper";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
 import { CommentSection } from "@/components/comment/CommentSection";
+import { MobileCommentsSheet } from "./_components/MobileCommentsSheet";
 
 export default async function WatchPage({
   params,
@@ -39,9 +38,7 @@ export default async function WatchPage({
     where: { id: lessonId },
     include: {
       chapter: {
-        include: {
-          course: true,
-        },
+        include: { course: true },
       },
       attachments: true,
       test: true,
@@ -57,7 +54,6 @@ export default async function WatchPage({
 
   let enrollment = null;
 
-  // If not Admin/Owner, check enrollment for non-free lessons
   if (!isAdmin && !isOwner) {
     enrollment = await prisma.enrollment.findUnique({
       where: {
@@ -68,14 +64,19 @@ export default async function WatchPage({
       },
     });
 
-    if (!lesson.isFree) {
-      if (!enrollment || enrollment.status !== "ACTIVE") {
-        return redirect(`/courses/${courseId}`);
-      }
+    // TEMPORARILY DISABLED: Allow all students to learn directly
+    // if (!lesson.isFree) {
+    //   if (!enrollment || enrollment.status !== "ACTIVE") {
+    //     return redirect(`/courses/${courseId}`);
+    //   }
+    // }
+    
+    // Simulate active enrollment to allow learning
+    if (!enrollment || enrollment.status !== "ACTIVE") {
+       enrollment = { status: "ACTIVE" } as any;
     }
   } else {
-    // Admins/Owners are effectively ACTIVE
-    enrollment = { status: "ACTIVE" };
+    enrollment = { status: "ACTIVE" } as any;
   }
 
   // 3. Fetch Course Full Data
@@ -100,7 +101,6 @@ export default async function WatchPage({
 
   if (!course) return notFound();
 
-  // Check if current lesson is completed
   const currentProgress = await prisma.progress.findUnique({
     where: {
       userId_lessonId: {
@@ -110,7 +110,6 @@ export default async function WatchPage({
     },
   });
 
-  // Calculate actual progress for this course
   const courseLessonIds = course.chapters.flatMap((c) =>
     c.lessons.map((l) => l.id),
   );
@@ -126,7 +125,6 @@ export default async function WatchPage({
       ? Math.round((completedInCourse / courseLessonIds.length) * 100)
       : 0;
 
-  // Map progress to course structure for sidebar
   const courseData = {
     ...course,
     chapters: course.chapters.map((chap) => ({
@@ -139,38 +137,51 @@ export default async function WatchPage({
   };
 
   const quizDuration = lesson.test?.duration || 15;
-
-  // Fetch comment count
-  const commentCount = await prisma.comment.count({
-    where: { lessonId },
-  });
+  const commentCount = await prisma.comment.count({ where: { lessonId } });
 
   return (
-    <div className="flex h-screen flex-col bg-white overflow-hidden relative">
-      {/* Floating Header Overlay */}
-      <div className="absolute top-4 left-4 z-[100] flex items-center gap-3 pointer-events-none">
-        <Link
-          href="/"
-          className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-black uppercase tracking-widest text-white hover:bg-white hover:text-black transition-all shadow-2xl"
-        >
-          <HomeIcon className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Trang chủ</span>
-        </Link>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-black/20 backdrop-blur-md border border-white/10 rounded-full text-[9px] font-black uppercase tracking-widest text-white/80">
-          <span className="truncate max-w-[120px]">{course.title}</span>
-          <ChevronRight className="w-2.5 h-2.5 opacity-50" />
-          <span className="text-red-500 truncate max-w-[180px]">
-            {lesson.title}
-          </span>
+    <div className="flex flex-col min-h-screen lg:h-screen bg-slate-50 overflow-hidden font-sans">
+      {/* TOP NAVIGATION BAR (Sleek & Modern) */}
+      <header className="h-14 lg:h-16 bg-slate-950 text-slate-300 flex items-center justify-between px-4 lg:px-6 shrink-0 border-b border-white/10 z-50">
+        <div className="flex items-center gap-4 min-w-0 flex-1">
+          <Link
+            href={`/courses/${courseId}`}
+            className="flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 rounded-full hover:bg-white/10 transition-colors shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5 text-white" />
+          </Link>
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] lg:text-xs font-semibold text-slate-400 uppercase tracking-wider truncate">
+              {course.title}
+            </span>
+            <span className="text-sm lg:text-base font-bold text-white truncate">
+              {lesson.chapter.title}
+            </span>
+          </div>
         </div>
-      </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Main Content Area - Single Scrollable Unit */}
-        <main className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 relative">
-          {/* 1. Video Section */}
-          <div className="w-full bg-slate-950 shrink-0 shadow-2xl">
-            <div className="max-w-[1600px] mx-auto aspect-video flex items-center justify-center">
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="hidden lg:flex items-center gap-3 bg-white/5 px-4 py-1.5 rounded-full border border-white/10">
+            <GraduationCap className="w-4 h-4 text-red-500" />
+            <span className="text-xs font-semibold text-white">
+              Tiến độ: <span className="text-red-400">{progressPercent}%</span>
+            </span>
+          </div>
+          <div className="lg:hidden">
+            <MobileCommentsSheet
+              lessonId={lessonId}
+              commentCount={commentCount}
+            />
+          </div>
+        </div>
+      </header>
+
+      <div className="flex flex-1 min-h-0 overflow-hidden flex-col lg:flex-row">
+        {/* MAIN CONTENT AREA */}
+        <main className="flex-1 min-h-0 h-full overflow-y-auto custom-scrollbar relative bg-white">
+          {/* 1. Cinematic Video Section */}
+          <div className="w-full bg-slate-950 flex justify-center">
+            <div className="w-full max-w-[1200px] aspect-video flex items-center justify-center relative shadow-2xl">
               {lesson.videoUrl ? (
                 <VideoPlayer
                   src={lesson.videoUrl}
@@ -178,22 +189,25 @@ export default async function WatchPage({
                   poster={course.thumbnail || undefined}
                 />
               ) : lesson.type === "QUIZ" ? (
-                <div className="w-full h-full bg-[#0F172A] flex flex-col items-center justify-center gap-4 py-16">
-                  <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10">
-                    <BookOpen className="w-7 h-7 text-red-500" />
+                <div className="w-full h-full flex flex-col items-center justify-center gap-5 py-16 bg-gradient-to-b from-slate-900 to-slate-950">
+                  <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center border border-red-500/20 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+                    <BookOpen className="w-8 h-8 text-red-500" />
                   </div>
-                  <h2 className="text-white font-black text-xl">
+                  <h2 className="text-white font-bold text-2xl tracking-tight">
                     Bài kiểm tra đánh giá
                   </h2>
-                  <div className="px-4 py-1.5 bg-white/5 rounded-xl border border-white/10 text-slate-300 font-bold text-xs">
-                    {quizDuration} Phút
+                  <div className="px-5 py-2 bg-white/10 rounded-full border border-white/10 text-slate-300 font-medium text-sm backdrop-blur-md">
+                    Thời lượng:{" "}
+                    <span className="text-white font-bold">
+                      {quizDuration} Phút
+                    </span>
                   </div>
                 </div>
               ) : lesson.type === "DOCUMENT" &&
                 lesson.attachments.find((a) =>
                   a.url.toLowerCase().endsWith(".pdf"),
                 ) ? (
-                <div className="w-full h-full bg-slate-100">
+                <div className="w-full h-full bg-slate-100 overflow-hidden">
                   <PDFViewerClientWrapper
                     url={
                       lesson.attachments.find((a) =>
@@ -203,180 +217,129 @@ export default async function WatchPage({
                   />
                 </div>
               ) : (
-                <div className="w-full h-full bg-slate-900 flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest text-center px-10 text-xs">
-                  Nội dung bài học không khả dụng hoặc đang được cập nhật
+                <div className="w-full h-full bg-slate-900 flex items-center justify-center text-slate-400 font-medium text-sm">
+                  Nội dung bài học không khả dụng hoặc đang được cập nhật.
                 </div>
               )}
             </div>
           </div>
 
-          {/* 2. Content Section */}
-          <div className="max-w-[1200px] mx-auto w-full p-4 md:p-8">
-            {/* Header: Title & Progress Action */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="px-2 py-0.5 bg-red-50 text-red-600 rounded text-[10px] font-black uppercase tracking-widest border border-red-100">
-                    Bài học
-                  </div>
-                  <div className="w-1 h-1 rounded-full bg-slate-300" />
-                  <p className="text-slate-400 font-bold flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
-                    {course.title}
-                  </p>
-                </div>
-                <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-tight uppercase">
-                  {lesson.title}
-                </h1>
-              </div>
-
-              <div className="shrink-0">
-                <CourseProgressButton
-                  lessonId={lessonId}
-                  courseId={courseId}
-                  isCompleted={!!currentProgress?.isCompleted}
-                />
-              </div>
+          {/* 2. Lesson Header & Action Area */}
+          <div className="max-w-[1200px] mx-auto w-full px-4 sm:px-8 py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                {lesson.title}
+              </h1>
+              {lesson.description && (
+                <p className="text-slate-500 text-sm mt-1 max-w-3xl leading-relaxed">
+                  {lesson.description}
+                </p>
+              )}
             </div>
+            <div className="shrink-0 flex items-center">
+              <CourseProgressButton
+                lessonId={lessonId}
+                courseId={courseId}
+                isCompleted={!!currentProgress?.isCompleted}
+              />
+            </div>
+          </div>
 
-            {/* Main Tabs: Info, Attachments, Comments */}
-            <Tabs defaultValue="info" className="w-full">
-              <TabsList className="w-full justify-start border-none rounded-none h-14 bg-transparent p-0 gap-4 overflow-x-auto overflow-y-hidden no-scrollbar">
+          {/* 3. Modern Content Tabs */}
+          <div className="max-w-[1200px] mx-auto w-full px-4 sm:px-8 py-6 pb-20">
+            <Tabs defaultValue="curriculum" className="w-full">
+              <TabsList className="bg-slate-100/80 p-1.5 rounded-2xl h-auto flex flex-wrap gap-1 sm:w-fit mb-6">
                 <TabsTrigger
                   value="curriculum"
-                  className="lg:hidden data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-none h-full font-black text-[10px] uppercase tracking-[0.1em] text-slate-400 data-[state=active]:text-red-600 px-0 shrink-0 transition-all flex items-center gap-2 group"
+                  className="rounded-xl px-5 py-2.5 font-semibold text-sm text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm transition-all"
                 >
-                  <Menu className="w-4 h-4 opacity-50 group-data-[state=active]:opacity-100" />
-                  Lộ trình
+                  <ListVideo className="w-4 h-4 mr-2 inline-block" />
+                  Danh sách bài
                 </TabsTrigger>
-                <TabsTrigger
-                  value="info"
-                  className="data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-none h-full font-black text-[10px] uppercase tracking-[0.1em] text-slate-400 data-[state=active]:text-red-600 px-0 shrink-0 transition-all flex items-center gap-2 group"
-                >
-                  <Layout className="w-4 h-4 opacity-50 group-data-[state=active]:opacity-100" />
-                  Tổng quan
-                </TabsTrigger>
+                {lesson.test && (
+                  <TabsTrigger
+                    value="quiz"
+                    className="rounded-xl px-5 py-2.5 font-semibold text-sm text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm transition-all"
+                  >
+                    <BookOpen className="w-4 h-4 mr-2 inline-block" />
+                    Bài tập (Quiz)
+                  </TabsTrigger>
+                )}
                 <TabsTrigger
                   value="files"
-                  className="data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-none h-full font-black text-[10px] uppercase tracking-[0.1em] text-slate-400 data-[state=active]:text-red-600 px-0 shrink-0 transition-all flex items-center gap-2 group"
+                  className="rounded-xl px-5 py-2.5 font-semibold text-sm text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm transition-all"
                 >
-                  <FileText className="w-4 h-4 opacity-50 group-data-[state=active]:opacity-100" />
-                  Tài liệu
-                  <span className="ml-0.5 px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[9px] group-data-[state=active]:bg-red-50 group-data-[state=active]:text-red-600 transition-colors">
-                    {lesson.attachments.length}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="comments"
-                  className="data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-none h-full font-black text-[10px] uppercase tracking-[0.1em] text-slate-400 data-[state=active]:text-red-600 px-0 shrink-0 transition-all flex items-center gap-2 group"
-                >
-                  <MessageSquare className="w-4 h-4 opacity-50 group-data-[state=active]:opacity-100" />
-                  Thảo luận
-                  <span className="ml-0.5 px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[9px] group-data-[state=active]:bg-red-50 group-data-[state=active]:text-red-600 transition-colors">
-                    +{commentCount}
-                  </span>
+                  <FileText className="w-4 h-4 mr-2 inline-block" />
+                  Tài liệu ({lesson.attachments.length})
                 </TabsTrigger>
               </TabsList>
 
-              <div className="py-2">
+              <div className="mt-2">
                 <TabsContent
                   value="curriculum"
-                  className="mt-0 focus-visible:outline-none lg:hidden"
+                  className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-500"
                 >
-                  <div className="bg-white rounded-3xl overflow-hidden shadow-sm">
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                     <CourseSidebar
                       course={courseData as any}
                       currentLessonId={lessonId}
                       progress={progressPercent}
                       isEnrolled={!!enrollment}
-                      className="h-auto overflow-visible"
+                      className="h-auto overflow-visible border-none bg-transparent"
                     />
                   </div>
                 </TabsContent>
 
                 <TabsContent
-                  value="info"
-                  className="mt-0 space-y-8 focus-visible:outline-none"
+                  value="quiz"
+                  className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-500"
                 >
-                  {lesson.type === "QUIZ" && (
-                    <QuizEntryCard
-                      lessonId={lessonId}
-                      course={course}
-                      lesson={lesson}
-                      test={lesson.test}
-                      duration={quizDuration}
-                    />
-                  )}
-
-                  <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm">
-                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight mb-4 flex items-center gap-2">
-                      <Layout className="w-5 h-5 text-red-600" />
-                      Mô tả bài học
-                    </h3>
-                    <div className="prose prose-slate max-w-none prose-p:text-slate-600 prose-p:leading-relaxed prose-p:font-medium">
-                      <p className="whitespace-pre-wrap text-[15px]">
-                        {lesson.description ||
-                          "Chưa có mô tả cho bài học này."}
-                      </p>
-                    </div>
-                  </div>
+                  <QuizEntryCard
+                    lessonId={lessonId}
+                    course={course}
+                    lesson={lesson}
+                    test={lesson.test}
+                    duration={quizDuration}
+                  />
                 </TabsContent>
 
                 <TabsContent
                   value="files"
-                  className="mt-0 focus-visible:outline-none"
+                  className="mt-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-500"
                 >
-                  {lesson.attachments.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {lesson.attachments.map((att) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {lesson.attachments.length > 0 ? (
+                      lesson.attachments.map((att) => (
                         <a
                           key={att.id}
                           href={att.url}
                           target="_blank"
-                          className="flex items-center gap-4 p-5 bg-white rounded-3xl hover:shadow-xl hover:shadow-red-600/5 transition-all group"
+                          className="flex items-start gap-4 p-5 bg-white border border-slate-200 rounded-2xl hover:border-red-200 hover:shadow-lg hover:shadow-red-500/5 hover:-translate-y-1 transition-all group"
                         >
-                          <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-red-600 transition-colors">
-                            <FileText className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                          <div className="w-12 h-12 bg-red-50 text-red-500 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-red-500 group-hover:text-white transition-colors">
+                            <FileText className="w-6 h-6" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-black text-slate-900 text-sm truncate uppercase tracking-tight group-hover:text-red-600 transition-colors">
+                            <p className="font-semibold text-slate-900 text-sm line-clamp-2 group-hover:text-red-600 transition-colors">
                               {att.name}
                             </p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                              Tài liệu đính kèm
+                            <p className="text-xs font-medium text-slate-400 mt-1">
+                              Tải xuống
                             </p>
                           </div>
-                          <div className="w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-red-50 transition-colors">
-                            <Download className="w-4 h-4 text-slate-300 group-hover:text-red-600 transition-colors shrink-0" />
-                          </div>
+                          <Download className="w-5 h-5 text-slate-300 group-hover:text-red-500 transition-colors shrink-0" />
                         </a>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-20 bg-white rounded-[32px]">
-                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <FileText className="w-8 h-8 text-slate-200" />
+                      ))
+                    ) : (
+                      <div className="col-span-full flex flex-col items-center justify-center py-20 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                          <FileText className="w-8 h-8 text-slate-300" />
+                        </div>
+                        <p className="text-slate-500 font-medium">
+                          Bài học này không có tài liệu đính kèm.
+                        </p>
                       </div>
-                      <p className="text-slate-400 font-bold uppercase tracking-widest text-[11px]">
-                        Không có tài liệu đính kèm
-                      </p>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent
-                  value="comments"
-                  className="mt-0 focus-visible:outline-none"
-                >
-                  <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <MessageSquare className="w-5 h-5 text-red-600" />
-                      <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
-                        Hỏi đáp & Thảo luận
-                      </h3>
-                    </div>
-                    <div className="max-w-4xl">
-                      <CommentSection lessonId={lessonId} />
-                    </div>
+                    )}
                   </div>
                 </TabsContent>
               </div>
@@ -384,26 +347,48 @@ export default async function WatchPage({
           </div>
         </main>
 
-        {/* Sidebar - Desktop */}
-        <div className="hidden lg:block w-[350px] shrink-0 border-l border-slate-200 bg-white h-full overflow-hidden">
-          <CourseSidebar
-            course={courseData as any}
-            currentLessonId={lessonId}
-            progress={progressPercent}
-            isEnrolled={!!enrollment}
-          />
-        </div>
+        {/* RIGHT SIDEBAR (Comments/Discussion) - Clean Card Layout */}
+        <aside className="hidden lg:flex w-[400px] shrink-0 border-l border-slate-200 bg-slate-50 flex-col h-full min-h-0 z-10 shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
+          <div className="h-16 px-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                <MessageSquare className="w-4 h-4 text-slate-700" />
+              </div>
+              <h3 className="font-bold text-slate-900 text-base">Thảo luận</h3>
+            </div>
+            <span className="px-3 py-1 bg-red-50 text-red-600 rounded-full text-xs font-bold">
+              {commentCount} bình luận
+            </span>
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-slate-50/50">
+            <CommentSection lessonId={lessonId} />
+          </div>
+        </aside>
       </div>
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        header { display: none !important; }
-        .page-shell { padding-top: 0 !important; height: 100vh !important; overflow: hidden !important; }
+        /* Hide global layout components when in learning mode */
+        header:not(.flex) { display: none !important; }
+        .page-shell { padding-top: 0 !important; }
         .student-header { display: none !important; }
-        body { overflow: hidden !important; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Locking scroll logic */
+        @media (max-width: 1023px) {
+          body { overflow: auto !important; }
+          .page-shell { height: auto !important; overflow: visible !important; }
+        }
+        @media (min-width: 1024px) {
+          body { overflow: hidden !important; }
+          .page-shell { height: 100vh !important; overflow: hidden !important; }
+        }
+        
+        /* Beautiful Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
       `,
         }}
       />

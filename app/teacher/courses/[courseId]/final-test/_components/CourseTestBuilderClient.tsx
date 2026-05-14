@@ -343,11 +343,6 @@ export default function CourseTestBuilderClient({
                   <Zap className="w-3.5 h-3.5" />
                   Nhập nhanh
                 </Button>
-                <FastEntryModal
-                  open={fastEntryOpen}
-                  onOpenChange={setFastEntryOpen}
-                  onConfirm={handleFastEntry}
-                />
               </div>
             )}
           </div>
@@ -606,6 +601,11 @@ export default function CourseTestBuilderClient({
           </div>
         </div>
       </div>
+      <FastEntryModal
+        open={fastEntryOpen}
+        onOpenChange={setFastEntryOpen}
+        onConfirm={handleFastEntry}
+      />
     </div>
   );
 }

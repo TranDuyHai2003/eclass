@@ -54,9 +54,7 @@ export default async function CoursesPage({
 
           {/* Right Content Area */}
           <div className="flex-1 space-y-10 sm:space-y-14">
-            {/* 1. Hero Section - Premium Design */}
-            <div className="relative rounded-[3rem] overflow-hidden">
-              {/* Background Effects */}
+            {/* <div className="relative rounded-[3rem] overflow-hidden">
               <div className="absolute inset-0 bg-white shadow-xl shadow-slate-200/50 border border-slate-100" />
               <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-red-50/50 to-transparent pointer-events-none" />
               <div className="absolute -top-24 -right-24 w-64 h-64 bg-red-100/30 blur-[100px] rounded-full" />
@@ -90,7 +88,6 @@ export default async function CoursesPage({
                   </div>
                 </div>
 
-                {/* Hero Visual Element */}
                 <div className="hidden xl:flex flex-col gap-4 shrink-0">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="w-32 h-32 bg-slate-900 rounded-[2.5rem] rotate-6 flex flex-col items-center justify-center text-white p-4 shadow-2xl">
@@ -108,10 +105,10 @@ export default async function CoursesPage({
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* 2. Stats & Trust Bar */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8 border-y border-slate-100 py-8 px-4">
+            {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8 border-y border-slate-100 py-8 px-4">
               {[
                 { label: "Khóa học", value: "50+", icon: BookOpen },
                 { label: "Học viên", value: "10k+", icon: GraduationCap },
@@ -135,7 +132,7 @@ export default async function CoursesPage({
                   </div>
                 </div>
               ))}
-            </div>
+            </div> */}
 
             {/* 3. Courses Section */}
             <div className="space-y-8">
@@ -153,7 +150,7 @@ export default async function CoursesPage({
                 </div>
 
                 {/* Filters - Simplified for now */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+                {/* <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
                   <button className="px-5 py-2 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-200 shrink-0">
                     Tất cả
                   </button>
@@ -167,7 +164,7 @@ export default async function CoursesPage({
                   <button className="p-2 bg-white border border-slate-100 rounded-full text-slate-400 hover:text-slate-900 transition-colors">
                     <Filter className="w-4 h-4" />
                   </button>
-                </div>
+                </div> */}
               </div>
 
               {/* Courses Grid */}

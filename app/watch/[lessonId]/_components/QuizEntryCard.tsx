@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ClipboardList,
   Clock,
@@ -8,6 +9,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 interface QuizEntryCardProps {
   lessonId: string;
@@ -24,6 +26,9 @@ export default function QuizEntryCard({
   duration,
   test,
 }: QuizEntryCardProps) {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
   if (!test) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
@@ -39,6 +44,11 @@ export default function QuizEntryCard({
       </div>
     );
   }
+
+  const handleStart = () => {
+    setIsLoading(true);
+    router.push(`/watch/${lessonId}/quiz`);
+  };
 
   return (
     <div className="flex flex-col items-center justify-center py-2 px-4">
@@ -79,15 +89,21 @@ export default function QuizEntryCard({
 
         {/* CTA */}
         <Button
-          asChild
+          onClick={handleStart}
+          disabled={isLoading}
           className="w-full h-14 text-base font-black bg-blue-600 hover:bg-blue-700 rounded-2xl gap-2 shadow-lg shadow-blue-200"
         >
-          <Link href={`/watch/${lessonId}/quiz`}>
-            Bắt đầu làm bài
-            <ChevronRight className="w-5 h-5" />
-          </Link>
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <>
+              Bắt đầu làm bài
+              <ChevronRight className="w-5 h-5" />
+            </>
+          )}
         </Button>
       </div>
     </div>
   );
 }
+

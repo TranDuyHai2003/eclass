@@ -40,6 +40,34 @@ export async function toggleUserApproval(userId: string) {
     }
 }
 
+export async function updateUserRole(userId: string, newRole: "ADMIN" | "TEACHER" | "STUDENT") {
+    const session = await auth()
+    if (!session || session.user.role !== "ADMIN") {
+        return { success: false, error: "Unauthorized" }
+    }
+
+    // Prevent changing your own role
+    if (session.user.id === userId) {
+        return { success: false, error: "Bạn không thể tự thay đổi quyền của chính mình" }
+    }
+
+    try {
+        const user = await prisma.user.findUnique({ where: { id: userId } })
+        if (!user) return { success: false, error: "User not found" }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { role: newRole }
+        })
+
+        revalidatePath("/admin/users")
+        return { success: true }
+    } catch (error) {
+        console.error(error)
+        return { success: false, error: "Internal Server Error" }
+    }
+}
+
 export async function deleteUser(userId: string) {
     const session = await auth()
     if (!session || session.user.role !== "ADMIN") {

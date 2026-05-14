@@ -18,6 +18,7 @@ import {
   Trophy,
   FileCheck,
   Sparkles,
+  ArrowLeft,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Prisma } from "@prisma/client";
@@ -73,7 +74,9 @@ export default async function CoursePage({
   const firstLesson = c.chapters[0]?.lessons[0];
 
   const session = await auth();
-  const enrollmentStatus = await getEnrollmentStatus(courseId);
+  // const enrollmentStatus = await getEnrollmentStatus(courseId);
+  // TEMPORARILY BYPASS ENROLLMENT:
+  const enrollmentStatus = "ACTIVE";
 
   const isLoggedIn = !!session?.user;
   const isAdminOrTeacher =
@@ -81,7 +84,7 @@ export default async function CoursePage({
   const userEmail = session?.user?.email || "";
 
   return (
-    <div className="page-shell bg-[#F8FAFC]">
+    <div className="page-shell bg-[#F8FAFC] relative">
       {/* 1. Premium Hero Section */}
       <section className="relative bg-slate-950 text-white overflow-hidden pb-12 lg:pb-0">
         {/* Animated Background Glows */}
@@ -185,14 +188,16 @@ export default async function CoursePage({
           <div className="flex-1 space-y-8">
             <div className="card-surface bg-white rounded-[2.5rem] overflow-hidden shadow-xl shadow-slate-200/50 border border-slate-100">
               <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="w-full justify-start bg-slate-50/50 border-b border-slate-100 px-4 sm:px-8 h-16 gap-6 sm:gap-10 overflow-x-auto no-scrollbar">
-                  <TabTrigger value="overview">Tổng quan</TabTrigger>
-                  <TabTrigger value="content">Lộ trình học</TabTrigger>
-                  <TabTrigger value="instructor">Giảng viên</TabTrigger>
-                  <TabTrigger value="faq">Hỏi đáp</TabTrigger>
-                </TabsList>
+                <div className="flex justify-center sm:justify-start px-6 sm:px-10 pt-8">
+                  <TabsList className="bg-slate-100/80 p-1.5 rounded-[1.5rem] h-auto flex flex-wrap sm:flex-nowrap gap-1 items-center border border-slate-200/50 backdrop-blur-sm">
+                    <TabTrigger value="overview">Tổng quan</TabTrigger>
+                    <TabTrigger value="content">Lộ trình học</TabTrigger>
+                    <TabTrigger value="instructor">Giảng viên</TabTrigger>
+                    <TabTrigger value="faq">Hỏi đáp</TabTrigger>
+                  </TabsList>
+                </div>
 
-                <div className="p-6 sm:p-10">
+                <div className="p-4 sm:p-10">
                   <TabsContent value="overview" className="mt-0 space-y-8 animate-in fade-in duration-500">
                     <div className="space-y-4">
                        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
@@ -360,6 +365,7 @@ export default async function CoursePage({
                           isLoggedIn={isLoggedIn}
                           isAdminOrTeacher={isAdminOrTeacher}
                           userEmail={userEmail}
+                          className="py-5 px-10 text-lg rounded-[2rem]"
                         />
                         <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-6 flex items-center justify-center gap-2">
                            <ShieldCheck className="w-3.5 h-3.5" />
@@ -388,25 +394,35 @@ export default async function CoursePage({
         </div>
       </section>
 
-      {/* 3. Sticky Bottom Bar for Mobile */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] p-4 bg-white/95 backdrop-blur-xl border-t border-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.08)] animate-in slide-in-from-bottom-full duration-500">
-        <div className="container mx-auto flex items-center justify-between gap-4">
-           <div className="flex flex-col shrink-0">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Học phí ưu đãi</span>
-              <span className="text-lg font-black text-red-600">{c.price?.toLocaleString() || "0"}đ</span>
-           </div>
-           <div className="flex-1 max-w-[240px]">
-              <EnrollButton
-                courseId={course.id}
-                courseTitle={course.title}
-                coursePrice={course.price || 0}
-                enrollmentStatus={enrollmentStatus}
-                firstLessonId={firstLesson?.id}
-                isLoggedIn={isLoggedIn}
-                isAdminOrTeacher={isAdminOrTeacher}
-                userEmail={userEmail}
-              />
-           </div>
+      {/* 3. Smart Bottom Dock for Mobile (Compact & Modern) */}
+      <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[92%] max-w-[440px] animate-in fade-in slide-in-from-bottom-10 duration-700">
+        <div className="bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-white/10 flex items-center gap-3">
+          <Link 
+            href="/courses"
+            className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center shrink-0 border border-white/10 text-white transition-all active:scale-90"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+
+          <div className="flex-1 flex flex-col pl-1">
+             <span className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none">Học phí</span>
+             <span className="text-sm font-black text-white mt-1">
+               {c.price ? `${c.price.toLocaleString()}đ` : "Miễn phí"}
+             </span>
+          </div>
+
+          <div className="flex-[1.8]">
+             <EnrollButton
+               courseId={course.id}
+               courseTitle={course.title}
+               coursePrice={course.price || 0}
+               enrollmentStatus={enrollmentStatus}
+               firstLessonId={firstLesson?.id}
+               isLoggedIn={isLoggedIn}
+               isAdminOrTeacher={isAdminOrTeacher}
+               userEmail={userEmail}
+             />
+          </div>
         </div>
       </div>
 
@@ -432,9 +448,11 @@ function TabTrigger({ value, children }: { value: string; children: ReactNode })
     <TabsTrigger
       value={value}
       className={cn(
-        "data-[state=active]:bg-transparent data-[state=active]:text-red-600 data-[state=active]:shadow-none",
-        "relative rounded-none h-full font-black text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-slate-400 transition-all px-0",
-        "after:absolute after:bottom-0 after:left-0 after:w-full after:h-1 after:bg-red-600 after:rounded-full after:scale-x-0 data-[state=active]:after:scale-x-100 after:transition-transform after:duration-300"
+        "rounded-2xl px-5 sm:px-8 py-2.5 font-black text-[10px] sm:text-[11px] uppercase tracking-widest transition-all duration-300",
+        "text-slate-500 hover:text-slate-900",
+        "data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-[0_4px_20px_rgba(0,0,0,0.08)]",
+        "border border-transparent data-[state=active]:border-slate-100",
+        "after:hidden" // Bỏ đường kẻ underline từ base component
       )}
     >
       {children}

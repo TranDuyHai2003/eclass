@@ -2,6 +2,9 @@ import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 import { getCourseById } from "@/actions/course"
 import { CourseBuilder } from "@/components/teacher/course-builder/CourseBuilder"
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 type Props = {
     params: Promise<{ courseId: string }>
@@ -23,10 +26,18 @@ export default async function TeacherCourseEditPage({ params }: Props) {
     return (
         <div className="page-shell pb-20">
              <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8 max-w-5xl">
-                  {/* Breadcrumb or Back link could go here */}
-                  <div className="mb-6">
-                      <h1 className="text-2xl font-bold text-gray-900">Quản lý nội dung khóa học</h1>
-                      <p className="text-gray-500 text-sm">Xây dựng chương trình giảng dạy và cài đặt thông tin.</p>
+                  {/* Header & Back Button */}
+                  <div className="flex flex-col gap-4 mb-8">
+                      <Button variant="ghost" asChild className="w-fit rounded-xl -ml-2 text-slate-500 hover:text-slate-900">
+                          <Link href="/teacher/courses">
+                              <ArrowLeft className="w-4 h-4 mr-2" />
+                              Quay lại danh sách
+                          </Link>
+                      </Button>
+                      <div>
+                          <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Quản lý khóa học</h1>
+                          <p className="text-slate-500 text-sm font-medium uppercase tracking-tight">Thiết lập chương trình và nội dung bài giảng.</p>
+                      </div>
                   </div>
 
                   {/* MAIN COURSE BUILDER */}

@@ -42,75 +42,62 @@ const PDFViewer = dynamic(() => import("@/components/ui/pdf-viewer"), {
 
 type TabKey = "config" | "content" | "mapping" | "analytics";
 
-const mockQuestions = Array.from({ length: 12 }, (_, index) => ({
-  id: `q-${index + 1}`,
-  label: `Cau ${index + 1}`,
-  answer: ["A", "B", "C", "D"][index % 4],
-  points: 1,
-}));
+interface AttemptData {
+  id: string;
+  user: {
+    name: string | null;
+    email: string;
+  };
+  score: number | null;
+  startedAt: string;
+  completedAt: string | null;
+}
 
-const mockStudents = [
-  {
-    id: "s1",
-    name: "Nguyen Thu Linh",
-    course: "Toan 12",
-    time: "45p 12s",
-    submittedAt: "02/05/2026 08:42",
-    score: 8.4,
-  },
-  {
-    id: "s2",
-    name: "Tran Duc Anh",
-    course: "Toan 12",
-    time: "39p 10s",
-    submittedAt: "02/05/2026 08:55",
-    score: 6.9,
-  },
-  {
-    id: "s3",
-    name: "Le Quoc Bao",
-    course: "Toan 12",
-    time: "48p 02s",
-    submittedAt: "02/05/2026 09:10",
-    score: 9.2,
-  },
-  {
-    id: "s4",
-    name: "Pham Ha My",
-    course: "Toan 12",
-    time: "52p 45s",
-    submittedAt: "02/05/2026 09:32",
-    score: 4.8,
-  },
-];
-
-const mockQuestionStats = Array.from({ length: 10 }, (_, index) => ({
-  id: `q-${index + 1}`,
-  label: `Cau ${index + 1}`,
-  correctRate: 90 - index * 6,
-}));
+interface QuestionStat {
+  id: string;
+  label: string;
+  correctRate: number;
+}
 
 export default function TestBankEditorClient({ testId }: { testId: string }) {
   const [activeTab, setActiveTab] = useState<TabKey>("content");
   const [isFastEntryOpen, setIsFastEntryOpen] = useState(false);
-  const [questions, setQuestions] = useState(mockQuestions);
+  const [questions, setQuestions] = useState<any[]>([]);
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [duration, setDuration] = useState("90");
   const [passScore, setPassScore] = useState("5.0");
   const [pdfUrl, setPdfUrl] = useState("");
+  const [dueDate, setDueDate] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isSavingMatrix, setIsSavingMatrix] = useState(false);
 
-  const scoreDistribution = useMemo(() => [3, 6, 9, 7, 5], []);
+  const [attempts, setAttempts] = useState<AttemptData[]>([]);
+  const [questionStats, setQuestionStats] = useState<QuestionStat[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const scoreDistribution = useMemo(() => {
+    if (attempts.length === 0) return [0, 0, 0, 0, 0];
+    const distribution = [0, 0, 0, 0, 0];
+    attempts.forEach(a => {
+      if (a.score === null) return;
+      if (a.score < 4) distribution[0]++;
+      else if (a.score < 6) distribution[1]++;
+      else if (a.score < 7) distribution[2]++;
+      else if (a.score < 8) distribution[3]++;
+      else distribution[4]++;
+    });
+    return distribution;
+  }, [attempts]);
+
   const maxScoreBucket = Math.max(...scoreDistribution);
 
   const handleFastEntry = (answers: string[]) => {
     const next = answers.map((answer, index) => ({
       id: `q-new-${Date.now()}-${index}`,
-      label: `Cau ${questions.length + index + 1}`,
+      label: `Câu ${questions.length + index + 1}`,
       answer,
       points: 1,
     }));
@@ -136,6 +123,9 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
         setDuration(test?.duration?.toString() || "90");
         setPassScore(test?.passScore?.toString() || "5.0");
         setPdfUrl(test?.pdfUrl || "");
+        if (test?.dueDate) {
+          setDueDate(new Date(test.dueDate).toISOString().slice(0, 16));
+        }
 
         if (Array.isArray(test?.sections) && test.sections.length > 0) {
           const flatQuestions = test.sections
@@ -143,9 +133,10 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
             .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
             .map((q: any, index: number) => ({
               id: q.id,
-              label: `Cau ${index + 1}`,
+              label: `Câu ${index + 1}`,
               answer: q.correctAnswer || "",
               points: q.points ?? 1,
+              category: q.category || "",
             }));
           if (flatQuestions.length > 0) {
             setQuestions(flatQuestions);
@@ -158,11 +149,29 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
       }
     };
 
+    const loadAnalytics = async () => {
+      try {
+        const res = await fetch(`/api/tests/${testId}/analytics`);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) {
+            setAttempts(data.attempts || []);
+            setQuestionStats(data.questionStats || []);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load analytics", err);
+      }
+    };
+
     loadTest();
+    if (activeTab === "analytics") {
+      loadAnalytics();
+    }
     return () => {
       isMounted = false;
     };
-  }, [testId]);
+  }, [testId, activeTab]);
 
   const handleSaveConfig = async () => {
     setIsSavingConfig(true);
@@ -177,6 +186,7 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
           pdfUrl,
           duration: Number(duration),
           passScore: passScore ? Number(passScore) : null,
+          dueDate: dueDate ? new Date(dueDate).toISOString() : null,
         }),
       });
     } finally {
@@ -197,6 +207,7 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
           pdfUrl,
           duration: Number(duration),
           passScore: passScore ? Number(passScore) : null,
+          dueDate: dueDate ? new Date(dueDate).toISOString() : null,
         }),
       });
       await fetch(`/api/tests/${testId}/matrix`, {
@@ -205,13 +216,14 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
         body: JSON.stringify({
           sections: [
             {
-              name: "Phan 1: Trac nghiem",
+              name: "Phần 1: Trắc nghiệm",
               order: 1,
               questions: questions.map((q, index) => ({
                 order: index + 1,
                 type: "MULTIPLE_CHOICE",
                 correctAnswer: q.answer,
                 points: q.points,
+                category: q.category,
               })),
             },
           ],
@@ -219,6 +231,25 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
       });
     } finally {
       setIsSavingMatrix(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const response = await fetch(`/api/tests/${testId}/export`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Ket_qua_${title.replace(/\s+/g, "_")}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -433,19 +464,44 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
               {questions.map((q, index) => (
                 <div
                   key={q.id}
-                  className="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3"
+                  className="group flex flex-col gap-3 rounded-2xl border border-slate-100 p-4 hover:border-blue-200 transition-colors"
                 >
-                  <div>
-                    <p className="text-sm font-black text-slate-900">
-                      {q.label}
-                    </p>
-                    <p className="text-xs text-slate-500">Diem: {q.points}</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-black text-slate-900 uppercase tracking-tight">
+                        {q.label}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Điểm:</span>
+                        <Input
+                          type="number"
+                          value={q.points}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value);
+                            setQuestions(prev => prev.map((item, i) => i === index ? { ...item, points: val } : item));
+                          }}
+                          className="w-12 h-6 text-[10px] font-black p-1 rounded-md"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge className="rounded-xl bg-slate-900 text-white font-black px-3 py-1">
+                        {q.answer}
+                      </Badge>
+                      <span className="text-xs text-slate-300 font-bold">#{index + 1}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge className="rounded-xl bg-slate-900 text-white font-black">
-                      {q.answer}
-                    </Badge>
-                    <span className="text-xs text-slate-400">#{index + 1}</span>
+                  
+                  <div className="relative">
+                    <Input
+                      placeholder="Dạng bài (VD: Rút gọn biểu thức...)"
+                      value={q.category}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setQuestions(prev => prev.map((item, i) => i === index ? { ...item, category: val } : item));
+                      }}
+                      className="h-8 text-[11px] font-bold rounded-xl bg-slate-50 border-transparent focus:bg-white transition-all"
+                    />
                   </div>
                 </div>
               ))}
@@ -632,36 +688,29 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h3 className="text-lg font-black text-slate-900">
-                  Danh sach nop bai
+                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                  Danh sách nộp bài
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Tim kiem va loc theo hoc vien.
+                  Tìm kiếm và lọc theo học viên.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <Input
-                    className="pl-9 h-10 rounded-2xl"
-                    placeholder="Tim theo ten"
+                    className="pl-9 h-10 rounded-2xl border-slate-200"
+                    placeholder="Tìm theo tên..."
                   />
                 </div>
-                <Select>
-                  <SelectTrigger className="h-10 rounded-2xl w-[160px]">
-                    <SelectValue placeholder="Bo loc" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="below">Duoi diem TB</SelectItem>
-                    <SelectItem value="not-submitted">Chua nop bai</SelectItem>
-                    <SelectItem value="top">Top 10</SelectItem>
-                  </SelectContent>
-                </Select>
                 <Button
                   variant="outline"
                   className="h-10 rounded-2xl border-slate-200 font-bold"
+                  onClick={handleExport}
+                  disabled={isExporting || attempts.length === 0}
                 >
-                  <Download className="w-4 h-4 mr-2" /> Export CSV
+                  <Download className="w-4 h-4 mr-2" /> 
+                  {isExporting ? "Đang xuất..." : "Xuất Excel"}
                 </Button>
               </div>
             </div>
@@ -671,43 +720,54 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
                 <thead className="bg-slate-50 text-xs uppercase tracking-widest text-slate-400">
                   <tr>
                     <th className="px-4 py-3">STT</th>
-                    <th className="px-4 py-3">Ho va ten</th>
-                    <th className="px-4 py-3">Khoa hoc</th>
-                    <th className="px-4 py-3">Thoi gian</th>
-                    <th className="px-4 py-3">Ngay nop</th>
-                    <th className="px-4 py-3">Diem so</th>
-                    <th className="px-4 py-3">Hanh dong</th>
+                    <th className="px-4 py-3">Họ và tên</th>
+                    <th className="px-4 py-3">Bắt đầu</th>
+                    <th className="px-4 py-3">Nộp bài</th>
+                    <th className="px-4 py-3 text-center">Điểm số</th>
+                    <th className="px-4 py-3 text-right">Hành động</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {mockStudents.map((student, index) => (
-                    <tr key={student.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 text-slate-400">{index + 1}</td>
-                      <td className="px-4 py-3 font-semibold text-slate-900">
-                        {student.name}
-                      </td>
-                      <td className="px-4 py-3 text-slate-500">
-                        {student.course}
-                      </td>
-                      <td className="px-4 py-3 text-slate-500">
-                        {student.time}
-                      </td>
-                      <td className="px-4 py-3 text-slate-500">
-                        {student.submittedAt}
-                      </td>
-                      <td className="px-4 py-3 font-black text-slate-900">
-                        {student.score}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Button
-                          variant="outline"
-                          className="rounded-2xl border-slate-200 font-bold h-9"
-                        >
-                          Xem chi tiet
-                        </Button>
+                  {attempts.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-12 text-center text-slate-400 font-bold italic">
+                        Chưa có học sinh nào nộp bài.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    attempts.map((attempt, index) => (
+                      <tr key={attempt.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 text-slate-400 font-bold">{index + 1}</td>
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-slate-900">{attempt.user.name || "N/A"}</p>
+                          <p className="text-[10px] text-slate-400">{attempt.user.email}</p>
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 text-xs">
+                          {new Date(attempt.startedAt).toLocaleString("vi-VN")}
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 text-xs">
+                          {attempt.completedAt ? new Date(attempt.completedAt).toLocaleString("vi-VN") : "N/A"}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge className={cn(
+                            "rounded-xl font-black",
+                            (attempt.score || 0) >= 5 ? "bg-emerald-500" : "bg-red-500"
+                          )}>
+                            {attempt.score !== null ? attempt.score.toFixed(1) : "N/A"}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-xl font-bold text-blue-600 hover:bg-blue-50"
+                          >
+                            Chi tiết
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -715,42 +775,50 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
 
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6">
             <div>
-              <h3 className="text-lg font-black text-slate-900">
-                Phan tich do kho cau hoi
+              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                Phân tích độ khó câu hỏi
               </h3>
               <p className="text-xs text-slate-500">
-                Nhan biet cau hoi can dieu chinh.
+                Nhận biết câu hỏi cần điều chỉnh dựa trên tỉ lệ trả lời đúng.
               </p>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
-              {mockQuestionStats.map((q) => (
-                <div
-                  key={q.id}
-                  className="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3"
-                >
-                  <div>
-                    <p className="font-bold text-slate-900">{q.label}</p>
-                    <p className="text-xs text-slate-500">Ti le dung</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-32 h-2 rounded-full bg-slate-100 overflow-hidden">
-                      <div
-                        className={cn(
-                          "h-full",
-                          q.correctRate > 60
-                            ? "bg-emerald-500"
-                            : "bg-amber-500",
-                        )}
-                        style={{ width: `${q.correctRate}%` }}
-                      />
-                    </div>
-                    <span className="text-sm font-black text-slate-900">
-                      {q.correctRate}%
-                    </span>
-                  </div>
+              {questionStats.length === 0 ? (
+                <div className="col-span-full py-8 text-center text-slate-400 italic font-bold">
+                  Không có dữ liệu phân tích.
                 </div>
-              ))}
+              ) : (
+                questionStats.map((q) => (
+                  <div
+                    key={q.id}
+                    className="flex items-center justify-between rounded-2xl border border-slate-100 px-5 py-4 hover:shadow-md transition-shadow"
+                  >
+                    <div>
+                      <p className="font-black text-slate-900 uppercase tracking-tight text-xs">{q.label}</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Tỉ lệ đúng</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="w-24 sm:w-32 h-2 rounded-full bg-slate-100 overflow-hidden shadow-inner">
+                        <div
+                          className={cn(
+                            "h-full transition-all duration-1000",
+                            q.correctRate > 70
+                              ? "bg-emerald-500"
+                              : q.correctRate > 40
+                              ? "bg-amber-500"
+                              : "bg-red-500",
+                          )}
+                          style={{ width: `${q.correctRate}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-black text-slate-900 w-10 text-right">
+                        {Math.round(q.correctRate)}%
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </section>
