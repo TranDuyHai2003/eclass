@@ -9,7 +9,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { NavLinks } from "./NavLinks";
+import { HomeSidebar } from "@/components/home/HomeSidebar";
 import { MobileSearchBar } from "./MobileSearchBar";
 
 interface MobileMenuProps {
@@ -52,10 +52,9 @@ export function MobileMenu({ role }: MobileMenuProps) {
             <div className="flex-1 py-4 overflow-y-auto custom-scrollbar">
               <MobileSearchBar onSearch={() => setOpen(false)} />
               
-              <div className="px-6 mb-2 mt-4">
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 px-1">Menu chính</p>
+              <div className="px-4 mt-6">
+                <HomeSidebar />
               </div>
-              <NavLinks role={role} vertical onClick={() => setOpen(false)} />
 
               {/* Mobile Hotline info in Menu */}
               <div className="mt-8 px-8 pb-10 space-y-6">

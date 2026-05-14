@@ -43,7 +43,11 @@ export function Dashboard({
   user: DashboardUser;
   courses: DashboardCourse[];
   lastLesson: { id: string; title: string; courseTitle: string } | null;
-  stats: { completedLessons: number; totalLessons: number; courseCount: number };
+  stats: {
+    completedLessons: number;
+    totalLessons: number;
+    courseCount: number;
+  };
 }) {
   const soonestExamDate = useMemo(() => {
     const dates = courses
@@ -101,9 +105,11 @@ export function Dashboard({
                   </span>
                 </div>
                 <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-red-600 to-orange-500 rounded-full transition-all duration-1000" 
-                    style={{ width: `${stats.totalLessons > 0 ? (stats.completedLessons / stats.totalLessons) * 100 : 0}%` }}
+                  <div
+                    className="h-full bg-gradient-to-r from-red-600 to-orange-500 rounded-full transition-all duration-1000"
+                    style={{
+                      width: `${stats.totalLessons > 0 ? (stats.completedLessons / stats.totalLessons) * 100 : 0}%`,
+                    }}
                   />
                 </div>
               </div>
@@ -117,26 +123,18 @@ export function Dashboard({
             <HomePromo targetDate={soonestExamDate} />
 
             {/* Hero Section: Continue Mission */}
-            {lastLesson && (
-              <ContinueMission
-                lastLesson={lastLesson}
-              />
-            )}
+            {lastLesson && <ContinueMission lastLesson={lastLesson} />}
 
             {/* Radar Analytics Section */}
-            {!isAdminOrTeacher && (
-              <PersonalAnalytics />
-            )}
+            {!isAdminOrTeacher && <PersonalAnalytics />}
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
               {/* Stats Section */}
-              <div className="xl:col-span-2 space-y-8">
+              {/* <div className="xl:col-span-2 space-y-8">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <StatsWidget type="streak" />
                   <StatsWidget type="exercises" />
                 </div>
-
-                {/* My Courses */}
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter flex items-center gap-2">
@@ -161,8 +159,8 @@ export function Dashboard({
                     ))}
                   </div>
                 </div>
-              </div>
-
+              </div>  
+              */}
               {/* Right Rail: Leaderboard */}
               <aside className="space-y-8">
                 <Leaderboard />

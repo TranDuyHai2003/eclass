@@ -3,6 +3,7 @@ import { Inter, Montserrat } from "next/font/google";
 import { Toaster } from "sonner";
 import Header from "@/components/layout/Header";
 import { Providers } from "./providers";
+import VConsole from "@/components/VConsole";
 import "./globals.css";
 
 const inter = Inter({
@@ -17,7 +18,8 @@ const montserrat = Montserrat({
 
 export const metadata: Metadata = {
   title: "thatdehoctoan - Luyện Thi Đại Học",
-  description: "Trang web học Toán luyện thi Đại học hàng đầu, đồng hành cùng học sinh vượt qua kỳ thi THPT Quốc gia với thatdehoctoan.",
+  description:
+    "Trang web học Toán luyện thi Đại học hàng đầu, đồng hành cùng học sinh vượt qua kỳ thi THPT Quốc gia với thatdehoctoan.",
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",
@@ -34,11 +36,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
+      <head>
+        {/* Thêm đúng dòng này vào để điện thoại gọi về máy tính */}
+        <script src="http://192.168.100.135:8080/target.js" defer></script>
+      </head>
       <body
         suppressHydrationWarning
         className={`${inter.variable} ${montserrat.variable} antialiased`}
       >
         <Providers>
+          <VConsole />
           <Toaster position="top-right" richColors />
           <Header />
           {children}

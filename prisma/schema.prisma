@@ -316,6 +316,7 @@ model Test {
   explanation String? // Lời giải toàn bài
   videoUrl    String? // Video lời giải toàn bài
   audioUrl    String? // File nghe lời giải toàn bài
+  dueDate     DateTime? // Hạn nộp bài
 
   sections TestSection[]
   attempts StudentAttempt[]
@@ -344,6 +345,7 @@ model Question {
   sectionId          String
   section            TestSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   position           Int          @default(0)
+  category           String? // Dạng bài
   type               QuestionType @default(MULTIPLE_CHOICE)
   correctAnswer      String? // Dành cho MULTIPLE_CHOICE và SHORT_ANSWER
   points             Float        @default(1.0)

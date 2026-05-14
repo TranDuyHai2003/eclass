@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createEnrollment } from "@/actions/enrollment";
 import Link from "next/link";
-import { toast } from "sonner"; 
-
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { Play } from "lucide-react";
 interface EnrollButtonProps {
   courseId: string;
   courseTitle: string;
@@ -15,6 +16,7 @@ interface EnrollButtonProps {
   isLoggedIn: boolean;
   isAdminOrTeacher: boolean;
   userEmail: string;
+  className?: string;
 }
 
 export function EnrollButton({
@@ -25,7 +27,8 @@ export function EnrollButton({
   firstLessonId,
   isLoggedIn,
   isAdminOrTeacher,
-  userEmail
+  userEmail,
+  className,
 }: EnrollButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -35,12 +38,14 @@ export function EnrollButton({
       router.push("/login");
       return;
     }
-    
+
     setIsLoading(true);
     try {
       const res = await createEnrollment(courseId);
       if (res.success) {
-        toast.success("Tuyệt vời! Yêu cầu của bạn đã được gửi. Vui lòng chờ Admin duyệt nhé!");
+        toast.success(
+          "Tuyệt vời! Yêu cầu của bạn đã được gửi. Vui lòng chờ Admin duyệt nhé!",
+        );
         router.refresh();
       } else {
         toast.error(res.error || "Có lỗi xảy ra");
@@ -57,10 +62,20 @@ export function EnrollButton({
     return (
       <Link
         href={firstLessonId ? `/watch/${firstLessonId}` : "#"}
-        className="group relative inline-flex w-full items-center justify-center px-10 py-5 bg-slate-900 text-white font-black text-lg rounded-[2rem] shadow-2xl shadow-slate-200 transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-widest overflow-hidden"
+        className={cn(
+          "group relative inline-flex w-full items-center justify-center px-6 py-3",
+          "bg-gradient-to-r from-orange-500 via-red-600 to-rose-600",
+          "text-white font-black text-xs rounded-2xl shadow-[0_10px_25px_rgba(225,29,72,0.4)]",
+          "transition-all duration-300 hover:scale-[1.05] active:scale-[0.95]",
+          "uppercase tracking-widest overflow-hidden",
+          className,
+        )}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-        <span className="relative z-10">Bắt đầu học ngay</span>
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+        <span className="relative z-10 flex items-center gap-2">
+          Vào học ngay
+          <Play className="w-3.5 h-3.5 fill-current" />
+        </span>
       </Link>
     );
   }
@@ -70,10 +85,13 @@ export function EnrollButton({
     return (
       <button
         disabled
-        className="relative inline-flex w-full items-center justify-center px-10 py-5 bg-slate-100 text-slate-400 font-black text-lg rounded-[2rem] shadow-inner opacity-90 cursor-not-allowed uppercase tracking-widest border-2 border-slate-200"
+        className={cn(
+          "relative inline-flex w-full items-center justify-center px-6 py-3 bg-slate-100 text-slate-400 font-black text-xs rounded-2xl shadow-inner opacity-90 cursor-not-allowed uppercase tracking-widest border-2 border-slate-200",
+          className,
+        )}
       >
-        <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse mr-3" />
-        Đang chờ duyệt...
+        <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse mr-2" />
+        Chờ duyệt...
       </button>
     );
   }
@@ -83,10 +101,15 @@ export function EnrollButton({
     <button
       onClick={handleEnrollClick}
       disabled={isLoading}
-      className="group relative inline-flex w-full items-center justify-center px-10 py-5 bg-red-600 text-white font-black text-lg rounded-[2rem] shadow-xl shadow-red-200 transition-all hover:scale-[1.02] active:scale-[0.98] hover:shadow-2xl hover:shadow-red-500/20 uppercase tracking-widest disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden"
+      className={cn(
+        "group relative inline-flex w-full items-center justify-center px-6 py-3 bg-red-600 text-white font-black text-xs rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-widest disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden",
+        className,
+      )}
     >
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-      <span className="relative z-10">{isLoading ? "Đang xử lý..." : "Ghi danh khóa học"}</span>
+      <span className="relative z-10">
+        {isLoading ? "Đang xử lý..." : "Ghi danh ngay"}
+      </span>
     </button>
   );
 }

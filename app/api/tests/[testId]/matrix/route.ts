@@ -72,6 +72,7 @@ export async function POST(
         const questionsData = section.questions.map((q: {
           order?: number;
           position?: number;
+          category?: string;
           type: string;
           correctAnswer: string;
           points?: number;
@@ -82,6 +83,7 @@ export async function POST(
         }) => ({
           sectionId: createdSection.id,
           position: Number(q.order ?? q.position ?? 0),
+          category: q.category || null,
           type: q.type,
           correctAnswer: q.correctAnswer,
           points: Number(q.points ?? 1),

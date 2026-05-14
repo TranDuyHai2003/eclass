@@ -7,15 +7,13 @@ import {
   MediaProvider,
   Poster,
   Track,
-  SeekButton,
   type MediaPlayerInstance,
 } from "@vidstack/react";
 import {
   defaultLayoutIcons,
   DefaultVideoLayout,
 } from "@vidstack/react/player/layouts/default";
-import { useRef, CSSProperties, useState, useEffect } from "react";
-import { RotateCcw, RotateCw } from "lucide-react";
+import { useRef, CSSProperties, useEffect } from "react";
 
 interface VideoPlayerProps {
   src: string;
@@ -58,142 +56,157 @@ export default function VideoPlayer({
   const isYoutube = isYoutubeUrl(src);
   const youtubeId = isYoutube ? getYoutubeId(src) : null;
 
-  useEffect(() => {
-    console.log("[VideoPlayer] Initializing", { src, title, isYoutube, youtubeId, autoPlay, muted });
-  }, [src, title, isYoutube, youtubeId, autoPlay, muted]);
+  const actualPoster =
+    isYoutube && !poster && youtubeId
+      ? `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`
+      : poster;
 
-  // Disable right click handler
+  useEffect(() => {
+    console.log("[VideoPlayer] Initializing", {
+      src,
+      title,
+      isYoutube,
+      autoPlay,
+      muted,
+    });
+  }, [src, title, isYoutube, autoPlay, muted]);
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     return false;
   };
 
-  // If it's YouTube, use the standard iframe to bypass CORS completely
-  if (isYoutube && youtubeId) {
-    return (
-      <div className="w-full aspect-video bg-black overflow-hidden rounded-md relative group">
-        <iframe
-          src={`https://www.youtube.com/embed/${youtubeId}?autoplay=${autoPlay ? 1 : 0}&mute=${muted ? 1 : 0}&modestbranding=1&rel=0`}
-          title={title}
-          className="w-full h-full border-0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-        />
-      </div>
-    );
-  }
+  const handleProviderSetup = (provider: any) => {
+    if (provider.type === "youtube") {
+      provider.cookies = true;
+    }
+  };
 
   return (
-    <MediaPlayer
-      ref={playerRef}
-      title={title}
-      src={src}
-      logLevel="warn"
-      playsInline
-      autoPlay={autoPlay}
-      muted={muted}
-      crossOrigin={null}
+    <div
+      className="relative w-full rounded-[12px] overflow-hidden bg-black shadow-2xl"
       onContextMenu={handleContextMenu}
-      onProviderChange={(detail) => console.log("[VideoPlayer] Provider changed:", detail)}
-      onCanPlay={(detail) => console.log("[VideoPlayer] Can play:", detail)}
-      onError={(detail) => console.error("[VideoPlayer] Error:", detail)}
-      {...(isYoutube ? {
-        youtube: {
-          cookies: true, // Use youtube.com instead of youtube-nocookie.com to avoid certain CORS issues
-          modestbranding: 1,
-          rel: 0,
-          iv_load_policy: 3,
-        }
-      } : {})}
-      className="w-full aspect-video bg-black text-white font-sans overflow-hidden rounded-md ring-media-focus data-[focus]:ring-4 relative group"
-      style={
-        {
-          "--brand": "#f00",
-          "--media-brand": "#f00",
-          "--media-focus-ring-color": "#f00",
-          "--media-slider-track-height": "4px",
-          "--media-slider-thumb-size": "14px",
-          "--media-controls-gap": "8px",
-        } as CustomCSSProperties
-      }
     >
-      <MediaProvider>
-        {poster && (
-          <Poster
-            className="absolute inset-0 block h-full w-full opacity-0 transition-opacity data-[visible]:opacity-100 object-cover"
-            src={poster}
-            alt={title}
-          />
-        )}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+  :root {
+    --video-brand: #3b82f6;
+  }
 
-        {subtitles?.map((sub, index) => (
-          <Track
-            key={String(index)}
-            src={sub.src}
-            kind={sub.kind || "subtitles"}
-            label={sub.label}
-            lang={sub.language}
-            default={sub.default}
-          />
-        ))}
-        
-        {/* Security Overlay for YouTube */}
-        {isYoutube && (
-           <div 
-             className="absolute inset-0 z-10 select-none pointer-events-none"
-             onContextMenu={handleContextMenu}
-           >
-              {/* This invisible div catches right clicks if pointer-events was auto, 
-                  but we use pointer-events-none to allow Vidstack gestures to work.
-                  Vidstack's custom UI is already at a higher z-index than the provider.
-              */}
-           </div>
-        )}
-      </MediaProvider>
+  /* ĐÃ XÓA FIX 1 CỦA BẠN: 
+     Vidstack tự động quản lý pointer-events của iframe để vượt rào Autoplay iOS/Android. 
+     Việc tự ý set pointer-events sẽ làm hỏng luồng click nội bộ của Vidstack. */
 
-      {/* Security: Prevent interaction with the underlying provider for YouTube */}
-      {isYoutube && (
-        <style dangerouslySetInnerHTML={{ __html: `
-          [data-provider="youtube"] iframe {
-            user-select: none !important;
-          }
-          /* Re-enable pointer events for the controls layer */
-          .vds-media-ui {
-            pointer-events: auto !important;
-          }
-        `}} />
-      )}
+  /* FIX 1 MỚI: Đưa lớp Gesture (chạm để hiện/ẩn UI) xuống dưới cùng để KHÔNG che mất nút Play */
+  vds-media-player vds-gesture {
+    z-index: 10 !important;
+  }
 
-      <DefaultVideoLayout
-        icons={defaultLayoutIcons}
-        slots={{
-          beforePlayButton: (
-            <div className="flex items-center justify-center">
-              <SeekButton
-                seconds={-10}
-                className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/40 md:bg-transparent backdrop-blur-md md:backdrop-blur-none text-white hover:bg-white/20 transition-all active:scale-90 group focus:outline-none ring-primary/50 focus-visible:ring-2 relative z-[70] pointer-events-auto"
-                aria-label="Tua lùi 10 giây"
-                title="Tua lùi 10 giây"
-              >
-                <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" />
-              </SeekButton>
-            </div>
-          ),
+  /* FIX 2: Nâng cụm Controls lên trên Gesture */
+  vds-media-player .vds-controls {
+    z-index: 40 !important;
+  }
 
-          afterPlayButton: (
-            <div className="flex items-center justify-center">
-              <SeekButton
-                seconds={10}
-                className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/40 md:bg-transparent backdrop-blur-md md:backdrop-blur-none text-white hover:bg-white/20 transition-all active:scale-90 group focus:outline-none ring-primary/50 focus-visible:ring-2 relative z-[70] pointer-events-auto"
-                aria-label="Tua tiếp 10 giây"
-                title="Tua tiếp 10 giây"
-              >
-                <RotateCw className="w-5 h-5 sm:w-6 sm:h-6" />
-              </SeekButton>
-            </div>
-          ),
+  /* FIX 3: Ép nút Play ở giữa luôn nổi lên trên cùng, 
+     và thêm touch-action để fix lỗi đơ click / delay tap trên Mobile */
+  .vds-button[slot="centered-play"],
+  .vds-play-button[data-center] {
+    z-index: 9999 !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important; /* <--- CỰC KỲ QUAN TRỌNG TRÊN MOBILE */
+    cursor: pointer !important;
+  }
+
+  /* FIX LỖI 2 ICON SVG TRONG NÚT PLAY */
+  .vds-play-button[data-paused] [data-pause-icon] {
+    display: none !important;
+  }
+  .vds-play-button:not([data-paused]) [data-play-icon] {
+    display: none !important;
+  }
+  .vds-button svg {
+    display: block; 
+  }
+
+  /* UI Tùy chỉnh */
+  vds-media-slider {
+    --vds-slider-track-height: 4px;
+    --vds-slider-thumb-size: 16px;
+    --vds-slider-active-color: var(--video-brand);
+  }
+
+  vds-media-slider:hover {
+    --vds-slider-track-height: 6px;
+  }
+
+  @media (max-width: 768px) {
+    .vds-controls { padding: 8px !important; }
+  }
+
+  .vds-title {
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    font-weight: 800 !important;
+  }
+
+  vds-media-player[data-paused] .vds-provider::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.2);
+    pointer-events: none;
+  }
+`,
         }}
       />
-    </MediaPlayer>
+
+      <MediaPlayer
+        ref={playerRef}
+        title={title}
+        src={isYoutube && youtubeId ? `youtube/${youtubeId}` : src}
+        logLevel="warn"
+        playsInline
+        autoPlay={autoPlay}
+        muted={muted}
+        onProviderSetup={handleProviderSetup}
+        {...(isYoutube ? {} : { crossOrigin: "anonymous" })}
+        className="w-full aspect-video bg-black text-white font-sans overflow-hidden ring-media-focus data-[focus]:ring-4 group relative"
+        style={
+          {
+            "--brand": "var(--video-brand)",
+            "--media-brand": "var(--video-brand)",
+            "--media-focus-ring-color": "var(--video-brand)",
+            "--media-slider-track-height": "4px",
+            "--media-slider-thumb-size": "14px",
+            "--media-controls-gap": "12px",
+          } as CustomCSSProperties
+        }
+      >
+        <MediaProvider>
+          {actualPoster && (
+            <Poster
+              /* ĐÃ SỬA: Bổ sung pointer-events-none để lớp mờ này không hấp thụ sự kiện Touch */
+              className="absolute inset-0 block h-full w-full opacity-0 transition-opacity data-[visible]:opacity-100 object-cover z-10 pointer-events-none"
+              src={actualPoster}
+              alt={title}
+            />
+          )}
+
+          {!isYoutube &&
+            subtitles?.map((sub, index) => (
+              <Track
+                key={String(index)}
+                src={sub.src}
+                kind={sub.kind || "subtitles"}
+                label={sub.label}
+                lang={sub.language}
+                default={sub.default}
+              />
+            ))}
+        </MediaProvider>
+
+        <DefaultVideoLayout icons={defaultLayoutIcons} />
+      </MediaPlayer>
+    </div>
   );
 }
