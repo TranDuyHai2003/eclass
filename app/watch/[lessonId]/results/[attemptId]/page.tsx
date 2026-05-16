@@ -19,6 +19,9 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { PDFViewerClientWrapper } from "@/components/course/PDFViewerClientWrapper";
 import { GradeEssay } from "@/components/teacher/test-builder/GradeEssay";
+import { getAttemptStatistics } from "@/actions/analytics";
+import { ResultAnalytics } from "./_components/ResultAnalytics";
+import { RecommendationList } from "./_components/RecommendationList";
 
 export default async function TestResultPage({
   params,
@@ -30,26 +33,9 @@ export default async function TestResultPage({
 
   const { lessonId, attemptId } = await params;
 
-  // 1. Fetch Attempt with full details
-  const attempt = await prisma.studentAttempt.findUnique({
-    where: { id: attemptId },
-    include: {
-      user: true,
-      test: {
-        include: {
-          sections: {
-            include: {
-              questions: {
-                orderBy: { position: "asc" },
-              },
-            },
-            orderBy: { position: "asc" },
-          },
-        },
-      },
-      answers: true,
-    },
-  });
+  // 1. Fetch Attempt with full details and analytics (Single query optimization)
+  const analyticsData = await getAttemptStatistics(attemptId);
+  const attempt = analyticsData.attempt;
 
   if (!attempt) return notFound();
 
@@ -115,7 +101,7 @@ export default async function TestResultPage({
           <div className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-yellow-500" />
             <span className="text-xl font-black text-blue-600">
-              {attempt.score?.toFixed(1)} / 10
+              {attempt.score?.toFixed(2)} / 10
             </span>
           </div>
         </div>
@@ -141,6 +127,9 @@ export default async function TestResultPage({
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-10">
+            {/* Analytics Section */}
+            <ResultAnalytics data={analyticsData.analytics} />
+
             {/* Overall Explanation Section */}
             {(test.explanation || test.videoUrl || test.audioUrl) && (
               <div className="bg-blue-50/50 rounded-[32px] p-6 border border-blue-100 space-y-4">
@@ -306,6 +295,9 @@ export default async function TestResultPage({
                 </div>
               </div>
             ))}
+
+            {/* Recommendations Section */}
+            <RecommendationList recommendations={analyticsData.recommendations} />
           </div>
         </div>
       </div>

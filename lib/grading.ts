@@ -65,5 +65,5 @@ export function calculateScore(
     };
   });
   
-  return { totalScore, results };
+  return { totalScore: Math.round(totalScore * 100) / 100, results };
 }

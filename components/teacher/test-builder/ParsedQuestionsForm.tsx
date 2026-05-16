@@ -49,7 +49,7 @@ export function ParsedQuestionsForm({ questions, onChange }: ParsedQuestionsForm
     onChange([
       ...questions,
       {
-        id: `manual-${Date.now()}`,
+        id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         order: nextOrder,
         question_label: `Câu ${nextOrder}`,
         question_category: "",

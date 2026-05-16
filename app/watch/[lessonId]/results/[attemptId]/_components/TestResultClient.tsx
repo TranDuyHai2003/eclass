@@ -103,7 +103,7 @@ export default function TestResultClient({ attempt, isTeacher = false }: { attem
           <div className="flex items-center gap-2">
             <Award className="w-5 h-5 text-yellow-500" />
             <span className="text-xl font-black text-blue-600">
-              {attempt.score?.toFixed(1)} / 10
+              {attempt.score?.toFixed(2)} / 10
             </span>
           </div>
           <div className="flex gap-4 text-[10px] font-black uppercase tracking-widest border-l pl-6">

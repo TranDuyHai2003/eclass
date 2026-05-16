@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 import { getCourseById } from "@/actions/course"
 import { CourseBuilder } from "@/components/teacher/course-builder/CourseBuilder"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, BarChart3 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
@@ -34,9 +34,17 @@ export default async function TeacherCourseEditPage({ params }: Props) {
                               Quay lại danh sách
                           </Link>
                       </Button>
-                      <div>
-                          <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Quản lý khóa học</h1>
-                          <p className="text-slate-500 text-sm font-medium uppercase tracking-tight">Thiết lập chương trình và nội dung bài giảng.</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div>
+                              <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Quản lý khóa học</h1>
+                              <p className="text-slate-500 text-sm font-medium uppercase tracking-tight">Thiết lập chương trình và nội dung bài giảng.</p>
+                          </div>
+                          <Button asChild className="rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-100 font-black uppercase text-xs h-12 px-6">
+                              <Link href={`/teacher/courses/${courseId}/analytics`}>
+                                  <BarChart3 className="w-4 h-4 mr-2" />
+                                  Thống kê điểm & Tiến độ
+                              </Link>
+                          </Button>
                       </div>
                   </div>
 

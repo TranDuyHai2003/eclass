@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Users, Clock, Eye } from "lucide-react";
+import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
 
 export default async function TeacherTestResultsPage({ params }: { params: Promise<{ lessonId: string }> }) {
@@ -38,7 +39,7 @@ export default async function TeacherTestResultsPage({ params }: { params: Promi
   // Calculate stats
   const totalAttempts = test.attempts.length;
   const averageScore = totalAttempts > 0 
-    ? (test.attempts.reduce((acc, curr) => acc + (curr.score || 0), 0) / totalAttempts).toFixed(1)
+    ? (test.attempts.reduce((acc, curr) => acc + (curr.score || 0), 0) / totalAttempts).toFixed(2)
     : 0;
 
   const backLink = test.lesson 
@@ -55,9 +56,9 @@ export default async function TeacherTestResultsPage({ params }: { params: Promi
         <div className="mb-6 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3 text-sm text-gray-500 mb-2">
-              <Link href={backLink} className="flex items-center gap-1 hover:text-blue-600">
-                <ArrowLeft className="w-4 h-4" /> Quay lại khóa học
-              </Link>
+              <BackButton variant="ghost" className="h-auto p-0 hover:bg-transparent" size="default" fallbackUrl={backLink}>
+                <ArrowLeft className="w-4 h-4 mr-1" /> Quay lại
+              </BackButton>
             </div>
             <h1 className="text-2xl font-bold text-gray-900">Kết quả bài kiểm tra: {testTitle}</h1>
           </div>

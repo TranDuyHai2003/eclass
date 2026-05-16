@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { ArrowLeft, Clock, Send, AlertTriangle, Flag } from "lucide-react";
@@ -78,33 +78,9 @@ export default function TestTakerClient({
     }
   }, [timeLeft.isFinished, startedAt]);
 
-  // Auto-submit khi isTimeUp được set
-  useEffect(() => {
-    if (isTimeUp && attemptId && !isPending) {
-      toast.error("Đã hết thời gian làm bài. Hệ thống đang tự động nộp bài...");
-      handleSubmit();
-    }
-  }, [isTimeUp, attemptId]);
-
-  // Auto-save logic
-  useEffect(() => {
-    if (attemptId && Object.keys(answers).length > 0) {
-      localStorage.setItem(`draft_${attemptId}`, JSON.stringify(answers));
-    }
-  }, [answers, attemptId]);
-
-  const handleSelectAnswer = (qId: string, value: string) => {
-    setAnswers((prev) => ({ ...prev, [qId]: value }));
-  };
-
-  const handleToggleFlag = (qId: string) => {
-    setFlags(prev => ({ ...prev, [qId]: !prev[qId] }));
-  };
-
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (!attemptId) return;
 
-    // Check if fully answered? We just warn if missing.
     let totalQuestions = 0;
     test.sections.forEach((s: any) => (totalQuestions += s.questions.length));
     const answeredCount = Object.keys(answers).filter(
@@ -132,7 +108,6 @@ export default function TestTakerClient({
         if (res.success) {
           toast.success("Nộp bài thành công!");
           localStorage.removeItem(`draft_${attemptId}`);
-          // Use custom resultsPath if provided, otherwise default lesson results
           const path = resultsPath
             ? `${resultsPath}/${attemptId}`
             : `/watch/${lesson.id}/results/${attemptId}`;
@@ -144,6 +119,29 @@ export default function TestTakerClient({
         toast.error("Không thể nộp bài");
       }
     });
+  }, [attemptId, answers, isTimeUp, test, lesson, resultsPath, router]);
+
+  // Auto-submit khi isTimeUp được set
+  useEffect(() => {
+    if (isTimeUp && attemptId && !isPending) {
+      toast.error("Đã hết thời gian làm bài. Hệ thống đang tự động nộp bài...");
+      handleSubmit();
+    }
+  }, [isTimeUp, attemptId, handleSubmit, isPending]);
+
+  // Auto-save logic
+  useEffect(() => {
+    if (attemptId && Object.keys(answers).length > 0) {
+      localStorage.setItem(`draft_${attemptId}`, JSON.stringify(answers));
+    }
+  }, [answers, attemptId]);
+
+  const handleSelectAnswer = (qId: string, value: string) => {
+    setAnswers((prev) => ({ ...prev, [qId]: value }));
+  };
+
+  const handleToggleFlag = (qId: string) => {
+    setFlags(prev => ({ ...prev, [qId]: !prev[qId] }));
   };
 
   if (loadingInitial) {

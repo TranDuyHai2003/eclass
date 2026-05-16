@@ -13,7 +13,8 @@ import {
   Settings,
   CreditCard,
   PlaySquare,
-  ClipboardList
+  ClipboardList,
+  TrendingUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
@@ -40,6 +41,7 @@ export function HomeSidebar() {
 
   const adminLinks = [
     { href: "/admin/analytics", label: "Thống kê hệ thống", icon: BarChart3 },
+    { href: "/admin/global-analytics", label: "Thống kê điểm số", icon: TrendingUp },
     { href: "/admin/users", label: "Quản lý Người dùng", icon: Users },
     { href: "/admin/finance", label: "Quản lý Ghi danh", icon: CreditCard },
     { href: "/admin/settings", label: "Cấu hình hệ thống", icon: Settings },

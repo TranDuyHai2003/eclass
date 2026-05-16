@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import CreateCourseButton from "@/components/teacher/CreateCourseButton"
+import AnalyticsButton from "@/components/teacher/AnalyticsButton"
 import { ChevronRight } from "lucide-react"
 
 type TeacherCourse = {
@@ -88,8 +89,11 @@ export default async function TeacherCoursesPage() {
                                             </div>
                                         </div>
                                         
-                                        <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center group-hover:bg-red-600 transition-colors shadow-lg">
-                                            <ChevronRight className="w-4 h-4" />
+                                        <div className="flex items-center gap-2">
+                                            <AnalyticsButton href={`/teacher/courses/${course.id}/analytics`} />
+                                            <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center group-hover:bg-red-600 transition-colors shadow-lg">
+                                                <ChevronRight className="w-4 h-4" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

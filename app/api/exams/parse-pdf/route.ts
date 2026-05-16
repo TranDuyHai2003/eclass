@@ -21,9 +21,9 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // @ts-ignore
-    const pdfParse = (await import("pdf-parse")).default;
-    const data = await pdfParse(buffer);
+    const { PDFParse } = await import("pdf-parse");
+    const pdf = new PDFParse({ data: buffer });
+    const data = await pdf.getText();
 
     const text = data.text || "";
     const textLines = text.split("\n").filter((l: string) => l.trim());
