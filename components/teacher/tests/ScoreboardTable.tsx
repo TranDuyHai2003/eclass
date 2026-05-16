@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Printer, ArrowDown } from "lucide-react";
+import { Search, ArrowDown } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { AnalyticsExportButton } from "@/components/analytics/AnalyticsExportButton";
 
 export interface ScoreboardAttempt {
   id: string;
@@ -29,13 +30,22 @@ export interface ScoreboardAttempt {
 }
 
 interface ScoreboardTableProps {
+  testId?: string; // Add testId for exporting
   attempts: ScoreboardAttempt[];
   resultsBasePath: string;
 }
 
-type StatusFilter = "all" | "not-started" | "in-progress" | "submitted";
+type StatusFilter =
+  | "all"
+  | "not-started"
+  | "in-progress"
+  | "submitted"
+  | "excellent"
+  | "passed"
+  | "failed";
 
 export default function ScoreboardTable({
+  testId,
   attempts,
   resultsBasePath,
 }: ScoreboardTableProps) {
@@ -55,7 +65,13 @@ export default function ScoreboardTable({
 
         if (status === "submitted") return hasCompleted;
         if (status === "in-progress") return !hasCompleted && hasAnswers;
-        return !hasCompleted && !hasAnswers;
+        if (status === "not-started") return !hasCompleted && !hasAnswers;
+        
+        if (status === "excellent") return hasCompleted && (attempt.score || 0) >= 8;
+        if (status === "passed") return hasCompleted && (attempt.score || 0) >= 5;
+        if (status === "failed") return hasCompleted && (attempt.score || 0) < 5;
+
+        return true;
       })
       .filter((attempt) => {
         if (!normalizedSearch) return true;
@@ -87,25 +103,44 @@ export default function ScoreboardTable({
                 value="all"
                 className="rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest"
               >
-                Tat ca
+                Tất cả
               </TabsTrigger>
               <TabsTrigger
                 value="not-started"
                 className="rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest"
               >
-                Chua lam
+                Chưa làm
               </TabsTrigger>
               <TabsTrigger
                 value="in-progress"
                 className="rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest"
               >
-                Dang lam
+                Đang làm
               </TabsTrigger>
               <TabsTrigger
                 value="submitted"
                 className="rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest"
               >
-                Da nop
+                Đã nộp
+              </TabsTrigger>
+              <div className="w-px h-4 bg-slate-300 mx-1 self-center" />
+              <TabsTrigger
+                value="excellent"
+                className="rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-600 data-[state=active]:bg-emerald-500 data-[state=active]:text-white"
+              >
+                Giỏi (&gt;=8)
+              </TabsTrigger>
+              <TabsTrigger
+                value="passed"
+                className="rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-blue-600 data-[state=active]:bg-blue-500 data-[state=active]:text-white"
+              >
+                Đạt (&gt;=5)
+              </TabsTrigger>
+              <TabsTrigger
+                value="failed"
+                className="rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-red-600 data-[state=active]:bg-red-500 data-[state=active]:text-white"
+              >
+                Yếu (&lt;5)
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -113,10 +148,10 @@ export default function ScoreboardTable({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end w-full lg:w-auto">
             <Select value={classFilter} onValueChange={setClassFilter}>
               <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold w-full sm:w-[180px]">
-                <SelectValue placeholder="Hoc sinh lop..." />
+                <SelectValue placeholder="Học sinh lớp..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tat ca lop</SelectItem>
+                <SelectItem value="all">Tất cả lớp</SelectItem>
               </SelectContent>
             </Select>
 
@@ -125,17 +160,17 @@ export default function ScoreboardTable({
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Nhap de tim kiem..."
+                placeholder="Nhập để tìm kiếm..."
                 className="h-10 rounded-xl border-slate-200 pl-9 text-xs font-bold"
               />
             </div>
 
-            <Button
+            <AnalyticsExportButton
+              apiUrl={testId ? `/api/tests/${testId}/export` : undefined}
+              filename={testId ? `Ket_qua_bai_thi_${testId}` : undefined}
               variant="outline"
-              className="h-10 rounded-xl border-slate-200 px-3"
-            >
-              <Printer className="w-4 h-4" />
-            </Button>
+              className="px-4"
+            />
           </div>
         </div>
       </div>
@@ -155,7 +190,7 @@ export default function ScoreboardTable({
                   #
                 </th>
                 <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                  Ho va ten
+                  Họ và tên
                 </th>
                 <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
                   <span className="inline-flex items-center gap-2">
@@ -163,19 +198,19 @@ export default function ScoreboardTable({
                   </span>
                 </th>
                 <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                  Thoi luong
+                  Thời lượng
                 </th>
                 <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                  Ngay nop
+                  Ngày nộp
                 </th>
                 <th
                   className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest"
                   title="So lan hoc sinh roi khoi tab hoac thoat khoi man hinh bai thi"
                 >
-                  Roi khoi
+                  Rời khỏi
                 </th>
                 <th className="px-6 py-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                  Hanh dong
+                  Hành động
                 </th>
               </tr>
             </thead>
@@ -227,7 +262,7 @@ export default function ScoreboardTable({
                             : "text-red-500",
                       )}
                     >
-                      {attempt.score !== null ? attempt.score.toFixed(1) : "--"}
+                      {attempt.score !== null ? attempt.score.toFixed(2) : "--"}
                     </span>
                   </td>
                   <td className="px-4 py-5 text-xs font-bold text-slate-600">
@@ -259,7 +294,7 @@ export default function ScoreboardTable({
                     colSpan={8}
                     className="px-6 py-12 text-center text-sm font-bold text-slate-400"
                   >
-                    Khong co du lieu phu hop voi bo loc hien tai.
+                    Không có dữ liệu phù hợp với bộ lọc hiện tại.
                   </td>
                 </tr>
               )}

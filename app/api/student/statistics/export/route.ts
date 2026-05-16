@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 export async function GET(
   req: NextRequest,
@@ -46,38 +46,42 @@ export async function GET(
     },
   });
 
-  // 3. Prepare data for Excel
-  const exportData = attempts.map((a) => ({
-    "Bài kiểm tra": a.test.title || a.test.lesson?.title || a.test.course?.title || "N/A",
-    "Khóa học": a.test.course?.title || "Bài lẻ",
-    "Điểm số": a.score !== null ? a.score.toFixed(2) : "Chưa chấm",
-    "Thời gian bắt đầu": a.startedAt.toLocaleString("vi-VN"),
-    "Thời gian nộp bài": a.completedAt?.toLocaleString("vi-VN") || "N/A",
-  }));
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Thống kê cá nhân');
 
-  // 4. Create Workbook
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(exportData);
+    worksheet.columns = [
+      { header: 'Bài kiểm tra', key: 'testTitle', width: 40 },
+      { header: 'Khóa học', key: 'courseTitle', width: 30 },
+      { header: 'Điểm số', key: 'score', width: 15 },
+      { header: 'Thời gian bắt đầu', key: 'startedAt', width: 25 },
+      { header: 'Thời gian nộp bài', key: 'completedAt', width: 25 },
+    ];
 
-  const wscols = [
-    { wch: 40 }, // Bài kiểm tra
-    { wch: 30 }, // Khóa học
-    { wch: 15 }, // Điểm số
-    { wch: 25 }, // Bắt đầu
-    { wch: 25 }, // Nộp bài
-  ];
-  ws["!cols"] = wscols;
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).alignment = { horizontal: 'center' };
 
-  XLSX.utils.book_append_sheet(wb, ws, "Thống kê cá nhân");
+    attempts.forEach((a) => {
+      worksheet.addRow({
+        testTitle: a.test.title || a.test.lesson?.title || a.test.course?.title || "N/A",
+        courseTitle: a.test.course?.title || "Bài lẻ",
+        score: a.score !== null ? a.score.toFixed(2) : "Chưa chấm",
+        startedAt: a.startedAt.toLocaleString("vi-VN"),
+        completedAt: a.completedAt?.toLocaleString("vi-VN") || "N/A",
+      });
+    });
 
-  // 5. Generate buffer
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    const buffer = await workbook.xlsx.writeBuffer();
 
-  return new NextResponse(buf, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="Thong_ke_${user.name?.replace(/\s+/g, "_")}.xlsx"`,
-    },
-  });
+    return new NextResponse(buffer, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="Thong_ke_${user.name?.replace(/\s+/g, "_")}.xlsx"`,
+      },
+    });
+  } catch (error) {
+    console.error("[EXPORT_ERROR]", error);
+    return new NextResponse("Internal Error", { status: 500 });
+  }
 }

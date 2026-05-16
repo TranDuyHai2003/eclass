@@ -26,18 +26,31 @@ export function FastEntryModal({
   onConfirm,
 }: FastEntryModalProps) {
   const [text, setText] = useState("");
-  
-  // Hỗ trợ A-E (Trắc nghiệm 5 đáp án)
-  const matches = text.match(/[A-Ea-e]/g) || [];
+
+  const extractAnswers = (input: string): string[] => {
+    // Priority 1: numbered list "1A 2B 3C..." hoặc "1. A 2. B..."
+    const numberedMatches = input.match(/\d+\s*[A-Ea-e]/g);
+    if (numberedMatches && numberedMatches.length >= 2) {
+      return numberedMatches.map(s => s.trim().replace(/^\d+\s*/, '').toUpperCase());
+    }
+
+    // Priority 2: word-boundaried single letters "A B C" hoặc "A, B, C"
+    const wordBoundMatches = input.match(/\b[A-Ea-e]\b/g);
+    if (wordBoundMatches && wordBoundMatches.length >= 2) {
+      return wordBoundMatches.map(c => c.toUpperCase());
+    }
+
+    // Fallback: all A-E chars (handles raw "ABCD" hoặc "ABCDABC")
+    return (input.match(/[A-Ea-e]/g) || []).map(c => c.toUpperCase());
+  };
+
+  const matches = extractAnswers(text);
   const answerCount = matches.length;
 
   const handleProcess = () => {
     if (!text.trim()) return;
 
-    // Extract all A-E characters from any supported format
-    const processedAnswers = (text.match(/[A-Ea-e]/g) || []).map((char) =>
-      char.toUpperCase(),
-    );
+    const processedAnswers = extractAnswers(text);
 
     if (processedAnswers.length > 0) {
       onConfirm(processedAnswers);

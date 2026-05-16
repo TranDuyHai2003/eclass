@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { PDFViewerClientWrapper } from "@/components/course/PDFViewerClientWrapper";
+import { BackButton } from "@/components/ui/back-button";
 import ScoreboardTable, {
   type ScoreboardAttempt,
 } from "@/components/teacher/tests/ScoreboardTable";
@@ -73,20 +74,19 @@ export default async function TestAnalyticsPage({
           <BarChart3 className="w-10 h-10 text-slate-300" />
         </div>
         <h1 className="text-2xl font-black text-slate-900 mb-2">
-          Chua co bai kiem tra
+          Chưa có bài kiểm tra
         </h1>
         <p className="text-slate-500 max-w-sm mb-8">
-          Bai hoc nay chua co bai kiem tra duoc tao.
+           Bài học này chưa có bài kiểm tra được tạo.
         </p>
-        <Button
-          asChild
+        <BackButton
           variant="outline"
-          className="rounded-2xl px-8 font-bold"
+          className="px-8 font-bold"
+          size="default"
+          fallbackUrl={`/teacher/tests/${lessonId}`}
         >
-          <Link href={`/teacher/tests/${lessonId}`}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Quay lai
-          </Link>
-        </Button>
+          <ArrowLeft className="w-4 h-4 mr-2" /> Quay lại
+        </BackButton>
       </div>
     );
   }
@@ -107,9 +107,9 @@ export default async function TestAnalyticsPage({
   const finishedAttempts = allAttempts.filter((a) => a.completedAt !== null);
   const totalAttempts = finishedAttempts.length;
 
-  const averageScore =
-    finishedAttempts.reduce((acc, curr) => acc + (curr.score || 0), 0) /
-    totalAttempts;
+  const averageScore = totalAttempts > 0 ?
+    Math.round((finishedAttempts.reduce((acc, curr) => acc + (curr.score || 0), 0) / totalAttempts) * 100) / 100
+    : 0;
   const highScores = finishedAttempts.filter((a) => (a.score || 0) >= 8).length;
 
   // Score Distribution (0-2, 2-4, 4-6, 6-8, 8-10)
@@ -155,16 +155,28 @@ export default async function TestAnalyticsPage({
     answersCount: a.answers.length,
   }));
 
+  let qCounter = 1;
+  const killerQuestions = test.sections.flatMap(s => s.questions.map(q => {
+     const stats = questionStats.get(q.id) || { correct: 0, total: 0 };
+     const correctRate = stats.total > 0 ? (stats.correct / stats.total) * 100 : 0;
+     return {
+        id: q.id,
+        index: qCounter++,
+        type: q.type,
+        correctRate,
+        stats
+     }
+  }))
+  .filter(q => q.stats.total > 0)
+  .sort((a, b) => a.correctRate - b.correctRate)
+  .slice(0, 3);
+
   return (
     <Tabs defaultValue="scores" className="min-h-screen bg-[#F8F9FB] pb-20 flex flex-col">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="container mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4 min-w-0">
-            <Button variant="ghost" size="icon" asChild className="rounded-2xl shrink-0">
-              <Link href={`/teacher/tests/${lessonId}`}>
-                <ArrowLeft className="w-5 h-5 text-slate-600" />
-              </Link>
-            </Button>
+            <BackButton fallbackUrl={`/teacher/tests/${lessonId}`} />
             <div className="min-w-0">
               <h1 className="text-xl font-black text-slate-900 truncate max-w-[300px] lg:max-w-[400px]">
                 {testTitle}
@@ -181,31 +193,31 @@ export default async function TestAnalyticsPage({
                 value="scores"
                 className="rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white"
               >
-                Bang diem
+                Bảng điểm
               </TabsTrigger>
               <TabsTrigger
                 value="overview"
                 className="rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white"
               >
-                Tong quan
+                Tổng quan
               </TabsTrigger>
               <TabsTrigger
                 value="questions"
                 className="rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white"
               >
-                Thong so cau
+                Thông số câu
               </TabsTrigger>
               <TabsTrigger
                 value="exam"
                 className="rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white"
               >
-                De bai
+                Đề bài
               </TabsTrigger>
               <TabsTrigger
                 value="solutions"
                 className="rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white"
               >
-                Loi giai
+                Lời giải
               </TabsTrigger>
             </TabsList>
           </div>
@@ -215,6 +227,7 @@ export default async function TestAnalyticsPage({
       <main className="container mx-auto px-4 md:px-6 py-8 space-y-8 flex-1">
         <TabsContent value="scores" className="mt-0">
           <ScoreboardTable
+            testId={test.id}
             attempts={scoreboardAttempts}
             resultsBasePath={`/watch/${lessonId}/results`}
           />
@@ -224,25 +237,25 @@ export default async function TestAnalyticsPage({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
               icon={Users}
-              label="Tong so luot nop"
+              label="Tổng số lượt nộp"
               value={totalAttempts.toString()}
               color="bg-blue-500"
             />
             <StatCard
               icon={Target}
-              label="Diem trung binh"
-              value={totalAttempts > 0 ? averageScore.toFixed(1) : "--"}
+              label="Điểm trung bình"
+              value={totalAttempts > 0 ? averageScore.toFixed(2) : "--"}
               color="bg-purple-500"
             />
             <StatCard
               icon={Award}
-              label="Ti le Gioi (>=8.0)"
+              label="Tỉ lệ Giỏi (>=8.0)"
               value={totalAttempts > 0 ? `${Math.round((highScores / totalAttempts) * 100)}%` : "--"}
               color="bg-emerald-500"
             />
             <StatCard
               icon={Users}
-              label="Hoc sinh dat"
+              label="Học sinh đạt"
               value={finishedAttempts
                 .filter((a) => (a.score || 0) >= 5)
                 .length.toString()}
@@ -254,10 +267,10 @@ export default async function TestAnalyticsPage({
             <div className="lg:col-span-2 bg-white rounded-[32px] border border-slate-200 p-8 shadow-sm">
               <div className="flex items-center justify-between mb-10">
                 <h4 className="font-black text-slate-900 uppercase tracking-tight">
-                  Pho diem hoc sinh
+                  Phổ điểm học sinh
                 </h4>
                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Don vi: So luong
+                  Đơn vị: Số lượng
                 </div>
               </div>
 
@@ -273,7 +286,7 @@ export default async function TestAnalyticsPage({
                     >
                       <div className="w-full relative flex flex-col justify-end h-full">
                         <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                      {count} hoc sinh
+                      {count} học sinh
                         </div>
                         <div
                           className={cn(
@@ -296,7 +309,7 @@ export default async function TestAnalyticsPage({
 
             <div className="bg-white rounded-[32px] border border-slate-200 p-8 shadow-sm">
               <h4 className="font-black text-slate-900 uppercase tracking-tight mb-6">
-                Luot lam gan day
+                Lượt làm gần đây
               </h4>
               <div className="space-y-4">
                 {finishedAttempts.slice(0, 6).map((a) => (
@@ -335,7 +348,7 @@ export default async function TestAnalyticsPage({
                               : "text-red-500",
                         )}
                       >
-                        {a.score?.toFixed(1)}
+                        {a.score?.toFixed(2)}
                       </span>
                       <Link href={`/watch/${lessonId}/results/${a.id}`}>
                         <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors" />
@@ -347,22 +360,71 @@ export default async function TestAnalyticsPage({
                   variant="ghost"
                   className="w-full rounded-xl text-slate-400 font-bold text-xs"
                 >
-                  Xem toan bo danh sach
+                  Xem toàn bộ danh sách
                 </Button>
               </div>
             </div>
           </div>
+
+          {/* Killer Questions Section */}
+          {killerQuestions.length > 0 && (
+            <div className="bg-red-50/50 rounded-[32px] border border-red-100 p-8 shadow-sm mt-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-2xl bg-red-100 flex items-center justify-center text-red-600 shadow-inner">
+                  <Target className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-black text-red-900 uppercase tracking-tight">
+                    Câu hỏi tử thần
+                  </h4>
+                  <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mt-0.5">
+                    Top 3 câu có tỉ lệ sai cao nhất
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {killerQuestions.map((q, i) => (
+                  <div key={q.id} className="bg-white rounded-[24px] p-6 shadow-sm border border-red-50 relative overflow-hidden group hover:border-red-200 transition-colors">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-red-50 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-red-100 transition-colors" />
+                    <div className="flex items-center justify-between mb-4 relative z-10">
+                      <span className="text-xs font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-lg">
+                        Câu #{q.index}
+                      </span>
+                      <span className="text-2xl font-black text-red-500 drop-shadow-sm">
+                        {Math.round(100 - q.correctRate)}% sai
+                      </span>
+                    </div>
+                    <div className="space-y-2 relative z-10">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        Hình thức: <span className="text-slate-900">{q.type === 'MULTIPLE_CHOICE' ? 'Trắc nghiệm' : 'Điền khuyết'}</span>
+                      </p>
+                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-red-500 rounded-full transition-all duration-1000 delay-300"
+                          style={{ width: `${100 - q.correctRate}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-500">
+                        Đã có <strong className="text-red-500">{q.stats.total - q.stats.correct}</strong>/{q.stats.total} học sinh làm sai.
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="questions" className="mt-0">
           <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-8 border-b border-slate-100">
               <h4 className="font-black text-slate-900 uppercase tracking-tight">
-                Thong so cau hoi
+                Thông số câu hỏi
               </h4>
               <p className="text-xs text-slate-500 mt-1 font-medium">
-                Thong ke ti le dung/sai de xac dinh cac cau hoi hoc sinh thuong
-                mac loi.
+                Thống kê tỉ lệ đúng/sai để xác định các câu hỏi học sinh thường
+                mắc lỗi.
               </p>
             </div>
 
@@ -371,16 +433,16 @@ export default async function TestAnalyticsPage({
                 <thead>
                   <tr className="bg-slate-50/50">
                     <th className="px-8 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                      Cau hoi
+                      Câu hỏi
                     </th>
                     <th className="px-8 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                      Phan loai
+                      Phân loại
                     </th>
                     <th className="px-8 py-4 text-center text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                      Ti le dung
+                      Tỉ lệ đúng
                     </th>
                     <th className="px-8 py-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                      Thao tac
+                      Thao tác
                     </th>
                   </tr>
                 </thead>
@@ -408,7 +470,7 @@ export default async function TestAnalyticsPage({
                                 #{idx + 1}
                               </div>
                               <span className="text-sm font-bold text-slate-700">
-                                Cau hoi trac nghiem
+                                Câu hỏi trắc nghiệm
                               </span>
                             </div>
                           </td>
@@ -424,10 +486,10 @@ export default async function TestAnalyticsPage({
                               )}
                             >
                               {correctRate < 40
-                                ? "Kho"
+                                ? "Khó"
                                 : correctRate < 70
-                                  ? "Trung binh"
-                                  : "De"}
+                                  ? "Trung bình"
+                                  : "Dễ"}
                             </span>
                           </td>
                           <td className="px-8 py-5">
@@ -457,7 +519,7 @@ export default async function TestAnalyticsPage({
                               size="sm"
                               className="text-blue-600 font-bold hover:bg-blue-50"
                             >
-                              Xem chi tiet
+                              Xem chi tiết
                             </Button>
                           </td>
                         </tr>
@@ -473,10 +535,10 @@ export default async function TestAnalyticsPage({
           <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-8 border-b border-slate-100">
               <h4 className="font-black text-slate-900 uppercase tracking-tight">
-                De bai
+                Đề bài
               </h4>
               <p className="text-xs text-slate-500 mt-1 font-medium">
-                Xem nhanh noi dung goc cua de thi.
+                Xem nhanh nội dung gốc của đề thi.
               </p>
             </div>
             {test.pdfUrl ? (
@@ -485,7 +547,7 @@ export default async function TestAnalyticsPage({
               </div>
             ) : (
               <div className="p-8 text-sm text-slate-500">
-                Chua co file PDF de bai. Vui long tai len de bai trong phan thiet lap.
+                Chưa có file PDF đề bài. Vui lòng tải lên đề bài trong phần thiết lập.
               </div>
             )}
           </div>
@@ -495,10 +557,10 @@ export default async function TestAnalyticsPage({
           <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-8 border-b border-slate-100">
               <h4 className="font-black text-slate-900 uppercase tracking-tight">
-                Loi giai
+                Lời giải
               </h4>
               <p className="text-xs text-slate-500 mt-1 font-medium">
-                Xem dap an chuan va loi giai chi tiet cho tung cau hoi.
+                Xem đáp án chuẩn và lời giải chi tiết cho từng câu hỏi.
               </p>
             </div>
             {test.sections.length > 0 ? (
@@ -517,7 +579,7 @@ export default async function TestAnalyticsPage({
                             #{idx + 1}
                           </div>
                           <span className="text-sm font-bold text-slate-800">
-                            Cau hoi {q.type === "MULTIPLE_CHOICE" ? "trac nghiem" : "dien khuyet"}
+                            Câu hỏi {q.type === "MULTIPLE_CHOICE" ? "trắc nghiệm" : "điền khuyết"}
                           </span>
                           <span className={cn(
                             "px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest",
@@ -525,13 +587,13 @@ export default async function TestAnalyticsPage({
                               ? "bg-blue-50 text-blue-600"
                               : "bg-purple-50 text-purple-600",
                           )}>
-                            {q.points} diem
+                            {q.points} điểm
                           </span>
                         </div>
                         {q.correctAnswer && (
                           <div className="ml-11 flex items-center gap-2">
                             <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
-                              Dap an:
+                              Đáp án:
                             </span>
                             <span className="text-sm font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg">
                               {q.correctAnswer}
@@ -541,7 +603,7 @@ export default async function TestAnalyticsPage({
                         {q.explanation && (
                           <div className="ml-11">
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                              Giai thich:
+                              Giải thích:
                             </span>
                             <p className="text-sm text-slate-600 mt-1 leading-relaxed">
                               {q.explanation}
@@ -550,7 +612,7 @@ export default async function TestAnalyticsPage({
                         )}
                         {!q.correctAnswer && !q.explanation && (
                           <div className="ml-11 text-sm text-slate-400 italic">
-                            Chua co dap an hoac loi giai cho cau hoi nay.
+                            Chưa có đáp án hoặc lời giải cho câu hỏi này.
                           </div>
                         )}
                       </div>
@@ -560,7 +622,7 @@ export default async function TestAnalyticsPage({
               </div>
             ) : (
               <div className="p-8 text-sm text-slate-500">
-                Chua co cau hoi de hien thi loi giai.
+                Chưa có câu hỏi để hiển thị lời giải.
               </div>
             )}
           </div>

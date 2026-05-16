@@ -66,6 +66,8 @@ export async function GET(
       pdfUrl: test.pdfUrl,
       duration: test.duration,
       showAnswers: test.showAnswers,
+      lessonId: test.lessonId,
+      courseId: test.courseId,
       sections: test.sections,
     },
   });

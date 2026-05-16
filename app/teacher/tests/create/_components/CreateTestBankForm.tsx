@@ -49,7 +49,7 @@ export default function CreateTestBankForm() {
       });
 
       if (!presignRes.ok) {
-        throw new Error("Khong tao duoc link upload");
+        throw new Error("Không tạo được link upload");
       }
 
       const presignData = await presignRes.json();
@@ -60,12 +60,12 @@ export default function CreateTestBankForm() {
       });
 
       if (!uploadRes.ok) {
-        throw new Error("Upload that bai");
+        throw new Error("Upload thất bại");
       }
 
       const fileUrl = presignData.fileUrl;
       setPdfUrl(fileUrl);
-      toast.success("Tai PDF thanh cong");
+      toast.success("Tải PDF thành công");
 
       setIsParsing(true);
       try {
@@ -93,15 +93,15 @@ export default function CreateTestBankForm() {
             }),
           );
           setParsedQuestions(mapped);
-          toast.success(`Phat hien ${mapped.length} cau hoi`);
+          toast.success(`Phát hiện ${mapped.length} câu hỏi`);
         }
       } catch {
-        toast.error("Khong the phan tich PDF");
+        toast.error("Không thể phân tích PDF");
       } finally {
         setIsParsing(false);
       }
     } catch (error: any) {
-      toast.error(error.message || "Khong the tai PDF");
+      toast.error(error.message || "Không thể tải PDF");
     } finally {
       setIsUploading(false);
     }
@@ -109,12 +109,12 @@ export default function CreateTestBankForm() {
 
   const handleCreate = async () => {
     if (!title.trim()) {
-      toast.error("Vui long nhap ten de thi");
+      toast.error("Vui lòng nhập tên đề thi");
       return;
     }
 
     if (!pdfUrl) {
-      toast.error("Vui long tai len PDF");
+      toast.error("Vui lòng tải lên PDF");
       return;
     }
 
@@ -146,14 +146,14 @@ export default function CreateTestBankForm() {
 
       if (!res.ok) {
         const message = await res.text();
-        throw new Error(message || "Tao de thi that bai");
+        throw new Error(message || "Tạo đề thi thất bại");
       }
 
       const data = await res.json();
-      toast.success("Da tao de thi");
+      toast.success("Đã tạo đề thi");
       router.push(`/teacher/tests/bank/${data.testId}`);
     } catch (error: any) {
-      toast.error(error.message || "Khong the tao de thi");
+      toast.error(error.message || "Không thể tạo đề thi");
     } finally {
       setIsSaving(false);
     }
@@ -168,10 +168,10 @@ export default function CreateTestBankForm() {
               Test Bank
             </p>
             <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">
-              Tao de moi
+              Tạo đề mới
             </h1>
             <p className="text-slate-500">
-              Nhap thong tin co ban de tao de thi doc lap.
+              Nhập thông tin cơ bản để tạo đề thi độc lập.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -180,7 +180,7 @@ export default function CreateTestBankForm() {
               className="rounded-2xl border-slate-200 font-bold"
               asChild
             >
-              <Link href="/teacher/tests">Quay lai</Link>
+              <Link href="/teacher/tests">Quay lại</Link>
             </Button>
             <Button
               onClick={handleCreate}
@@ -189,10 +189,10 @@ export default function CreateTestBankForm() {
             >
               {isSaving ? (
                 <span className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Dang luu
+                  <Loader2 className="w-4 h-4 animate-spin" /> Đang lưu
                 </span>
               ) : (
-                "Tao va nhap dap an"
+                "Tạo và nhập đáp án"
               )}
             </Button>
           </div>
@@ -202,7 +202,7 @@ export default function CreateTestBankForm() {
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-2">
-                <Label className="font-bold">Ten de thi</Label>
+                <Label className="font-bold">Tên đề thi</Label>
                 <Input
                   placeholder="VD: Thi thu Toan 12 - De 01"
                   value={title}
@@ -210,7 +210,7 @@ export default function CreateTestBankForm() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="font-bold">Mon / Chu de</Label>
+                <Label className="font-bold">Môn / Chủ đề</Label>
                 <Input
                   placeholder="VD: Toan 12"
                   value={subject}
@@ -221,20 +221,20 @@ export default function CreateTestBankForm() {
 
             <div className="grid gap-6 md:grid-cols-3">
               <div className="space-y-2">
-                <Label className="font-bold">Thoi gian lam bai</Label>
+                <Label className="font-bold">Thời gian làm bài</Label>
                 <Select value={duration} onValueChange={setDuration}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Chon thoi gian" />
+                    <SelectValue placeholder="Chọn thời gian" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="45">45 phut</SelectItem>
-                    <SelectItem value="60">60 phut</SelectItem>
-                    <SelectItem value="90">90 phut</SelectItem>
+                    <SelectItem value="45">45 phút</SelectItem>
+                    <SelectItem value="60">60 phút</SelectItem>
+                    <SelectItem value="90">90 phút</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="font-bold">So cau hoi</Label>
+                <Label className="font-bold">Số câu hỏi</Label>
                 <Input
                   placeholder="VD: 50"
                   type="number"
@@ -244,7 +244,7 @@ export default function CreateTestBankForm() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="font-bold">Diem dat</Label>
+                <Label className="font-bold">Điểm đạt</Label>
                 <Input
                   placeholder="VD: 5.0"
                   type="number"
@@ -258,7 +258,7 @@ export default function CreateTestBankForm() {
             </div>
 
             <div className="space-y-2">
-              <Label className="font-bold">Tai len PDF de thi</Label>
+              <Label className="font-bold">Tải lên PDF đề thi</Label>
               <div className="border border-dashed border-slate-200 rounded-3xl p-6 bg-slate-50/60 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center">
@@ -266,12 +266,12 @@ export default function CreateTestBankForm() {
                   </div>
                   <div>
                     <p className="font-bold text-slate-800">
-                      Keo tha file PDF vao day
+                      Kéo thả file PDF vào đây
                     </p>
                     <p className="text-xs text-slate-500">
                       {pdfUrl
-                        ? "Da tai len"
-                        : "Hoac chon tu may tinh, toi da 200MB."}
+                        ? "Đã tải lên"
+                        : "Hoặc chọn từ máy tính, tối đa 200MB."}
                     </p>
                   </div>
                 </div>
@@ -290,12 +290,12 @@ export default function CreateTestBankForm() {
               </div>
               {isUploading && (
                 <p className="text-xs text-slate-500 flex items-center gap-2">
-                  <Loader2 className="w-3 h-3 animate-spin" /> Dang tai PDF...
+                  <Loader2 className="w-3 h-3 animate-spin" /> Đang tải PDF...
                 </p>
               )}
               {isParsing && (
                 <p className="text-xs text-blue-600 flex items-center gap-2">
-                  <Loader2 className="w-3 h-3 animate-spin" /> Dang phan tich cau truc de thi...
+                  <Loader2 className="w-3 h-3 animate-spin" /> Đang phân tích cấu trúc đề thi...
                 </p>
               )}
               {parseWarning && (
@@ -306,7 +306,7 @@ export default function CreateTestBankForm() {
               )}
               {pdfUrl && (
                 <p className="text-xs text-emerald-600">
-                  PDF da san sang: {pdfUrl}
+                  PDF đã sẵn sàng: {pdfUrl}
                 </p>
               )}
             </div>
@@ -316,7 +316,7 @@ export default function CreateTestBankForm() {
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-blue-600" />
                   <span className="text-sm font-bold text-slate-800">
-                    Ket qua phan tich tu dong
+                    Kết quả phân tích tự động
                   </span>
                 </div>
                 <ParsedQuestionsForm
@@ -327,9 +327,9 @@ export default function CreateTestBankForm() {
             )}
 
             <div className="space-y-2">
-              <Label className="font-bold">Mo ta / Ghi chu</Label>
+              <Label className="font-bold">Mô tả / Ghi chú</Label>
               <Textarea
-                placeholder="Ghi chu ve muc tieu, kien thuc can danh gia..."
+                placeholder="Ghi chú về mục tiêu, kiến thức cần đánh giá..."
                 className="min-h-[120px]"
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
@@ -344,10 +344,10 @@ export default function CreateTestBankForm() {
               </div>
               <div>
                 <h2 className="font-black text-slate-900 uppercase text-sm tracking-tight">
-                  Goi y chuan hoa
+                  Gợi ý chuẩn hóa
                 </h2>
                 <p className="text-xs text-slate-500">
-                  De thi doc lap can day du thong tin.
+                  Đề thi độc lập cần đầy đủ thông tin.
                 </p>
               </div>
             </div>
@@ -359,10 +359,10 @@ export default function CreateTestBankForm() {
                 </div>
                 <div>
                   <p className="font-bold text-slate-800">
-                    Thiet lap thoi gian ro rang
+                    Thiết lập thời gian rõ ràng
                   </p>
                   <p className="text-xs text-slate-500">
-                    Duy tri mot chuan de so sanh ket qua.
+                    Duy trì một chuẩn để so sánh kết quả.
                   </p>
                 </div>
               </div>
@@ -372,10 +372,10 @@ export default function CreateTestBankForm() {
                 </div>
                 <div>
                   <p className="font-bold text-slate-800">
-                    Nhap dap an sau khi tao
+                    Nhập đáp án sau khi tạo
                   </p>
                   <p className="text-xs text-slate-500">
-                    Chuyen sang man hinh split-screen de nhap nhanh.
+                    Chuyển sang màn hình split-screen để nhập nhanh.
                   </p>
                 </div>
               </div>
@@ -386,7 +386,7 @@ export default function CreateTestBankForm() {
               className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 font-black"
               disabled={isSaving}
             >
-              {isSaving ? "Dang tao..." : "Di den man nhap dap an"}
+              {isSaving ? "Đang tạo..." : "Đi đến màn nhập đáp án"}
             </Button>
           </div>
         </div>

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState, useTransition, useRef, useCallback } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -10,7 +9,6 @@ import {
   Link2,
   BarChart3,
   FileUp,
-  Zap,
   Search,
   Download,
   CheckCircle2,
@@ -22,7 +20,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { FastEntryModal } from "@/components/teacher/test-builder/FastEntryModal";
 import {
   Select,
   SelectContent,
@@ -30,15 +27,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const PDFViewer = dynamic(() => import("@/components/ui/pdf-viewer"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-full w-full items-center justify-center bg-slate-50 font-bold text-slate-400">
-      Dang tai PDF...
-    </div>
-  ),
-});
+import { getTeacherCoursesWithLessons, mapTestToLesson, unmapTest } from "@/actions/test";
+import { toast } from "sonner";
+import UnifiedTestBuilder from "@/components/teacher/test-builder/UnifiedTestBuilder";
+import type { UnifiedSaveData } from "@/components/teacher/test-builder/UnifiedTestBuilder";
 
 type TabKey = "config" | "content" | "mapping" | "analytics";
 
@@ -61,8 +53,8 @@ interface QuestionStat {
 
 export default function TestBankEditorClient({ testId }: { testId: string }) {
   const [activeTab, setActiveTab] = useState<TabKey>("content");
-  const [isFastEntryOpen, setIsFastEntryOpen] = useState(false);
   const [questions, setQuestions] = useState<any[]>([]);
+  const [testData, setTestData] = useState<any>(null);
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
@@ -72,11 +64,30 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
   const [dueDate, setDueDate] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
-  const [isSavingMatrix, setIsSavingMatrix] = useState(false);
 
   const [attempts, setAttempts] = useState<AttemptData[]>([]);
   const [questionStats, setQuestionStats] = useState<QuestionStat[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+
+  const [courses, setCourses] = useState<any[]>([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [isMapping, startMappingTransition] = useTransition();
+  const [mappedLessonId, setMappedLessonId] = useState<string | null>(null);
+  const [mappedCourseId, setMappedCourseId] = useState<string | null>(null);
+
+  const isDirtyRef = useRef(false);
+  const markDirty = () => { isDirtyRef.current = true; };
+  const resetDirty = () => { isDirtyRef.current = false; };
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirtyRef.current) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
 
   const scoreDistribution = useMemo(() => {
     if (attempts.length === 0) return [0, 0, 0, 0, 0];
@@ -94,16 +105,6 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
 
   const maxScoreBucket = Math.max(...scoreDistribution);
 
-  const handleFastEntry = (answers: string[]) => {
-    const next = answers.map((answer, index) => ({
-      id: `q-new-${Date.now()}-${index}`,
-      label: `Câu ${questions.length + index + 1}`,
-      answer,
-      points: 1,
-    }));
-    setQuestions((prev) => [...prev, ...next]);
-  };
-
   useEffect(() => {
     let isMounted = true;
 
@@ -117,12 +118,15 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
         if (!isMounted) return;
 
         const test = data.test;
+        setTestData(test);
         setTitle(test?.title || "");
         setSubject(test?.subject || "");
         setDescription(test?.description || "");
         setDuration(test?.duration?.toString() || "90");
         setPassScore(test?.passScore?.toString() || "5.0");
         setPdfUrl(test?.pdfUrl || "");
+        setMappedLessonId(test?.lessonId || null);
+        setMappedCourseId(test?.courseId || null);
         if (test?.dueDate) {
           setDueDate(new Date(test.dueDate).toISOString().slice(0, 16));
         }
@@ -173,6 +177,19 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
     };
   }, [testId, activeTab]);
 
+  useEffect(() => {
+    if (activeTab !== "mapping") return;
+    let cancelled = false;
+    setIsLoadingCourses(true);
+    getTeacherCoursesWithLessons().then((data) => {
+      if (!cancelled) {
+        setCourses(data);
+        setIsLoadingCourses(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [activeTab]);
+
   const handleSaveConfig = async () => {
     setIsSavingConfig(true);
     try {
@@ -189,48 +206,9 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
           dueDate: dueDate ? new Date(dueDate).toISOString() : null,
         }),
       });
+      resetDirty();
     } finally {
       setIsSavingConfig(false);
-    }
-  };
-
-  const handleSaveMatrix = async () => {
-    setIsSavingMatrix(true);
-    try {
-      await fetch(`/api/tests/${testId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          subject,
-          description,
-          pdfUrl,
-          duration: Number(duration),
-          passScore: passScore ? Number(passScore) : null,
-          dueDate: dueDate ? new Date(dueDate).toISOString() : null,
-        }),
-      });
-      await fetch(`/api/tests/${testId}/matrix`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sections: [
-            {
-              name: "Phần 1: Trắc nghiệm",
-              order: 1,
-              questions: questions.map((q, index) => ({
-                order: index + 1,
-                type: "MULTIPLE_CHOICE",
-                correctAnswer: q.answer,
-                points: q.points,
-                category: q.category,
-              })),
-            },
-          ],
-        }),
-      });
-    } finally {
-      setIsSavingMatrix(false);
     }
   };
 
@@ -253,11 +231,42 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
     }
   };
 
+  const unifiedInitialTest = useMemo(() => ({
+    id: testId,
+    pdfUrl,
+    duration: Number(duration),
+    showAnswers: testData?.showAnswers ?? true,
+    explanation: testData?.explanation || "",
+    videoUrl: testData?.videoUrl || "",
+    audioUrl: testData?.audioUrl || "",
+    dueDate: dueDate ? new Date(dueDate) : null,
+    sections: testData?.sections || [],
+  }), [testId, pdfUrl, duration, dueDate, testData]);
+
+  const handleContentSave = useCallback(async (data: UnifiedSaveData) => {
+    const res = await fetch(`/api/tests/${testId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pdfUrl: data.pdfUrl,
+        duration: data.duration,
+        showAnswers: data.showAnswers,
+        explanation: data.explanation || "",
+        videoUrl: data.videoUrl || "",
+        audioUrl: data.audioUrl || "",
+        dueDate: data.dueDate ? data.dueDate.toISOString() : null,
+      }),
+    });
+    if (!res.ok) throw new Error("Lỗi khi lưu thông tin chung");
+    const result = await res.json();
+    return { success: true, testId: result.testId };
+  }, [testId]);
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 md:px-6 py-16 max-w-5xl">
         <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-10 text-center text-slate-500">
-          Dang tai du lieu de thi...
+          Đang tải dữ liệu đề thi...
         </div>
       </div>
     );
@@ -277,41 +286,36 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
               Test Bank
             </p>
             <h1 className="text-2xl md:text-3xl font-black text-slate-900 uppercase tracking-tight">
-              De thi doc lap #{testId}
+              Đề thi độc lập #{testId}
             </h1>
             <p className="text-slate-500 text-sm">
-              Cap nhat thong tin va xem thong ke trong cung mot man hinh.
+              Cập nhật thông tin và xem thống kê trong cùng một màn hình.
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            className="rounded-2xl border-slate-200 font-bold"
-            onClick={handleSaveConfig}
-            disabled={isSavingConfig}
-          >
-            {isSavingConfig ? "Dang luu" : "Luu nhap"}
-          </Button>
-          <Button
-            className="rounded-2xl bg-slate-900 hover:bg-black font-black"
-            onClick={handleSaveMatrix}
-            disabled={isSavingMatrix}
-          >
-            {isSavingMatrix ? "Dang luu" : "Luu va cong bo"}
-          </Button>
+          {activeTab === "config" && (
+            <Button
+              variant="outline"
+              className="rounded-2xl border-slate-200 font-bold"
+              onClick={handleSaveConfig}
+              disabled={isSavingConfig}
+            >
+              {isSavingConfig ? "Đang lưu" : "Lưu nháp"}
+            </Button>
+          )}
         </div>
       </header>
 
       <div className="flex flex-wrap gap-2">
         {(
           [
-            { key: "config", label: "Cau hinh de", icon: Settings },
-            { key: "content", label: "Noi dung / Dap an", icon: FileText },
-            { key: "mapping", label: "Cai dat khoa hoc", icon: Link2 },
+            { key: "config", label: "Cấu hình đề", icon: Settings },
+            { key: "content", label: "Nội dung / Đáp án", icon: FileText },
+            { key: "mapping", label: "Cài đặt khóa học", icon: Link2 },
             {
               key: "analytics",
-              label: "Thong ke & Bang diem",
+              label: "Thống kê & Bảng điểm",
               icon: BarChart3,
             },
           ] as const
@@ -336,49 +340,58 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
         <section className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
-              <Label className="font-bold">Ten de thi</Label>
+              <Label className="font-bold">Tên đề thi</Label>
               <Input
                 value={title}
-                onChange={(event) => setTitle(event.target.value)}
+                onChange={(event) => { setTitle(event.target.value); markDirty(); }}
               />
             </div>
             <div className="space-y-2">
-              <Label className="font-bold">Mon / Chu de</Label>
+              <Label className="font-bold">Môn / Chủ đề</Label>
               <Input
                 value={subject}
-                onChange={(event) => setSubject(event.target.value)}
+                onChange={(event) => { setSubject(event.target.value); markDirty(); }}
               />
             </div>
           </div>
           <div className="grid gap-6 md:grid-cols-3">
             <div className="space-y-2">
-              <Label className="font-bold">Thoi gian lam bai</Label>
+              <Label className="font-bold">Thời gian làm bài</Label>
               <Input
                 value={duration}
-                onChange={(event) => setDuration(event.target.value)}
+                onChange={(event) => { setDuration(event.target.value); markDirty(); }}
                 type="number"
               />
             </div>
             <div className="space-y-2">
-              <Label className="font-bold">So cau hoi</Label>
+              <Label className="font-bold">Số câu hỏi</Label>
               <Input value={questions.length} type="number" disabled />
             </div>
             <div className="space-y-2">
-              <Label className="font-bold">Diem dat</Label>
+              <Label className="font-bold">Điểm đạt</Label>
               <Input
                 value={passScore}
-                onChange={(event) => setPassScore(event.target.value)}
+                onChange={(event) => { setPassScore(event.target.value); markDirty(); }}
                 type="number"
                 step="0.1"
               />
             </div>
           </div>
           <div className="space-y-2">
-            <Label className="font-bold">Mo ta / Ghi chu</Label>
+            <Label className="font-bold">Mô tả / Ghi chú</Label>
             <Textarea
               value={description}
-              onChange={(event) => setDescription(event.target.value)}
+              onChange={(event) => { setDescription(event.target.value); markDirty(); }}
               className="min-h-[120px]"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="font-bold">Hạn nộp bài</Label>
+            <Input
+              type="datetime-local"
+              value={dueDate}
+              onChange={(e) => { setDueDate(e.target.value); markDirty(); }}
+              className="max-w-xs"
             />
           </div>
           <div className="border border-dashed border-slate-200 rounded-3xl p-6 bg-slate-50/70 flex items-center justify-between">
@@ -387,9 +400,9 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
                 <FileUp className="w-5 h-5 text-slate-500" />
               </div>
               <div>
-                <p className="font-bold text-slate-800">PDF de thi</p>
+                <p className="font-bold text-slate-800">PDF đề thi</p>
                 <p className="text-xs text-slate-500">
-                  Dang tai len: de-thi-toan-12.pdf
+                  Đang tải lên: de-thi-toan-12.pdf
                 </p>
               </div>
             </div>
@@ -397,127 +410,23 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
               variant="outline"
               className="rounded-2xl border-slate-200 font-bold"
             >
-              Doi file
+              Đổi file
             </Button>
           </div>
         </section>
       )}
 
       {activeTab === "content" && (
-        <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                  PDF Viewer
-                </p>
-                <h2 className="text-lg font-black text-slate-900">
-                  De thi PDF
-                </h2>
-              </div>
-              <Button
-                variant="outline"
-                className="rounded-2xl border-slate-200 font-bold"
-              >
-                Mo toan man hinh
-              </Button>
-            </div>
-            <div className="h-[620px] bg-slate-50">
-              {pdfUrl ? (
-                <PDFViewer url={pdfUrl} />
-              ) : (
-                <div className="h-full w-full flex flex-col items-center justify-center gap-3 text-slate-400">
-                  <FileText className="w-10 h-10" />
-                  <p className="text-sm font-bold uppercase tracking-widest">
-                    Chua co file PDF
-                  </p>
-                  <Button
-                    variant="outline"
-                    className="rounded-2xl border-slate-200 font-bold"
-                  >
-                    Tai len PDF
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                  Answer Matrix
-                </p>
-                <h3 className="text-lg font-black text-slate-900">
-                  Ma tran dap an
-                </h3>
-              </div>
-              <Button
-                onClick={() => setIsFastEntryOpen(true)}
-                className="rounded-2xl bg-blue-600 hover:bg-blue-700 font-black"
-              >
-                <Zap className="w-4 h-4 mr-2" /> Nhap nhanh
-              </Button>
-            </div>
-
-            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2">
-              {questions.map((q, index) => (
-                <div
-                  key={q.id}
-                  className="group flex flex-col gap-3 rounded-2xl border border-slate-100 p-4 hover:border-blue-200 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-black text-slate-900 uppercase tracking-tight">
-                        {q.label}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Điểm:</span>
-                        <Input
-                          type="number"
-                          value={q.points}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value);
-                            setQuestions(prev => prev.map((item, i) => i === index ? { ...item, points: val } : item));
-                          }}
-                          className="w-12 h-6 text-[10px] font-black p-1 rounded-md"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge className="rounded-xl bg-slate-900 text-white font-black px-3 py-1">
-                        {q.answer}
-                      </Badge>
-                      <span className="text-xs text-slate-300 font-bold">#{index + 1}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="relative">
-                    <Input
-                      placeholder="Dạng bài (VD: Rút gọn biểu thức...)"
-                      value={q.category}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setQuestions(prev => prev.map((item, i) => i === index ? { ...item, category: val } : item));
-                      }}
-                      className="h-8 text-[11px] font-bold rounded-xl bg-slate-50 border-transparent focus:bg-white transition-all"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-xs text-slate-600">
-              Nhap nhanh dap an hoac chinh sua tung cau de hoan thien ma tran.
-            </div>
-          </div>
-
-          <FastEntryModal
-            open={isFastEntryOpen}
-            onOpenChange={setIsFastEntryOpen}
-            onConfirm={handleFastEntry}
+        <div className="-mx-4 md:-mx-6 -mb-8" style={{ height: 'calc(100vh - 200px)' }}>
+          <UnifiedTestBuilder
+            key={testId}
+            initialTest={unifiedInitialTest}
+            title="Nội dung đề thi"
+            subtitle="Test Bank"
+            hideHeader
+            onSave={handleContentSave}
           />
-        </section>
+        </div>
       )}
 
       {activeTab === "mapping" && (
@@ -528,61 +437,120 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
                 Mapping
               </p>
               <h2 className="text-xl font-black text-slate-900">
-                Gan vao khoa hoc
+                Gán vào bài học
               </h2>
+              <p className="text-xs text-slate-500">
+                Chọn bài học để gán đề thi này. Mỗi bài học chỉ chứa một đề.
+              </p>
             </div>
-            <Button className="rounded-2xl bg-slate-900 hover:bg-black font-black">
-              Gan de
-            </Button>
+            {mappedLessonId && (
+              <Button
+                variant="outline"
+                className="rounded-2xl border-red-200 text-red-600 font-bold hover:bg-red-50"
+                onClick={async () => {
+                  const ok = confirm("Gỡ đề thi khỏi bài học hiện tại?");
+                  if (!ok) return;
+                  const res = await unmapTest(testId);
+                  if (res.success) {
+                    setMappedLessonId(null);
+                    setMappedCourseId(null);
+                    toast.success("Đã gỡ đề thi khỏi bài học");
+                  }
+                }}
+                disabled={isMapping}
+              >
+                Gỡ đề
+              </Button>
+            )}
           </div>
 
-          <div className="grid gap-4">
-            {[
-              {
-                id: "c1",
-                title: "Toan 12 - Lo trinh 2026",
-                lessons: 12,
-                status: "Dang hoc",
-              },
-              {
-                id: "c2",
-                title: "Toan 12 - On tap hoc ky",
-                lessons: 8,
-                status: "San sang",
-              },
-              {
-                id: "c3",
-                title: "Luyen de dai hoc 01",
-                lessons: 15,
-                status: "San sang",
-              },
-            ].map((course) => (
-              <div
-                key={course.id}
-                className="flex flex-col gap-4 rounded-[24px] border border-slate-100 p-5 md:flex-row md:items-center md:justify-between"
-              >
-                <div>
-                  <p className="text-sm font-black text-slate-900">
-                    {course.title}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {course.lessons} bai hoc
-                  </p>
+          {isLoadingCourses ? (
+            <div className="text-center py-12 text-slate-400 font-bold">
+              Đang tải danh sách khóa học...
+            </div>
+          ) : courses.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 italic">
+              Chưa có khóa học nào. Hãy tạo khóa học trước.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {courses.map((course) => (
+                <div
+                  key={course.id}
+                  className="rounded-[24px] border border-slate-100 overflow-hidden"
+                >
+                  <div className="flex items-center justify-between px-5 py-4 bg-slate-50/50">
+                    <div>
+                      <p className="font-black text-slate-900">{course.title}</p>
+                      <p className="text-xs text-slate-500">
+                        {course.chapters.reduce((acc: number, ch: any) => acc + ch.lessons.length, 0)} bài học
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="divide-y divide-slate-50">
+                    {course.chapters.map((chapter: any) => (
+                      <div key={chapter.id} className="px-5 py-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                          {chapter.title}
+                        </p>
+                        <div className="space-y-2">
+                          {chapter.lessons.map((lesson: any) => {
+                            const isMapped = mappedLessonId === lesson.id;
+                            const hasOtherTest = lesson.test && lesson.test.id !== testId;
+                            return (
+                              <div
+                                key={lesson.id}
+                                className="flex items-center justify-between rounded-xl px-4 py-2.5 bg-slate-50/50 hover:bg-slate-100 transition-colors"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className="text-sm font-bold text-slate-700 truncate">
+                                    {lesson.title}
+                                  </span>
+                                  {isMapped && (
+                                    <Badge className="rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase tracking-widest">
+                                      Đã gán
+                                    </Badge>
+                                  )}
+                                  {hasOtherTest && (
+                                    <Badge className="rounded-full bg-amber-50 text-amber-700 text-[9px] font-black uppercase tracking-widest">
+                                      Đã có đề khác
+                                    </Badge>
+                                  )}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant={isMapped ? "default" : "outline"}
+                                  className={cn(
+                                    "rounded-xl font-black text-[10px] uppercase tracking-widest h-8 px-4 shrink-0 ml-3",
+                                    isMapped
+                                      ? "bg-emerald-600 hover:bg-emerald-700"
+                                      : "border-slate-200"
+                                  )}
+                                  disabled={hasOtherTest || isMapping}
+                                  onClick={async () => {
+                                    if (!confirm(`Gán đề thi này vào bài học "${lesson.title}"?`)) return;
+                                    const res = await mapTestToLesson(testId, lesson.id);
+                                    if (res.success) {
+                                      setMappedLessonId(lesson.id);
+                                      setMappedCourseId(null);
+                                      toast.success(`Đã gán vào bài học "${lesson.title}"`);
+                                    }
+                                  }}
+                                >
+                                  {isMapped ? "Đã gán" : "Gán"}
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Badge className="rounded-full bg-slate-100 text-slate-600">
-                    {course.status}
-                  </Badge>
-                  <Button
-                    variant="outline"
-                    className="rounded-2xl border-slate-200 font-bold"
-                  >
-                    Chon bai hoc
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -590,10 +558,10 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
         <section className="space-y-6">
           <div className="grid gap-6 md:grid-cols-4">
             {[
-              { label: "Da nop", value: "42/60", tone: "bg-blue-600" },
-              { label: "Diem TB", value: "7.2", tone: "bg-emerald-600" },
-              { label: "Diem cao nhat", value: "9.6", tone: "bg-slate-900" },
-              { label: "Diem thap nhat", value: "2.4", tone: "bg-amber-600" },
+              { label: "Đã nộp", value: "42/60", tone: "bg-blue-600" },
+              { label: "Điểm TB", value: "7.2", tone: "bg-emerald-600" },
+              { label: "Điểm cao nhất", value: "9.6", tone: "bg-slate-900" },
+              { label: "Điểm thấp nhất", value: "2.4", tone: "bg-amber-600" },
             ].map((card) => (
               <div
                 key={card.label}
@@ -620,7 +588,7 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
                     Score Distribution
                   </p>
                   <h3 className="text-lg font-black text-slate-900">
-                    Pho diem hoc sinh
+                    Phổ điểm học sinh
                   </h3>
                 </div>
                 <Badge className="rounded-full bg-slate-100 text-slate-600">
@@ -659,28 +627,28 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
                   Nhanh
                 </p>
                 <h3 className="text-lg font-black text-slate-900">
-                  Diem nhan UX
+                  Điểm nhấn UX
                 </h3>
               </div>
               <div className="space-y-3 text-sm text-slate-600">
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>44% hoc sinh tren diem TB</span>
+                  <span>44% học sinh trên điểm TB</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <XCircle className="w-4 h-4 text-amber-600" />
-                  <span>3 cau co ti le dung duoi 35%</span>
+                  <span>3 câu có tỉ lệ đúng dưới 35%</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                  <span>5 lop dang su dung de nay</span>
+                  <span>5 lớp đang sử dụng đề này</span>
                 </div>
               </div>
               <Button
                 variant="outline"
                 className="w-full rounded-2xl border-slate-200 font-bold"
               >
-                Xem chi tiet
+                Xem chi tiết
               </Button>
             </div>
           </div>
@@ -753,7 +721,7 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
                             "rounded-xl font-black",
                             (attempt.score || 0) >= 5 ? "bg-emerald-500" : "bg-red-500"
                           )}>
-                            {attempt.score !== null ? attempt.score.toFixed(1) : "N/A"}
+                            {attempt.score !== null ? attempt.score.toFixed(2) : "N/A"}
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-right">

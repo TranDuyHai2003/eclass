@@ -52,12 +52,12 @@ export default async function TeacherTestsPage() {
       (total, section) => total + section.questions.length,
       0,
     );
-    const status = questions > 0 ? "San sang" : "Dang nhap dap an";
+    const status = questions > 0 ? "Sẵn sàng" : "Đang nhập đáp án";
 
     return {
       id: test.id,
-      title: test.title || "De thi doc lap",
-      subject: test.subject || "Khong ro",
+      title: test.title || "Đề thi độc lập",
+      subject: test.subject || "Không rõ",
       questions,
       duration: test.duration,
       lastUpdated: new Intl.DateTimeFormat("vi-VN").format(test.updatedAt),
@@ -122,8 +122,11 @@ export default async function TeacherTestsPage() {
           <Button
             variant="outline"
             className="rounded-2xl h-12 px-6 font-bold border-slate-200"
+            asChild
           >
-            <FileUp className="w-4 h-4 mr-2" /> Nhập PDF
+            <Link href="/teacher/tests/create">
+              <FileUp className="w-4 h-4 mr-2" /> Nhập PDF
+            </Link>
           </Button>
         </div>
       </div>
@@ -159,120 +162,124 @@ export default async function TeacherTestsPage() {
           </div>
         </div>
 
-        <div className="p-8 flex justify-center items-center">
-          {/* <div className="grid gap-4">
-            {testBank.map((test) => (
-              <div
-                key={test.id}
-                className="group rounded-[28px] border border-slate-100 bg-white p-6 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/5"
-              >
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      <Link
-                        href={`/teacher/tests/bank/${test.id}`}
-                        className="font-black text-slate-900 text-lg group-hover:text-blue-600 transition-colors"
-                      >
-                        {test.title}
-                      </Link>
-                      <Badge
-                        className={cn(
-                          "rounded-full text-[10px] font-black uppercase tracking-widest",
-                          test.status === "San sang"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-amber-50 text-amber-700",
-                        )}
-                      >
-                        {test.status}
-                      </Badge>
+        <div className="p-8">
+          {testBank.length > 0 ? (
+            <div className="grid gap-4">
+              {testBank.map((test) => (
+                <div
+                  key={test.id}
+                  className="group rounded-[28px] border border-slate-100 bg-white p-6 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/5"
+                >
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <Link
+                          href={`/teacher/tests/bank/${test.id}`}
+                          className="font-black text-slate-900 text-lg group-hover:text-blue-600 transition-colors"
+                        >
+                          {test.title}
+                        </Link>
+                        <Badge
+                          className={cn(
+                            "rounded-full text-[10px] font-black uppercase tracking-widest",
+                            test.status === "Sẵn sàng"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-amber-50 text-amber-700",
+                          )}
+                        >
+                          {test.status}
+                        </Badge>
+                      </div>
+                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                        {test.subject}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+                        <span className="flex items-center gap-2">
+                          <ClipboardList className="w-4 h-4" /> {test.questions} câu
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <CalendarClock className="w-4 h-4" /> {test.duration} phút
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <Link2 className="w-4 h-4" /> {test.usageCount} khóa học
+                        </span>
+                      </div>
                     </div>
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
-                      {test.subject}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                      <span className="flex items-center gap-2">
-                        <ClipboardList className="w-4 h-4" /> {test.questions} câu
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <CalendarClock className="w-4 h-4" /> {test.duration} phút
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <Link2 className="w-4 h-4" /> {test.usageCount} khóa học
-                      </span>
+                    <div className="flex items-center gap-2 md:flex-col md:items-end">
+                      <div className="text-right">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                          Cập nhật
+                        </p>
+                        <p className="text-sm font-bold text-slate-700">
+                          {test.lastUpdated}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-xl font-bold border-slate-200"
+                          asChild
+                        >
+                          <Link href={`/teacher/tests/bank/${test.id}`}>Chỉnh sửa</Link>
+                        </Button>
+                        <DeleteTestButton testId={test.id} />
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 md:flex-col md:items-end">
-                    <div className="text-right">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        Cập nhật
-                      </p>
-                      <p className="text-sm font-bold text-slate-700">
-                        {test.lastUpdated}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex justify-center items-center">
+              <div className="rounded-[28px] border border-slate-100 bg-slate-50/60 p-6 space-y-4 max-w-md">
+                <div className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">
+                  Quy trình nhanh
+                </div>
+                <div className="space-y-4 text-sm text-slate-600">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center font-black text-slate-800">
+                      1
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Tạo đề độc lập</p>
+                      <p className="text-xs">
+                        Upload PDF, nhập đáp án và lưu vào ngân hàng.
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="rounded-xl font-bold border-slate-200"
-                        asChild
-                      >
-                        <Link href={`/teacher/tests/bank/${test.id}`}>Chỉnh sửa</Link>
-                      </Button>
-                      <DeleteTestButton testId={test.id} />
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center font-black text-slate-800">
+                      2
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Gắn vào khóa học</p>
+                      <p className="text-xs">
+                        Chọn đề từ ngân hàng và map vào bài học.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center font-black text-slate-800">
+                      3
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Theo dõi thống kê</p>
+                      <p className="text-xs">
+                        Xem phổ điểm và phân tích câu hỏi ngay trong đề.
+                      </p>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div> */}
-
-          <div className="rounded-[28px] border border-slate-100 bg-slate-50/60 p-6 space-y-4">
-            <div className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">
-              Quy trình nhanh
-            </div>
-            <div className="space-y-4 text-sm text-slate-600">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center font-black text-slate-800">
-                  1
-                </div>
-                <div>
-                  <p className="font-bold text-slate-800">Tạo đề độc lập</p>
-                  <p className="text-xs">
-                    Upload PDF, nhập đáp án và lưu vào ngân hàng.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center font-black text-slate-800">
-                  2
-                </div>
-                <div>
-                  <p className="font-bold text-slate-800">Gắn vào khóa học</p>
-                  <p className="text-xs">
-                    Chọn đề từ ngân hàng và map vào bài học.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center font-black text-slate-800">
-                  3
-                </div>
-                <div>
-                  <p className="font-bold text-slate-800">Theo dõi thống kê</p>
-                  <p className="text-xs">
-                    Xem phổ điểm và phân tích câu hỏi ngay trong đề.
-                  </p>
-                </div>
+                <Button
+                  asChild
+                  className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 font-black"
+                >
+                  <Link href="/teacher/tests/create">Bắt đầu tạo đề</Link>
+                </Button>
               </div>
             </div>
-            <Button
-              asChild
-              className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 font-black"
-            >
-              <Link href="/teacher/tests/create">Bắt đầu tạo đề</Link>
-            </Button>
-          </div>
+          )}
         </div>
       </section>
 
@@ -407,7 +414,7 @@ export default async function TeacherTestsPage() {
                                 Điểm TB
                               </p>
                               <p className="text-xl font-black text-blue-600">
-                                {avgScore.toFixed(1)}
+                                {avgScore.toFixed(2)}
                               </p>
                             </div>
                             <div className="flex items-center gap-2">

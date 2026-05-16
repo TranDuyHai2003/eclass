@@ -204,6 +204,19 @@ export async function startTestAttempt(testId: string) {
     throw new Error("Unauthorized");
   }
 
+  const test = await prisma.test.findUnique({
+    where: { id: testId },
+    select: { dueDate: true },
+  });
+
+  if (!test) {
+    throw new Error("Test not found");
+  }
+
+  if (test.dueDate && new Date() > new Date(test.dueDate)) {
+    throw new Error("Hạn nộp bài đã kết thúc.");
+  }
+
   // Check if there is already an uncompleted attempt
   const existingAttempt = await prisma.studentAttempt.findFirst({
     where: {
@@ -302,7 +315,7 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
     };
   });
 
-  const finalScore = maxPointsPossible > 0 ? (rawTotalScore / maxPointsPossible) * 10 : 0;
+  const finalScore = maxPointsPossible > 0 ? Math.round((rawTotalScore / maxPointsPossible) * 10 * 100) / 100 : 0;
 
   await prisma.$transaction(async (tx) => {
     // Delete any previous drafted answers for this attempt just in case
@@ -348,6 +361,102 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
   }
 
   return { success: true, score: finalScore };
+}
+
+// =============================================
+// MAPPING ACTIONS
+// =============================================
+
+export async function getTeacherCoursesWithLessons() {
+  const session = await requireTeacherOrAdmin();
+
+  const courses = await prisma.course.findMany({
+    where: session.user.role === "ADMIN" ? {} : { userId: session.user.id },
+    orderBy: { updatedAt: "desc" },
+    include: {
+      chapters: {
+        orderBy: { position: "asc" },
+        include: {
+          lessons: {
+            orderBy: { position: "asc" },
+            include: {
+              test: { select: { id: true, title: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return courses;
+}
+
+export async function mapTestToLesson(testId: string, lessonId: string) {
+  const session = await requireTeacherOrAdmin();
+
+  const test = await prisma.test.findUnique({
+    where: { id: testId },
+    include: {
+      lesson: { include: { chapter: { include: { course: true } } } },
+      course: true,
+    },
+  });
+
+  if (!test) throw new Error("Test not found");
+
+  const ownerId = test.lesson?.chapter?.course?.userId ?? test.course?.userId ?? test.userId;
+  if (ownerId !== session.user.id && session.user.role !== "ADMIN") {
+    throw new Error("Unauthorized");
+  }
+
+  // Check if lesson already has a different test
+  const existingTest = await prisma.test.findUnique({
+    where: { lessonId },
+  });
+  if (existingTest && existingTest.id !== testId) {
+    throw new Error("Bài học này đã có đề thi khác. Vui lòng gỡ đề cũ trước.");
+  }
+
+  await prisma.test.update({
+    where: { id: testId },
+    data: {
+      lessonId,
+      courseId: null,
+    },
+  });
+
+  revalidatePath("/teacher/tests");
+  return { success: true };
+}
+
+export async function unmapTest(testId: string) {
+  const session = await requireTeacherOrAdmin();
+
+  const test = await prisma.test.findUnique({
+    where: { id: testId },
+    include: {
+      lesson: { include: { chapter: { include: { course: true } } } },
+      course: true,
+    },
+  });
+
+  if (!test) throw new Error("Test not found");
+
+  const ownerId = test.lesson?.chapter?.course?.userId ?? test.course?.userId ?? test.userId;
+  if (ownerId !== session.user.id && session.user.role !== "ADMIN") {
+    throw new Error("Unauthorized");
+  }
+
+  await prisma.test.update({
+    where: { id: testId },
+    data: {
+      lessonId: null,
+      courseId: null,
+    },
+  });
+
+  revalidatePath("/teacher/tests");
+  return { success: true };
 }
 
 export async function gradeStudentAnswer(
@@ -408,7 +517,7 @@ export async function gradeStudentAnswer(
       });
     });
 
-    const finalScore = maxPointsPossible > 0 ? (rawTotalScore / maxPointsPossible) * 10 : 0;
+    const finalScore = maxPointsPossible > 0 ? Math.round((rawTotalScore / maxPointsPossible) * 10 * 100) / 100 : 0;
 
     await tx.studentAttempt.update({
       where: { id: answer.attemptId },

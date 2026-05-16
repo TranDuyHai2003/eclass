@@ -346,6 +346,8 @@ model Question {
   section            TestSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   position           Int          @default(0)
   category           String? // Dạng bài
+  subCategory        String? // Chủ đề chi tiết
+  difficulty         String   @default("Medium") // Easy, Medium, Hard
   type               QuestionType @default(MULTIPLE_CHOICE)
   correctAnswer      String? // Dành cho MULTIPLE_CHOICE và SHORT_ANSWER
   points             Float        @default(1.0)
