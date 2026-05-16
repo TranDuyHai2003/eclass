@@ -5,7 +5,6 @@ services:
     container_name: eclass_postgres
     restart: always
     environment:
-      # Docker sẽ lấy giá trị từ file .env tương ứng
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
@@ -25,12 +24,9 @@ services:
     restart: always
     ports:
       - "3000:3000"
-    # File .env sẽ được nạp trực tiếp vào App
+    # Chỉ cần mục này là nó tự động nạp TẤT CẢ các biến trong .env vào app
     env_file:
       - .env
-    environment:
-      # Ép App dùng DATABASE_URL đã khai báo trong .env
-      DATABASE_URL: ${DATABASE_URL}
     depends_on:
       - postgres
     networks:
