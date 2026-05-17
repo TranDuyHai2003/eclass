@@ -47,15 +47,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           role: user.role,
+          image: user.image,
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = user.role;
+        token.id = user.id;
       }
+
+      // Handle session update trigger
+      if (trigger === "update" && session) {
+        token.name = session.name || token.name;
+        token.picture = session.image || token.picture;
+      }
+
       // Force ADMIN role for specific email
       if (token.email === "admin@gmail.com") {
         token.role = "ADMIN";
@@ -70,6 +79,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.role && session.user) {
         session.user.role = token.role as Role;
       }
+
+      // Fetch fresh data from DB to ensure profile changes (name, image) reflect immediately
+      if (token.sub) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { name: true, image: true, role: true }
+        });
+        if (dbUser) {
+          session.user.name = dbUser.name;
+          session.user.image = dbUser.image;
+          session.user.role = dbUser.role as Role;
+        }
+      }
+
       return session;
     },
     async signIn({ user }) {

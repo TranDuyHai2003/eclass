@@ -15,9 +15,8 @@ export async function getDashboardData() {
   const session = await auth();
   const userId = session?.user?.id;
 
-  // 1. Fetch all published courses
+  // 1. Fetch all courses (both published and draft)
   const allCourses = await prisma.course.findMany({
-    where: { isPublished: true },
     include: {
       chapters: {
         include: {

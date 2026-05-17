@@ -2,7 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { NavLinks } from "./NavLinks";
 import { NotificationBell } from "@/components/notification/NotificationBell";
-import { Search, Phone, Globe, User } from "lucide-react";
+import { Search, Phone, Globe, User, Home, FileText, Beaker, ClipboardList, BookOpen } from "lucide-react";
 import { MobileMenu } from "./MobileMenu";
 
 import { SearchBar } from "./SearchBar";
@@ -46,6 +46,16 @@ export default async function Header() {
 
           {/* Right: Icons/Auth Bar */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-1 md:flex-none justify-end">
+            {/* Header Quick Navigation Icons */}
+            <div className="hidden lg:flex items-center gap-2.5 border-r border-slate-100 pr-4 mr-2">
+              <Link href="/" title="Trang chủ" className="p-2 hover:bg-[#FFF1F2] text-slate-500 hover:text-red-600 rounded-xl transition-all duration-300">
+                <Home className="w-4 h-4" />
+              </Link>
+              <Link href="/courses" title="Khóa học" className="p-2 hover:bg-[#FFF1F2] text-slate-500 hover:text-red-600 rounded-xl transition-all duration-300">
+                <FileText className="w-4 h-4" />
+              </Link>
+            </div>
+
             {/* Desktop Hotline Group */}
             <div className="hidden xl:flex items-center gap-4 mr-2 border-r border-slate-100 pr-4">
               <a href="tel:02489998668" className="flex items-center gap-2.5 text-slate-600 group hover:text-red-600 transition-colors">

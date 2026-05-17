@@ -8,6 +8,7 @@ import Link from "next/link";
 import {
   BookOpen,
   ChevronRight,
+  Home,
   FileText,
   Download,
   MessageSquare,
@@ -23,8 +24,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CommentSection } from "@/components/comment/CommentSection";
 import { MobileCommentsSheet } from "./_components/MobileCommentsSheet";
 import Image from "next/image";
-
-import { HomeworkSection } from "@/components/course/HomeworkSection";
 import { TeacherHomeworkReview } from "@/components/teacher/TeacherHomeworkReview";
 import { getHomeworkSubmission } from "@/actions/homework";
 
@@ -87,13 +86,13 @@ export default async function WatchPage({
 
   // 3. Fetch Homework Data
   const initialHomework = await getHomeworkSubmission(lessonId);
-  
+
   let allSubmissions: any[] = [];
   if (isTeacher || isOwner) {
     allSubmissions = await prisma.homeworkSubmission.findMany({
       where: { lessonId },
       include: { user: true },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -111,7 +110,7 @@ export default async function WatchPage({
                 where: { userId: session.user.id },
               },
               test: {
-                select: { id: true, duration: true }
+                select: { id: true, duration: true },
               },
               attachments: true,
             },
@@ -165,48 +164,28 @@ export default async function WatchPage({
   const commentCount = await prisma.comment.count({ where: { lessonId } });
 
   return (
-    <div className="flex flex-col min-h-screen lg:h-screen bg-[#E2EEFF] overflow-hidden font-sans">
-      {/* TOP NAVIGATION BAR (Sleek & Modern) */}
-      <header className="h-14 lg:h-16 bg-slate-950 text-slate-300 flex items-center justify-between px-4 lg:px-6 shrink-0 border-b border-white/10 z-50">
-        <div className="flex items-center gap-4 min-w-0 flex-1">
+    <div className="flex flex-col min-h-screen bg-[#EBF3FF] font-sans">
+      {/* BREADCRUMB NAVIGATION PATH (House icon > Course Title) */}
+      <div className="bg-white/60 backdrop-blur-md px-6 py-4 flex items-center border-b border-blue-100/40">
+        <div className="max-w-[1400px] w-full mx-auto flex items-center gap-2 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-500">
           <Link
-            href="/courses"
-            className="flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 rounded-full hover:bg-white/10 transition-colors shrink-0"
+            href="/"
+            className="p-1.5 hover:bg-blue-50 text-[#A01D24] rounded-lg transition-all duration-300 flex items-center justify-center shrink-0 border border-blue-100/40 bg-white"
           >
-            <ArrowLeft className="w-5 h-5 text-white" />
+            <Home className="w-3.5 h-3.5" />
           </Link>
-          <div className="flex flex-col min-w-0">
-            <span className="text-[10px] lg:text-xs font-semibold text-slate-400 uppercase tracking-wider truncate">
-              {course.title}
-            </span>
-            <span className="text-sm lg:text-base font-bold text-white truncate">
-              {lesson.chapter.title}
-            </span>
-          </div>
+          <ChevronRight className="w-3.5 h-3.5 text-blue-300" />
+          <span className="text-[#A01D24]">{course.title}</span>
         </div>
+      </div>
 
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="hidden lg:flex items-center gap-3 bg-white/5 px-4 py-1.5 rounded-full border border-white/10">
-            <GraduationCap className="w-4 h-4 text-red-500" />
-            <span className="text-xs font-semibold text-white">
-              Tiến độ: <span className="text-red-400">{progressPercent}%</span>
-            </span>
-          </div>
-          <div className="lg:hidden">
-            <MobileCommentsSheet
-              lessonId={lessonId}
-              commentCount={commentCount}
-            />
-          </div>
-        </div>
-      </header>
-
-      <div className="flex flex-1 min-h-0 overflow-hidden flex-col lg:flex-row">
-        {/* MAIN CONTENT AREA */}
-        <main className="flex-1 min-h-0 h-full overflow-y-auto custom-scrollbar relative bg-slate-50/50">
-          {/* 1. Beautiful Video Player Section with Padding and Whitespace */}
-          <div className="p-6 sm:p-8">
-            <div className="max-w-[900px] mx-auto aspect-video flex items-center justify-center relative shadow-xl rounded-[2rem] overflow-hidden bg-slate-950 border border-slate-200/60">
+      {/* MAIN CONTENT AREA: 2-Column Responsive Layout */}
+      <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8 items-start">
+          {/* 1. Left Area (Col 9 - 75%): Player, details & tabs */}
+          <div className="xl:col-span-9 space-y-6 min-w-0">
+            {/* Aspect Ratio Player Panel */}
+            <div className="aspect-video w-full relative shadow-xl rounded-[2.5rem] overflow-hidden bg-slate-950 border border-red-100/60">
               {lesson.videoUrl ? (
                 <VideoPlayer
                   src={lesson.videoUrl}
@@ -214,14 +193,13 @@ export default async function WatchPage({
                   poster={course.thumbnail || undefined}
                 />
               ) : lesson.type === "QUIZ" ? (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-5 py-16 bg-gradient-to-b from-slate-900 to-slate-950">
-                  <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center border border-red-500/20 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
-                    <BookOpen className="w-8 h-8 text-red-500" />
-                  </div>
-                  <h2 className="text-white font-bold text-2xl tracking-tight">
-                    Bài kiểm tra đánh giá
-                  </h2>
-                </div>
+                <QuizEntryCard
+                  lessonId={lessonId}
+                  course={course}
+                  lesson={lesson}
+                  duration={quizDuration}
+                  test={lesson.test}
+                />
               ) : lesson.type === "DOCUMENT" &&
                 lesson.attachments.find((a) =>
                   a.url.toLowerCase().endsWith(".pdf"),
@@ -236,22 +214,23 @@ export default async function WatchPage({
                   />
                 </div>
               ) : (
-                /* Elegant Red/Pink Gradient Placeholder matching the screenshot! */
+                /* Premium pink gradient template matching screenshot */
                 <div className="w-full h-full bg-gradient-to-br from-red-500/10 via-pink-50/20 to-red-100/30 flex items-center justify-center p-8 relative overflow-hidden">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-red-200/30 via-transparent to-transparent blur-3xl opacity-60" />
                   <div className="relative z-10 flex flex-col sm:flex-row items-center gap-8 text-center sm:text-left">
                     {course.thumbnail && (
-                      <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/60 shrink-0 transform hover:scale-105 transition-transform duration-500">
-                        <Image
+                      <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-3xl overflow-hidden shadow-2xl border-4 border-white shrink-0 transform hover:scale-105 transition-transform duration-500">
+                        <img
                           src={course.thumbnail}
                           alt={course.title}
-                          fill
-                          className="object-cover"
+                          className="w-full h-full object-cover"
                         />
                       </div>
                     )}
                     <div className="space-y-2">
-                      <p className="text-[10px] font-black text-red-600 uppercase tracking-[0.2em]">Khóa học</p>
+                      <span className="bg-red-50 text-[#A01D24] text-[8px] font-black uppercase px-2.5 py-0.5 rounded-full border border-red-100/80">
+                        Khóa học
+                      </span>
                       <h2 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight uppercase leading-tight">
                         {course.title}
                       </h2>
@@ -263,50 +242,37 @@ export default async function WatchPage({
                 </div>
               )}
             </div>
-          </div>
 
-          {/* 2. Lesson Header & Action Area */}
-          <div className="max-w-[900px] mx-auto w-full px-6 sm:px-0 py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                {lesson.title}
-              </h1>
-              {lesson.description && (
-                <p className="text-slate-500 text-sm mt-1 max-w-3xl leading-relaxed">
-                  {lesson.description}
-                </p>
-              )}
-            </div>
-            <div className="shrink-0 flex items-center">
-              <CourseProgressButton
-                lessonId={lessonId}
-                courseId={courseId}
-                isCompleted={!!currentProgress?.isCompleted}
-              />
-            </div>
-          </div>
-
-          {/* 2.5 Homework Section */}
-          {(lesson.hasHomework || isTeacher || isOwner) && (
-            <div id="homework" className="max-w-[900px] mx-auto w-full px-6 sm:px-0 py-6 space-y-8 scroll-mt-20">
-              {isTeacher || isOwner ? (
+            {/* Teacher Homework Review (If applicable) */}
+            {lesson.hasHomework && isTeacher && (
+              <div className="w-full">
                 <TeacherHomeworkReview submissions={allSubmissions} />
-              ) : (
-                <HomeworkSection lessonId={lessonId} initialSubmission={initialHomework} />
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* 3. Modern Content List (Replacing Tabs) */}
-          <div className="max-w-[900px] mx-auto w-full px-6 sm:px-0 py-6 pb-20 space-y-8">
-            <div className="flex items-center gap-2 mb-2">
-              <ListVideo className="w-5 h-5 text-red-600" />
-              <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">
-                Toàn bộ lộ trình học
-              </h2>
+            {/* Lesson Description & Actions */}
+            <div className="bg-white rounded-[2rem] border border-red-100/60 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h1 className="text-lg font-black text-slate-900 tracking-tight uppercase">
+                  {lesson.title}
+                </h1>
+                {lesson.description && (
+                  <p className="text-slate-500 text-xs font-bold leading-relaxed">
+                    {lesson.description}
+                  </p>
+                )}
+              </div>
+              <div className="shrink-0">
+                <CourseProgressButton
+                  lessonId={lessonId}
+                  courseId={courseId}
+                  isCompleted={!!currentProgress?.isCompleted}
+                />
+              </div>
             </div>
 
-            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
+            {/* Curriculum: Danh sách bài học */}
+            <div className="bg-white rounded-[2.5rem] border border-red-100/60 p-6 shadow-sm">
               <CourseSidebar
                 course={courseData as any}
                 currentLessonId={lessonId}
@@ -316,55 +282,30 @@ export default async function WatchPage({
               />
             </div>
           </div>
-        </main>
 
-        {/* RIGHT SIDEBAR (Comments/Discussion) - Clean Card Layout */}
-        <aside className="hidden lg:flex w-[400px] shrink-0 border-l border-slate-200 bg-white flex-col h-full min-h-0 z-10 shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
-          <div className="h-16 px-6 bg-white border-b border-slate-100 flex items-center justify-between shrink-0 shadow-sm z-10">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
-                <MessageSquare className="w-4 h-4 text-red-600" />
+          {/* 2. Right Sticky Area (Col 3 - 25%): Discussion Board */}
+          <div className="xl:col-span-3 xl:sticky xl:top-24 h-fit space-y-6">
+            <div className="bg-white rounded-[2.5rem] border border-red-100/60 p-5 shadow-sm space-y-5">
+              <div className="flex items-center justify-between border-b border-red-50 pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
+                    <MessageSquare className="w-4 h-4 text-[#A01D24]" />
+                  </div>
+                  <h3 className="font-black text-slate-900 text-xs uppercase tracking-wider">
+                    Thảo luận bài học
+                  </h3>
+                </div>
+                <span className="px-3 py-1 bg-red-50 text-[#A01D24] border border-red-100/60 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+                  {commentCount}
+                </span>
               </div>
-              <h3 className="font-bold text-slate-900 text-base">Thảo luận</h3>
+              <div className="w-full">
+                <CommentSection lessonId={lessonId} />
+              </div>
             </div>
-            <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-bold">
-              {commentCount} bình luận
-            </span>
           </div>
-
-          {/* Sửa lại class ở đây, bỏ p-6 để CommentSection tự quản lý padding */}
-          <div className="flex-1 overflow-hidden bg-white">
-            <CommentSection lessonId={lessonId} />
-          </div>
-        </aside>
+        </div>
       </div>
-
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        /* Hide global layout components when in learning mode */
-        header:not(.flex) { display: none !important; }
-        .page-shell { padding-top: 0 !important; }
-        .student-header { display: none !important; }
-        
-        /* Locking scroll logic */
-        @media (max-width: 1023px) {
-          body { overflow: auto !important; }
-          .page-shell { height: auto !important; overflow: visible !important; }
-        }
-        @media (min-width: 1024px) {
-          body { overflow: hidden !important; }
-          .page-shell { height: 100vh !important; overflow: hidden !important; }
-        }
-        
-        /* Beautiful Scrollbar */
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-      `,
-        }}
-      />
     </div>
   );
 }

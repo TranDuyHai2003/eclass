@@ -3,13 +3,14 @@
 import { useState, useEffect, useTransition, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
-import { ArrowLeft, Clock, Send, AlertTriangle, Flag } from "lucide-react";
+import { ArrowLeft, Clock, Send, AlertTriangle, Flag, Upload, X, Image as ImageIcon, FileText, Loader2, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTestAttempt, submitTestAttempt } from "@/actions/test";
 import { useCountdown } from "@/hooks/use-countdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import axios from "axios";
 
 const PDFViewer = dynamic(() => import("@/components/ui/pdf-viewer"), {
   ssr: false,
@@ -40,9 +41,9 @@ export default function TestTakerClient({
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [isTimeUp, setIsTimeUp] = useState(false); // Riêng biệt, chỉ true khi countdown thực sự hết
 
-  // answers map: questionId -> string
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [flags, setFlags] = useState<Record<string, boolean>>({});
+  const [isUploading, setIsUploading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     // 1. Fetch or create attempt
@@ -134,6 +135,32 @@ export default function TestTakerClient({
 
   const handleToggleFlag = (qId: string) => {
     setFlags(prev => ({ ...prev, [qId]: !prev[qId] }));
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, qId: string) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(prev => ({ ...prev, [qId]: true }));
+    try {
+      const file = files[0];
+      const res = await axios.put<{ publicUrl: string }>(
+        `/api/upload/proxy?fileName=essay_${qId}_${Date.now()}_${encodeURIComponent(file.name)}`,
+        file,
+        { headers: { "Content-Type": file.type } }
+      );
+      
+      handleSelectAnswer(qId, res.data.publicUrl);
+      toast.success("Tải tệp lên thành công");
+    } catch (error) {
+      toast.error("Lỗi tải tệp lên");
+    } finally {
+      setIsUploading(prev => ({ ...prev, [qId]: false }));
+    }
+  };
+
+  const removeFileUpload = (qId: string) => {
+    handleSelectAnswer(qId, "");
   };
 
   if (loadingInitial) {
@@ -279,9 +306,49 @@ export default function TestTakerClient({
                           )}
 
                           {isEssay && (
-                            <div className="text-xs text-orange-500 font-bold flex items-center gap-1.5 py-2">
-                              <AlertTriangle className="w-3.5 h-3.5" />
-                              Tự luận: Làm ra giấy
+                            <div className="py-2 space-y-2">
+                               <label className="flex items-center gap-2 cursor-pointer group">
+                                  <div className={cn(
+                                    "h-10 flex-1 border-2 border-dashed border-blue-200 rounded-xl flex items-center justify-center gap-2 bg-blue-50/30 group-hover:bg-blue-50 group-hover:border-blue-400 transition-all",
+                                    isUploading[q.id] && "opacity-50 cursor-not-allowed"
+                                  )}>
+                                     {isUploading[q.id] ? (
+                                        <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                                     ) : (
+                                        <Upload className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors" />
+                                     )}
+                                     <span className="text-xs font-black text-slate-500 group-hover:text-blue-700 uppercase tracking-tight">
+                                        {isUploading[q.id] ? "Đang tải..." : "Nộp bài tự luận"}
+                                     </span>
+                                  </div>
+                                  <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    accept="image/*,application/pdf" 
+                                    onChange={(e) => handleFileUpload(e, q.id)}
+                                    disabled={isUploading[q.id]}
+                                  />
+                               </label>
+
+                               {val && (
+                                  <div className="flex items-center gap-2 p-2.5 bg-blue-50/50 border border-blue-100 rounded-xl group animate-in fade-in slide-in-from-top-1">
+                                     <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm border border-slate-100">
+                                        {val.match(/\.(jpg|jpeg|png|gif)$/i) ? <ImageIcon className="w-5 h-5 text-blue-500" /> : <FileText className="w-5 h-5 text-red-500" />}
+                                     </div>
+                                     <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Đã tải lên</p>
+                                        <a href={val} target="_blank" className="text-[10px] font-black text-blue-600 uppercase hover:underline flex items-center gap-1">
+                                           Xem bài làm <ExternalLink className="w-2.5 h-2.5" />
+                                        </a>
+                                     </div>
+                                     <button 
+                                       onClick={() => removeFileUpload(q.id)}
+                                       className="p-1.5 rounded-lg bg-red-50 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100"
+                                     >
+                                        <X className="w-4 h-4" />
+                                     </button>
+                                  </div>
+                               )}
                             </div>
                           )}
 

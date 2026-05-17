@@ -83,3 +83,28 @@ export async function deleteUser(userId: string) {
         return { success: false, error: "Failed to delete user" }
     }
 }
+
+export async function updateProfile(data: { name?: string; image?: string }) {
+    const session = await auth()
+    if (!session || !session.user) {
+        return { success: false, error: "Chưa đăng nhập" }
+    }
+
+    const userId = session.user.id;
+
+    try {
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                ...(data.name !== undefined ? { name: data.name } : {}),
+                ...(data.image !== undefined ? { image: data.image } : {}),
+            }
+        })
+
+        revalidatePath("/profile")
+        return { success: true }
+    } catch (error) {
+        console.error(error)
+        return { success: false, error: "Lỗi hệ thống khi cập nhật hồ sơ" }
+    }
+}

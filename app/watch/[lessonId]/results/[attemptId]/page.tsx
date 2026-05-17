@@ -12,6 +12,8 @@ import {
   Video,
   FileText,
   Download,
+  Image as ImageIcon,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -228,7 +230,15 @@ export default async function TestResultPage({
                                       isCorrect === true ? "text-emerald-600" : isPending ? "text-blue-600" : "text-red-600",
                                     )}
                                   >
-                                    {q.type === "ESSAY" ? "Làm ra giấy" : (studentAns?.answerProvided || "Bỏ trống")}
+                                    {q.type === "ESSAY" ? (
+                                      studentAns?.answerProvided ? (
+                                        <a href={studentAns.answerProvided} target="_blank" className="flex items-center gap-2 text-blue-600 hover:underline">
+                                          <ImageIcon className="w-4 h-4" />
+                                          <span>Xem bài làm</span>
+                                          <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                      ) : "Làm ra giấy"
+                                    ) : (studentAns?.answerProvided || "Bỏ trống")}
                                   </p>
                                 </div>
 

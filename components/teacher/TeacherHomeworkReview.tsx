@@ -9,7 +9,9 @@ import {
   Image as ImageIcon,
   User,
   Clock,
-  ExternalLink
+  ExternalLink,
+  BookOpen,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,8 +27,19 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = useState<"PENDING" | "GRADED">("PENDING");
+  
+  const [courseFilter, setCourseFilter] = useState("ALL");
+  const [lessonFilter, setLessonFilter] = useState("ALL");
 
   const handleGrade = async (submissionId: string, status: "SATISFACTORY" | "UNSATISFACTORY") => {
+    if (status === "UNSATISFACTORY") {
+      const currentFeedback = feedback[submissionId] !== undefined ? feedback[submissionId] : submissions.find(s => s.id === submissionId)?.feedback;
+      if (!currentFeedback?.trim()) {
+        toast.error("Vui lòng nhập nhận xét để học sinh biết lỗi sai");
+        return;
+      }
+    }
     setLoading(prev => ({ ...prev, [submissionId]: true }));
     try {
       const res = await gradeHomework(submissionId, status, feedback[submissionId]);
@@ -42,28 +55,99 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
   };
 
   if (submissions.length === 0) {
-    return (
-      <div className="p-12 text-center bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
-        <Clock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-        <p className="text-slate-500 font-bold uppercase tracking-tight">Chưa có học sinh nào nộp bài tập</p>
-      </div>
-    );
+    return null;
   }
+
+  const uniqueCourses = Array.from(new Set(submissions.map(s => s.lesson?.chapter?.course?.title).filter(Boolean))) as string[];
+  const uniqueLessons = Array.from(new Set(submissions.filter(s => courseFilter === "ALL" || s.lesson?.chapter?.course?.title === courseFilter).map(s => s.lesson?.title).filter(Boolean))) as string[];
+
+  const filteredSubmissions = submissions.filter(s => {
+    if (courseFilter !== "ALL" && s.lesson?.chapter?.course?.title !== courseFilter) return false;
+    if (lessonFilter !== "ALL" && s.lesson?.title !== lessonFilter) return false;
+    return true;
+  });
+
+  const pendingSubmissions = filteredSubmissions.filter(s => s.status === "PENDING");
+  const gradedSubmissions = filteredSubmissions.filter(s => s.status !== "PENDING");
+  const displaySubmissions = activeTab === "PENDING" ? pendingSubmissions : gradedSubmissions;
 
   return (
     <div className="space-y-6">
-      <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight flex items-center gap-3">
-        <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-200">
-           <FileText className="w-5 h-5" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-200">
+             <FileText className="w-5 h-5" />
+          </div>
+          Quản lý Bài nộp
+        </h3>
+        
+        <div className="flex bg-slate-100 p-1.5 rounded-2xl w-fit">
+          <button 
+            onClick={() => setActiveTab("PENDING")} 
+            className={cn("px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", activeTab === "PENDING" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+          >
+            Cần chấm ({pendingSubmissions.length})
+          </button>
+          <button 
+            onClick={() => setActiveTab("GRADED")} 
+            className={cn("px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", activeTab === "GRADED" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+          >
+            Đã chấm ({gradedSubmissions.length})
+          </button>
         </div>
-        Danh sách bài nộp ({submissions.length})
-      </h3>
+      </div>
+
+      {uniqueCourses.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-4 bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100 animate-in fade-in duration-300">
+          <select 
+            className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
+            value={courseFilter}
+            onChange={(e) => {
+              setCourseFilter(e.target.value);
+              setLessonFilter("ALL");
+            }}
+          >
+            <option value="ALL">Tất cả Khóa học</option>
+            {uniqueCourses.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          
+          <select 
+            className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
+            value={lessonFilter}
+            onChange={(e) => setLessonFilter(e.target.value)}
+            disabled={uniqueLessons.length === 0}
+          >
+            <option value="ALL">Tất cả Bài học</option>
+            {uniqueLessons.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6">
-        {submissions.map((sub) => (
-          <div key={sub.id} className="bg-white rounded-[2rem] border border-blue-100 shadow-sm overflow-hidden flex flex-col md:flex-row">
+        {displaySubmissions.length === 0 ? (
+          <div className="p-12 text-center bg-slate-50/50 rounded-[2rem] border border-dashed border-slate-200 animate-in fade-in zoom-in-95 duration-300">
+            <CheckCircle2 className="w-12 h-12 text-emerald-300 mx-auto mb-4" />
+            <p className="text-slate-500 font-bold uppercase tracking-tight">
+              {activeTab === "PENDING" ? "Tuyệt vời! Không còn bài nào cần chấm." : "Chưa có bài nào được chấm."}
+            </p>
+          </div>
+        ) : (
+          displaySubmissions.map((sub) => (
+            <div key={sub.id} className="bg-white rounded-[2rem] border border-blue-100 shadow-sm overflow-hidden flex flex-col md:flex-row animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Left: Student Info & Files */}
             <div className="p-6 md:p-8 flex-1 space-y-6 border-r border-slate-50">
+               {sub.lesson && sub.lesson.chapter && (
+                 <div className="flex items-center gap-2 mb-4 bg-red-50 w-fit px-3 py-1.5 rounded-lg border border-red-100">
+                    <BookOpen className="w-3.5 h-3.5 text-[#A01D24]" />
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#A01D24] max-w-[150px] sm:max-w-[200px] truncate">
+                      {sub.lesson.chapter?.course?.title || "Khóa học"}
+                    </span>
+                    <ChevronRight className="w-3 h-3 text-red-300" />
+                    <span className="text-[10px] font-bold text-red-600 truncate max-w-[150px] sm:max-w-[200px]">
+                      {sub.lesson.title}
+                    </span>
+                 </div>
+               )}
                <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden">
                      {sub.user.image ? <img src={sub.user.image} alt="" className="w-full h-full object-cover" /> : <User className="w-6 h-6" />}
@@ -132,9 +216,9 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
                      Chưa đạt
                   </Button>
                </div>
-            </div>
+           </div>
           </div>
-        ))}
+        )))}
       </div>
     </div>
   );
