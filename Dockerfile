@@ -48,4 +48,4 @@ ENV HOSTNAME="0.0.0.0"
 
 # LƯU Ý: Ở Production, dùng "migrate deploy" sẽ an toàn hơn "db push" 
 # (db push có thể xóa data nếu có xung đột schema).
-CMD ["sh", "-c", "npx -y prisma migrate deploy && node server.js"]
+CMD ["sh", "-c", "npx -y prisma@6.19.2 db push && node server.js"]
