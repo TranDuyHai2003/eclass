@@ -37,10 +37,10 @@ export function DocumentViewer({ attachments }: DocumentViewerProps) {
           return (
             <div 
               key={doc.id} 
-              className="group flex items-center justify-between p-4 bg-gray-50/50 border border-gray-100 rounded-2xl hover:border-red-200 hover:bg-white hover:shadow-lg transition-all"
+              className="group flex items-center justify-between p-4 bg-gray-50/50 border border-gray-100 rounded-2xl hover:border-blue-200 hover:bg-white hover:shadow-lg transition-all"
             >
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-red-50 rounded-xl text-red-600 transition-colors group-hover:bg-red-600 group-hover:text-white">
+                <div className="p-3 bg-blue-50 rounded-xl text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div className="flex flex-col">
@@ -56,7 +56,7 @@ export function DocumentViewer({ attachments }: DocumentViewerProps) {
                   href={safeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-red-600 hover:border-red-200 transition-all shadow-sm"
+                  className="p-2 bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm"
                   title="Mở trong tab mới"
                 >
                   <ExternalLink className="w-4 h-4" />
@@ -64,7 +64,7 @@ export function DocumentViewer({ attachments }: DocumentViewerProps) {
                 <a
                   href={safeUrl}
                   download
-                  className="p-2 bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-red-600 hover:border-red-200 transition-all shadow-sm"
+                  className="p-2 bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm"
                   title="Tải xuống"
                 >
                   <Download className="w-4 h-4" />

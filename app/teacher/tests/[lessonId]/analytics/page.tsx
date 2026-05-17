@@ -345,7 +345,7 @@ export default async function TestAnalyticsPage({
                             ? "text-emerald-600"
                             : (a.score || 0) >= 5
                               ? "text-blue-600"
-                              : "text-red-500",
+                              : "text-blue-500",
                         )}
                       >
                         {a.score?.toFixed(2)}
@@ -368,16 +368,16 @@ export default async function TestAnalyticsPage({
 
           {/* Killer Questions Section */}
           {killerQuestions.length > 0 && (
-            <div className="bg-red-50/50 rounded-[32px] border border-red-100 p-8 shadow-sm mt-8">
+            <div className="bg-blue-50/50 rounded-[32px] border border-blue-100 p-8 shadow-sm mt-8">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-2xl bg-red-100 flex items-center justify-center text-red-600 shadow-inner">
+                <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 shadow-inner">
                   <Target className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-black text-red-900 uppercase tracking-tight">
+                  <h4 className="font-black text-blue-900 uppercase tracking-tight">
                     Câu hỏi tử thần
                   </h4>
-                  <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mt-0.5">
+                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mt-0.5">
                     Top 3 câu có tỉ lệ sai cao nhất
                   </p>
                 </div>
@@ -385,13 +385,13 @@ export default async function TestAnalyticsPage({
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {killerQuestions.map((q, i) => (
-                  <div key={q.id} className="bg-white rounded-[24px] p-6 shadow-sm border border-red-50 relative overflow-hidden group hover:border-red-200 transition-colors">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-red-50 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-red-100 transition-colors" />
+                  <div key={q.id} className="bg-white rounded-[24px] p-6 shadow-sm border border-blue-50 relative overflow-hidden group hover:border-blue-200 transition-colors">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full blur-2xl -mr-12 -mt-12 group-hover:bg-blue-100 transition-colors" />
                     <div className="flex items-center justify-between mb-4 relative z-10">
                       <span className="text-xs font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-lg">
                         Câu #{q.index}
                       </span>
-                      <span className="text-2xl font-black text-red-500 drop-shadow-sm">
+                      <span className="text-2xl font-black text-blue-500 drop-shadow-sm">
                         {Math.round(100 - q.correctRate)}% sai
                       </span>
                     </div>
@@ -401,12 +401,12 @@ export default async function TestAnalyticsPage({
                       </p>
                       <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-red-500 rounded-full transition-all duration-1000 delay-300"
+                          className="h-full bg-blue-500 rounded-full transition-all duration-1000 delay-300"
                           style={{ width: `${100 - q.correctRate}%` }}
                         />
                       </div>
                       <p className="text-[10px] font-bold text-slate-500">
-                        Đã có <strong className="text-red-500">{q.stats.total - q.stats.correct}</strong>/{q.stats.total} học sinh làm sai.
+                        Đã có <strong className="text-blue-500">{q.stats.total - q.stats.correct}</strong>/{q.stats.total} học sinh làm sai.
                       </p>
                     </div>
                   </div>
@@ -479,7 +479,7 @@ export default async function TestAnalyticsPage({
                               className={cn(
                                 "px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest",
                                 correctRate < 40
-                                  ? "bg-red-50 text-red-600"
+                                  ? "bg-blue-50 text-blue-600"
                                   : correctRate < 70
                                     ? "bg-orange-50 text-orange-600"
                                     : "bg-emerald-50 text-emerald-600",
@@ -499,7 +499,7 @@ export default async function TestAnalyticsPage({
                                   className={cn(
                                     "h-full rounded-full transition-all duration-1000",
                                     correctRate < 40
-                                      ? "bg-red-500"
+                                      ? "bg-blue-500"
                                       : correctRate < 70
                                         ? "bg-orange-500"
                                         : "bg-emerald-500",

@@ -118,7 +118,7 @@ export const MatrixTable = ({ tests, matrix }: MatrixTableProps) => {
                   ))}
                   <TableCell className={cn(
                     "text-center font-black sticky right-0 bg-white group-hover:bg-slate-50 z-10 border-l shadow-[-2px_0_5px_rgba(0,0,0,0.02)]",
-                    student.missedCount > 2 ? "text-red-600 bg-red-50/30" : "text-slate-600"
+                    student.missedCount > 2 ? "text-blue-600 bg-blue-50/30" : "text-slate-600"
                   )}>
                     {student.missedCount}
                   </TableCell>

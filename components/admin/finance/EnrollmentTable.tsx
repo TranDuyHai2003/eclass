@@ -121,7 +121,7 @@ export function EnrollmentTable({ initialEnrollments }: EnrollmentProps) {
                   <button
                     onClick={() => handleReject(enrollment.id)}
                     disabled={loadingId === enrollment.id}
-                    className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 hover:text-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-red-200 shadow-sm"
+                    className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 hover:text-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-blue-200 shadow-sm"
                     title="Từ chối yêu cầu"
                   >
                     <X className="w-4 h-4 sm:w-5 sm:h-5" />

@@ -117,26 +117,35 @@ export function CommentForm({
       className={cn("w-full space-y-2", className)}
     >
       <div className={cn(
-        "relative group/form border border-slate-200 bg-white focus-within:border-red-500/50 focus-within:shadow-lg focus-within:shadow-red-500/5 transition-all duration-300 overflow-hidden",
+        "relative group/form border border-slate-200 bg-white focus-within:border-blue-500/50 focus-within:shadow-lg focus-within:shadow-blue-500/5 transition-all duration-300 overflow-hidden",
         parentId ? "rounded-xl" : "rounded-2xl"
       )}>
         <textarea
           {...rest}
           ref={(e) => {
             ref(e);
+            if (e && parentId) {
+              // Auto focus and move cursor to end
+              e.focus();
+              const val = e.value;
+              e.value = "";
+              e.value = val;
+            }
           }}
           onChange={(e) => {
             rest.onChange(e);
             e.target.style.height = "auto";
-            e.target.style.height = `${e.target.scrollHeight}px`;
+            const newHeight = Math.min(e.target.scrollHeight, 160);
+            e.target.style.height = `${newHeight}px`;
           }}
           placeholder={placeholder}
           disabled={isSubmitting}
           rows={1}
           className={cn(
             parentId ? "min-h-[44px] px-3.5 py-2.5 text-xs" : "min-h-[48px] px-4 py-3 text-sm",
-            "w-full border-none bg-transparent resize-none focus:outline-none focus:ring-0 text-slate-700 placeholder:text-slate-400 leading-relaxed custom-scrollbar max-h-[160px]"
+            "w-full border-none bg-transparent resize-none focus:outline-none focus:ring-0 text-slate-700 placeholder:text-slate-400 leading-relaxed custom-scrollbar overflow-y-auto"
           )}
+          style={{ maxHeight: '160px' }}
         />
 
         {/* Image Previews */}
@@ -175,7 +184,7 @@ export function CommentForm({
         )}>
           <div className="flex items-center gap-1">
             <label className={cn(
-              "cursor-pointer rounded-lg hover:bg-white hover:text-red-600 text-slate-400 transition-all hover:shadow-sm",
+              "cursor-pointer rounded-lg hover:bg-white hover:text-blue-600 text-slate-400 transition-all hover:shadow-sm",
               parentId ? "p-1.5" : "p-2"
             )}>
               <Paperclip className={parentId ? "w-4 h-4" : "w-5 h-5"} />
@@ -208,7 +217,7 @@ export function CommentForm({
               disabled={isSubmitting || isUploading}
               className={cn(
                 parentId ? "h-7 px-3.5 rounded-lg text-[9px]" : "h-8.5 px-4.5 rounded-xl text-[10px]",
-                "bg-red-500 hover:bg-red-600 text-white font-black uppercase tracking-widest gap-2 transition-all shadow-md active:scale-95 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+                "bg-blue-500 hover:bg-blue-600 text-white font-black uppercase tracking-widest gap-2 transition-all shadow-md active:scale-95 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
               )}
             >
               {isSubmitting ? (
@@ -225,7 +234,7 @@ export function CommentForm({
       </div>
 
       {errors.content && (
-        <p className="text-[10px] text-red-500 px-3 font-semibold tracking-wide animate-pulse">
+        <p className="text-[10px] text-blue-500 px-3 font-semibold tracking-wide animate-pulse">
           {errors.content.message}
         </p>
       )}

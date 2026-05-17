@@ -92,7 +92,7 @@ export function CountdownTimer({
             </div>
             <h4 className="font-black uppercase tracking-widest text-[10px] leading-none">{title}</h4>
           </div>
-          <div className="px-2 py-0.5 bg-red-500 rounded-full text-[8px] font-black animate-pulse shadow-lg shadow-red-500/50">
+          <div className="px-2 py-0.5 bg-blue-500 rounded-full text-[8px] font-black animate-pulse shadow-lg shadow-blue-500/50">
             SẮP THI
           </div>
         </div>

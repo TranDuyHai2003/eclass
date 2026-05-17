@@ -38,7 +38,7 @@ import { Switch } from "@/components/ui/switch";
 interface LessonEditModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  lesson: Lesson & { attachments: Attachment[]; type: string; hasHomework?: boolean };
+  lesson: Lesson & { attachments: Attachment[] };
   onSuccess: () => void;
 }
 
@@ -56,6 +56,7 @@ export function LessonEditModal({
   const [type, setType] = useState<string>(lesson.type || "VIDEO");
   const [description, setDescription] = useState(lesson.description || "");
   const [videoUrl, setVideoUrl] = useState(lesson.videoUrl || "");
+  const [homeworkVideoUrl, setHomeworkVideoUrl] = useState(lesson.homeworkVideoUrl || "");
   const [hasHomework, setHasHomework] = useState(lesson.hasHomework || false);
   const [attachments, setAttachments] = useState<Attachment[]>(
     lesson.attachments || [],
@@ -69,6 +70,9 @@ export function LessonEditModal({
   const [showYoutubeInput, setShowYoutubeInput] = useState(false);
   const [youtubeInput, setYoutubeInput] = useState("");
 
+  const [showHWYoutubeInput, setShowHWYoutubeInput] = useState(false);
+  const [hwYoutubeInput, setHwYoutubeInput] = useState("");
+
   const [showPlayer, setShowPlayer] = useState(false);
 
   useEffect(() => {
@@ -77,25 +81,26 @@ export function LessonEditModal({
       setType(lesson.type || "VIDEO");
       setDescription(lesson.description || "");
       setVideoUrl(lesson.videoUrl || "");
+      setHomeworkVideoUrl(lesson.homeworkVideoUrl || "");
       setHasHomework(lesson.hasHomework || false);
       setAttachments(lesson.attachments || []);
       setYoutubeInput("");
+      setHwYoutubeInput("");
       setShowYoutubeInput(false);
+      setShowHWYoutubeInput(false);
     }
-  }, [open, lesson.id, lesson.title, lesson.type, lesson.description, lesson.videoUrl, lesson.attachments, lesson.hasHomework]);
+  }, [open, lesson.id, lesson.title, lesson.type, lesson.description, lesson.videoUrl, lesson.homeworkVideoUrl, lesson.attachments, lesson.hasHomework]);
 
   useEffect(() => {
     if (open) {
-      console.log("[LessonEditModal] Opening modal for lesson:", lesson.id, "videoUrl:", videoUrl);
       const timer = setTimeout(() => {
-        console.log("[LessonEditModal] Showing player now");
         setShowPlayer(true);
       }, 400);
       return () => clearTimeout(timer);
     } else {
       setShowPlayer(false);
     }
-  }, [open, lesson.id, videoUrl]);
+  }, [open, lesson.id, videoUrl, homeworkVideoUrl]);
 
   // ─── Save ──────────────────────────────────
   const handleSave = async () => {
@@ -105,6 +110,7 @@ export function LessonEditModal({
         title,
         description,
         videoUrl,
+        homeworkVideoUrl,
         type: type as any,
         hasHomework,
       });
@@ -147,6 +153,30 @@ export function LessonEditModal({
     }
   };
 
+  const handleAddHWYoutube = async () => {
+    if (!hwYoutubeInput) return;
+    if (!isYoutubeUrl(hwYoutubeInput)) {
+      toast.error("Link YouTube không hợp lệ");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const res = await updateLesson(lesson.id, { homeworkVideoUrl: hwYoutubeInput });
+      if (res.success) {
+        setHomeworkVideoUrl(hwYoutubeInput);
+        setHwYoutubeInput("");
+        setShowHWYoutubeInput(false);
+        toast.success("Đã gắn link YouTube cho video hướng dẫn");
+        onSuccess();
+      } else {
+        toast.error(res.error || "Lỗi khi gắn link");
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleRemoveVideo = async () => {
     if (!confirm("Xóa video này?")) return;
     setIsSaving(true);
@@ -158,6 +188,23 @@ export function LessonEditModal({
         onSuccess();
       } else {
         toast.error(res.error || "Lỗi xóa video");
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemoveHWVideo = async () => {
+    if (!confirm("Xóa video hướng dẫn này?")) return;
+    setIsSaving(true);
+    try {
+      const res = await updateLesson(lesson.id, { homeworkVideoUrl: "" });
+      if (res.success) {
+        setHomeworkVideoUrl("");
+        toast.success("Đã xóa video hướng dẫn");
+        onSuccess();
+      } else {
+        toast.error(res.error || "Lỗi xóa video hướng dẫn");
       }
     } finally {
       setIsSaving(false);
@@ -230,9 +277,10 @@ export function LessonEditModal({
         <Tabs defaultValue="video" className="flex-1 flex flex-col min-h-0">
           <div className="px-6 py-2 border-b bg-gray-50 overflow-x-auto">
             <TabsList className="w-full justify-start gap-2 bg-transparent p-0 h-auto">
-              <TabsTrigger value="video" className="data-[state=active]:bg-white data-[state=active]:text-red-600 rounded-md py-2 px-4">Nội dung chính</TabsTrigger>
-              <TabsTrigger value="attachments" className="data-[state=active]:bg-white data-[state=active]:text-red-600 rounded-md py-2 px-4">Tài liệu đính kèm</TabsTrigger>
-              <TabsTrigger value="quiz" className="data-[state=active]:bg-white data-[state=active]:text-red-600 rounded-md py-2 px-4">Bài tập Quiz</TabsTrigger>
+              <TabsTrigger value="video" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 rounded-md py-2 px-4">Nội dung chính</TabsTrigger>
+              <TabsTrigger value="homework-video" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 rounded-md py-2 px-4">Video thực chiến</TabsTrigger>
+              <TabsTrigger value="attachments" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 rounded-md py-2 px-4">Tài liệu đính kèm</TabsTrigger>
+              <TabsTrigger value="quiz" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 rounded-md py-2 px-4">Bài tập Quiz</TabsTrigger>
             </TabsList>
           </div>
 
@@ -279,7 +327,7 @@ export function LessonEditModal({
                          <VideoPlayer key={videoUrl} src={videoUrl} title={title} autoPlay={false} muted={true} />
                        ) : (
                          <div className="flex flex-col items-center gap-2">
-                            <div className="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                             <p className="text-white text-[10px] font-black uppercase">Khởi tạo...</p>
                          </div>
                        )}
@@ -301,13 +349,13 @@ export function LessonEditModal({
                       />
                       <button 
                         onClick={() => setShowYoutubeInput(!showYoutubeInput)}
-                        className="bg-white/95 hover:bg-white text-red-600 text-[10px] font-black px-3 py-2 rounded-lg shadow-xl uppercase tracking-wider"
+                        className="bg-white/95 hover:bg-white text-blue-600 text-[10px] font-black px-3 py-2 rounded-lg shadow-xl uppercase tracking-wider"
                       >
                         YouTube
                       </button>
                       <button 
                         onClick={handleRemoveVideo}
-                        className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-black px-3 py-2 rounded-lg shadow-xl uppercase tracking-wider"
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black px-3 py-2 rounded-lg shadow-xl uppercase tracking-wider"
                       >
                         Xóa
                       </button>
@@ -328,7 +376,7 @@ export function LessonEditModal({
                             onSuccess();
                           }}
                           customTrigger={
-                            <Button className="bg-red-600 hover:bg-red-700 font-black uppercase text-xs rounded-xl px-6 h-11">
+                            <Button className="bg-blue-600 hover:bg-blue-700 font-black uppercase text-xs rounded-xl px-6 h-11">
                                Thư viện
                             </Button>
                           }
@@ -345,8 +393,8 @@ export function LessonEditModal({
 
                 {/* Common YouTube Input Area */}
                 {showYoutubeInput && (
-                  <div className="p-6 bg-white border-2 border-red-100 rounded-[2rem] shadow-2xl space-y-4 animate-in slide-in-from-top-4 duration-500 relative z-[80]">
-                    <div className="flex items-center gap-2 text-red-600">
+                  <div className="p-6 bg-white border-2 border-blue-100 rounded-[2rem] shadow-2xl space-y-4 animate-in slide-in-from-top-4 duration-500 relative z-[80]">
+                    <div className="flex items-center gap-2 text-blue-600">
                       <Youtube className="w-5 h-5" />
                       <span className="font-black uppercase tracking-tight">Nhập link YouTube mới</span>
                     </div>
@@ -357,7 +405,7 @@ export function LessonEditModal({
                         onChange={(e) => setYoutubeInput(e.target.value)}
                         className="h-12 bg-slate-50 border-slate-200 rounded-2xl font-bold"
                       />
-                      <Button onClick={handleAddYoutube} disabled={isSaving || !youtubeInput} className="bg-red-600 hover:bg-red-700 h-12 px-8 font-black rounded-2xl uppercase">
+                      <Button onClick={handleAddYoutube} disabled={isSaving || !youtubeInput} className="bg-blue-600 hover:bg-blue-700 h-12 px-8 font-black rounded-2xl uppercase">
                         Xác nhận
                       </Button>
                     </div>
@@ -372,14 +420,111 @@ export function LessonEditModal({
             </div>
           </TabsContent>
 
+          <TabsContent value="homework-video" className="flex-1 p-6 overflow-y-auto space-y-6">
+            <div className="space-y-4 animate-in fade-in duration-500">
+              <Label className="text-lg font-black uppercase tracking-tight">Video hướng dẫn thực chiến</Label>
+              <p className="text-sm text-slate-500">Video này sẽ xuất hiện ở phần "Thực chiến bài tập về nhà" của bài học.</p>
+
+              {homeworkVideoUrl ? (
+                <div className="border rounded-xl overflow-hidden bg-black relative shadow-2xl group">
+                  <div className="w-full aspect-video flex items-center justify-center">
+                      {showPlayer ? (
+                        <VideoPlayer key={homeworkVideoUrl} src={homeworkVideoUrl} title={`Hướng dẫn: ${title}`} autoPlay={false} muted={true} />
+                      ) : (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                          <p className="text-white text-[10px] font-black uppercase">Khởi tạo...</p>
+                        </div>
+                      )}
+                  </div>
+                  <div className="absolute top-3 right-3 flex gap-2 z-[70] opacity-0 group-hover:opacity-100 transition-opacity">
+                    <LibrarySelect
+                      onSelectVideo={(url) => {
+                        setHomeworkVideoUrl(url);
+                        updateLesson(lesson.id, { homeworkVideoUrl: url });
+                        toast.success("Đã thay đổi video hướng dẫn");
+                        onSuccess();
+                      }}
+                      customTrigger={
+                        <button className="bg-white/95 hover:bg-white text-gray-900 text-[10px] font-black px-3 py-2 rounded-lg shadow-xl uppercase tracking-wider">
+                          Thư viện
+                        </button>
+                      }
+                    />
+                    <button 
+                      onClick={() => setShowHWYoutubeInput(!showHWYoutubeInput)}
+                      className="bg-white/95 hover:bg-white text-blue-600 text-[10px] font-black px-3 py-2 rounded-lg shadow-xl uppercase tracking-wider"
+                    >
+                      YouTube
+                    </button>
+                    <button 
+                      onClick={handleRemoveHWVideo}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black px-3 py-2 rounded-lg shadow-xl uppercase tracking-wider"
+                    >
+                      Xóa
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed rounded-xl p-12 flex flex-col items-center justify-center gap-6 bg-slate-50 text-center">
+                  <div className="text-5xl">🎯</div>
+                  <div>
+                    <p className="font-black text-slate-900 uppercase">Chưa có video hướng dẫn</p>
+                    <p className="text-sm text-slate-500 mt-1">Chọn từ thư viện hoặc gắn link YouTube cho phần thực chiến</p>
+                  </div>
+                  <div className="flex gap-4">
+                      <LibrarySelect
+                        onSelectVideo={(url) => {
+                          setHomeworkVideoUrl(url);
+                          updateLesson(lesson.id, { homeworkVideoUrl: url });
+                          onSuccess();
+                        }}
+                        customTrigger={
+                          <Button className="bg-blue-600 hover:bg-blue-700 font-black uppercase text-xs rounded-xl px-6 h-11">
+                              Thư viện
+                          </Button>
+                        }
+                      />
+                      <Button 
+                        onClick={() => setShowHWYoutubeInput(!showHWYoutubeInput)}
+                        className="bg-slate-900 hover:bg-black font-black uppercase text-xs rounded-xl px-6 h-11"
+                      >
+                          YouTube
+                      </Button>
+                  </div>
+                </div>
+              )}
+
+              {showHWYoutubeInput && (
+                <div className="p-6 bg-white border-2 border-blue-100 rounded-[2rem] shadow-2xl space-y-4 animate-in slide-in-from-top-4 duration-500 relative z-[80]">
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <Youtube className="w-5 h-5" />
+                    <span className="font-black uppercase tracking-tight">Nhập link YouTube hướng dẫn</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <Input 
+                      placeholder="Dán đường dẫn vào đây..." 
+                      value={hwYoutubeInput}
+                      onChange={(e) => setHwYoutubeInput(e.target.value)}
+                      className="h-12 bg-slate-50 border-slate-200 rounded-2xl font-bold"
+                    />
+                    <Button onClick={handleAddHWYoutube} disabled={isSaving || !hwYoutubeInput} className="bg-blue-600 hover:bg-blue-700 h-12 px-8 font-black rounded-2xl uppercase">
+                      Xác nhận
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
           <TabsContent value="attachments" className="flex-1 p-6 overflow-y-auto space-y-6">
             <Label className="text-lg font-black uppercase tracking-tight">Tài liệu học tập</Label>
             <div className="border-2 border-dashed rounded-2xl p-10 text-center space-y-4 bg-slate-50 relative group">
-              {attUploading && <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center rounded-2xl font-black text-red-600 animate-pulse">ĐANG TẢI LÊN...</div>}
+              {attUploading && <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center rounded-2xl font-black text-blue-600 animate-pulse">ĐANG TẢI LÊN...</div>}
               <div className="text-4xl">📎</div>
               <p className="font-black text-slate-900 uppercase">Tải lên tài liệu mới</p>
               <label className="cursor-pointer inline-block">
-                <span className="bg-slate-900 hover:bg-red-600 text-white font-black uppercase text-[11px] px-8 py-3 rounded-2xl transition-all shadow-xl">Chọn File</span>
+                <span className="bg-slate-900 hover:bg-blue-600 text-white font-black uppercase text-[11px] px-8 py-3 rounded-2xl transition-all shadow-xl">Chọn File</span>
                 <Input type="file" className="hidden" onChange={handleAttachmentUpload} disabled={attUploading} />
               </label>
             </div>
@@ -387,13 +532,13 @@ export function LessonEditModal({
               {attachments.map((att) => (
                 <div key={att.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-4 overflow-hidden">
-                    <div className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center font-black text-xs">PDF</div>
+                    <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-black text-xs">PDF</div>
                     <div className="overflow-hidden">
-                      <a href={att.url} target="_blank" className="font-bold text-sm text-slate-900 hover:text-red-600 truncate block">{att.name}</a>
+                      <a href={att.url} target="_blank" className="font-bold text-sm text-slate-900 hover:text-blue-600 truncate block">{att.name}</a>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tài liệu đính kèm</span>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => handleDeleteAttachment(att.id)} className="text-slate-300 hover:text-red-600 transition-colors"><Trash2 className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDeleteAttachment(att.id)} className="text-slate-300 hover:text-blue-600 transition-colors"><Trash2 className="h-4 w-4" /></Button>
                 </div>
               ))}
             </div>
@@ -410,7 +555,7 @@ export function LessonEditModal({
                 if (lesson.type !== "QUIZ") await updateLesson(lesson.id, { type: "QUIZ" });
                 window.location.href = `/teacher/tests/${lesson.id}`;
               }}
-              className="bg-slate-900 hover:bg-red-600 h-14 px-10 font-black uppercase text-xs tracking-widest rounded-2xl shadow-2xl transition-all"
+              className="bg-slate-900 hover:bg-blue-600 h-14 px-10 font-black uppercase text-xs tracking-widest rounded-2xl shadow-2xl transition-all"
             >
               Mở Trình tạo Bài tập
             </Button>
@@ -419,7 +564,7 @@ export function LessonEditModal({
 
         <div className="p-6 border-t bg-slate-50 flex justify-end gap-3">
           <Button variant="ghost" onClick={handleClose} className="font-bold uppercase text-xs">Hủy bỏ</Button>
-          <Button onClick={handleSave} disabled={isSaving || uploading || attUploading} className="bg-red-600 hover:bg-red-700 font-black uppercase text-xs px-8 h-11 rounded-xl shadow-xl shadow-red-200">
+          <Button onClick={handleSave} disabled={isSaving || uploading || attUploading} className="bg-blue-600 hover:bg-blue-700 font-black uppercase text-xs px-8 h-11 rounded-xl shadow-xl shadow-blue-200">
             {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
           </Button>
         </div>

@@ -22,11 +22,11 @@ export default function LoginPage() {
         
         <p className="mt-8 text-center text-xs text-gray-500">
             Bằng cách đăng nhập, bạn đồng ý với{' '}
-            <Link href="#" className="font-medium text-red-600 hover:text-red-500">
+            <Link href="#" className="font-medium text-blue-600 hover:text-blue-500">
                 Điều khoản dịch vụ
             </Link>{' '}
             và{' '}
-             <Link href="#" className="font-medium text-red-600 hover:text-red-500">
+             <Link href="#" className="font-medium text-blue-600 hover:text-blue-500">
                 Chính sách bảo mật
             </Link>
             của chúng tôi.
@@ -34,7 +34,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-gray-500">
             Chưa có tài khoản?{' '}
-            <Link href="/register" className="font-medium text-red-600 hover:text-red-500">
+            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
                 Đăng ký ngay
             </Link>
         </p>

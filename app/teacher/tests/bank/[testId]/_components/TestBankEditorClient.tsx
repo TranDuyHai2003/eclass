@@ -446,7 +446,7 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
             {mappedLessonId && (
               <Button
                 variant="outline"
-                className="rounded-2xl border-red-200 text-red-600 font-bold hover:bg-red-50"
+                className="rounded-2xl border-blue-200 text-blue-600 font-bold hover:bg-blue-50"
                 onClick={async () => {
                   const ok = confirm("Gỡ đề thi khỏi bài học hiện tại?");
                   if (!ok) return;
@@ -719,7 +719,7 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
                         <td className="px-4 py-3 text-center">
                           <Badge className={cn(
                             "rounded-xl font-black",
-                            (attempt.score || 0) >= 5 ? "bg-emerald-500" : "bg-red-500"
+                            (attempt.score || 0) >= 5 ? "bg-emerald-500" : "bg-blue-500"
                           )}>
                             {attempt.score !== null ? attempt.score.toFixed(2) : "N/A"}
                           </Badge>
@@ -775,7 +775,7 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
                               ? "bg-emerald-500"
                               : q.correctRate > 40
                               ? "bg-amber-500"
-                              : "bg-red-500",
+                              : "bg-blue-500",
                           )}
                           style={{ width: `${q.correctRate}%` }}
                         />

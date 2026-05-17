@@ -76,7 +76,7 @@ export function GradeEssay({
             variant="destructive"
             onClick={() => handleGrade(false)}
             disabled={isPending}
-            className="h-9 w-9 p-0 rounded-xl shadow-lg shadow-red-200"
+            className="h-9 w-9 p-0 rounded-xl shadow-lg shadow-blue-200"
           >
             <X className="w-4 h-4" />
           </Button>

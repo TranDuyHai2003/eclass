@@ -22,7 +22,7 @@ export default function RegisterPage() {
 
         <p className="mt-8 text-center text-sm text-gray-500">
             Đã có tài khoản?{' '}
-            <Link href="/login" className="font-medium text-red-600 hover:text-red-500">
+            <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
                 Đăng nhập ngay
             </Link>
         </p>

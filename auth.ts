@@ -53,31 +53,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
-      if (user) {
-        token.role = user.role;
-        token.id = user.id;
-      }
-
-      // Handle session update trigger
-      if (trigger === "update" && session) {
-        token.name = session.name || token.name;
-        token.picture = session.image || token.picture;
-      }
-
-      // Force ADMIN role for specific email
-      if (token.email === "admin@gmail.com") {
-        token.role = "ADMIN";
-      }
-      return token;
-    },
+    ...authConfig.callbacks,
     async session({ session, token }) {
-      if (token.sub && session.user) {
-        session.user.id = token.sub;
-      }
-
+      // Inherit basic session logic from auth.config.ts
       if (token.role && session.user) {
         session.user.role = token.role as Role;
+      }
+      if (token.sub && session.user) {
+        session.user.id = token.sub;
       }
 
       // Fetch fresh data from DB to ensure profile changes (name, image) reflect immediately

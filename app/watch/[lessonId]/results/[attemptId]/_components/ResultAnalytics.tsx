@@ -96,7 +96,7 @@ export const ResultAnalytics = ({ data }: ResultAnalyticsProps) => {
                   </div>
                   <span className={cn(
                     "text-lg font-black tracking-tight",
-                    item.accuracy < 50 ? "text-red-500" : "text-emerald-600"
+                    item.accuracy < 50 ? "text-blue-500" : "text-emerald-600"
                   )}>
                     {item.accuracy}%
                   </span>

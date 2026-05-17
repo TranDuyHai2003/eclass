@@ -154,8 +154,8 @@ export function ParsedQuestionsForm({ questions, onChange }: ParsedQuestionsForm
                         className={cn(
                           "w-10 h-10 rounded-xl border font-black text-xs transition-all",
                           q.correctAnswer === opt
-                            ? "bg-red-600 border-red-600 text-white shadow-lg shadow-red-200"
-                            : "bg-white border-slate-200 text-slate-400 hover:border-red-400 hover:text-red-600"
+                            ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200"
+                            : "bg-white border-slate-200 text-slate-400 hover:border-blue-400 hover:text-blue-600"
                         )}
                       >
                         {opt}
@@ -183,7 +183,7 @@ export function ParsedQuestionsForm({ questions, onChange }: ParsedQuestionsForm
                   onClick={() => removeQuestion(q.id)}
                   size="icon"
                   variant="ghost"
-                  className="h-10 w-10 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                  className="h-10 w-10 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
                 >
                   <Trash2 className="w-5 h-5" />
                 </Button>

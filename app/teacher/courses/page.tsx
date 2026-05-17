@@ -49,7 +49,7 @@ export default async function TeacherCoursesPage() {
                             <Link 
                                 key={course.id} 
                                 href={`/teacher/courses/${course.id}`}
-                                className="group bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-red-500/5 transition-all duration-500 flex flex-col h-full relative"
+                                className="group bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all duration-500 flex flex-col h-full relative"
                             >
                                 {/* Thumbnail */}
                                 <div className="aspect-[16/10] relative bg-slate-50 overflow-hidden shrink-0">
@@ -60,7 +60,7 @@ export default async function TeacherCoursesPage() {
                                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out"
                                         />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50">
+                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-orange-50">
                                             <span className="text-4xl">🎓</span>
                                         </div>
                                     )}
@@ -68,7 +68,7 @@ export default async function TeacherCoursesPage() {
                                 </div>
 
                                 <div className="p-6 flex-1 flex flex-col space-y-4">
-                                    <h3 className="font-black text-slate-900 text-lg leading-tight group-hover:text-red-600 transition-colors line-clamp-2 uppercase tracking-tight">
+                                    <h3 className="font-black text-slate-900 text-lg leading-tight group-hover:text-blue-600 transition-colors line-clamp-2 uppercase tracking-tight">
                                         {course.title}
                                     </h3>
                                     
@@ -78,11 +78,11 @@ export default async function TeacherCoursesPage() {
                                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Cấu trúc</span>
                                                 <div className="flex items-center gap-3 mt-1.5">
                                                     <span className="flex items-center gap-1 text-[11px] font-black text-slate-700">
-                                                        <span className="w-1 h-1 bg-red-600 rounded-full" />
+                                                        <span className="w-1 h-1 bg-blue-600 rounded-full" />
                                                         {course.chapters?.length ?? 0} Chương
                                                     </span>
                                                     <span className="flex items-center gap-1 text-[11px] font-black text-slate-700">
-                                                        <span className="w-1 h-1 bg-red-600 rounded-full" />
+                                                        <span className="w-1 h-1 bg-blue-600 rounded-full" />
                                                         {course.chapters?.reduce((acc, ch) => acc + (ch.lessons?.length ?? 0), 0) ?? 0} Bài
                                                     </span>
                                                 </div>
@@ -91,7 +91,7 @@ export default async function TeacherCoursesPage() {
                                         
                                         <div className="flex items-center gap-2">
                                             <AnalyticsButton href={`/teacher/courses/${course.id}/analytics`} />
-                                            <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center group-hover:bg-red-600 transition-colors shadow-lg">
+                                            <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center group-hover:bg-blue-600 transition-colors shadow-lg">
                                                 <ChevronRight className="w-4 h-4" />
                                             </div>
                                         </div>

@@ -45,7 +45,7 @@ export function ChapterCard({
           className={cn(
             "bg-white rounded-lg border border-gray-200 mb-4 shadow-sm",
             snapshot.isDragging &&
-              "shadow-xl border-red-200 ring-2 ring-red-100",
+              "shadow-xl border-blue-200 ring-2 ring-blue-100",
           )}
         >
           {/* Chapter Header */}
@@ -78,7 +78,7 @@ export function ChapterCard({
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="text-gray-500 hover:text-red-600"
+                  className="text-gray-500 hover:text-blue-600"
                   disabled={isDeleting}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -96,7 +96,7 @@ export function ChapterCard({
                 ref={provided.innerRef}
                 className={cn(
                   "p-2 min-h-[10px]",
-                  snapshot.isDraggingOver && "bg-red-50/30",
+                  snapshot.isDraggingOver && "bg-blue-50/30",
                 )}
               >
                 {chapter.lessons.map((lesson, lessonIndex) => (
@@ -114,7 +114,7 @@ export function ChapterCard({
                   onClick={() => onCreateLesson(chapter.id)}
                   variant="ghost"
                   size="sm"
-                  className="w-full justify-start text-xs font-medium text-gray-500 hover:text-red-700 hover:bg-red-50 mt-1 h-9"
+                  className="w-full justify-start text-xs font-medium text-gray-500 hover:text-blue-700 hover:bg-blue-50 mt-1 h-9"
                 >
                   <PlusCircle className="h-4 w-4 mr-2" />
                   Thêm bài học

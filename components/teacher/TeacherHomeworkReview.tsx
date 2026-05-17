@@ -137,13 +137,13 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
             {/* Left: Student Info & Files */}
             <div className="p-6 md:p-8 flex-1 space-y-6 border-r border-slate-50">
                {sub.lesson && sub.lesson.chapter && (
-                 <div className="flex items-center gap-2 mb-4 bg-red-50 w-fit px-3 py-1.5 rounded-lg border border-red-100">
-                    <BookOpen className="w-3.5 h-3.5 text-[#A01D24]" />
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[#A01D24] max-w-[150px] sm:max-w-[200px] truncate">
+                 <div className="flex items-center gap-2 mb-4 bg-blue-50 w-fit px-3 py-1.5 rounded-lg border border-blue-100">
+                    <BookOpen className="w-3.5 h-3.5 text-[#2563EB]" />
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#2563EB] max-w-[150px] sm:max-w-[200px] truncate">
                       {sub.lesson.chapter?.course?.title || "Khóa học"}
                     </span>
-                    <ChevronRight className="w-3 h-3 text-red-300" />
-                    <span className="text-[10px] font-bold text-red-600 truncate max-w-[150px] sm:max-w-[200px]">
+                    <ChevronRight className="w-3 h-3 text-blue-300" />
+                    <span className="text-[10px] font-bold text-blue-600 truncate max-w-[150px] sm:max-w-[200px]">
                       {sub.lesson.title}
                     </span>
                  </div>
@@ -168,7 +168,7 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
                           target="_blank" 
                           className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-blue-50 transition-colors group"
                         >
-                           {file.name.match(/\.(jpg|jpeg|png|gif)$/i) ? <ImageIcon className="w-4 h-4 text-blue-500" /> : <FileText className="w-4 h-4 text-red-500" />}
+                           {file.name.match(/\.(jpg|jpeg|png|gif)$/i) ? <ImageIcon className="w-4 h-4 text-blue-500" /> : <FileText className="w-4 h-4 text-blue-500" />}
                            <span className="text-[11px] font-bold text-slate-600 truncate flex-1">{file.name}</span>
                            <ExternalLink className="w-3 h-3 text-slate-300 group-hover:text-blue-500" />
                         </a>
@@ -209,7 +209,7 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
                     disabled={loading[sub.id]}
                     className={cn(
                       "w-full h-11 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all",
-                      sub.status === "UNSATISFACTORY" ? "bg-red-600 hover:bg-red-700" : "bg-white text-red-600 border border-red-200 hover:bg-red-50"
+                      sub.status === "UNSATISFACTORY" ? "bg-blue-600 hover:bg-blue-700" : "bg-white text-blue-600 border border-blue-200 hover:bg-blue-50"
                     )}
                   >
                      <XCircle className="w-4 h-4" />

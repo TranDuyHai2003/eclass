@@ -85,7 +85,7 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
   const statusConfig = {
     PENDING: { icon: Clock, text: "Đang chờ duyệt", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
     SATISFACTORY: { icon: CheckCircle2, text: "Đạt yêu cầu", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-    UNSATISFACTORY: { icon: AlertCircle, text: "Chưa đạt yêu cầu", color: "text-red-600", bg: "bg-red-50", border: "border-red-100" }
+    UNSATISFACTORY: { icon: AlertCircle, text: "Chưa đạt yêu cầu", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" }
   };
 
   const currentStatus = submission ? statusConfig[submission.status as keyof typeof statusConfig] : null;
@@ -125,7 +125,7 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
                  {attachments.map((file, idx) => (
                     <div key={idx} className="group relative flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-white hover:border-blue-200 transition-all">
                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm border border-slate-100">
-                          {file.name.match(/\.(jpg|jpeg|png|gif)$/i) ? <ImageIcon className="w-5 h-5 text-blue-500" /> : <FileText className="w-5 h-5 text-red-500" />}
+                          {file.name.match(/\.(jpg|jpeg|png|gif)$/i) ? <ImageIcon className="w-5 h-5 text-blue-500" /> : <FileText className="w-5 h-5 text-blue-500" />}
                        </div>
                        <div className="flex-1 min-w-0">
                           <p className="text-xs font-bold text-slate-700 truncate">{file.name}</p>
@@ -133,7 +133,7 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
                        </div>
                        <button 
                          onClick={() => removeAttachment(idx)}
-                         className="p-1.5 rounded-lg bg-red-50 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                         className="p-1.5 rounded-lg bg-blue-50 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
                        >
                           <X className="w-3.5 h-3.5" />
                        </button>

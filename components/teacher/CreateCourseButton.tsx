@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 export default function CreateCourseButton() {
   return (
     <Link href="/teacher/courses/create">
-      <Button className="bg-red-600 hover:bg-red-700">
+      <Button className="bg-blue-600 hover:bg-blue-700">
         <svg
           className="w-5 h-5 mr-2"
           fill="none"

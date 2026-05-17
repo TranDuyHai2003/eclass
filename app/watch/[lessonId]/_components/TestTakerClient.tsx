@@ -333,7 +333,7 @@ export default function TestTakerClient({
                                {val && (
                                   <div className="flex items-center gap-2 p-2.5 bg-blue-50/50 border border-blue-100 rounded-xl group animate-in fade-in slide-in-from-top-1">
                                      <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm border border-slate-100">
-                                        {val.match(/\.(jpg|jpeg|png|gif)$/i) ? <ImageIcon className="w-5 h-5 text-blue-500" /> : <FileText className="w-5 h-5 text-red-500" />}
+                                        {val.match(/\.(jpg|jpeg|png|gif)$/i) ? <ImageIcon className="w-5 h-5 text-blue-500" /> : <FileText className="w-5 h-5 text-blue-500" />}
                                      </div>
                                      <div className="flex-1 min-w-0">
                                         <p className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Đã tải lên</p>
@@ -343,7 +343,7 @@ export default function TestTakerClient({
                                      </div>
                                      <button 
                                        onClick={() => removeFileUpload(q.id)}
-                                       className="p-1.5 rounded-lg bg-red-50 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100"
+                                       className="p-1.5 rounded-lg bg-blue-50 text-blue-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-100"
                                      >
                                         <X className="w-4 h-4" />
                                      </button>

@@ -23,7 +23,7 @@ export function MobileMenu({ role }: MobileMenuProps) {
     <div className="flex md:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <button className="p-2 -ml-2 text-gray-600 hover:text-red-700 transition-colors active:scale-95 transition-transform">
+          <button className="p-2 -ml-2 text-gray-600 hover:text-blue-700 transition-colors active:scale-95 transition-transform">
             <Menu className="w-6 h-6" />
           </button>
         </SheetTrigger>
@@ -34,17 +34,17 @@ export function MobileMenu({ role }: MobileMenuProps) {
           <div className="flex flex-col h-full">
             <SheetHeader className="p-8 border-b bg-slate-50/50 relative overflow-hidden">
                {/* Background Glow */}
-               <div className="absolute -top-10 -left-10 w-32 h-32 bg-red-100/50 blur-3xl rounded-full" />
+               <div className="absolute -top-10 -left-10 w-32 h-32 bg-blue-100/50 blur-3xl rounded-full" />
                
                <SheetTitle className="flex items-center gap-3 relative z-10">
-                 <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center border border-slate-100">
-                    <img src="/logo.png" alt="Logo" className="h-7 w-auto" />
+                 <div className="flex items-center justify-center">
+                    <img src="/logo.png" alt="Logo" className="h-8 w-auto object-contain" />
                  </div>
                  <div className="flex flex-col items-start">
                     <span className="text-base font-black text-slate-900 uppercase tracking-tighter leading-none">
                       thatdehoctoan
                     </span>
-                    <span className="text-[9px] font-bold text-red-600 uppercase tracking-widest mt-1">E-Learning Platform</span>
+                    <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest mt-1">E-Learning Platform</span>
                  </div>
                </SheetTitle>
             </SheetHeader>
@@ -56,35 +56,8 @@ export function MobileMenu({ role }: MobileMenuProps) {
                 <HomeSidebar />
               </div>
 
-              {/* Mobile Hotline info in Menu */}
               <div className="mt-8 px-8 pb-10 space-y-6">
-                <div className="pt-6 border-t border-slate-50">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
-                    Hỗ trợ học tập 24/7
-                  </p>
-                  <div className="space-y-3">
-                    <a href="tel:02489998668" className="flex items-center gap-4 text-slate-600 hover:text-red-600 transition-colors group">
-                      <div className="p-2.5 bg-slate-50 rounded-xl group-hover:bg-red-50 transition-colors border border-slate-100">
-                        <Phone className="w-4 h-4" />
-                      </div>
-                      <div className="flex flex-col">
-                         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Hotline 1</span>
-                         <span className="text-sm font-black tracking-tight">024 8999 8668</span>
-                      </div>
-                    </a>
-                    <a href="tel:0968668799" className="flex items-center gap-4 text-slate-600 hover:text-red-600 transition-colors group">
-                      <div className="p-2.5 bg-slate-50 rounded-xl group-hover:bg-red-50 transition-colors border border-slate-100">
-                        <Phone className="w-4 h-4" />
-                      </div>
-                      <div className="flex flex-col">
-                         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Hotline 2</span>
-                         <span className="text-sm font-black tracking-tight">0968 668 799</span>
-                      </div>
-                    </a>
-                  </div>
-                </div>
-
-                <div className="p-6 bg-gradient-to-br from-red-600 to-orange-500 rounded-[2rem] text-white shadow-xl shadow-red-200">
+                <div className="p-6 bg-gradient-to-br from-blue-600 to-orange-500 rounded-[2rem] text-white shadow-xl shadow-blue-200">
                    <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-80">Thông báo</p>
                    <p className="text-sm font-black leading-snug">Hệ thống đang cập nhật bộ đề thi mới 2026!</p>
                 </div>

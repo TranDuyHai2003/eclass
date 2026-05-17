@@ -38,7 +38,7 @@ export function DeleteTestButton({ testId }: DeleteTestButtonProps) {
       variant="outline"
       onClick={handleDelete}
       disabled={isDeleting}
-      className="rounded-xl font-bold text-red-600 border-red-200 hover:bg-red-50"
+      className="rounded-xl font-bold text-blue-600 border-blue-200 hover:bg-blue-50"
     >
       <Trash2 className="w-4 h-4" />
     </Button>

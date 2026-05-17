@@ -48,7 +48,7 @@ export function VietQRModal({
              </div>
           </div>
 
-          <div className="text-left space-y-2 bg-red-50 p-4 rounded-2xl text-sm border border-red-100">
+          <div className="text-left space-y-2 bg-blue-50 p-4 rounded-2xl text-sm border border-blue-100">
              <p className="flex justify-between">
                 <span className="text-gray-600">Ngân hàng:</span>
                 <span className="font-bold">Vietcombank</span>
@@ -61,10 +61,10 @@ export function VietQRModal({
                 <span className="text-gray-600">Chủ tài khoản:</span>
                 <span className="font-bold">NGUYEN VAN A</span>
              </p>
-             <div className="h-px bg-red-200 my-2"></div>
+             <div className="h-px bg-blue-200 my-2"></div>
              <p className="flex justify-between items-center text-lg">
                 <span className="text-gray-600 text-sm">Số tiền:</span>
-                <span className="font-black text-red-600">{amount.toLocaleString('vi-VN')} đ</span>
+                <span className="font-black text-blue-600">{amount.toLocaleString('vi-VN')} đ</span>
              </p>
              <p className="flex flex-col gap-1 mt-2">
                 <span className="text-gray-600">Nội dung chuyển khoản:</span>
@@ -75,7 +75,7 @@ export function VietQRModal({
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black text-lg rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-600/20 uppercase tracking-wide mt-2"
+            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-lg rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-600/20 uppercase tracking-wide mt-2"
           >
             {isLoading ? "Đang xử lý..." : "Tôi đã chuyển khoản"}
           </button>

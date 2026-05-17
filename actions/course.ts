@@ -615,6 +615,7 @@ export async function updateLesson(
     isPublished?: boolean;
     isFree?: boolean;
     hasHomework?: boolean;
+    homeworkVideoUrl?: string;
     type?: "VIDEO" | "DOCUMENT" | "QUIZ";
   },
 ) {

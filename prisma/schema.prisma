@@ -154,8 +154,9 @@ model Lesson {
   id          String     @id @default(cuid())
   title       String
   description String?
-  videoUrl    String?
-  position    Int        @default(0)
+  videoUrl          String?
+  homeworkVideoUrl  String?
+  position          Int        @default(0)
   isPublished Boolean    @default(false)
   isFree      Boolean    @default(false)
   hasHomework Boolean    @default(false)

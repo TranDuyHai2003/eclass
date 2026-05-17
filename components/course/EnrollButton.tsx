@@ -64,7 +64,7 @@ export function EnrollButton({
         href={firstLessonId ? `/watch/${firstLessonId}` : "#"}
         className={cn(
           "group relative inline-flex w-full items-center justify-center px-6 py-3",
-          "bg-gradient-to-r from-orange-500 via-red-600 to-rose-600",
+          "bg-gradient-to-r from-orange-500 via-blue-600 to-rose-600",
           "text-white font-black text-xs rounded-2xl shadow-[0_10px_25px_rgba(225,29,72,0.4)]",
           "transition-all duration-300 hover:scale-[1.05] active:scale-[0.95]",
           "uppercase tracking-widest overflow-hidden",
@@ -102,7 +102,7 @@ export function EnrollButton({
       onClick={handleEnrollClick}
       disabled={isLoading}
       className={cn(
-        "group relative inline-flex w-full items-center justify-center px-6 py-3 bg-red-600 text-white font-black text-xs rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-widest disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden",
+        "group relative inline-flex w-full items-center justify-center px-6 py-3 bg-blue-600 text-white font-black text-xs rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-widest disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden",
         className,
       )}
     >

@@ -150,7 +150,7 @@ export default function PDFViewer({
               </div>
             }
             error={
-              <div className="flex flex-col items-center justify-center py-20 gap-3 text-red-500">
+              <div className="flex flex-col items-center justify-center py-20 gap-3 text-blue-500">
                 <FileWarning className="h-10 w-10" />
                 <p className="text-sm font-bold uppercase tracking-widest">
                   Không thể hiển thị PDF
