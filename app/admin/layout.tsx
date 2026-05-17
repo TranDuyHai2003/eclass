@@ -29,7 +29,7 @@ export default async function AdminLayout({
         <div className="flex flex-col lg:flex-row gap-8">
           <aside className="hidden lg:block w-[280px] shrink-0">
             <div className="sticky top-24 h-fit">
-              <HomeSidebar />
+              <HomeSidebar user={user} />
             </div>
           </aside>
           

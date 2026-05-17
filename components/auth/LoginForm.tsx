@@ -31,7 +31,7 @@ export default function LoginForm() {
   }
 
   const handleSocialLogin = (provider: "google" | "facebook") => {
-    signIn(provider, { callbackUrl: "/" })
+    signIn(provider, { callbackUrl: window.location.origin + "/" })
   }
 
   return (

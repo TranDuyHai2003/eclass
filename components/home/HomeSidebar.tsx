@@ -168,7 +168,7 @@ export function HomeSidebar({ user: propUser }: HomeSidebarProps) {
   };
 
   return (
-    <div className="w-full bg-transparent overflow-hidden p-2 space-y-6">
+    <div className="w-full bg-blue-100 rounded-xl overflow-hidden p-2 space-y-6">
       <nav className="flex flex-col gap-1">{renderLinks(generalLinks)}</nav>
 
       {/* Social Links Section */}
