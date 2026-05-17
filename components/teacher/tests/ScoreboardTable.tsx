@@ -138,7 +138,7 @@ export default function ScoreboardTable({
               </TabsTrigger>
               <TabsTrigger
                 value="failed"
-                className="rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-red-600 data-[state=active]:bg-red-500 data-[state=active]:text-white"
+                className="rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-blue-600 data-[state=active]:bg-blue-500 data-[state=active]:text-white"
               >
                 Yếu (&lt;5)
               </TabsTrigger>
@@ -259,7 +259,7 @@ export default function ScoreboardTable({
                           ? "text-emerald-600"
                           : (attempt.score || 0) >= 5
                             ? "text-blue-600"
-                            : "text-red-500",
+                            : "text-blue-500",
                       )}
                     >
                       {attempt.score !== null ? attempt.score.toFixed(2) : "--"}

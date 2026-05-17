@@ -142,7 +142,7 @@ export function GlobalFilters({ courses }: GlobalFiltersProps) {
               <Badge key={id} variant="outline" className="rounded-xl px-3 py-1 bg-white border-slate-200 text-slate-600 flex items-center gap-1">
                 {course?.title}
                 <X 
-                  className="w-3 h-3 cursor-pointer hover:text-red-500" 
+                  className="w-3 h-3 cursor-pointer hover:text-blue-500" 
                   onClick={() => toggleCourse(id)}
                 />
               </Badge>

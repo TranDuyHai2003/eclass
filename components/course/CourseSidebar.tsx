@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ChevronDown,
   PlayCircle,
@@ -16,6 +17,8 @@ import {
   Send,
   X,
   Loader2,
+  Play,
+  CirclePlay,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import axios from "axios";
@@ -33,6 +36,8 @@ type Lesson = {
   title: string;
   position: number;
   type?: string;
+  videoUrl?: string | null;
+  homeworkVideoUrl?: string | null;
   isCompleted?: boolean;
   isFree?: boolean;
   hasHomework?: boolean;
@@ -71,6 +76,8 @@ export default function CourseSidebar({
   isEnrolled = false,
   className,
 }: CourseSidebarProps) {
+  const searchParams = useSearchParams();
+  
   // Automatically open the chapter containing the current lesson
   const [openChapters, setOpenChapters] = useState<Record<string, boolean>>(
     () => {
@@ -84,6 +91,7 @@ export default function CourseSidebar({
       return initialState;
     },
   );
+
   // Keep track of which lesson's content is expanded
   const [expandedLessons, setExpandedLessons] = useState<
     Record<string, boolean>
@@ -172,121 +180,129 @@ export default function CourseSidebar({
   return (
     <div
       className={cn(
-        "bg-white border-none h-full flex flex-col overflow-hidden",
+        "bg-white h-full flex flex-col overflow-hidden",
         className,
       )}
     >
-      {/* Sidebar Header - Professional Progress */}
-      <div className="p-6 bg-white sticky top-0 z-10">
-        <div className="flex items-center gap-2 mb-4">
-          <Layout className="w-4 h-4 text-red-600" />
-          <h3 className="font-black text-slate-900 text-[11px] uppercase tracking-[0.2em]">
-            Nội dung khóa học
+      {/* Sidebar Header - Enhanced Typography */}
+      <div className="p-4 sm:p-5 border-b border-slate-50/60">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-100">
+            <Layout className="w-4 h-4" />
+          </div>
+          <h3 className="font-black text-slate-900 text-xs uppercase tracking-widest">
+            Học phần khóa học
           </h3>
         </div>
         <div className="space-y-3">
           <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
-            <span className="text-slate-400">Tiến độ của bạn</span>
-            <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded-md">
+            <span className="text-slate-400">Tiến độ hoàn thành</span>
+            <span className="text-blue-600 font-black">
               {progress}%
             </span>
           </div>
-          <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden p-0.5 shadow-inner">
+          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner">
             <div
-              className="bg-gradient-to-r from-red-600 to-orange-500 h-full rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(239,68,68,0.2)]"
+              className="bg-blue-600 h-full rounded-full transition-all duration-1000"
               style={{ width: `${progress}%` }}
             />
           </div>
         </div>
       </div>
 
-      {/* Course Curriculum - Smooth Scroll */}
-      <div className="overflow-y-auto flex-1 custom-scrollbar p-3 space-y-2">
+      {/* Course Curriculum - Refined Items */}
+      <div className="overflow-y-auto flex-1 custom-scrollbar p-4 space-y-4">
         {course.chapters.map((chapter) => (
           <div
             key={chapter.id}
-            className="rounded-[24px] overflow-hidden bg-slate-50/30 transition-all"
+            className="group/chapter"
           >
             <button
               onClick={() => toggleChapter(chapter.id)}
               className={cn(
-                "w-full flex items-center justify-between py-5 px-6 transition-all hover:bg-slate-50",
+                "w-full flex items-center justify-between py-4 px-5 rounded-[1.5rem] transition-all border border-transparent",
                 openChapters[chapter.id]
-                  ? "bg-white border-b border-slate-100"
-                  : "bg-transparent",
+                  ? "bg-slate-900 text-white shadow-xl shadow-slate-200"
+                  : "bg-slate-50 text-slate-700 hover:bg-slate-100",
               )}
             >
-              <div className="flex flex-col items-start gap-1">
-                <span className="font-black text-[14px] text-red-600 text-left line-clamp-1 uppercase tracking-tight">
-                  {chapter.title && chapter.title !== `Chương ${chapter.position + 1}`
-                    ? chapter.title
-                    : `Chương ${chapter.position + 1}`}
+              <div className="flex items-center gap-3">
+                 <div className={cn(
+                   "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black",
+                   openChapters[chapter.id] ? "bg-white/20 text-white" : "bg-slate-200 text-slate-500"
+                 )}>
+                   {chapter.position + 1}
+                 </div>
+                 <span className="font-black text-xs uppercase tracking-tight text-left line-clamp-1">
+                  {chapter.title || `Chương ${chapter.position + 1}`}
                 </span>
               </div>
-              <div
+              <ChevronDown
                 className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center transition-all",
-                  openChapters[chapter.id]
-                    ? "bg-red-50 text-red-600"
-                    : "bg-slate-100 text-slate-400",
+                  "w-4 h-4 transition-transform duration-500 opacity-60",
+                  openChapters[chapter.id] && "transform rotate-180 opacity-100",
                 )}
-              >
-                <ChevronDown
-                  className={cn(
-                    "w-4 h-4 transition-transform duration-500",
-                    openChapters[chapter.id] && "transform rotate-180",
-                  )}
-                />
-              </div>
+              />
             </button>
 
             {/* Lessons List */}
             {openChapters[chapter.id] && (
-              <div className="flex flex-col p-2 gap-1 animate-in fade-in duration-300">
+              <div className="mt-2 ml-2 pl-4 border-l-2 border-slate-100 space-y-1 py-1 animate-in slide-in-from-left-2 duration-300">
                 {chapter.lessons.map((lesson) => {
                   const isActive = lesson.id === currentLessonId;
                   const isLocked = !isEnrolled && !lesson.isFree;
                   const isExpanded = !!expandedLessons[lesson.id];
+                  
+                  const isTutorialActive = searchParams.get("v") === "homework" && isActive;
+                  const isMainVideoActive = isActive && !searchParams.get("v");
+
                   const hasExtras =
                     (lesson.attachments && lesson.attachments.length > 0) ||
                     lesson.test ||
-                    lesson.hasHomework;
+                    lesson.hasHomework ||
+                    !!lesson.homeworkVideoUrl;
 
                   return (
                     <div key={lesson.id} className="space-y-1">
                       <div
                         className={cn(
-                          "flex items-center gap-1 group rounded-2xl transition-all",
-                          isActive
-                            ? "bg-white shadow-sm ring-1 ring-red-100"
-                            : "hover:bg-white",
+                          "flex items-center group rounded-2xl transition-all",
+                          isMainVideoActive
+                            ? "bg-blue-50/50 shadow-sm"
+                            : "hover:bg-slate-50",
                         )}
                       >
                         <Link
                           href={isLocked ? "/courses" : `/watch/${lesson.id}`}
+                          onClick={(e) => {
+                            if (isMainVideoActive) {
+                              e.preventDefault();
+                              if (hasExtras) toggleLesson(lesson.id);
+                            }
+                          }}
                           className={cn(
-                            "flex-1 flex items-center gap-x-4 py-4 px-4 text-[14px] transition-all relative",
-                            isActive ? "text-red-600" : "text-slate-500",
+                            "flex-1 flex items-center gap-x-3.5 py-3.5 px-4 text-sm transition-all",
+                            isMainVideoActive ? "text-blue-700" : "text-slate-600",
                             isLocked && "opacity-60 cursor-not-allowed",
                           )}
                         >
                           <div className="flex-shrink-0">
-                            {isActive ? (
-                              <div className="bg-red-600 rounded-xl p-2.5 shadow-lg shadow-red-200">
-                                <PlayCircle className="w-4 h-4 text-white fill-current" />
+                            {isMainVideoActive ? (
+                              <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-100">
+                                <CirclePlay className="w-4 h-4" />
                               </div>
                             ) : isLocked ? (
-                              <div className="bg-slate-100 rounded-xl p-2.5">
-                                <Lock className="w-4 h-4 text-slate-400" />
+                              <div className="w-8 h-8 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400">
+                                <Lock className="w-3.5 h-3.5" />
                               </div>
                             ) : (
-                              <div className="bg-slate-100 rounded-xl p-2.5 group-hover:bg-red-50 transition-colors">
+                              <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-white group-hover:text-blue-500 transition-colors shadow-sm">
                                 {lesson.type === "QUIZ" ? (
-                                  <HelpCircle className="w-4 h-4 text-slate-400 group-hover:text-red-600" />
+                                  <HelpCircle className="w-3.5 h-3.5" />
                                 ) : lesson.type === "DOCUMENT" ? (
-                                  <FileText className="w-4 h-4 text-slate-400 group-hover:text-red-600" />
+                                  <FileText className="w-3.5 h-3.5" />
                                 ) : (
-                                  <Video className="w-4 h-4 text-slate-400 group-hover:text-red-600" />
+                                  <Play className="w-3.5 h-3.5" />
                                 )}
                               </div>
                             )}
@@ -295,36 +311,27 @@ export default function CourseSidebar({
                           <div className="flex-1 min-w-0">
                             <p
                               className={cn(
-                                "font-bold line-clamp-1 leading-tight tracking-tight text-[14px]",
-                                isActive
+                                "font-bold text-[13px] line-clamp-1 leading-tight tracking-tight",
+                                isMainVideoActive
                                   ? "text-slate-900"
                                   : "text-slate-600 group-hover:text-slate-900",
                               )}
                             >
                               {lesson.title}
                             </p>
-                            <div className="flex items-center gap-2 mt-1.5 opacity-60">
-                              <span className="text-[9px] font-black uppercase tracking-widest">
-                                {lesson.type === "QUIZ"
-                                  ? "Kiểm tra"
-                                  : lesson.type === "DOCUMENT"
-                                    ? "Tài liệu"
-                                    : "Video"}
-                              </span>
-                              {lesson.isFree && !isEnrolled && (
-                                <>
-                                  <span className="text-[9px]">•</span>
-                                  <span className="text-[9px] font-black text-emerald-600">
-                                    Miễn phí
-                                  </span>
-                                </>
-                              )}
+                            <div className="flex items-center gap-2 mt-1">
+                               <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                 {lesson.type === "QUIZ" ? "Quiz" : lesson.type === "DOCUMENT" ? "PDF" : "Bài giảng"}
+                               </span>
+                               {lesson.isFree && !isEnrolled && (
+                                 <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase">Free</span>
+                               )}
                             </div>
                           </div>
 
                           {lesson.isCompleted && !isActive && (
-                            <div className="bg-emerald-50 rounded-full p-1">
-                              <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                            <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-100">
+                              <CheckCircle className="w-3 h-3 text-white" />
                             </div>
                           )}
                         </Link>
@@ -336,36 +343,82 @@ export default function CourseSidebar({
                               toggleLesson(lesson.id);
                             }}
                             className={cn(
-                              "w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 mr-2 hover:bg-slate-50",
-                              isExpanded ? "text-red-600" : "text-slate-300",
+                              "w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 mr-1",
+                              (isExpanded || isTutorialActive) ? "text-blue-600" : "text-slate-300 hover:text-slate-600 hover:bg-slate-50",
                             )}
                           >
                             <ChevronDown
                               className={cn(
                                 "w-4 h-4 transition-transform duration-300",
-                                isExpanded && "rotate-180",
+                                (isExpanded || isTutorialActive) && "rotate-180",
                               )}
                             />
                           </button>
                         )}
                       </div>
 
-                      {/* Nested Content (Quiz, Documents, Homework) */}
-                      {isExpanded && hasExtras && (
-                        <div className="ml-14 pb-4 space-y-1.5 pr-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                          {lesson.test && (
-                            <Link
-                              href={`/watch/${lesson.id}/quiz`}
-                              className="flex items-center gap-3 p-3 bg-white border border-red-50 rounded-xl hover:text-red-600 transition-all group/sub shadow-sm"
+                      {/* Nested Content - Premium Styling */}
+                      {(isExpanded || isTutorialActive) && (hasExtras || lesson.videoUrl || lesson.homeworkVideoUrl) && (
+                        <div className="ml-8 pb-3 space-y-1.5 pr-2 animate-in fade-in slide-in-from-top-1 duration-300">
+                          {/* 1. File tài liệu */}
+                          {lesson.attachments && lesson.attachments.length > 0 && (
+                            <a
+                              href={lesson.attachments[0].url}
+                              target="_blank"
+                              className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-2xl hover:border-slate-200 hover:shadow-md transition-all group/sub"
                             >
-                              <div className="w-7 h-7 bg-red-50 text-red-500 rounded-lg flex items-center justify-center shrink-0 group-hover/sub:bg-red-500 group-hover/sub:text-white transition-colors">
-                                <BookOpen className="w-3.5 h-3.5" />
+                              <div className="w-7 h-7 bg-slate-50 text-slate-500 rounded-lg flex items-center justify-center shrink-0 group-hover/sub:bg-slate-900 group-hover/sub:text-white transition-colors">
+                                <FileText className="w-3.5 h-3.5" />
                               </div>
-                              <span className="text-xs font-bold uppercase tracking-tight">
-                                Bài tập Quiz củng cố
+                              <span className="text-[11px] font-black uppercase tracking-tight truncate text-slate-600 group-hover/sub:text-slate-900">
+                                File tài liệu bài học
+                              </span>
+                              <Download className="w-3 h-3 text-slate-300 ml-auto group-hover/sub:text-blue-600" />
+                            </a>
+                          )}
+
+                          {/* 2. Thực chiến bài tập về nhà */}
+                          {lesson.homeworkVideoUrl && (
+                            <Link
+                              href={`/watch/${lesson.id}?v=homework`}
+                              className={cn(
+                                "flex items-center gap-3 p-3 bg-white border rounded-2xl transition-all group/sub",
+                                isTutorialActive 
+                                  ? "border-blue-500 bg-blue-50/20 shadow-lg shadow-blue-500/5" 
+                                  : "border-slate-100 hover:border-blue-200"
+                              )}
+                            >
+                              <div className={cn(
+                                "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all",
+                                isTutorialActive ? "bg-blue-600 text-white" : "bg-slate-50 text-blue-500 group-hover/sub:bg-blue-500 group-hover/sub:text-white"
+                              )}>
+                                <Video className="w-3.5 h-3.5" />
+                              </div>
+                              <span className={cn(
+                                "text-[11px] font-black uppercase tracking-tight",
+                                isTutorialActive ? "text-blue-700" : "text-slate-600 group-hover/sub:text-slate-900"
+                              )}>
+                                Thực chiến bài tập về nhà
                               </span>
                             </Link>
                           )}
+
+                          {/* 3. Quiz */}
+                          {lesson.test && (
+                            <Link
+                              href={`/watch/${lesson.id}/quiz`}
+                              className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 transition-all group/sub"
+                            >
+                              <div className="w-7 h-7 bg-slate-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0 group-hover/sub:bg-blue-500 group-hover/sub:text-white transition-colors">
+                                <BookOpen className="w-3.5 h-3.5" />
+                              </div>
+                              <span className="text-[11px] font-black uppercase tracking-tight text-slate-600 group-hover/sub:text-slate-900">
+                                Nộp bài tập & Chấm điểm
+                              </span>
+                            </Link>
+                          )}
+
+                          {/* 4. Homework Submission */}
                           {lesson.hasHomework && (
                             <div className="space-y-2">
                               <button
@@ -379,38 +432,38 @@ export default function CourseSidebar({
                                   }
                                 }}
                                 className={cn(
-                                  "w-full flex items-center gap-3 p-3 bg-white border rounded-xl transition-all group/sub shadow-sm text-left",
+                                  "w-full flex items-center gap-3 p-3 bg-white border rounded-2xl transition-all group/sub",
                                   activeHomeworkLessonId === lesson.id
-                                    ? "border-blue-500 text-blue-600 bg-blue-50/10"
-                                    : "border-blue-50 hover:text-blue-600"
+                                    ? "border-blue-500 bg-blue-50/10"
+                                    : "border-slate-100 hover:border-blue-200"
                                 )}
                               >
                                 <div className={cn(
                                   "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors",
                                   activeHomeworkLessonId === lesson.id
-                                    ? "bg-blue-500 text-white"
-                                    : "bg-blue-50 text-blue-500 group-hover/sub:bg-blue-500 group-hover/sub:text-white"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-slate-50 text-blue-500 group-hover/sub:bg-blue-500 group-hover/sub:text-white"
                                 )}>
                                   <Upload className="w-3.5 h-3.5" />
                                 </div>
-                                <span className="text-xs font-bold uppercase tracking-tight flex-1">
-                                  Nộp bài tập (Tự luận)
+                                <span className="text-[11px] font-black uppercase tracking-tight flex-1 text-left text-slate-600 group-hover/sub:text-slate-900">
+                                  Nộp lại bài chữa (Tự luận)
                                 </span>
                               </button>
 
                               {/* Inline Uploader Box */}
                               {activeHomeworkLessonId === lesson.id && (
-                                <div className="p-4 bg-slate-50 rounded-xl border border-blue-100 space-y-3 animate-in slide-in-from-top-2 duration-300">
+                                <div className="p-4 bg-slate-50/50 rounded-2xl border border-blue-100 space-y-3 animate-in slide-in-from-top-2 duration-300">
                                   {/* List of uploaded files */}
                                   {inlineAttachments.length > 0 && (
                                     <div className="space-y-1.5">
                                       {inlineAttachments.map((file, idx) => (
-                                        <div key={idx} className="flex items-center gap-2 p-2 bg-white border border-slate-100 rounded-lg text-[10px]">
-                                          <FileText className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                                        <div key={idx} className="flex items-center gap-2 p-2 bg-white border border-slate-100 rounded-xl text-[10px]">
+                                          <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                                           <span className="font-bold text-slate-700 truncate flex-1">{file.name}</span>
                                           <button
                                             onClick={() => setInlineAttachments(prev => prev.filter((_, i) => i !== idx))}
-                                            className="p-1 rounded bg-red-50 text-red-500"
+                                            className="p-1 rounded bg-blue-50 text-blue-500 hover:bg-blue-100 transition-colors"
                                           >
                                             <X className="w-2.5 h-2.5" />
                                           </button>
@@ -422,14 +475,14 @@ export default function CourseSidebar({
                                   {/* Input Field */}
                                   <div className="flex gap-2">
                                     <label className="flex-1 cursor-pointer">
-                                      <div className="h-10 border border-dashed border-blue-200 rounded-lg flex items-center justify-center gap-2 bg-white hover:bg-blue-50 transition-colors">
+                                      <div className="h-10 border border-dashed border-blue-200 rounded-xl flex items-center justify-center gap-2 bg-white hover:bg-blue-50 transition-colors">
                                         {isUploading ? (
                                           <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
                                         ) : (
                                           <Upload className="w-3.5 h-3.5 text-blue-400" />
                                         )}
                                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">
-                                          {isUploading ? "Đang tải..." : "Chọn file"}
+                                          {isUploading ? "Tải lên..." : "Chọn file"}
                                         </span>
                                       </div>
                                       <input 
@@ -445,7 +498,7 @@ export default function CourseSidebar({
                                     <button
                                       onClick={() => handleInlineSubmit(lesson.id)}
                                       disabled={isSubmitting || isUploading || inlineAttachments.length === 0}
-                                      className="px-4 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest flex items-center gap-1.5 disabled:opacity-50"
+                                      className="px-4 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest flex items-center gap-1.5 disabled:opacity-50 shadow-lg shadow-blue-100"
                                     >
                                       {isSubmitting ? (
                                         <Loader2 className="w-3 h-3 animate-spin" />
@@ -459,22 +512,6 @@ export default function CourseSidebar({
                               )}
                             </div>
                           )}
-                          {lesson.attachments?.map((att) => (
-                            <a
-                              key={att.id}
-                              href={att.url}
-                              target="_blank"
-                              className="flex items-center gap-3 p-3 bg-white border border-slate-50 rounded-xl hover:text-slate-900 transition-all group/sub shadow-sm"
-                            >
-                              <div className="w-7 h-7 bg-slate-100 text-slate-500 rounded-lg flex items-center justify-center shrink-0 group-hover/sub:bg-slate-900 group-hover/sub:text-white transition-colors">
-                                <FileText className="w-3.5 h-3.5" />
-                              </div>
-                              <span className="text-xs font-bold uppercase tracking-tight truncate">
-                                {att.name}
-                              </span>
-                              <Download className="w-3 h-3 text-slate-300 ml-auto" />
-                            </a>
-                          ))}
                         </div>
                       )}
                     </div>

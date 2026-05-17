@@ -19,7 +19,7 @@ export function SkillTree() {
 
       <div className="relative max-w-4xl mx-auto">
         {/* Connection Line */}
-        <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-red-600 to-transparent -translate-x-1/2 hidden md:block" />
+        <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-600 to-transparent -translate-x-1/2 hidden md:block" />
 
         <div className="space-y-24">
           {steps.map((step, i) => (
@@ -30,9 +30,9 @@ export function SkillTree() {
               }`}
             >
               {/* Content Card */}
-              <div className="w-full md:w-[45%] bg-white/5 border border-white/10 p-8 rounded-[2rem] hover:border-red-500/50 transition-all hover:bg-white/10 group cursor-default">
+              <div className="w-full md:w-[45%] bg-white/5 border border-white/10 p-8 rounded-[2rem] hover:border-blue-500/50 transition-all hover:bg-white/10 group cursor-default">
                 <div className="flex items-center gap-6">
-                  <div className="w-16 h-16 rounded-2xl bg-red-600 flex items-center justify-center shadow-[0_0_20px_rgba(220,38,38,0.4)] group-hover:scale-110 transition-transform">
+                  <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(220,38,38,0.4)] group-hover:scale-110 transition-transform">
                     <step.icon className="w-8 h-8 text-white" />
                   </div>
                   <div>
@@ -43,7 +43,7 @@ export function SkillTree() {
               </div>
 
               {/* Node on the line */}
-              <div className="absolute left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-red-600 border-4 border-[#0F172A] hidden md:block shadow-[0_0_15px_rgba(220,38,38,0.8)]" />
+              <div className="absolute left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-blue-600 border-4 border-[#0F172A] hidden md:block shadow-[0_0_15px_rgba(220,38,38,0.8)]" />
               
               {/* Empty space for alignment */}
               <div className="hidden md:block w-[45%]" />

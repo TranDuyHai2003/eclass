@@ -48,10 +48,10 @@ export function Dashboard({
 
               {/* Course Catalog / Learning Progress */}
               <section className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-red-100 pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-blue-100 pb-3">
                   <div className="space-y-1.5">
                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter flex items-center gap-3">
-                      <span className="w-2 h-7 bg-[#A01D24] rounded-full" />
+                      <span className="w-2 h-7 bg-[#2563EB] rounded-full" />
                       Lộ trình học tập
                     </h2>
                     <p className="text-slate-400 font-bold uppercase text-[9px] tracking-[0.25em]">
@@ -71,9 +71,9 @@ export function Dashboard({
                   ))}
 
                   {courses.length === 0 && (
-                    <div className="col-span-full py-20 flex flex-col items-center justify-center bg-white rounded-[3rem] border border-dashed border-red-200/60">
-                      <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
-                        <BookOpen className="w-8 h-8 text-red-600/30" />
+                    <div className="col-span-full py-20 flex flex-col items-center justify-center bg-white rounded-[3rem] border border-dashed border-blue-200/60">
+                      <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                        <BookOpen className="w-8 h-8 text-blue-600/30" />
                       </div>
                       <p className="text-slate-500 font-bold uppercase tracking-tight">
                         Không tìm thấy khóa học nào

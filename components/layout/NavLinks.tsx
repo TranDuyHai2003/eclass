@@ -56,17 +56,17 @@ export function NavLinks({ role, vertical, onClick }: NavLinksProps) {
                 : "hover:bg-white/10 hover:text-white rounded-xl",
               isActive 
                 ? vertical 
-                  ? "bg-red-50 border-red-200 text-red-600 shadow-red-100" 
+                  ? "bg-blue-50 border-blue-200 text-blue-600 shadow-blue-100" 
                   : "bg-white/20 text-white" 
                 : vertical
-                  ? "text-gray-600 bg-white border-transparent hover:border-red-200 hover:text-red-600" 
+                  ? "text-gray-600 bg-white border-transparent hover:border-blue-200 hover:text-blue-600" 
                   : "text-white/80"
             )}
           >
             {vertical && (
               <div className={cn(
                 "p-2 rounded-xl transition-colors",
-                isActive ? "bg-red-600 text-white" : "bg-gray-50 text-gray-400 group-hover:bg-red-100 group-hover:text-red-600"
+                isActive ? "bg-blue-600 text-white" : "bg-gray-50 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-600"
               )}>
                 <Icon className="w-4 h-4" />
               </div>

@@ -335,7 +335,7 @@ export default async function CourseFinalTestAnalyticsPage({
                             ? "text-emerald-600"
                             : (a.score || 0) >= 5
                               ? "text-blue-600"
-                              : "text-red-500",
+                              : "text-blue-500",
                         )}
                       >
                         {a.score?.toFixed(2)}
@@ -420,7 +420,7 @@ Câu hỏi {q.type === "MULTIPLE_CHOICE" ? "trắc nghiệm" : "điền khuyết
                               className={cn(
                                 "px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest",
                                 correctRate < 40
-                                  ? "bg-red-50 text-red-600"
+                                  ? "bg-blue-50 text-blue-600"
                                   : correctRate < 70
                                     ? "bg-orange-50 text-orange-600"
                                     : "bg-emerald-50 text-emerald-600",
@@ -440,7 +440,7 @@ Câu hỏi {q.type === "MULTIPLE_CHOICE" ? "trắc nghiệm" : "điền khuyết
                                   className={cn(
                                     "h-full rounded-full transition-all duration-1000",
                                     correctRate < 40
-                                      ? "bg-red-500"
+                                      ? "bg-blue-500"
                                       : correctRate < 70
                                         ? "bg-orange-500"
                                         : "bg-emerald-500",

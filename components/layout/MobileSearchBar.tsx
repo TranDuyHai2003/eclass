@@ -30,9 +30,9 @@ export function MobileSearchBar({ onSearch }: MobileSearchBarProps) {
         placeholder="Tìm kiếm khóa học..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all text-sm font-bold text-slate-700 shadow-inner"
+        className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-50 border border-slate-100 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-bold text-slate-700 shadow-inner"
       />
-      <div className="absolute left-10 top-3.5 text-slate-400 group-focus-within:text-red-500 transition-colors">
+      <div className="absolute left-10 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors">
         <Search className="w-5 h-5" />
       </div>
       {query && (

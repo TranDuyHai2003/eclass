@@ -597,7 +597,7 @@ export default function UnifiedTestBuilder({
                             variant="ghost"
                             size="icon"
                             onClick={() => handleRemoveSolutionVideo(idx)}
-                            className="mt-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl"
+                            className="mt-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -649,7 +649,7 @@ export default function UnifiedTestBuilder({
                           variant="ghost"
                           size="icon"
                           onClick={() => { setExplanation(""); markDirty(); }}
-                          className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl shrink-0"
+                          className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl shrink-0"
                         >
                           <X className="w-5 h-5" />
                         </Button>
@@ -693,7 +693,7 @@ export default function UnifiedTestBuilder({
                           size="icon"
                           variant="ghost"
                           onClick={() => handleRemoveSection(sIdx)}
-                          className="h-8 w-8 text-red-400 hover:text-red-600 opacity-0 group-hover/sec:opacity-100 transition-opacity"
+                          className="h-8 w-8 text-blue-400 hover:text-blue-600 opacity-0 group-hover/sec:opacity-100 transition-opacity"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -759,7 +759,7 @@ export default function UnifiedTestBuilder({
                                 onClick={() => handleRemoveQuestion(sIdx, qIdx)}
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8 text-slate-300 hover:text-red-600 opacity-0 group-hover/q:opacity-100 transition-opacity"
+                                className="h-8 w-8 text-slate-300 hover:text-blue-600 opacity-0 group-hover/q:opacity-100 transition-opacity"
                               >
                                 <X className="w-4 h-4" />
                               </Button>

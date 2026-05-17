@@ -12,8 +12,8 @@ const topUsers = [
 
 export function Leaderboard() {
   return (
-    // <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 space-y-8 relative overflow-hidden transition-all hover:shadow-xl hover:shadow-red-500/5">
-    //   <div className="absolute top-0 right-0 w-32 h-32 bg-red-50/50 blur-3xl rounded-full" />
+    // <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 space-y-8 relative overflow-hidden transition-all hover:shadow-xl hover:shadow-blue-500/5">
+    //   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 blur-3xl rounded-full" />
 
     //   <div className="flex items-center justify-between relative z-10">
     //     <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-2.5">
@@ -22,7 +22,7 @@ export function Leaderboard() {
     //       </div>
     //       Đấu Trường
     //     </h3>
-    //     <span className="text-[9px] font-black text-red-600 uppercase tracking-[0.2em] bg-red-50 px-4 py-1.5 rounded-full border border-red-100">
+    //     <span className="text-[9px] font-black text-blue-600 uppercase tracking-[0.2em] bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100">
     //       Tuần này
     //     </span>
     //   </div>
@@ -43,7 +43,7 @@ export function Leaderboard() {
     //             )}
     //           </div>
     //           <div className="relative">
-    //             <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-xs group-hover:bg-red-600 transition-colors shadow-sm">
+    //             <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-xs group-hover:bg-blue-600 transition-colors shadow-sm">
     //               {user.avatar}
     //             </div>
     //             {user.rank <= 3 && (

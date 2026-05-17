@@ -125,7 +125,7 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
                 ))}
 
                 {/* Missed Counter */}
-                <TableHead className="min-w-[100px] font-black uppercase text-[10px] tracking-widest text-red-500 text-center sticky right-0 bg-slate-50 z-30 border-l shadow-[-2px_0_5px_rgba(0,0,0,0.05)]">
+                <TableHead className="min-w-[100px] font-black uppercase text-[10px] tracking-widest text-blue-500 text-center sticky right-0 bg-slate-50 z-30 border-l shadow-[-2px_0_5px_rgba(0,0,0,0.05)]">
                   <div className="flex items-center justify-center gap-1">
                     <AlertTriangle className="w-3 h-3" /> Bỏ bài
                   </div>
@@ -170,7 +170,7 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
                               : status.score >= 5
                                 ? "bg-blue-50 border-blue-100"
                                 : "bg-orange-50 border-orange-100"
-                            : "bg-red-50 border-red-100 opacity-60",
+                            : "bg-blue-50 border-blue-100 opacity-60",
                         )}
                       >
                         {status.status === "COMPLETED" ? (
@@ -187,7 +187,7 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
                             {status.score?.toFixed(2)}
                           </span>
                         ) : (
-                          <X className="w-4 h-4 text-red-400 stroke-[3]" />
+                          <X className="w-4 h-4 text-blue-400 stroke-[3]" />
                         )}
                       </div>
                     </TableCell>
@@ -198,7 +198,7 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
                     className={cn(
                       "text-center font-black sticky right-0 bg-white group-hover:bg-slate-50 z-20 border-l shadow-[-2px_0_5px_rgba(0,0,0,0.02)]",
                       student.missedCount > 2
-                        ? "text-red-600 bg-red-50/30"
+                        ? "text-blue-600 bg-blue-50/30"
                         : "text-slate-600",
                     )}
                   >

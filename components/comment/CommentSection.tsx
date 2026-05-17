@@ -47,7 +47,7 @@ export function CommentSection({ lessonId }: CommentSectionProps) {
       <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-6">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-40 space-y-3">
-            <Loader2 className="h-6 w-6 animate-spin text-red-500" />
+            <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
             <p className="text-sm text-slate-500">Đang tải bình luận...</p>
           </div>
         ) : comments.length === 0 ? (

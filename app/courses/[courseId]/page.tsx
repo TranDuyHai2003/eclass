@@ -95,7 +95,7 @@ export default async function CoursePage({
       <section className="relative bg-slate-950 text-white overflow-hidden pb-12 lg:pb-0">
         {/* Animated Background Glows */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-[-10%] right-[-5%] w-[50%] h-[70%] bg-red-600/20 blur-[120px] rounded-full animate-pulse" />
+          <div className="absolute top-[-10%] right-[-5%] w-[50%] h-[70%] bg-blue-600/20 blur-[120px] rounded-full animate-pulse" />
           <div className="absolute bottom-[-20%] left-[-10%] w-[40%] h-[60%] bg-orange-600/10 blur-[100px] rounded-full animate-pulse delay-1000" />
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
         </div>
@@ -105,7 +105,7 @@ export default async function CoursePage({
             {/* Left Content */}
             <div className="flex-1 space-y-8 text-center lg:text-left">
               <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/20 border border-red-500/30 text-red-500 text-[10px] font-black uppercase tracking-[0.2em] animate-in fade-in slide-in-from-bottom-2 duration-700">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-500 text-[10px] font-black uppercase tracking-[0.2em] animate-in fade-in slide-in-from-bottom-2 duration-700">
                   <Zap className="w-3 h-3 fill-current" />
                   Lộ trình bứt phá 2026
                 </div>
@@ -151,7 +151,7 @@ export default async function CoursePage({
 
             {/* Right Media Section - Video/Thumbnail Preview */}
             <div className="lg:w-[450px] shrink-0 order-first lg:order-2">
-              <div className="relative aspect-[16/10] lg:aspect-[4/5] rounded-[3rem] overflow-hidden shadow-2xl shadow-red-600/10 border-4 border-white/5 group animate-in fade-in zoom-in-95 duration-1000">
+              <div className="relative aspect-[16/10] lg:aspect-[4/5] rounded-[3rem] overflow-hidden shadow-2xl shadow-blue-600/10 border-4 border-white/5 group animate-in fade-in zoom-in-95 duration-1000">
                 {c.thumbnail ? (
                   <Image
                     src={c.thumbnail || ""}
@@ -170,7 +170,7 @@ export default async function CoursePage({
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-20 h-20 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/20 shadow-2xl group-hover:scale-110 transition-all duration-500 cursor-pointer">
                     <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-lg">
-                      <Play className="w-6 h-6 text-red-600 fill-current ml-1" />
+                      <Play className="w-6 h-6 text-blue-600 fill-current ml-1" />
                     </div>
                   </div>
                 </div>
@@ -210,7 +210,7 @@ export default async function CoursePage({
                   >
                     <div className="space-y-4">
                       <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
-                        <span className="w-1.5 h-6 bg-red-600 rounded-full" />
+                        <span className="w-1.5 h-6 bg-blue-600 rounded-full" />
                         Giới thiệu khóa học
                       </h2>
                       <div className="prose prose-slate max-w-none prose-p:text-slate-600 prose-p:leading-relaxed prose-p:font-medium prose-p:text-base">
@@ -237,7 +237,7 @@ export default async function CoursePage({
                       ].map((item, i) => (
                         <div
                           key={i}
-                          className="flex items-start gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-red-100 transition-colors"
+                          className="flex items-start gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-blue-100 transition-colors"
                         >
                           <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
                             <ChevronRight className="w-3 h-3 stroke-[3]" />
@@ -271,11 +271,11 @@ export default async function CoursePage({
                     {/* Final Test Card */}
                     {c.finalTest && (
                       <div className="mt-8 relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-orange-500 rounded-3xl blur-xl opacity-10 group-hover:opacity-20 transition-opacity" />
-                        <div className="relative bg-white rounded-3xl border border-red-100 p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-orange-500 rounded-3xl blur-xl opacity-10 group-hover:opacity-20 transition-opacity" />
+                        <div className="relative bg-white rounded-3xl border border-blue-100 p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
                           <div className="flex items-center gap-5 text-center sm:text-left flex-col sm:flex-row">
-                            <div className="w-16 h-16 rounded-[1.5rem] bg-red-50 flex items-center justify-center shrink-0 border border-red-100">
-                              <Trophy className="w-8 h-8 text-red-600" />
+                            <div className="w-16 h-16 rounded-[1.5rem] bg-blue-50 flex items-center justify-center shrink-0 border border-blue-100">
+                              <Trophy className="w-8 h-8 text-blue-600" />
                             </div>
                             <div className="space-y-1">
                               <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
@@ -288,7 +288,7 @@ export default async function CoursePage({
                           </div>
                           <Link
                             href={`/courses/${c.id}/final-test`}
-                            className="w-full sm:w-auto px-8 py-4 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-xl shadow-slate-200"
+                            className="w-full sm:w-auto px-8 py-4 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-slate-200"
                           >
                             Bắt đầu làm bài
                           </Link>
@@ -312,8 +312,8 @@ export default async function CoursePage({
                               className="object-cover"
                             />
                           ) : (
-                            <div className="w-full h-full bg-red-50 flex items-center justify-center">
-                              <Users className="w-12 h-12 text-red-200" />
+                            <div className="w-full h-full bg-blue-50 flex items-center justify-center">
+                              <Users className="w-12 h-12 text-blue-200" />
                             </div>
                           )}
                         </div>
@@ -323,7 +323,7 @@ export default async function CoursePage({
                           <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
                             {c.user?.name || "Giảng Viên Hệ Thống"}
                           </h3>
-                          <p className="text-red-600 font-black text-[10px] uppercase tracking-[0.2em]">
+                          <p className="text-blue-600 font-black text-[10px] uppercase tracking-[0.2em]">
                             Chuyên gia luyện thi hàng đầu
                           </p>
                         </div>
@@ -371,7 +371,7 @@ export default async function CoursePage({
             <div className="sticky top-24 space-y-6">
               <div className="card-surface bg-white rounded-[3rem] p-8 sm:p-10 shadow-2xl shadow-slate-200 border border-slate-100 overflow-hidden relative group">
                 {/* Background Ornament */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-3xl rounded-full -mr-16 -mt-16" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full -mr-16 -mt-16" />
 
                 <div className="relative z-10 space-y-8">
                   <div className="space-y-4">
@@ -407,8 +407,8 @@ export default async function CoursePage({
                         key={i}
                         className="flex items-center gap-3 text-slate-600 group/item"
                       >
-                        <div className="w-6 h-6 rounded-lg bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100 group-hover/item:border-red-100 group-hover/item:bg-red-50 transition-colors">
-                          <item.icon className="w-3 h-3 text-slate-400 group-hover/item:text-red-600 transition-colors" />
+                        <div className="w-6 h-6 rounded-lg bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100 group-hover/item:border-blue-100 group-hover/item:bg-blue-50 transition-colors">
+                          <item.icon className="w-3 h-3 text-slate-400 group-hover/item:text-blue-600 transition-colors" />
                         </div>
                         <span className="text-xs font-black uppercase tracking-tight">
                           {item.text}
@@ -438,7 +438,7 @@ export default async function CoursePage({
               </div>
 
               {/* Promo Card Below Sticky */}
-              <div className="bg-gradient-to-br from-red-600 to-orange-500 rounded-[2.5rem] p-8 text-white shadow-xl shadow-red-200 overflow-hidden relative group">
+              <div className="bg-gradient-to-br from-blue-600 to-orange-500 rounded-[2.5rem] p-8 text-white shadow-xl shadow-blue-200 overflow-hidden relative group">
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
                 <div className="relative z-10 space-y-4">
                   <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center border border-white/20">
@@ -449,11 +449,11 @@ export default async function CoursePage({
                     <br />
                     Giảm thêm 20%
                   </h4>
-                  <p className="text-[11px] text-red-50 font-medium uppercase tracking-wider leading-relaxed">
+                  <p className="text-[11px] text-blue-50 font-medium uppercase tracking-wider leading-relaxed">
                     Đăng ký từ 3 người để nhận được ưu đãi đặc biệt dành riêng
                     cho bạn và bạn bè.
                   </p>
-                  <button className="w-full py-3 bg-white text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all">
+                  <button className="w-full py-3 bg-white text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all">
                     Tìm hiểu thêm
                   </button>
                 </div>
@@ -514,7 +514,7 @@ function StatItem({
   return (
     <div className="flex flex-col items-center lg:items-start gap-1 group">
       <div className="flex items-center gap-2">
-        <Icon className="w-3.5 h-3.5 text-red-500" />
+        <Icon className="w-3.5 h-3.5 text-blue-500" />
         <span className="text-base sm:text-xl font-black tracking-tighter uppercase">
           {value}
         </span>
@@ -539,7 +539,7 @@ function TabTrigger({
       className={cn(
         "rounded-2xl px-5 sm:px-8 py-2.5 font-black text-[10px] sm:text-[11px] uppercase tracking-widest transition-all duration-300",
         "text-slate-500 hover:text-slate-900",
-        "data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-[0_4px_20px_rgba(0,0,0,0.08)]",
+        "data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-[0_4px_20px_rgba(0,0,0,0.08)]",
         "border border-transparent data-[state=active]:border-slate-100",
         "after:hidden", // Bỏ đường kẻ underline từ base component
       )}

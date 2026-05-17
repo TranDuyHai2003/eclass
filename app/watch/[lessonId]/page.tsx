@@ -24,18 +24,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CommentSection } from "@/components/comment/CommentSection";
 import { MobileCommentsSheet } from "./_components/MobileCommentsSheet";
 import Image from "next/image";
-import { TeacherHomeworkReview } from "@/components/teacher/TeacherHomeworkReview";
-import { getHomeworkSubmission } from "@/actions/homework";
 
 export default async function WatchPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lessonId: string }>;
+  searchParams: Promise<{ v?: string }>;
 }) {
   const session = await auth();
   if (!session?.user) return redirect("/login");
 
   const { lessonId } = await params;
+  const { v } = await searchParams;
 
   // 1. Fetch Lesson with course ownership
   const lesson = await prisma.lesson.findUnique({
@@ -51,6 +52,15 @@ export default async function WatchPage({
 
   if (!lesson) return notFound();
   const courseId = lesson.chapter.courseId;
+
+  // Determine which video to play
+  const isHomeworkVideo = v === "homework";
+  const activeVideoUrl = isHomeworkVideo
+    ? lesson.homeworkVideoUrl
+    : lesson.videoUrl;
+  const activeTitle = isHomeworkVideo
+    ? `Hướng dẫn: ${lesson.title}`
+    : lesson.title;
 
   // 2. Access Control Check
   const isAdmin = session.user.role === "ADMIN";
@@ -69,31 +79,12 @@ export default async function WatchPage({
       },
     });
 
-    // TEMPORARILY DISABLED: Allow all students to learn directly
-    // if (!lesson.isFree) {
-    //   if (!enrollment || enrollment.status !== "ACTIVE") {
-    //     return redirect(`/courses/${courseId}`);
-    //   }
-    // }
-
     // Simulate active enrollment to allow learning
     if (!enrollment || enrollment.status !== "ACTIVE") {
       enrollment = { status: "ACTIVE" } as any;
     }
   } else {
     enrollment = { status: "ACTIVE" } as any;
-  }
-
-  // 3. Fetch Homework Data
-  const initialHomework = await getHomeworkSubmission(lessonId);
-
-  let allSubmissions: any[] = [];
-  if (isTeacher || isOwner) {
-    allSubmissions = await prisma.homeworkSubmission.findMany({
-      where: { lessonId },
-      include: { user: true },
-      orderBy: { createdAt: "desc" },
-    });
   }
 
   // 4. Fetch Course Full Data with Curriculum Details
@@ -156,6 +147,7 @@ export default async function WatchPage({
         test: less.test,
         attachments: less.attachments,
         hasHomework: less.hasHomework,
+        homeworkVideoUrl: less.homeworkVideoUrl,
       })),
     })),
   };
@@ -164,32 +156,61 @@ export default async function WatchPage({
   const commentCount = await prisma.comment.count({ where: { lessonId } });
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#EBF3FF] font-sans">
-      {/* BREADCRUMB NAVIGATION PATH (House icon > Course Title) */}
-      <div className="bg-white/60 backdrop-blur-md px-6 py-4 flex items-center border-b border-blue-100/40">
-        <div className="max-w-[1400px] w-full mx-auto flex items-center gap-2 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-500">
-          <Link
-            href="/"
-            className="p-1.5 hover:bg-blue-50 text-[#A01D24] rounded-lg transition-all duration-300 flex items-center justify-center shrink-0 border border-blue-100/40 bg-white"
-          >
-            <Home className="w-3.5 h-3.5" />
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-blue-300" />
-          <span className="text-[#A01D24]">{course.title}</span>
+    <div className="flex flex-col min-h-screen bg-[#F8FAFC] font-sans selection:bg-blue-100 selection:text-blue-900">
+      {/* PREMIUM BREADCRUMB NAVIGATION */}
+      <div className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-slate-200/60 px-6 py-3">
+        <div className="max-w-[1400px] w-full mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3 text-[11px] sm:text-xs font-bold uppercase tracking-tight text-slate-400">
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 hover:text-blue-600 transition-colors py-1"
+            >
+              <Home className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Trang chủ</span>
+            </Link>
+            <ChevronRight className="w-3 h-3 text-slate-300" />
+            <Link
+              href="/courses"
+              className="hover:text-blue-600 transition-colors py-1"
+            >
+              Khóa học
+            </Link>
+            <ChevronRight className="w-3 h-3 text-slate-300" />
+            <span className="text-blue-600 font-black truncate max-w-[200px] sm:max-w-md">
+              {course.title}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-2">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Tiến độ:
+              </span>
+              <div className="w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 rounded-full transition-all duration-1000"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <span className="text-[10px] font-black text-blue-600">
+                {progressPercent}%
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* MAIN CONTENT AREA: 2-Column Responsive Layout */}
-      <div className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8 items-start">
-          {/* 1. Left Area (Col 9 - 75%): Player, details & tabs */}
-          <div className="xl:col-span-9 space-y-6 min-w-0">
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 max-w-[1600px] w-full mx-auto p-2 sm:p-4">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6 items-start">
+          {/* 1. Left Area (Col 9): Player & Details */}
+          <div className="xl:col-span-9 space-y-4 sm:space-y-6 min-w-0">
             {/* Aspect Ratio Player Panel */}
-            <div className="aspect-video w-full relative shadow-xl rounded-[2.5rem] overflow-hidden bg-slate-950 border border-red-100/60">
-              {lesson.videoUrl ? (
+            <div className="aspect-video w-full relative shadow-2xl shadow-blue-900/5 rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-950 border border-white">
+              {activeVideoUrl ? (
                 <VideoPlayer
-                  src={lesson.videoUrl}
-                  title={lesson.title}
+                  src={activeVideoUrl}
+                  title={activeTitle}
                   poster={course.thumbnail || undefined}
                 />
               ) : lesson.type === "QUIZ" ? (
@@ -214,12 +235,12 @@ export default async function WatchPage({
                   />
                 </div>
               ) : (
-                /* Premium pink gradient template matching screenshot */
-                <div className="w-full h-full bg-gradient-to-br from-red-500/10 via-pink-50/20 to-red-100/30 flex items-center justify-center p-8 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-red-200/30 via-transparent to-transparent blur-3xl opacity-60" />
-                  <div className="relative z-10 flex flex-col sm:flex-row items-center gap-8 text-center sm:text-left">
+                <div className="w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-8 relative overflow-hidden text-white">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] rounded-full" />
+                  <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-600/10 blur-[100px] rounded-full" />
+                  <div className="relative z-10 flex flex-col items-center gap-6 text-center">
                     {course.thumbnail && (
-                      <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-3xl overflow-hidden shadow-2xl border-4 border-white shrink-0 transform hover:scale-105 transition-transform duration-500">
+                      <div className="relative w-40 h-40 sm:w-48 sm:h-48 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border-4 border-white/10 shrink-0">
                         <img
                           src={course.thumbnail}
                           alt={course.title}
@@ -227,15 +248,18 @@ export default async function WatchPage({
                         />
                       </div>
                     )}
-                    <div className="space-y-2">
-                      <span className="bg-red-50 text-[#A01D24] text-[8px] font-black uppercase px-2.5 py-0.5 rounded-full border border-red-100/80">
-                        Khóa học
-                      </span>
-                      <h2 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight uppercase leading-tight">
+                    <div className="space-y-3">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">
+                          Khóa học cao cấp
+                        </span>
+                      </div>
+                      <h2 className="text-3xl sm:text-4xl font-black tracking-tight uppercase leading-tight">
                         {course.title}
                       </h2>
-                      <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">
-                        {lesson.title}
+                      <p className="text-lg font-bold text-slate-400">
+                        {activeTitle}
                       </p>
                     </div>
                   </div>
@@ -243,26 +267,34 @@ export default async function WatchPage({
               )}
             </div>
 
-            {/* Teacher Homework Review (If applicable) */}
-            {lesson.hasHomework && isTeacher && (
-              <div className="w-full">
-                <TeacherHomeworkReview submissions={allSubmissions} />
-              </div>
-            )}
-
-            {/* Lesson Description & Actions */}
-            <div className="bg-white rounded-[2rem] border border-red-100/60 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Lesson Info Card */}
+            <div className="bg-white rounded-[2.5rem] border border-slate-200/60 p-5 sm:p-7 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
               <div className="space-y-1">
-                <h1 className="text-lg font-black text-slate-900 tracking-tight uppercase">
-                  {lesson.title}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[10px] font-black uppercase tracking-widest border border-blue-100">
+                    {isHomeworkVideo
+                      ? "Hướng dẫn"
+                      : lesson.type === "VIDEO"
+                        ? "Bài giảng"
+                        : lesson.type === "QUIZ"
+                          ? "Kiểm tra"
+                          : "Tài liệu"}
+                  </span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Đang học bài {lesson.position + 1}
+                  </span>
+                </div>
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase leading-tight">
+                  {activeTitle}
                 </h1>
                 {lesson.description && (
-                  <p className="text-slate-500 text-xs font-bold leading-relaxed">
+                  <p className="text-slate-500 text-xs sm:text-sm font-medium leading-relaxed max-w-2xl mt-2">
                     {lesson.description}
                   </p>
                 )}
               </div>
-              <div className="shrink-0">
+              <div className="shrink-0 pt-2 md:pt-0">
                 <CourseProgressButton
                   lessonId={lessonId}
                   courseId={courseId}
@@ -272,7 +304,7 @@ export default async function WatchPage({
             </div>
 
             {/* Curriculum: Danh sách bài học */}
-            <div className="bg-white rounded-[2.5rem] border border-red-100/60 p-6 shadow-sm">
+            <div className="bg-white rounded-[2.5rem] border border-slate-200/60 p-2 sm:p-3 shadow-sm">
               <CourseSidebar
                 course={courseData as any}
                 currentLessonId={lessonId}
@@ -281,21 +313,41 @@ export default async function WatchPage({
                 className="h-auto overflow-visible border-none bg-transparent"
               />
             </div>
+
+            {/* Discussion for Mobile */}
+            <div className="xl:hidden">
+              <div className="bg-white rounded-[2.5rem] border border-slate-200/60 p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                      <MessageSquare className="w-5 h-5" />
+                    </div>
+                    <h3 className="font-black text-slate-900 uppercase tracking-tight text-sm">
+                      Thảo luận
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
+                    {commentCount}
+                  </span>
+                </div>
+                <CommentSection lessonId={lessonId} />
+              </div>
+            </div>
           </div>
 
-          {/* 2. Right Sticky Area (Col 3 - 25%): Discussion Board */}
-          <div className="xl:col-span-3 xl:sticky xl:top-24 h-fit space-y-6">
-            <div className="bg-white rounded-[2.5rem] border border-red-100/60 p-5 shadow-sm space-y-5">
-              <div className="flex items-center justify-between border-b border-red-50 pb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
-                    <MessageSquare className="w-4 h-4 text-[#A01D24]" />
+          {/* 2. Right Sticky Area: Discussion Board (Desktop) */}
+          <div className="hidden xl:block xl:col-span-3 xl:sticky xl:top-24 h-fit space-y-5">
+            <div className="bg-white rounded-[2.5rem] border border-slate-200/60 p-5 shadow-sm space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-50 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                    <MessageSquare className="w-4 h-4" />
                   </div>
-                  <h3 className="font-black text-slate-900 text-xs uppercase tracking-wider">
-                    Thảo luận bài học
+                  <h3 className="font-black text-slate-900 text-[11px] uppercase tracking-wider">
+                    Thảo luận
                   </h3>
                 </div>
-                <span className="px-3 py-1 bg-red-50 text-[#A01D24] border border-red-100/60 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+                <span className="px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-full text-[9px] font-black">
                   {commentCount}
                 </span>
               </div>

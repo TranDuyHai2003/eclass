@@ -33,13 +33,13 @@ export function HomePromo({ targetDate }: HomePromoProps) {
         <span
           className={cn(
             "text-2xl sm:text-4xl font-black tabular-nums italic",
-            primary ? "text-[#A01D24]" : "text-white",
+            primary ? "text-[#2563EB]" : "text-white",
           )}
         >
           {value.toString().padStart(2, "0")}
         </span>
         {primary && (
-          <div className="absolute -top-2 -right-2 bg-red-600 text-[8px] font-black text-white px-1.5 py-0.5 rounded-full animate-bounce">
+          <div className="absolute -top-2 -right-2 bg-blue-600 text-[8px] font-black text-white px-1.5 py-0.5 rounded-full animate-bounce">
             HOT
           </div>
         )}
@@ -56,10 +56,10 @@ export function HomePromo({ targetDate }: HomePromoProps) {
   );
 
   return (
-    <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-2xl group transition-all hover:shadow-red-500/20">
+    <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-2xl group transition-all hover:shadow-blue-500/20">
       {/* Background with multiple gradients and patterns */}
-      <div className="absolute inset-0 bg-[#A01D24]" />
-      <div className="absolute inset-0 bg-gradient-to-br from-red-600 via-transparent to-orange-500 opacity-50" />
+      <div className="absolute inset-0 bg-[#2563EB]" />
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-transparent to-orange-500 opacity-50" />
       <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl animate-pulse" />
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-yellow-400/10 rounded-full -ml-32 -mb-32 blur-3xl" />
 

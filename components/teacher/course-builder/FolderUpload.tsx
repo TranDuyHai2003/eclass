@@ -94,8 +94,8 @@ export function FolderUpload({ chapterId }: FolderUploadProps) {
   return (
     <div className="w-full mt-2 border-t pt-2">
       {isUploading ? (
-        <div className="p-3 bg-red-50 rounded-lg border border-red-100 flex flex-col gap-2">
-          <div className="flex flex-col gap-1 text-sm font-medium text-red-700">
+        <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 flex flex-col gap-2">
+          <div className="flex flex-col gap-1 text-sm font-medium text-blue-700">
              <div className="flex items-center justify-between">
                <span className="flex items-center gap-2">
                  <Loader2 className="w-4 h-4 animate-spin" />
@@ -103,11 +103,11 @@ export function FolderUpload({ chapterId }: FolderUploadProps) {
                </span>
                <span className="text-xs">{progress}%</span>
              </div>
-             <span className="text-xs text-red-600/80 truncate">{currentFileName}</span>
+             <span className="text-xs text-blue-600/80 truncate">{currentFileName}</span>
           </div>
-          <div className="w-full bg-red-200 rounded-full h-1.5 overflow-hidden">
+          <div className="w-full bg-blue-200 rounded-full h-1.5 overflow-hidden">
             <div 
-              className="bg-red-600 h-1.5 rounded-full transition-all duration-300"
+              className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -117,7 +117,7 @@ export function FolderUpload({ chapterId }: FolderUploadProps) {
           <Button
             asChild
             variant="outline"
-            className="w-full justify-start text-xs font-medium border-dashed border-gray-300 hover:border-red-300 hover:bg-red-50 text-gray-600 hover:text-red-700 h-9"
+            className="w-full justify-start text-xs font-medium border-dashed border-gray-300 hover:border-blue-300 hover:bg-blue-50 text-gray-600 hover:text-blue-700 h-9"
           >
             <span>
               <FolderUp className="h-4 w-4 mr-2" />

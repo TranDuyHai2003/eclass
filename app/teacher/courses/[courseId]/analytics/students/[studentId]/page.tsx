@@ -75,7 +75,7 @@ export default async function StudentAnalyticsPage({
                  <div className="flex items-start gap-4">
                    <div className={cn(
                      "w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
-                     item.status === "COMPLETED" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"
+                     item.status === "COMPLETED" ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-500"
                    )}>
                      {item.status === "COMPLETED" ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
                    </div>
@@ -87,7 +87,7 @@ export default async function StudentAnalyticsPage({
                          Nộp bài lúc: {format(new Date(item.completedAt), "HH:mm, dd/MM/yyyy", { locale: vi })}
                        </div>
                      ) : (
-                       <span className="text-[10px] font-black uppercase tracking-widest text-red-400 mt-1 block">Chưa làm</span>
+                       <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 mt-1 block">Chưa làm</span>
                      )}
                    </div>
                  </div>

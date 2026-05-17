@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Montserrat } from "next/font/google";
+import { Plus_Jakarta_Sans, Outfit } from "next/font/google";
 import { Toaster } from "sonner";
 import Header from "@/components/layout/Header";
 import { Providers } from "./providers";
@@ -7,13 +7,13 @@ import VConsole from "@/components/VConsole";
 import AntiInspectLayout from "@/components/layout/AntiInspectLayout";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
+const sansFont = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
+  subsets: ["latin", "vietnamese"],
 });
 
-const montserrat = Montserrat({
-  variable: "--font-montserrat",
+const headingFont = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
 });
 
@@ -43,7 +43,7 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className={`${inter.variable} ${montserrat.variable} antialiased`}
+        className={`${sansFont.variable} ${headingFont.variable} antialiased text-[15px] sm:text-base leading-relaxed`}
       >
         <Providers>
           <AntiInspectLayout>

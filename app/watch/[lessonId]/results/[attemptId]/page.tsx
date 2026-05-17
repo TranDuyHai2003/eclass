@@ -126,7 +126,7 @@ export default async function TestResultPage({
             </span>
             <div className="flex gap-4 text-[10px] font-black uppercase tracking-widest">
               <span className="text-emerald-600">Đúng: {correctCount}</span>
-              <span className="text-red-500">Sai: {totalQuestions - correctCount}</span>
+              <span className="text-blue-500">Sai: {totalQuestions - correctCount}</span>
             </div>
           </div>
 
@@ -134,7 +134,7 @@ export default async function TestResultPage({
             {test.showAnswers || isTeacher ? (
               <>
                 {/* Overall Explanation Section - Optimized for UI */}
-                {(test.explanation || test.videoUrl || test.audioUrl) && (
+                {test.explanation && (
                   <div className="bg-blue-50/50 rounded-[24px] md:rounded-[32px] p-5 md:p-6 border border-blue-100 space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-100">
@@ -145,46 +145,21 @@ export default async function TestResultPage({
                       </h3>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 md:gap-3">
-                      {(test.solutionVideos as any[])?.length > 0 ? (
-                        (test.solutionVideos as any[]).map((vid, vIdx) => vid.url && (
-                          <a
-                            key={vIdx}
-                            href={vid.url}
-                            target="_blank"
-                            className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-blue-100 text-[11px] font-bold text-blue-600 hover:bg-blue-50 transition-colors"
-                          >
-                            <Video className="w-3.5 h-3.5" /> {vid.title || `Video phần ${vIdx + 1}`}
-                          </a>
-                        ))
-                      ) : test.videoUrl && (
-                        <a
-                          href={test.videoUrl}
-                          target="_blank"
-                          className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-blue-100 text-[11px] font-bold text-blue-600 hover:bg-blue-50 transition-colors"
-                        >
-                          <Video className="w-3.5 h-3.5" /> Xem Video lời giải
-                        </a>
-                      )}
-                    </div>
-
-                      {test.explanation && (
-                      <div className="space-y-4">
-                        <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                          <FileText className="w-3 h-3" /> Tài liệu lời giải chi tiết
-                        </div>
-                        <div className="h-[500px] border border-blue-100 rounded-2xl overflow-hidden bg-slate-100 shadow-inner">
-                          <PDFViewerClientWrapper url={test.explanation} />
-                        </div>
-                        <a
-                          href={test.explanation}
-                          target="_blank"
-                          className="flex items-center justify-center gap-2 w-full py-3 bg-white rounded-xl border border-blue-100 text-xs font-bold text-blue-600 hover:bg-blue-50 transition-colors shadow-sm"
-                        >
-                          <Download className="w-4 h-4" /> Tải về bản PDF lời giải
-                        </a>
+                    <div className="space-y-4">
+                      <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <FileText className="w-3 h-3" /> Tài liệu lời giải chi tiết
                       </div>
-                    )}
+                      <div className="h-[500px] border border-blue-100 rounded-2xl overflow-hidden bg-slate-100 shadow-inner">
+                        <PDFViewerClientWrapper url={test.explanation} />
+                      </div>
+                      <a
+                        href={test.explanation}
+                        target="_blank"
+                        className="flex items-center justify-center gap-2 w-full py-3 bg-white rounded-xl border border-blue-100 text-xs font-bold text-blue-600 hover:bg-blue-50 transition-colors shadow-sm"
+                      >
+                        <Download className="w-4 h-4" /> Tải về bản PDF lời giải
+                      </a>
+                    </div>
                   </div>
                 )}
 
@@ -212,7 +187,7 @@ export default async function TestResultPage({
                                   ? "bg-emerald-50/50 border-emerald-100"
                                   : isPending
                                     ? "bg-blue-50/50 border-blue-100"
-                                    : "bg-red-50/50 border-red-100",
+                                    : "bg-blue-50/50 border-blue-100",
                               )}
                             >
                               <div className="w-6 md:w-8 text-center text-xs font-black text-slate-400">
@@ -227,7 +202,7 @@ export default async function TestResultPage({
                                   <p
                                     className={cn(
                                       "font-black text-base md:text-lg",
-                                      isCorrect === true ? "text-emerald-600" : isPending ? "text-blue-600" : "text-red-600",
+                                      isCorrect === true ? "text-emerald-600" : isPending ? "text-blue-600" : "text-blue-600",
                                     )}
                                   >
                                     {q.type === "ESSAY" ? (
@@ -262,7 +237,7 @@ export default async function TestResultPage({
                                      <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600" />
                                   </div>
                                 ) : (
-                                  <XCircle className="w-5 h-5 md:w-6 md:h-6 text-red-500" />
+                                  <XCircle className="w-5 h-5 md:w-6 md:h-6 text-blue-500" />
                                 )}
                               </div>
                             </div>

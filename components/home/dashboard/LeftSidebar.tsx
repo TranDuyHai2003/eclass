@@ -99,7 +99,7 @@ export function LeftSidebar({ user }: { user: any }) {
          <div className="flex items-center justify-center gap-4">
             <SocialIcon icon={Facebook} href="#" color="hover:text-blue-600" />
             <SocialIcon icon={MessageCircle} href="#" color="hover:text-sky-500" />
-            <SocialIcon icon={Youtube} href="#" color="hover:text-red-600" />
+            <SocialIcon icon={Youtube} href="#" color="hover:text-blue-600" />
          </div>
          <p className="text-[9px] text-center text-slate-300 font-bold uppercase tracking-widest mt-4">© 2026 E-Class Ecosystem</p>
       </div>

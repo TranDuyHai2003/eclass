@@ -120,12 +120,12 @@ export default function UserManagementPage() {
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="ADMIN" className="text-[10px] font-semibold text-red-600">ADMIN</SelectItem>
+                                                <SelectItem value="ADMIN" className="text-[10px] font-semibold text-blue-600">ADMIN</SelectItem>
                                                 <SelectItem value="TEACHER" className="text-[10px] font-semibold text-blue-600">TEACHER</SelectItem>
                                                 <SelectItem value="STUDENT" className="text-[10px] font-semibold">STUDENT</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-6 flex items-center ${user.isApproved ? "bg-green-100 text-green-700 border-green-200" : "bg-red-100 text-red-700 border-red-200"}`}>
+                                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-6 flex items-center ${user.isApproved ? "bg-green-100 text-green-700 border-green-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}>
                                             {user.isApproved ? "Đã duyệt" : "Chưa duyệt"}
                                         </Badge>
                                     </div>
@@ -141,14 +141,14 @@ export default function UserManagementPage() {
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="ADMIN" className="text-xs font-semibold text-red-600">ADMIN</SelectItem>
+                                            <SelectItem value="ADMIN" className="text-xs font-semibold text-blue-600">ADMIN</SelectItem>
                                             <SelectItem value="TEACHER" className="text-xs font-semibold text-blue-600">TEACHER</SelectItem>
                                             <SelectItem value="STUDENT" className="text-xs font-semibold text-slate-700">STUDENT</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </TableCell>
                                 <TableCell className="hidden sm:table-cell">
-                                    <Badge variant="outline" className={`${user.isApproved ? "bg-green-100 text-green-700 hover:bg-green-200 border-green-200" : "bg-red-100 text-red-700 hover:bg-red-200 border-red-200"}`}>
+                                    <Badge variant="outline" className={`${user.isApproved ? "bg-green-100 text-green-700 hover:bg-green-200 border-green-200" : "bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200"}`}>
                                         {user.isApproved ? "Đã duyệt" : "Chưa duyệt"}
                                     </Badge>
                                 </TableCell>

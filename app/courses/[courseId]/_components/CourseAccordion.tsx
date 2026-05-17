@@ -42,9 +42,9 @@ export function CourseAccordion({ chapters, isEnrolled }: CourseAccordionProps) 
     if (!accessible) return <Lock className="w-4 h-4 text-slate-300" />;
     
     switch(type) {
-      case "QUIZ": return <ClipboardList className="w-4 h-4 text-red-600" />;
-      case "DOCUMENT": return <FileText className="w-4 h-4 text-red-600" />;
-      default: return <PlayCircle className="w-4 h-4 text-red-600" />;
+      case "QUIZ": return <ClipboardList className="w-4 h-4 text-blue-600" />;
+      case "DOCUMENT": return <FileText className="w-4 h-4 text-blue-600" />;
+      default: return <PlayCircle className="w-4 h-4 text-blue-600" />;
     }
   };
 
@@ -61,20 +61,20 @@ export function CourseAccordion({ chapters, isEnrolled }: CourseAccordionProps) 
                 "w-full px-6 py-5 flex items-center justify-between transition-all rounded-[1.5rem] border",
                 isOpen 
                   ? "bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-200" 
-                  : "bg-white border-slate-100 hover:border-red-100 text-slate-900 shadow-sm"
+                  : "bg-white border-slate-100 hover:border-blue-100 text-slate-900 shadow-sm"
               )}
             >
               <div className="flex items-center gap-4">
                 <div className={cn(
                   "w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm flex-shrink-0 transition-colors",
-                  isOpen ? "bg-white/10 text-white" : "bg-red-50 text-red-600"
+                  isOpen ? "bg-white/10 text-white" : "bg-blue-50 text-blue-600"
                 )}>
                   {idx + 1}
                 </div>
                 <div className="flex flex-col items-start">
                    <p className={cn(
                      "text-[9px] font-black uppercase tracking-[0.15em]",
-                     isOpen ? "text-white/60" : "text-red-600"
+                     isOpen ? "text-white/60" : "text-blue-600"
                    )}>Chương {idx + 1}</p>
                    {chapter.title && chapter.title !== `Chương ${idx + 1}` && (
                      <h3 className="font-black uppercase tracking-tight text-left text-sm sm:text-base line-clamp-1">
@@ -115,7 +115,7 @@ export function CourseAccordion({ chapters, isEnrolled }: CourseAccordionProps) 
                       {/* Icon */}
                       <div className={cn(
                         "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors",
-                        accessible ? "bg-white shadow-sm border border-slate-100 group-hover/lesson:bg-red-50 group-hover/lesson:border-red-100" : "bg-slate-100"
+                        accessible ? "bg-white shadow-sm border border-slate-100 group-hover/lesson:bg-blue-50 group-hover/lesson:border-blue-100" : "bg-slate-100"
                       )}>
                         {getLessonIcon(lesson.type, lesson.isFree, isEnrolled)}
                       </div>
@@ -147,7 +147,7 @@ export function CourseAccordion({ chapters, isEnrolled }: CourseAccordionProps) 
                       )}
                       
                       {accessible && (
-                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 group-hover/lesson:bg-white group-hover/lesson:text-red-600 group-hover/lesson:shadow-sm transition-all">
+                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 group-hover/lesson:bg-white group-hover/lesson:text-blue-600 group-hover/lesson:shadow-sm transition-all">
                             <ChevronRight className="w-4 h-4" />
                          </div>
                       )}

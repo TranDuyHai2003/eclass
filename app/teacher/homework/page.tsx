@@ -56,7 +56,7 @@ export default async function HomeworkManagementPage() {
       {/* Header */}
       <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] border border-blue-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <div className="w-12 h-12 bg-[#A01D24] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-red-200 mb-2">
+          <div className="w-12 h-12 bg-[#2563EB] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200 mb-2">
             <FileText className="w-6 h-6" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-800 uppercase tracking-tight">

@@ -14,7 +14,7 @@ export function ComingSoon({
 }: ComingSoonProps) {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 text-center">
-      <div className="w-24 h-24 bg-red-100 rounded-3xl flex items-center justify-center text-red-600 mb-8 animate-bounce">
+      <div className="w-24 h-24 bg-blue-100 rounded-3xl flex items-center justify-center text-blue-600 mb-8 animate-bounce">
         <Rocket className="w-12 h-12" />
       </div>
       
@@ -28,7 +28,7 @@ export function ComingSoon({
       
       <div className="flex flex-col sm:flex-row gap-4">
         <Link href="/">
-          <Button variant="default" className="bg-red-600 hover:bg-red-700 px-8 py-6 rounded-2xl font-bold h-auto shadow-lg shadow-red-200 transition-all">
+          <Button variant="default" className="bg-blue-600 hover:bg-blue-700 px-8 py-6 rounded-2xl font-bold h-auto shadow-lg shadow-blue-200 transition-all">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Về trang chủ
           </Button>

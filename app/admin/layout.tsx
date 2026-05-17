@@ -20,7 +20,7 @@ export default async function AdminLayout({
       <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Mobile Title - Simple Header for Context */}
         <div className="lg:hidden mb-6 flex items-center gap-3">
-          <div className="w-8 h-8 bg-red-600 rounded-xl flex items-center justify-center text-white font-black text-xs">
+          <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xs">
             {user.name?.[0]?.toUpperCase() || "A"}
           </div>
           <h1 className="font-black text-slate-900 text-lg uppercase tracking-tight">Admin Panel</h1>

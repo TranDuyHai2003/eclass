@@ -17,8 +17,8 @@ export function DashboardHeader({ user }: { user: any }) {
       {/* Left: Logo & Search */}
       <div className="flex items-center gap-6 min-w-[260px]">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 transition-transform group-hover:scale-105">
-            <img src="/logo.png" alt="thatdehoctoan" className="h-6 w-auto brightness-0 invert" />
+          <div className="flex items-center justify-center transition-transform group-hover:scale-105">
+            <img src="/logo.png" alt="thatdehoctoan" className="h-8 sm:h-10 w-auto object-contain" />
           </div>
           <span className="text-lg font-black text-slate-800 tracking-tighter uppercase leading-none">
             E-Class

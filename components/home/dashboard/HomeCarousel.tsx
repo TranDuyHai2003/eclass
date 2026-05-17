@@ -24,7 +24,7 @@ interface Slide {
 const slides: Slide[] = [
   {
     id: 1,
-    bgGradient: "from-[#A01D24] via-[#D32F2F] to-[#E53935]",
+    bgGradient: "from-[#2563EB] via-[#D32F2F] to-[#E53935]",
     badge: "DÀNH RIÊNG CHO 2K8",
     title: "KHÓA LUYỆN ĐỀ THPTQG",
     subtitle: "HỆ THỐNG LAB - LÀM CHỦ TRI THỨC - BỨT PHÁ TƯ DUY",
@@ -40,7 +40,7 @@ const slides: Slide[] = [
   },
   {
     id: 2,
-    bgGradient: "from-slate-900 via-slate-800 to-[#A01D24]",
+    bgGradient: "from-slate-900 via-slate-800 to-[#2563EB]",
     badge: "PHÒNG LUYỆN THI THÔNG MINH",
     title: "CHIẾN DỊCH TỔNG ÔN ĐỢT 2",
     subtitle: "LÀM ĐỀ THỬ - TỰ ĐỘNG ĐÁNH GIÁ NĂNG LỰC & CHỈ RA YẾU ĐIỂM",
@@ -97,7 +97,7 @@ export function HomeCarousel() {
                 {/* Left Content */}
                 <div className="flex-1 space-y-2 sm:space-y-4 max-w-[65%]">
                   {/* Badge */}
-                  <span className="inline-flex items-center gap-1.5 bg-yellow-400 text-[#A01D24] px-3.5 py-1 rounded-full text-[9px] sm:text-[10px] font-black tracking-wider uppercase border border-yellow-200/50 shadow-sm animate-pulse">
+                  <span className="inline-flex items-center gap-1.5 bg-yellow-400 text-[#2563EB] px-3.5 py-1 rounded-full text-[9px] sm:text-[10px] font-black tracking-wider uppercase border border-yellow-200/50 shadow-sm animate-pulse">
                     <Sparkles className="w-3 h-3 fill-current" />
                     {slide.badge}
                   </span>
@@ -134,7 +134,7 @@ export function HomeCarousel() {
                   {/* Gift Pack card */}
                   {slide.giftTitle && (
                     <div className="hidden md:flex items-center gap-3 bg-black/20 backdrop-blur-sm p-3 rounded-2xl border border-white/5 w-fit">
-                      <div className="p-2 bg-yellow-400 rounded-xl text-[#A01D24]">
+                      <div className="p-2 bg-yellow-400 rounded-xl text-[#2563EB]">
                         <Trophy className="w-4 h-4 fill-current" />
                       </div>
                       <div className="flex flex-col">
@@ -151,7 +151,7 @@ export function HomeCarousel() {
                     <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-white/0 pointer-events-none" />
                     
                     {/* Circle Avatar Graphic */}
-                    <div className="w-14 h-14 sm:w-18 sm:h-18 rounded-full bg-gradient-to-br from-yellow-300 to-red-500 mx-auto flex items-center justify-center text-white border-2 border-white shadow-xl relative z-10">
+                    <div className="w-14 h-14 sm:w-18 sm:h-18 rounded-full bg-gradient-to-br from-yellow-300 to-blue-500 mx-auto flex items-center justify-center text-white border-2 border-white shadow-xl relative z-10">
                       <BookOpen className="w-7 h-7" />
                     </div>
 
@@ -165,7 +165,7 @@ export function HomeCarousel() {
                     </div>
 
                     <div className="pt-1.5 border-t border-white/10 relative z-10">
-                      <span className="bg-red-600 text-[8px] font-black text-white px-2 py-0.5 rounded-full uppercase tracking-wider shadow-inner">
+                      <span className="bg-blue-600 text-[8px] font-black text-white px-2 py-0.5 rounded-full uppercase tracking-wider shadow-inner">
                         {slide.scoreLabel}
                       </span>
                     </div>
@@ -180,13 +180,13 @@ export function HomeCarousel() {
       {/* Navigation Arrows */}
       <button
         onClick={handlePrev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/20 hover:bg-white text-white hover:text-[#A01D24] flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 border border-white/10 shadow-lg z-20 active:scale-90"
+        className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/20 hover:bg-white text-white hover:text-[#2563EB] flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 border border-white/10 shadow-lg z-20 active:scale-90"
       >
         <ChevronLeft className="w-5 h-5" />
       </button>
       <button
         onClick={handleNext}
-        className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/20 hover:bg-white text-white hover:text-[#A01D24] flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 border border-white/10 shadow-lg z-20 active:scale-90"
+        className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/20 hover:bg-white text-white hover:text-[#2563EB] flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 border border-white/10 shadow-lg z-20 active:scale-90"
       >
         <ChevronRight className="w-5 h-5" />
       </button>
