@@ -38,7 +38,7 @@ export default async function Header() {
             >
               <div className="relative flex items-center justify-center  rounded-2xl">
                 <img
-                  src="/logo.png"
+                  src="/logo.png?v=1"
                   alt="thatdehoctoan"
                   className="h-8 sm:h-10 w-auto object-contain transform group-hover:scale-110 transition-transform duration-500"
                 />

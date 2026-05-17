@@ -18,15 +18,65 @@ const headingFont = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "thatdehoctoan - Luyện Thi Đại Học",
+  metadataBase: new URL("https://teacherduc.me"),
+  title: {
+    default: "thatdehoctoan - Luyện Thi Đại Học Môn Toán",
+    template: "%s | thatdehoctoan"
+  },
   description:
-    "Trang web học Toán luyện thi Đại học hàng đầu, đồng hành cùng học sinh vượt qua kỳ thi THPT Quốc gia with thatdehoctoan.",
+    "Hệ thống học Toán luyện thi Đại học hàng đầu. Cung cấp lộ trình học bài bản, livestream tương tác và kho đề thi thử THPT Quốc gia bứt phá điểm số.",
+  keywords: ["học toán online", "luyện thi đại học môn toán", "toán thpt quốc gia", "thầy đức dạy toán", "thatdehoctoan", "toán 12", "đề thi thử toán"],
+  authors: [{ name: "Thầy Đức", url: "https://teacherduc.me" }],
+  creator: "thatdehoctoan",
+  publisher: "thatdehoctoan",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: [
+      { url: "/logo.png?v=1" },
+      { url: "/logo.png?v=1", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [
+      { url: "/logo.png?v=1", sizes: "180x180", type: "image/png" },
+    ],
   },
   openGraph: {
-    images: ["/logo.png"],
+    type: "website",
+    locale: "vi_VN",
+    url: "https://teacherduc.me",
+    title: "thatdehoctoan - Luyện Thi Đại Học Môn Toán",
+    description: "Hệ thống học Toán online hàng đầu, bứt phá điểm số kỳ thi THPT Quốc gia.",
+    siteName: "thatdehoctoan",
+    images: [
+      {
+        url: "/logo.png?v=1",
+        width: 1200,
+        height: 630,
+        alt: "thatdehoctoan - Luyện Thi Đại Học",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "thatdehoctoan - Luyện Thi Đại Học Môn Toán",
+    description: "Hệ thống học Toán online hàng đầu, bứt phá điểm số kỳ thi THPT Quốc gia.",
+    images: ["/logo.png?v=1"],
+    creator: "@thatdehoctoan",
+  },
+  alternates: {
+    canonical: "https://teacherduc.me",
+  },
+  verification: {
+    google: "google-site-verification-id", // User should update this with their actual ID
   },
 };
 
@@ -35,11 +85,28 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "thatdehoctoan",
+    "url": "https://teacherduc.me",
+    "logo": "https://teacherduc.me/logo.png?v=1",
+    "sameAs": [
+      "https://facebook.com/thatdehoctoan",
+      "https://youtube.com/thatdehoctoan"
+    ],
+    "description": "Hệ thống học Toán luyện thi Đại học hàng đầu Việt Nam."
+  };
+
   return (
     <html lang="vi">
       <head>
         {/* Thêm đúng dòng này vào để điện thoại gọi về máy tính */}
         <script src="http://192.168.100.135:8080/target.js" defer></script>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </head>
       <body
         suppressHydrationWarning
