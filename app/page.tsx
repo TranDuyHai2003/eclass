@@ -1,5 +1,4 @@
 import { auth } from "@/auth";
-import { LandingPage } from "@/components/home/landing/LandingPage";
 import { Dashboard } from "@/components/home/dashboard/Dashboard";
 import { getDashboardData } from "@/actions/course";
 
@@ -7,13 +6,9 @@ export default async function Home() {
   const session = await auth();
   const { courses, lastLesson, stats } = await getDashboardData();
 
-  if (!session) {
-    return <LandingPage courses={courses} />;
-  }
-
   return (
     <Dashboard 
-      user={session.user} 
+      user={session?.user || null} 
       courses={courses} 
       lastLesson={lastLesson}
       stats={stats}

@@ -252,7 +252,7 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
         duration: data.duration,
         showAnswers: data.showAnswers,
         explanation: data.explanation || "",
-        videoUrl: data.videoUrl || "",
+        videoUrl: (data as any).videoUrl || "",
         audioUrl: data.audioUrl || "",
         dueDate: data.dueDate ? data.dueDate.toISOString() : null,
       }),

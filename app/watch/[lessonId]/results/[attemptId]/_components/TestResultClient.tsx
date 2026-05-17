@@ -12,6 +12,8 @@ import {
   Headphones,
   FileText,
   Download,
+  Image as ImageIcon,
+  ExternalLink,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -229,7 +231,15 @@ export default function TestResultClient({ attempt, isTeacher = false }: { attem
                                         : "text-red-600",
                                   )}
                                 >
-                                  {q.type === "ESSAY" ? "Làm ra giấy" : (ansRecord?.answerProvided || "Bỏ trống")}
+                                  {q.type === "ESSAY" ? (
+                                    ansRecord?.answerProvided ? (
+                                      <a href={ansRecord.answerProvided} target="_blank" className="flex items-center gap-2 text-blue-600 hover:underline">
+                                        <ImageIcon className="w-4 h-4" />
+                                        <span>Xem bài làm</span>
+                                        <ExternalLink className="w-3 h-3" />
+                                      </a>
+                                    ) : "Làm ra giấy"
+                                  ) : (ansRecord?.answerProvided || "Bỏ trống")}
                                 </p>
                               </div>
 

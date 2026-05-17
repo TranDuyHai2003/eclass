@@ -95,11 +95,6 @@ export function HomePromo({ targetDate }: HomePromoProps) {
               ngay hôm nay!
             </p>
           </div>
-
-          <button className="bg-[#FEE715] hover:bg-yellow-400 text-[#A01D24] px-8 py-3 rounded-2xl font-black uppercase text-sm transition-all hover:shadow-lg active:scale-95 flex items-center gap-2 border-b-4 border-[#D9C100] mx-auto lg:mx-0">
-            <MessageSquareText className="w-4 h-4" />
-            Nhận tư vấn lộ trình
-          </button>
         </div>
 
         {/* Countdown Grid */}
@@ -110,13 +105,6 @@ export function HomePromo({ targetDate }: HomePromoProps) {
             <Unit value={minutes} label="Phút" />
             <Unit value={seconds} label="Giây" />
           </div>
-          {!isFinished && (
-            <div className="mt-6 pt-6 border-t border-white/10 flex items-center justify-center gap-4">
-              <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider">
-                Đang trong chiến dịch bứt phá điểm số
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </div>

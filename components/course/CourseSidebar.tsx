@@ -12,8 +12,15 @@ import {
   Layout,
   Download,
   BookOpen,
+  Upload,
+  Send,
+  X,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import axios from "axios";
+import { toast } from "sonner";
+import { submitHomework } from "@/actions/homework";
 
 type Attachment = {
   id: string;
@@ -77,7 +84,6 @@ export default function CourseSidebar({
       return initialState;
     },
   );
-
   // Keep track of which lesson's content is expanded
   const [expandedLessons, setExpandedLessons] = useState<
     Record<string, boolean>
@@ -86,6 +92,60 @@ export default function CourseSidebar({
     initialState[currentLessonId] = true;
     return initialState;
   });
+
+  const [activeHomeworkLessonId, setActiveHomeworkLessonId] = useState<string | null>(null);
+  const [inlineAttachments, setInlineAttachments] = useState<{ name: string; url: string }[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleInlineUpload = async (lessonId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      const newAttachments = [...inlineAttachments];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const res = await axios.put<{ publicUrl: string }>(
+          `/api/upload/proxy?fileName=homework_${Date.now()}_${encodeURIComponent(file.name)}`,
+          file,
+          { headers: { "Content-Type": file.type } }
+        );
+        newAttachments.push({ name: file.name, url: res.data.publicUrl });
+      }
+      setInlineAttachments(newAttachments);
+      toast.success("Tải tệp lên thành công");
+    } catch (error) {
+      toast.error("Lỗi tải tệp lên");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleInlineSubmit = async (lessonId: string) => {
+    if (inlineAttachments.length === 0) {
+      toast.error("Vui lòng tải lên ít nhất một tệp");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await submitHomework(lessonId, inlineAttachments);
+      if (res.success) {
+        toast.success("Nộp bài tập thành công!");
+        setInlineAttachments([]);
+        setActiveHomeworkLessonId(null);
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
+    } catch (err) {
+      toast.error("Lỗi khi nộp bài");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Sync expansion with active lesson when currentLessonId changes
   useEffect(() => {
@@ -307,17 +367,97 @@ export default function CourseSidebar({
                             </Link>
                           )}
                           {lesson.hasHomework && (
-                            <Link
-                              href={`/watch/${lesson.id}#homework`}
-                              className="flex items-center gap-3 p-3 bg-white border border-blue-50 rounded-xl hover:text-blue-600 transition-all group/sub shadow-sm"
-                            >
-                              <div className="w-7 h-7 bg-blue-50 text-blue-500 rounded-lg flex items-center justify-center shrink-0 group-hover/sub:bg-blue-500 group-hover/sub:text-white transition-colors">
-                                <Upload className="w-3.5 h-3.5" />
-                              </div>
-                              <span className="text-xs font-bold uppercase tracking-tight">
-                                Nộp bài tập (Tự luận)
-                              </span>
-                            </Link>
+                            <div className="space-y-2">
+                              <button
+                                onClick={() => {
+                                  if (activeHomeworkLessonId === lesson.id) {
+                                    setActiveHomeworkLessonId(null);
+                                    setInlineAttachments([]);
+                                  } else {
+                                    setActiveHomeworkLessonId(lesson.id);
+                                    setInlineAttachments([]);
+                                  }
+                                }}
+                                className={cn(
+                                  "w-full flex items-center gap-3 p-3 bg-white border rounded-xl transition-all group/sub shadow-sm text-left",
+                                  activeHomeworkLessonId === lesson.id
+                                    ? "border-blue-500 text-blue-600 bg-blue-50/10"
+                                    : "border-blue-50 hover:text-blue-600"
+                                )}
+                              >
+                                <div className={cn(
+                                  "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                                  activeHomeworkLessonId === lesson.id
+                                    ? "bg-blue-500 text-white"
+                                    : "bg-blue-50 text-blue-500 group-hover/sub:bg-blue-500 group-hover/sub:text-white"
+                                )}>
+                                  <Upload className="w-3.5 h-3.5" />
+                                </div>
+                                <span className="text-xs font-bold uppercase tracking-tight flex-1">
+                                  Nộp bài tập (Tự luận)
+                                </span>
+                              </button>
+
+                              {/* Inline Uploader Box */}
+                              {activeHomeworkLessonId === lesson.id && (
+                                <div className="p-4 bg-slate-50 rounded-xl border border-blue-100 space-y-3 animate-in slide-in-from-top-2 duration-300">
+                                  {/* List of uploaded files */}
+                                  {inlineAttachments.length > 0 && (
+                                    <div className="space-y-1.5">
+                                      {inlineAttachments.map((file, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 p-2 bg-white border border-slate-100 rounded-lg text-[10px]">
+                                          <FileText className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                                          <span className="font-bold text-slate-700 truncate flex-1">{file.name}</span>
+                                          <button
+                                            onClick={() => setInlineAttachments(prev => prev.filter((_, i) => i !== idx))}
+                                            className="p-1 rounded bg-red-50 text-red-500"
+                                          >
+                                            <X className="w-2.5 h-2.5" />
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Input Field */}
+                                  <div className="flex gap-2">
+                                    <label className="flex-1 cursor-pointer">
+                                      <div className="h-10 border border-dashed border-blue-200 rounded-lg flex items-center justify-center gap-2 bg-white hover:bg-blue-50 transition-colors">
+                                        {isUploading ? (
+                                          <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+                                        ) : (
+                                          <Upload className="w-3.5 h-3.5 text-blue-400" />
+                                        )}
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">
+                                          {isUploading ? "Đang tải..." : "Chọn file"}
+                                        </span>
+                                      </div>
+                                      <input 
+                                        type="file" 
+                                        multiple 
+                                        className="hidden" 
+                                        accept="image/*,application/pdf" 
+                                        onChange={(e) => handleInlineUpload(lesson.id, e)}
+                                        disabled={isUploading || isSubmitting}
+                                      />
+                                    </label>
+
+                                    <button
+                                      onClick={() => handleInlineSubmit(lesson.id)}
+                                      disabled={isSubmitting || isUploading || inlineAttachments.length === 0}
+                                      className="px-4 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest flex items-center gap-1.5 disabled:opacity-50"
+                                    >
+                                      {isSubmitting ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                      ) : (
+                                        <Send className="w-3 h-3" />
+                                      )}
+                                      Gửi
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           )}
                           {lesson.attachments?.map((att) => (
                             <a

@@ -23,15 +23,13 @@ export default async function CoursesPage({
   const courses = await getCourses({ search: query });
 
   return (
-    <div className="page-shell min-h-screen bg-[#F8FAFC]">
+    <div className="page-shell min-h-screen bg-[#EBF3FF]">
       <main className="container mx-auto py-8 sm:py-10 px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col lg:flex-row gap-8 sm:gap-10">
+        <div className="flex flex-col lg:flex-row gap-8">
           {/* Left Sidebar - PC Only */}
-          <aside className="hidden lg:block w-[280px] shrink-0 space-y-6">
-            <div className="sticky top-24 space-y-6">
+          <aside className="hidden lg:block w-[280px] shrink-0">
+            <div className="sticky top-24 h-fit">
               <HomeSidebar />
-
-
             </div>
           </aside>
 
