@@ -45,4 +45,4 @@ ENV HOSTNAME="0.0.0.0"
 
 # KHÔNG DÙNG "npm start" NỮA! 
 # Chạy trực tiếp file server.js đã được Next.js tối ưu sẵn
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "npx -y prisma db push && node server.js"]
