@@ -2,6 +2,7 @@ import { getCourses } from "@/actions/course";
 import CourseCard from "@/components/course/CourseCard";
 import { HomeSidebar } from "@/components/home/HomeSidebar";
 import { SearchBar } from "@/components/layout/SearchBar";
+import { auth } from "@/auth";
 import {
   Trophy,
   Sparkles,
@@ -19,6 +20,7 @@ export default async function CoursesPage({
 }: {
   searchParams: Promise<{ query?: string }>;
 }) {
+  const session = await auth();
   const { query } = await searchParams;
   const courses = await getCourses({ search: query });
 
@@ -29,7 +31,7 @@ export default async function CoursesPage({
           {/* Left Sidebar - PC Only */}
           <aside className="hidden lg:block w-[280px] shrink-0">
             <div className="sticky top-24 h-fit">
-              <HomeSidebar />
+              <HomeSidebar user={session?.user} />
             </div>
           </aside>
 

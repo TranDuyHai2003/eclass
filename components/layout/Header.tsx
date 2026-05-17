@@ -30,25 +30,22 @@ export default async function Header() {
         <div className="flex h-16 sm:h-20 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           {/* Left: Mobile Menu & Logo Group */}
           <div className="flex items-center gap-4 sm:gap-6 flex-1 md:flex-none">
-            <MobileMenu role={session?.user?.role} />
+            <MobileMenu user={session?.user} />
 
             <Link
               href="/"
               className="flex items-center gap-3 shrink-0 group relative"
             >
-              <div className="relative flex items-center justify-center p-1.5 bg-blue-50 rounded-2xl group-hover:bg-blue-100 transition-colors duration-500">
+              <div className="relative flex items-center justify-center  rounded-2xl">
                 <img
                   src="/logo.png"
                   alt="thatdehoctoan"
-                  className="h-8 sm:h-10 w-auto object-contain transform group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500"
+                  className="h-8 sm:h-10 w-auto object-contain transform group-hover:scale-110 transition-transform duration-500"
                 />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm sm:text-xl font-black tracking-tighter text-slate-900 uppercase leading-none group-hover:text-blue-600 transition-colors">
+                <span className="text-sm sm:text-xl font-black tracking-tighter text-blue-500 uppercase leading-none group-hover:text-blue-600 transition-colors">
                   thatdehoctoan
-                </span>
-                <span className="hidden sm:block text-[9px] font-black text-blue-500 uppercase tracking-[0.2em] mt-1 opacity-80">
-                  Premium Academy
                 </span>
               </div>
             </Link>

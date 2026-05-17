@@ -13,10 +13,10 @@ import { HomeSidebar } from "@/components/home/HomeSidebar";
 import { MobileSearchBar } from "./MobileSearchBar";
 
 interface MobileMenuProps {
-  role?: string;
+  user?: any;
 }
 
-export function MobileMenu({ role }: MobileMenuProps) {
+export function MobileMenu({ user }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -53,7 +53,7 @@ export function MobileMenu({ role }: MobileMenuProps) {
               <MobileSearchBar onSearch={() => setOpen(false)} />
               
               <div className="px-4 mt-6">
-                <HomeSidebar />
+                <HomeSidebar user={user} />
               </div>
 
               <div className="mt-8 px-8 pb-10 space-y-6">
