@@ -36,6 +36,8 @@ COPY --from=builder /app/.next/static ./.next/static
 # 3. Copy thư mục gốc Standalone (Chứa lõi server và thư viện đã chắt lọc)
 COPY --from=builder /app/.next/standalone ./
 
+COPY --from=builder /app/prisma ./prisma
+
 EXPOSE 3000
 ENV PORT=3000
 # Đảm bảo Node.js lắng nghe trên tất cả các IP của container
