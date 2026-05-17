@@ -29,6 +29,9 @@ WORKDIR /app
 # Bổ sung OpenSSL cho môi trường chạy
 RUN apk add --no-cache openssl
 
+# 🔥 [THÊM MỚI]: Cài thẳng Prisma CLI vào hệ thống (không dùng npx nữa)
+RUN npm install -g prisma@6.19.2
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1 
 
@@ -46,6 +49,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0" 
 
-# LƯU Ý: Ở Production, dùng "migrate deploy" sẽ an toàn hơn "db push" 
-# (db push có thể xóa data nếu có xung đột schema).
-CMD ["sh", "-c", "npx -y prisma@6.19.2 db push && node server.js"]
+# 🔥 [ĐÃ SỬA]: Chạy thẳng lệnh `prisma db push` vì máy đã có sẵn
+CMD ["sh", "-c", "prisma db push && node server.js"]
