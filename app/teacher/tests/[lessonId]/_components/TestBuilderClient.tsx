@@ -41,7 +41,8 @@ export default function TestBuilderClient({
           duration: data.duration,
           showAnswers: data.showAnswers,
           explanation: data.explanation,
-          videoUrl: data.videoUrl,
+          solutionVideos: data.solutionVideos,
+          videoUrl: data.solutionVideos?.[0]?.url || "",
           audioUrl: data.audioUrl,
           dueDate: data.dueDate,
         });

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, FileWarning, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,7 +94,7 @@ export function ParsedQuestionsForm({ questions, onChange }: ParsedQuestionsForm
       </div>
 
       <div className="space-y-3 max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
-        {questions.map((q, index) => (
+        {questions.map((q) => (
           <div
             key={q.id}
             className="group flex flex-col sm:flex-row items-start gap-4 p-5 bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all"

@@ -14,6 +14,7 @@ import {
   Upload,
   Eye,
   BarChart3,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,19 @@ import { Switch } from "@/components/ui/switch";
 import { saveTestMatrix } from "@/actions/test";
 import { cn } from "@/lib/utils";
 import { FastEntryModal } from "@/components/teacher/test-builder/FastEntryModal";
+import {
+  ParsedQuestionsForm,
+  type ParsedQuestion,
+} from "@/components/teacher/test-builder/ParsedQuestionsForm";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Sparkles, FileWarning } from "lucide-react";
 
 const PDFViewer = dynamic(() => import("@/components/ui/pdf-viewer"), {
   ssr: false,
@@ -37,7 +51,7 @@ export interface UnifiedSaveData {
   duration: number;
   showAnswers: boolean;
   explanation: string;
-  videoUrl: string;
+  solutionVideos: { title: string; url: string }[];
   audioUrl: string;
   dueDate: Date | null;
 }
@@ -83,8 +97,18 @@ export default function UnifiedTestBuilder({
   const [explanation, setExplanation] = useState(
     initialTest?.explanation || "",
   );
-  const [videoUrl, setVideoUrl] = useState(initialTest?.videoUrl || "");
+  const [solutionVideos, setSolutionVideos] = useState<{ title: string; url: string }[]>(() => {
+    if (initialTest?.solutionVideos && Array.isArray(initialTest.solutionVideos)) {
+      return initialTest.solutionVideos;
+    }
+    if (initialTest?.videoUrl) {
+      return [{ title: "Video lời giải", url: initialTest.videoUrl }];
+    }
+    return [{ title: "Phần 1", url: "" }];
+  });
   const [audioUrl, setAudioUrl] = useState(initialTest?.audioUrl || "");
+
+  const [isUploadingExplanation, setIsUploadingExplanation] = useState(false);
 
   const isDirtyRef = useRef(false);
   const markDirty = () => { isDirtyRef.current = true; };
@@ -103,6 +127,40 @@ export default function UnifiedTestBuilder({
   const [fastEntrySectionIdx, setFastEntrySectionIdx] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"matrix" | "explanation">("matrix");
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    setPdfUrl(initialTest?.pdfUrl || "");
+    setDuration(initialTest?.duration || 45);
+    setDueDate(initialTest?.dueDate ? new Date(initialTest.dueDate).toISOString().slice(0, 16) : "");
+    setShowAnswers(initialTest?.showAnswers ?? true);
+    setExplanation(initialTest?.explanation || "");
+    
+    if (initialTest?.solutionVideos && Array.isArray(initialTest.solutionVideos)) {
+      setSolutionVideos(initialTest.solutionVideos);
+    } else if (initialTest?.videoUrl) {
+      setSolutionVideos([{ title: "Video lời giải", url: initialTest.videoUrl }]);
+    } else {
+      setSolutionVideos([{ title: "Video lời giải phần 1", url: "" }]);
+    }
+
+    setAudioUrl(initialTest?.audioUrl || "");
+    setSections(initialTest?.sections?.map((s: any) => ({
+      ...s,
+      questions: s.questions?.map((q: any) => ({ ...q })) || [],
+    })) || [
+      {
+        id: "temp-section-1",
+        name: "Phần 1: Trắc nghiệm",
+        position: 0,
+        questions: [],
+      },
+    ]);
+    resetDirty();
+  }, [initialTest]);
+
+  const [isParseDialogOpen, setIsParseDialogOpen] = useState(false);
+  const [tempParsedQuestions, setTempParsedQuestions] = useState<ParsedQuestion[]>([]);
+  const [parseWarning, setParseWarning] = useState("");
 
   const [sections, setSections] = useState<any[]>(
     initialTest?.sections?.map((s: any) => ({
@@ -127,6 +185,8 @@ export default function UnifiedTestBuilder({
     }
 
     setIsUploading(true);
+    setParseWarning("");
+    setTempParsedQuestions([]);
     try {
       const res = await axios.put<{ publicUrl: string }>(
         `/api/upload/proxy?fileName=${encodeURIComponent(file.name)}`,
@@ -137,7 +197,7 @@ export default function UnifiedTestBuilder({
       markDirty();
       toast.success("Tải file PDF thành công!");
 
-      if (!disableAutoParse && !initialTest) {
+      if (!disableAutoParse) {
         const parseFormData = new FormData();
         parseFormData.append("file", file);
         const parseRes = await fetch("/api/exams/parse-pdf", {
@@ -146,34 +206,54 @@ export default function UnifiedTestBuilder({
         });
         const parseData = await parseRes.json();
 
-        if (parseData.data?.questions?.length > 0) {
-          const parsed = parseData.data.questions;
-          const newQuestions = parsed.map((q: any, i: number) => ({
-            id: `parsed-${Date.now()}-${Math.random().toString(36).slice(2, 9)}-${i}`,
-            position: i,
-            type: "MULTIPLE_CHOICE",
-            correctAnswer: "",
-            points: 1.0,
-            explanation: q.question_category || "",
-            videoUrl: "",
-            audioUrl: "",
-            needsManualGrading: false,
-          }));
-          setSections([
-            {
-              id: `section-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-              name: "Phần 1: Trắc nghiệm",
-              position: 0,
-              questions: newQuestions,
-            },
-          ]);
-          toast.success(`Đã phát hiện ${parsed.length} câu hỏi từ PDF`);
+        if (parseData.status === "warning") {
+          setParseWarning(parseData.message);
+          setIsParseDialogOpen(true);
+        } else if (parseData.data?.questions?.length > 0) {
+          const mapped: ParsedQuestion[] = parseData.data.questions.map(
+            (q: any, i: number) => ({
+              id: `parsed-${Date.now()}-${i}`,
+              order: q.order,
+              question_label: q.question_label,
+              question_category: q.question_category,
+              type: "MULTIPLE_CHOICE" as const,
+              correctAnswer: "",
+            }),
+          );
+          setTempParsedQuestions(mapped);
+          setIsParseDialogOpen(true);
+          toast.success(`Đã bóc tách được ${mapped.length} câu hỏi từ PDF`);
         }
       }
     } catch {
-      toast.error("Lỗi tải file PDF");
+      toast.error("Lỗi tải file hoặc phân tích PDF");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleExplanationPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      toast.error("Vui lòng tải lên file PDF");
+      return;
+    }
+
+    setIsUploadingExplanation(true);
+    try {
+      const res = await axios.put<{ publicUrl: string }>(
+        `/api/upload/proxy?fileName=explanation_${encodeURIComponent(file.name)}`,
+        file,
+        { headers: { "Content-Type": file.type } },
+      );
+      setExplanation(res.data.publicUrl);
+      markDirty();
+      toast.success("Tải file lời giải PDF thành công!");
+    } catch {
+      toast.error("Lỗi tải file lời giải");
+    } finally {
+      setIsUploadingExplanation(false);
     }
   };
 
@@ -232,8 +312,33 @@ export default function UnifiedTestBuilder({
     });
   };
 
+  const handleAddSolutionVideo = () => {
+    markDirty();
+    setSolutionVideos([...solutionVideos, { title: `Phần ${solutionVideos.length + 1}`, url: "" }]);
+  };
+
+  const handleUpdateSolutionVideo = (index: number, field: "title" | "url", value: string) => {
+    markDirty();
+    const newVideos = [...solutionVideos];
+    newVideos[index] = { ...newVideos[index], [field]: value };
+    setSolutionVideos(newVideos);
+  };
+
+  const handleRemoveSolutionVideo = (index: number) => {
+    markDirty();
+    setSolutionVideos(solutionVideos.filter((_, i) => i !== index));
+  };
+
   const handleSave = () => {
     if (!pdfUrl) return toast.error("Vui lòng tải file PDF");
+
+    // Process videos to have default titles if empty
+    const processedVideos = solutionVideos
+      .filter(v => v.url.trim() !== "") // Remove empty URLs
+      .map((v, idx) => ({
+        title: v.title.trim() || `Video lời giải phần ${idx + 1}`,
+        url: v.url.trim()
+      }));
 
     startTransition(async () => {
       try {
@@ -242,7 +347,7 @@ export default function UnifiedTestBuilder({
           duration,
           showAnswers,
           explanation,
-          videoUrl,
+          solutionVideos: processedVideos,
           audioUrl,
           dueDate: dueDate ? new Date(dueDate) : null,
         });
@@ -292,6 +397,33 @@ export default function UnifiedTestBuilder({
     setFastEntrySectionIdx(null);
   };
 
+  const handleConfirmParse = () => {
+    markDirty();
+    const newQuestions = tempParsedQuestions.map((q, i) => ({
+      id: `parsed-final-${Date.now()}-${i}`,
+      position: i,
+      type: q.type,
+      correctAnswer: q.correctAnswer,
+      points: 1.0,
+      category: q.question_category || "",
+      explanation: "",
+      videoUrl: "",
+      audioUrl: "",
+      needsManualGrading: false,
+    }));
+
+    setSections([
+      {
+        id: `section-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        name: "Phần 1: Trắc nghiệm & Tự luận",
+        position: 0,
+        questions: newQuestions,
+      },
+    ]);
+    setIsParseDialogOpen(false);
+    toast.success(`Đã cập nhật ${newQuestions.length} câu hỏi vào ma trận`);
+  };
+
   const handleDelete = async () => {
     if (!initialTest?.id || !onDelete) return;
     if (!confirm("Bạn chắc chắn muốn xóa bài kiểm tra này?")) return;
@@ -323,104 +455,7 @@ export default function UnifiedTestBuilder({
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {!hideHeader && (
-      <header className="min-h-[64px] px-6 border-b flex items-center justify-between shrink-0 bg-white z-50 shadow-sm flex-wrap gap-3 sticky top-0">
-        <div className="flex items-center gap-4 min-w-0">
-          {onBack && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onBack}
-              className="rounded-xl shrink-0"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-            </Button>
-          )}
-          <div className="min-w-0">
-            <h2 className="font-black text-slate-900 truncate max-w-[300px]">
-              {title}
-            </h2>
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              {subtitle}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap justify-end ml-auto w-full lg:w-auto">
-          <div className="flex items-center gap-2 border-r pr-4 mr-2 w-full lg:w-auto">
-            <Label htmlFor="duration" className="text-[10px] font-black uppercase text-slate-400 whitespace-nowrap">
-              Thời gian (Phút):
-            </Label>
-            <Input
-              id="duration"
-              type="number"
-              value={duration}
-              onChange={(e) => { setDuration(Number(e.target.value)); markDirty(); }}
-              className="w-16 h-8 text-xs font-bold"
-            />
-          </div>
-          <div className="flex items-center gap-2 border-r pr-4 mr-2 w-full lg:w-auto">
-            <Label htmlFor="dueDate" className="text-[10px] font-black uppercase text-slate-400 whitespace-nowrap">
-              Hạn nộp:
-            </Label>
-            <Input
-              id="dueDate"
-              type="datetime-local"
-              value={dueDate}
-              onChange={(e) => { setDueDate(e.target.value); markDirty(); }}
-              className="w-44 h-8 text-[11px] font-bold"
-            />
-          </div>
-
-          {previewHref && (
-            <Button
-              variant="outline"
-              asChild
-              className="rounded-xl font-bold gap-2 text-slate-600 border-slate-200 h-9"
-            >
-              <a href={previewHref}>
-                <Eye className="w-4 h-4" />
-                Bài kiểm tra
-              </a>
-            </Button>
-          )}
-
-          {analyticsHref && (
-            <Button
-              variant="outline"
-              asChild
-              className="rounded-xl font-bold gap-2 text-slate-600 border-slate-200 h-9"
-            >
-              <a href={analyticsHref}>
-                <BarChart3 className="w-4 h-4" />
-                Thống kê
-              </a>
-            </Button>
-          )}
-
-          {showDelete && onDelete && (
-            <Button
-              variant="outline"
-              onClick={handleDelete}
-              disabled={isDeleting || !initialTest?.id}
-              className="rounded-xl font-bold gap-2 text-red-600 border-red-200 hover:bg-red-50 h-9"
-            >
-              <Trash2 className="w-4 h-4" />
-              {isDeleting ? "Đang xóa..." : "Xóa bài"}
-            </Button>
-          )}
-
-          <Button
-            onClick={handleSave}
-            disabled={isPending || isUploading}
-            className="rounded-xl font-black gap-2 bg-yellow-500 hover:bg-yellow-600 shadow-lg shadow-yellow-100 h-9"
-          >
-            <Save className="w-4 h-4" />
-            {isPending ? "Đang lưu..." : "Lưu bài kiểm tra"}
-          </Button>
-        </div>
-      </header>
-      )}
+      {/* Header removed per request */}
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-1/2 h-full border-r bg-slate-100 relative group">
@@ -494,8 +529,8 @@ export default function UnifiedTestBuilder({
                 Lời giải toàn bài
               </button>
             </div>
-            {activeTab === "matrix" && (
-              <div className="flex gap-2 items-center">
+            <div className="flex gap-2 items-center">
+              {activeTab === "matrix" && (
                 <div className="flex items-center gap-2 mr-4 border-r pr-4">
                   <Switch
                     id="showAnswers"
@@ -509,54 +544,121 @@ export default function UnifiedTestBuilder({
                     Hiện đáp án
                   </Label>
                 </div>
-                <Button
-                  onClick={handleSave}
-                  disabled={isPending || isUploading}
-                  size="sm"
-                  className="h-8 rounded-lg gap-1.5 font-black bg-yellow-500 hover:bg-yellow-600 shadow-sm shadow-yellow-100"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  {isPending ? "..." : "Lưu"}
-                </Button>
-              </div>
-            )}
+              )}
+              <Button
+                onClick={handleSave}
+                disabled={isPending || isUploading}
+                size="sm"
+                className="h-8 rounded-lg gap-1.5 font-black bg-yellow-500 hover:bg-yellow-600 shadow-sm shadow-yellow-100"
+              >
+                <Save className="w-3.5 h-3.5" />
+                {isPending ? "..." : "Lưu"}
+              </Button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
             {activeTab === "explanation" ? (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="font-bold text-slate-700">
-                    Video lời giải toàn bài (URL)
-                  </Label>
-                  <Input
-                    value={videoUrl}
-                    onChange={(e) => { setVideoUrl(e.target.value); markDirty(); }}
-                    placeholder="https://youtube.com/..."
-                    className="rounded-xl h-12"
-                  />
+              <div className="space-y-8">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-black text-slate-900 uppercase tracking-tight text-sm">
+                      Video lời giải toàn bài
+                    </Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddSolutionVideo}
+                      className="h-8 rounded-lg border-blue-200 text-blue-600 hover:bg-blue-50 font-bold"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1.5" /> Thêm video
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {solutionVideos.map((video, idx) => (
+                      <div key={idx} className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300">
+                        <div className="flex-1 space-y-1">
+                           <Input
+                             value={video.title}
+                             onChange={(e) => handleUpdateSolutionVideo(idx, "title", e.target.value)}
+                             placeholder="Tiêu đề (VD: Phần 1 - Đại số)"
+                             className="h-9 rounded-xl font-bold text-slate-700 bg-slate-50/50"
+                           />
+                           <Input
+                             value={video.url}
+                             onChange={(e) => handleUpdateSolutionVideo(idx, "url", e.target.value)}
+                             placeholder="Dán link Youtube tại đây..."
+                             className="h-9 rounded-xl text-sm"
+                           />
+                        </div>
+                        {solutionVideos.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveSolutionVideo(idx)}
+                            className="mt-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
                 <div className="space-y-2">
                   <Label className="font-bold text-slate-700">
-                    File nghe lời giải toàn bài (URL)
+                    File PDF lời giải chi tiết toàn bài
                   </Label>
-                  <Input
-                    value={audioUrl}
-                    onChange={(e) => { setAudioUrl(e.target.value); markDirty(); }}
-                    placeholder="https://..."
-                    className="rounded-xl h-12"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-bold text-slate-700">
-                    Lời giải chi tiết toàn bài
-                  </Label>
-                  <textarea
-                    value={explanation}
-                    onChange={(e) => { setExplanation(e.target.value); markDirty(); }}
-                    placeholder="Nhập nội dung lời giải chi tiết tại đây..."
-                    className="w-full min-h-[400px] p-6 rounded-[24px] border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium leading-relaxed bg-slate-50/30"
-                  />
+                  {!explanation ? (
+                    <div className="border-2 border-dashed border-slate-200 rounded-[24px] p-12 text-center bg-slate-50/50">
+                      <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 mx-auto">
+                        <Upload className="w-6 h-6 text-slate-300" />
+                      </div>
+                      <p className="text-sm text-slate-500 mb-6">Tải lên file PDF chứa lời giải chi tiết cho toàn bộ đề thi.</p>
+                      <label className="cursor-pointer">
+                        <div className="inline-flex px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 items-center gap-2 text-sm">
+                          <Upload className="w-4 h-4" />
+                          {isUploadingExplanation ? "Đang tải..." : "Chọn file PDF"}
+                        </div>
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="application/pdf"
+                          onChange={handleExplanationPdfUpload}
+                          disabled={isUploadingExplanation}
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-emerald-900 truncate">
+                              {explanation.split('/').pop()}
+                            </p>
+                            <p className="text-[10px] font-bold text-emerald-600 uppercase">File PDF đã tải lên</p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => { setExplanation(""); markDirty(); }}
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl shrink-0"
+                        >
+                          <X className="w-5 h-5" />
+                        </Button>
+                      </div>
+                      <div className="h-[500px] border rounded-2xl overflow-hidden bg-slate-100">
+                        <PDFViewer url={explanation} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -664,47 +766,20 @@ export default function UnifiedTestBuilder({
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <Label className="text-[10px] font-black uppercase text-slate-400">
-                                Video câu hỏi
-                              </Label>
-                              <Input
-                                value={q.videoUrl}
-                                onChange={(e) =>
-                                  handleUpdateQuestion(sIdx, qIdx, "videoUrl", e.target.value)
-                                }
-                                placeholder="Video URL..."
-                                className="h-8 text-[11px] rounded-lg"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-[10px] font-black uppercase text-slate-400">
-                                Audio câu hỏi
-                              </Label>
-                              <Input
-                                value={q.audioUrl}
-                                onChange={(e) =>
-                                  handleUpdateQuestion(sIdx, qIdx, "audioUrl", e.target.value)
-                                }
-                                placeholder="Audio URL..."
-                                className="h-8 text-[11px] rounded-lg"
-                              />
-                            </div>
-                          </div>
                           <div className="space-y-1">
                             <Label className="text-[10px] font-black uppercase text-slate-400">
-                              Lời giải chi tiết câu hỏi
+                              Phạm vi kiến thức (Dạng bài)
                             </Label>
-                            <textarea
-                              value={q.explanation}
+                            <Input
+                              value={q.category || ""}
                               onChange={(e) =>
-                                handleUpdateQuestion(sIdx, qIdx, "explanation", e.target.value)
+                                handleUpdateQuestion(sIdx, qIdx, "category", e.target.value)
                               }
-                              placeholder="Giải thích tại sao chọn đáp án này..."
-                              className="w-full min-h-[60px] p-2 text-[11px] rounded-lg border border-slate-200 focus:ring-1 focus:ring-blue-500 outline-none"
+                              placeholder="VD: Hàm số bậc 3..."
+                              className="h-8 text-[11px] rounded-lg"
                             />
                           </div>
+
                         </div>
                       ))}
                     </div>
@@ -761,6 +836,68 @@ export default function UnifiedTestBuilder({
         }}
         onConfirm={handleFastEntry}
       />
+
+      <Dialog open={isParseDialogOpen} onOpenChange={setIsParseDialogOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-[2rem]">
+          <DialogHeader className="px-8 pt-8 pb-4 shrink-0 bg-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-100">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-black text-slate-900">
+                  Kết quả bóc tách đề thi
+                </DialogTitle>
+                <DialogDescription className="text-sm font-medium text-slate-500">
+                  Hệ thống đã tự động nhận diện các câu hỏi từ file PDF của bạn.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-8 py-2 custom-scrollbar">
+            {parseWarning && (
+              <div className="mb-6 flex items-start gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-200 text-sm text-amber-800">
+                <FileWarning className="w-5 h-5 shrink-0 mt-0.5" />
+                <span className="font-medium leading-relaxed">{parseWarning}</span>
+              </div>
+            )}
+
+            {tempParsedQuestions.length > 0 ? (
+              <ParsedQuestionsForm
+                questions={tempParsedQuestions}
+                onChange={setTempParsedQuestions}
+              />
+            ) : (
+              !parseWarning && (
+                <div className="py-20 text-center">
+                  <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <FileWarning className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <p className="text-slate-500 font-bold">Không tìm thấy câu hỏi nào theo đúng định dạng.</p>
+                </div>
+              )
+            )}
+          </div>
+
+          <DialogFooter className="px-8 py-6 bg-slate-50/80 border-t shrink-0 flex items-center justify-between">
+            <Button
+              variant="ghost"
+              onClick={() => setIsParseDialogOpen(false)}
+              className="rounded-xl font-bold text-slate-500"
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              onClick={handleConfirmParse}
+              disabled={tempParsedQuestions.length === 0}
+              className="rounded-xl px-8 font-black bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100"
+            >
+              Xác nhận và Tạo ma trận
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

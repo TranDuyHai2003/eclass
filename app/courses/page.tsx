@@ -31,24 +31,7 @@ export default async function CoursesPage({
             <div className="sticky top-24 space-y-6">
               <HomeSidebar />
 
-              {/* Featured Badge */}
-              <div className="card-surface bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2rem] p-6 text-white overflow-hidden relative group">
-                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-red-600/20 blur-3xl rounded-full group-hover:bg-red-600/40 transition-all duration-700" />
-                <TrendingUp className="w-8 h-8 text-red-500 mb-4" />
-                <h4 className="text-white text-sm uppercase tracking-wider mb-2">
-                  Thử thách mới
-                </h4>
-                <p className="text-[11px] text-slate-400 font-medium leading-relaxed mb-4">
-                  Hoàn thành 3 bài học trong tuần này để nhận huy hiệu đặc biệt.
-                </p>
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-2 text-[10px] font-black text-red-500 uppercase tracking-widest hover:text-white transition-colors group/btn"
-                >
-                  Tham gia ngay
-                  <ArrowRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
-                </Link>
-              </div>
+
             </div>
           </aside>
 
@@ -105,33 +88,6 @@ export default async function CoursesPage({
                   </div>
                 </div>
               </div>
-            </div> */}
-
-            {/* 2. Stats & Trust Bar */}
-            {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8 border-y border-slate-100 py-8 px-4">
-              {[
-                { label: "Khóa học", value: "50+", icon: BookOpen },
-                { label: "Học viên", value: "10k+", icon: GraduationCap },
-                { label: "Đánh giá", value: "4.9/5", icon: Sparkles },
-                { label: "Video", value: "500+", icon: PlaySquare },
-              ].map((stat, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-4 group hover:translate-y-[-2px] transition-transform"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center group-hover:bg-red-50 transition-colors">
-                    <stat.icon className="w-5 h-5 text-slate-400 group-hover:text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-black text-slate-900 leading-none">
-                      {stat.value}
-                    </p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                      {stat.label}
-                    </p>
-                  </div>
-                </div>
-              ))}
             </div> */}
 
             {/* 3. Courses Section */}
@@ -198,31 +154,7 @@ export default async function CoursesPage({
               </div>
             </div>
 
-            {/* 4. Bottom Call to Action */}
-            {!query && courses.length > 0 && (
-              <div className="bg-red-600 rounded-[3rem] p-10 sm:p-16 text-center text-white relative overflow-hidden shadow-2xl shadow-red-200 mt-20">
-                <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
-                <div className="relative z-10 space-y-8">
-                  <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tighter leading-tight">
-                    Sẵn sàng để trở thành
-                    <br />
-                    thủ khoa toán học?
-                  </h2>
-                  <p className="text-red-100 font-medium uppercase tracking-[0.2em] text-xs sm:text-sm">
-                    Đồng hành cùng hàng nghìn học sinh bứt phá 9+ mỗi năm
-                  </p>
-                  <div className="flex justify-center pt-4">
-                    <Link
-                      href="/register"
-                      className="px-12 py-5 bg-white text-red-600 rounded-[2rem] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all shadow-2xl flex items-center gap-3 group"
-                    >
-                      Đăng ký học ngay
-                      <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            )}
+
           </div>
         </div>
       </main>

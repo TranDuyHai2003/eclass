@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -116,13 +116,9 @@ export default async function CoursePage({
 
               {/* Stats Bar */}
               <div className="flex flex-wrap justify-center lg:justify-start gap-4 sm:gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
-                 <StatItem icon={Clock} label="Thời lượng" value="120 giờ+" />
-                 <div className="w-px h-10 bg-white/10 hidden sm:block" />
                  <StatItem icon={BookOpen} label="Bài học" value={`${totalLessons} Bài`} />
                  <div className="w-px h-10 bg-white/10 hidden sm:block" />
-                 <StatItem icon={Users} label="Học viên" value="5.2k+" />
-                 <div className="w-px h-10 bg-white/10 hidden sm:block" />
-                 <StatItem icon={Star} label="Đánh giá" value="4.9/5" />
+                 <StatItem icon={Zap} label="Hình thức" value="Trực tuyến" />
               </div>
 
               {/* Trust Indicators */}
@@ -296,7 +292,7 @@ export default async function CoursePage({
                           </div>
                           <div className="prose prose-slate max-w-none prose-p:text-slate-600 prose-p:text-sm prose-p:leading-relaxed">
                              <p>Với hơn 10 năm kinh nghiệm trong lĩnh vực giảng dạy và ôn luyện thi Đại học, thầy luôn tâm niệm mang đến những phương pháp giải toán đột phá, tư duy hiện đại và sự truyền cảm hứng mạnh mẽ cho từng học viên.</p>
-                             <p>Hàng ngàn học sinh đã đạt điểm 9+ dưới sự dẫn dắt trực tiếp của thầy mỗi năm.</p>
+                             <p>Hệ thống bài giảng và đề thi được biên soạn tỉ mỉ, giúp học sinh nắm vững kiến thức trọng tâm.</p>
                           </div>
                           <div className="flex gap-4 pt-2">
                              {[
@@ -343,8 +339,7 @@ export default async function CoursePage({
                          {[
                            { icon: Clock, text: "Truy cập không giới hạn" },
                            { icon: FileCheck, text: "Chứng chỉ hoàn thành" },
-                           { icon: BookOpen, text: "50+ Tài liệu PDF độc quyền" },
-                           { icon: Users, text: "Nhóm hỗ trợ học tập kín" }
+                           { icon: BookOpen, text: "Tài liệu PDF độc quyền" },
                          ].map((item, i) => (
                            <div key={i} className="flex items-center gap-3 text-slate-600 group/item">
                               <div className="w-6 h-6 rounded-lg bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100 group-hover/item:border-red-100 group-hover/item:bg-red-50 transition-colors">

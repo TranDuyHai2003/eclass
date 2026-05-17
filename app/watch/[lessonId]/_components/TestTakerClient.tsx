@@ -48,6 +48,15 @@ export default function TestTakerClient({
     // 1. Fetch or create attempt
     startTestAttempt(test.id).then((res) => {
       if (res.success && res.attempt) {
+        // IMPORTANT: If attempt is already completed, redirect to results immediately
+        if (res.attempt.completedAt) {
+          const path = resultsPath
+            ? `${resultsPath}/${res.attempt.id}`
+            : `/watch/${lesson.id}/results/${res.attempt.id}`;
+          router.replace(path);
+          return;
+        }
+
         setAttemptId(res.attempt.id);
         setStartedAt(new Date(res.attempt.startedAt));
 
@@ -63,20 +72,9 @@ export default function TestTakerClient({
       }
       setLoadingInitial(false);
     });
-  }, [test.id]);
+  }, [test.id, lesson.id, resultsPath, router]);
 
-  // Target time based on startedAt + duration
-  const targetDate = startedAt
-    ? new Date(startedAt.getTime() + test.duration * 60000)
-    : null;
-  const timeLeft = useCountdown(targetDate);
-
-  // Set isTimeUp khi countdown chạy xong (startedAt đã có = đang làm bài thực sự)
-  useEffect(() => {
-    if (startedAt && timeLeft.isFinished && !isTimeUp) {
-      setIsTimeUp(true);
-    }
-  }, [timeLeft.isFinished, startedAt]);
+  // Duration count-down has been removed per request (unlimited time)
 
   const handleSubmit = useCallback(() => {
     if (!attemptId) return;
@@ -121,13 +119,7 @@ export default function TestTakerClient({
     });
   }, [attemptId, answers, isTimeUp, test, lesson, resultsPath, router]);
 
-  // Auto-submit khi isTimeUp được set
-  useEffect(() => {
-    if (isTimeUp && attemptId && !isPending) {
-      toast.error("Đã hết thời gian làm bài. Hệ thống đang tự động nộp bài...");
-      handleSubmit();
-    }
-  }, [isTimeUp, attemptId, handleSubmit, isPending]);
+  // Auto-submit on time up has been disabled
 
   // Auto-save logic
   useEffect(() => {
@@ -153,7 +145,7 @@ export default function TestTakerClient({
   }
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50 overflow-hidden relative z-[60] w-full max-w-full">
+    <div className="flex h-screen flex-col bg-[#E2EEFF] overflow-hidden relative z-[60] w-full max-w-full">
       {/* Hide Global Header on Test Page */}
       <style dangerouslySetInnerHTML={{ __html: `
         header { display: none !important; }
@@ -162,7 +154,7 @@ export default function TestTakerClient({
       {/* Main Split - 60/40 vertical on mobile, flex-1/fixed-width on desktop */}
       <div className="flex flex-col md:flex-row flex-1 relative overflow-hidden w-full max-w-full">
         {/* Left/Top: PDF (60% height on mobile, flex-1 on desktop) */}
-        <div className="min-w-0 w-full flex-1 h-[60%] md:h-full border-r relative bg-gray-50 overflow-y-auto custom-scrollbar">
+        <div className="min-w-0 w-full flex-1 h-[60%] md:h-full border-r relative bg-[#E2EEFF] overflow-y-auto custom-scrollbar">
           {test.pdfUrl ? (
             <div className="min-h-full w-full">
               <PDFViewer 
@@ -174,8 +166,8 @@ export default function TestTakerClient({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => router.push(backPath || `/courses/${course.id}`)}
-                      className="h-8 w-8 md:h-9 md:w-9 rounded-lg hover:bg-slate-100 shrink-0"
+                      onClick={() => router.back()}
+                      className="h-8 w-8 md:h-9 md:w-9 rounded-lg hover:bg-white/20 shrink-0"
                     >
                       <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 text-slate-600" />
                     </Button>
@@ -199,19 +191,12 @@ export default function TestTakerClient({
           <div className="h-14 md:h-16 border-b border-slate-200 bg-white flex items-center justify-between px-3 md:px-4 font-black text-slate-800 shadow-sm shrink-0">
             <div className="flex flex-col min-w-0">
                <span className="uppercase tracking-widest text-[8px] md:text-[10px] text-slate-400">PHIẾU TRẢ LỜI</span>
-               <div className="flex items-center gap-1.5 md:gap-2 text-red-600 font-mono font-bold text-xs md:text-base">
-                  <Clock className="w-3 md:w-4 h-3 md:h-4" />
-                  {!startedAt || loadingInitial
-                    ? "--:--:--"
-                    : isTimeUp
-                      ? "00:00:00"
-                      : `${String(timeLeft.hours).padStart(2, "0")}:${String(timeLeft.minutes).padStart(2, "0")}:${String(timeLeft.seconds).padStart(2, "0")}`}
-               </div>
+               <span className="text-xs md:text-sm font-black text-blue-600 uppercase tracking-wider">Đang làm bài</span>
             </div>
             
             <Button
               onClick={handleSubmit}
-              disabled={isPending || (timeLeft.isFinished && isPending)}
+              disabled={isPending}
               className="gap-1.5 md:gap-2 bg-blue-600 hover:bg-blue-700 h-9 md:h-11 text-xs md:text-sm px-4 md:px-6 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-blue-500/20"
             >
               <Send className="h-3.5 md:h-4 w-3.5 md:h-4" />

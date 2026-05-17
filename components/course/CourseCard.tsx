@@ -25,12 +25,17 @@ interface CourseCardProps {
 }
 
 export default function CourseCard({ course, isLocked = false, progress }: CourseCardProps) {
+  const firstLessonId = course.chapters?.[0]?.lessons?.[0]?.id;
   const totalLessons =
     course.chapters?.reduce((acc, ch) => acc + (ch.lessons?.length || 0), 0) ?? 0;
 
+  const targetHref = isLocked 
+    ? "/login" 
+    : `/courses/${course.id}`;
+
   return (
     <Link 
-      href={isLocked ? "/login" : `/courses/${course.id}`}
+      href={targetHref}
       className="group bg-white rounded-[2.5rem] overflow-hidden shadow-lg shadow-slate-200/50 hover:shadow-2xl hover:shadow-red-500/10 transition-all duration-500 flex flex-col h-full relative border border-slate-100/50"
     >
       {/* Thumbnail area */}

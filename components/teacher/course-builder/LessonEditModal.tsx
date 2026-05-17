@@ -33,10 +33,12 @@ import { Trash2, CheckCircle2, Upload, X, PlaySquare, Youtube, Link as LinkIcon 
 import { LibrarySelect } from "./LibrarySelect";
 import VideoPlayer from "@/components/player/VideoPlayer";
 
+import { Switch } from "@/components/ui/switch";
+
 interface LessonEditModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  lesson: Lesson & { attachments: Attachment[]; type: string };
+  lesson: Lesson & { attachments: Attachment[]; type: string; hasHomework?: boolean };
   onSuccess: () => void;
 }
 
@@ -54,6 +56,7 @@ export function LessonEditModal({
   const [type, setType] = useState<string>(lesson.type || "VIDEO");
   const [description, setDescription] = useState(lesson.description || "");
   const [videoUrl, setVideoUrl] = useState(lesson.videoUrl || "");
+  const [hasHomework, setHasHomework] = useState(lesson.hasHomework || false);
   const [attachments, setAttachments] = useState<Attachment[]>(
     lesson.attachments || [],
   );
@@ -67,6 +70,20 @@ export function LessonEditModal({
   const [youtubeInput, setYoutubeInput] = useState("");
 
   const [showPlayer, setShowPlayer] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setTitle(lesson.title);
+      setType(lesson.type || "VIDEO");
+      setDescription(lesson.description || "");
+      setVideoUrl(lesson.videoUrl || "");
+      setHasHomework(lesson.hasHomework || false);
+      setAttachments(lesson.attachments || []);
+      setYoutubeInput("");
+      setShowYoutubeInput(false);
+    }
+  }, [open, lesson.id, lesson.title, lesson.type, lesson.description, lesson.videoUrl, lesson.attachments, lesson.hasHomework]);
+
   useEffect(() => {
     if (open) {
       console.log("[LessonEditModal] Opening modal for lesson:", lesson.id, "videoUrl:", videoUrl);
@@ -89,6 +106,7 @@ export function LessonEditModal({
         description,
         videoUrl,
         type: type as any,
+        hasHomework,
       });
       if (res.success) {
         toast.success("Đã lưu thay đổi");
@@ -237,6 +255,17 @@ export function LessonEditModal({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
+               <div className="space-y-0.5">
+                  <Label className="text-sm font-black text-slate-800 uppercase tracking-tight">Yêu cầu nộp bài tập</Label>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Học sinh phải nộp ảnh hoặc file PDF kết quả bài làm</p>
+               </div>
+               <Switch 
+                 checked={hasHomework}
+                 onCheckedChange={setHasHomework}
+               />
             </div>
 
             {type === "VIDEO" && (

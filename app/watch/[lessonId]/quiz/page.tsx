@@ -61,19 +61,19 @@ export default async function QuizPage({
 
     // TEMPORARILY DISABLED: Match WatchPage behavior to allow all students
     // if (!enrollment || enrollment.status !== "ACTIVE") {
-    //   return redirect(`/courses/${courseId}`);
+    //   return redirect("/courses");
     // }
   }
 
   const course = lesson.chapter.course;
 
   return (
-    <div className="h-screen bg-white">
+    <div className="h-screen bg-[#E2EEFF]">
       <TestTakerClient
         test={lesson.test}
         lesson={lesson}
         course={course}
-        backPath={`/watch/${lessonId}`}
+        backPath="/courses"
       />
     </div>
   );

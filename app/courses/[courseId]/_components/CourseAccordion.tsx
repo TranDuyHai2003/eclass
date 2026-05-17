@@ -76,9 +76,11 @@ export function CourseAccordion({ chapters, isEnrolled }: CourseAccordionProps) 
                      "text-[9px] font-black uppercase tracking-[0.15em]",
                      isOpen ? "text-white/60" : "text-red-600"
                    )}>Chương {idx + 1}</p>
-                   <h3 className="font-black uppercase tracking-tight text-left text-sm sm:text-base line-clamp-1">
-                     {chapter.title}
-                   </h3>
+                   {chapter.title && chapter.title !== `Chương ${idx + 1}` && (
+                     <h3 className="font-black uppercase tracking-tight text-left text-sm sm:text-base line-clamp-1">
+                       {chapter.title}
+                     </h3>
+                   )}
                 </div>
               </div>
               <div className="flex items-center gap-4 flex-shrink-0">

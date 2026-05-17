@@ -106,11 +106,8 @@ export function CountdownTimer({
 
         <div className="mt-4 flex items-center justify-between">
            <div className="flex -space-x-1.5">
-             {[1,2,3].map(i => (
-               <div key={i} className="w-5 h-5 rounded-full border-2 border-indigo-600 bg-indigo-200 overflow-hidden" />
-             ))}
-             <div className="text-[8px] font-bold self-center ml-2 opacity-80 uppercase tracking-tighter">
-               1.2K+ học sinh đang ôn luyện
+             <div className="text-[8px] font-bold self-center opacity-80 uppercase tracking-tighter">
+               Cùng bứt phá điểm số ngay hôm nay
              </div>
            </div>
         </div>

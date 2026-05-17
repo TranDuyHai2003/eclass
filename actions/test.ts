@@ -53,6 +53,7 @@ export async function upsertTest(
     showAnswers: boolean;
     explanation?: string;
     videoUrl?: string;
+    solutionVideos?: any;
     audioUrl?: string;
     dueDate?: Date | null;
   },
@@ -92,6 +93,7 @@ export async function upsertCourseTest(
     showAnswers: boolean;
     explanation?: string;
     videoUrl?: string;
+    solutionVideos?: any;
     audioUrl?: string;
     dueDate?: Date | null;
   },

@@ -438,7 +438,7 @@ export async function deleteCourse(courseId: string) {
 // CHAPTER ACTIONS
 // =============================================
 
-export async function createChapter(courseId: string, title: string) {
+export async function createChapter(courseId: string, title?: string) {
   const session = await auth();
   if (
     !session ||
@@ -452,8 +452,13 @@ export async function createChapter(courseId: string, title: string) {
   });
   const newPosition = lastChapter ? lastChapter.position + 1 : 0;
 
+  const defaultTitle =
+    title && title.trim() !== "" && title !== "Chương mới"
+      ? title
+      : `Chương ${newPosition + 1}`;
+
   const chapter = await prisma.chapter.create({
-    data: { title, courseId, position: newPosition, isHidden: false },
+    data: { title: defaultTitle, courseId, position: newPosition, isHidden: false },
   });
   revalidatePath(`/teacher/courses/${courseId}`);
   return { success: true, chapter };
@@ -474,8 +479,23 @@ export async function updateChapter(
   )
     throw new Error("Unauthorized");
 
+  const currentChapter = await prisma.chapter.findUnique({
+    where: { id: chapterId },
+  });
+
+  if (!currentChapter) {
+    throw new Error("Chapter not found");
+  }
+
+  const updatedData = { ...data };
+  if (updatedData.title !== undefined) {
+    if (updatedData.title.trim() === "") {
+      updatedData.title = `Chương ${currentChapter.position + 1}`;
+    }
+  }
+
   // Validation for publishing
-  if (data.isPublished) {
+  if (updatedData.isPublished) {
     const chapter = await prisma.chapter.findUnique({
       where: { id: chapterId },
       include: { lessons: true },
@@ -491,7 +511,7 @@ export async function updateChapter(
 
   const chapter = await prisma.chapter.update({
     where: { id: chapterId },
-    data,
+    data: updatedData,
   });
   revalidatePath(`/teacher/courses/${chapter.courseId}`);
   return { success: true };
@@ -595,6 +615,7 @@ export async function updateLesson(
     videoUrl?: string;
     isPublished?: boolean;
     isFree?: boolean;
+    hasHomework?: boolean;
     type?: "VIDEO" | "DOCUMENT" | "QUIZ";
   },
 ) {

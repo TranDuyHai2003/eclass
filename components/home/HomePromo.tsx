@@ -112,17 +112,8 @@ export function HomePromo({ targetDate }: HomePromoProps) {
           </div>
           {!isFinished && (
             <div className="mt-6 pt-6 border-t border-white/10 flex items-center justify-center gap-4">
-              <div className="flex -space-x-2">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="w-6 h-6 rounded-full border-2 border-[#A01D24] bg-white overflow-hidden shadow-sm"
-                  />
-                ))}
-              </div>
               <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider">
-                Hơn <span className="text-white">5,000+</span> học sinh đang
-                cùng ôn tập
+                Đang trong chiến dịch bứt phá điểm số
               </p>
             </div>
           )}
