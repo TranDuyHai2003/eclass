@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import Header from "@/components/layout/Header";
 import { Providers } from "./providers";
 import VConsole from "@/components/VConsole";
+import AntiInspectLayout from "@/components/layout/AntiInspectLayout";
 import "./globals.css";
 
 const inter = Inter({
@@ -19,7 +20,7 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "thatdehoctoan - Luyện Thi Đại Học",
   description:
-    "Trang web học Toán luyện thi Đại học hàng đầu, đồng hành cùng học sinh vượt qua kỳ thi THPT Quốc gia với thatdehoctoan.",
+    "Trang web học Toán luyện thi Đại học hàng đầu, đồng hành cùng học sinh vượt qua kỳ thi THPT Quốc gia with thatdehoctoan.",
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",
@@ -45,10 +46,12 @@ export default function RootLayout({
         className={`${inter.variable} ${montserrat.variable} antialiased`}
       >
         <Providers>
-          <VConsole />
-          <Toaster position="top-right" richColors />
-          <Header />
-          {children}
+          <AntiInspectLayout>
+            <VConsole />
+            <Toaster position="top-right" richColors />
+            <Header />
+            {children}
+          </AntiInspectLayout>
         </Providers>
       </body>
     </html>

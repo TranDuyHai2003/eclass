@@ -91,12 +91,7 @@ export default async function Header() {
         </div>
       </div>
 
-      {/* Bottom Tier: Desktop Main Nav */}
-      <div className="hidden md:block bg-white overflow-x-auto whitespace-nowrap border-b border-border/40">
-        <div className="container mx-auto flex h-11 items-center justify-center px-4">
-          <NavLinks role={session?.user?.role} />
-        </div>
-      </div>
+
     </header>
   );
 }

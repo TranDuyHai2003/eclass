@@ -51,6 +51,7 @@ model User {
   videoAssets   VideoAsset[]
   attempts      StudentAttempt[]
   tests         Test[]
+  homeworkSubmissions HomeworkSubmission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -157,6 +158,7 @@ model Lesson {
   position    Int        @default(0)
   isPublished Boolean    @default(false)
   isFree      Boolean    @default(false)
+  hasHomework Boolean    @default(false)
   type        LessonType @default(VIDEO)
 
   muxData  String?
@@ -169,11 +171,36 @@ model Lesson {
   progress    Progress[]
   comments    Comment[]
   test        Test?
+  homeworkSubmissions HomeworkSubmission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([chapterId])
+}
+
+enum HomeworkStatus {
+  PENDING
+  SATISFACTORY
+  UNSATISFACTORY
+}
+
+model HomeworkSubmission {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId  String
+  lesson    Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  
+  attachments Json[] // { name: string, url: string }[]
+  status      HomeworkStatus @default(PENDING)
+  feedback    String? // Nhận xét của giáo viên
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, lessonId])
+  @@index([lessonId])
 }
 
 model Attachment {
@@ -314,7 +341,8 @@ model Test {
   showAnswers Boolean @default(false) // Cho phép xem đáp án ngay sau khi nộp
 
   explanation String? // Lời giải toàn bài
-  videoUrl    String? // Video lời giải toàn bài
+  videoUrl    String? // Video lời giải toàn bài (deprecated in favor of solutionVideos)
+  solutionVideos Json? // Danh sách video lời giải: { title: string, url: string }[]
   audioUrl    String? // File nghe lời giải toàn bài
   dueDate     DateTime? // Hạn nộp bài
 

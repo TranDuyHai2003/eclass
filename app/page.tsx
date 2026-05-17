@@ -7,7 +7,6 @@ export default async function Home() {
   const session = await auth();
   const { courses, lastLesson, stats } = await getDashboardData();
 
-  // Route protection/conditional rendering at the entry point
   if (!session) {
     return <LandingPage courses={courses} />;
   }
@@ -21,4 +20,3 @@ export default async function Home() {
     />
   );
 }
-

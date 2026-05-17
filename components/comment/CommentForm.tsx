@@ -8,7 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { createComment } from "@/actions/comment";
 import { toast } from "sonner";
-import { Loader2, Send, Image as ImageIcon, X, Plus, Paperclip } from "lucide-react";
+import {
+  Loader2,
+  Send,
+  Image as ImageIcon,
+  X,
+  Plus,
+  Paperclip,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import axios from "axios";
 
@@ -64,7 +71,7 @@ export function CommentForm({
             headers: {
               "Content-Type": file.type || "image/jpeg",
             },
-          }
+          },
         );
         if (res.data.publicUrl) {
           uploadedUrls.push(res.data.publicUrl);
@@ -80,7 +87,7 @@ export function CommentForm({
   };
 
   const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+    setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const onSubmit = async (data: CommentFormValues) => {
@@ -102,49 +109,76 @@ export function CommentForm({
     }
   };
 
+  const { ref, ...rest } = register("content");
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className={cn("space-y-4", className)}
+      className={cn("w-full space-y-2", className)}
     >
-      <div className="relative group/form border border-slate-200 rounded-[24px] bg-white focus-within:border-red-500/50 focus-within:shadow-xl focus-within:shadow-red-500/5 transition-all duration-300 overflow-hidden">
-        <Textarea
-          {...register("content")}
+      <div className={cn(
+        "relative group/form border border-slate-200 bg-white focus-within:border-red-500/50 focus-within:shadow-lg focus-within:shadow-red-500/5 transition-all duration-300 overflow-hidden",
+        parentId ? "rounded-xl" : "rounded-2xl"
+      )}>
+        <textarea
+          {...rest}
+          ref={(e) => {
+            ref(e);
+          }}
+          onChange={(e) => {
+            rest.onChange(e);
+            e.target.style.height = "auto";
+            e.target.style.height = `${e.target.scrollHeight}px`;
+          }}
           placeholder={placeholder}
           disabled={isSubmitting}
+          rows={1}
           className={cn(
-            "min-h-[120px] w-full border-none bg-transparent px-5 py-4 resize-none focus-visible:ring-0 text-slate-700 placeholder:text-slate-400 text-sm leading-relaxed",
-            errors.content && "placeholder:text-red-300"
+            parentId ? "min-h-[44px] px-3.5 py-2.5 text-xs" : "min-h-[48px] px-4 py-3 text-sm",
+            "w-full border-none bg-transparent resize-none focus:outline-none focus:ring-0 text-slate-700 placeholder:text-slate-400 leading-relaxed custom-scrollbar max-h-[160px]"
           )}
         />
-        
+
         {/* Image Previews */}
         {images.length > 0 && (
-          <div className="flex flex-wrap gap-3 px-5 pb-3">
+          <div className="flex flex-wrap gap-2 px-4 pb-2.5">
             {images.map((url, i) => (
-              <div key={i} className="relative w-20 h-20 rounded-2xl overflow-hidden border border-slate-100 group/img shadow-sm transition-transform hover:scale-105">
-                <img src={url} alt="Upload" className="w-full h-full object-cover" />
+              <div
+                key={i}
+                className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-100 group/img shadow-sm transition-transform hover:scale-105"
+              >
+                <img
+                  src={url}
+                  alt="Upload"
+                  className="w-full h-full object-cover"
+                />
                 <button
                   type="button"
                   onClick={() => removeImage(i)}
-                  className="absolute top-1.5 right-1.5 bg-slate-900/60 hover:bg-slate-900 p-1.5 rounded-full text-white opacity-0 group-hover/img:opacity-100 transition-all backdrop-blur-sm"
+                  className="absolute top-1 right-1 bg-slate-900/60 hover:bg-slate-900 p-1 rounded-full text-white opacity-0 group-hover/img:opacity-100 transition-all backdrop-blur-sm"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-3 h-3" />
                 </button>
               </div>
             ))}
             {isUploading && (
-              <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 animate-pulse">
-                <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+              <div className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 animate-pulse">
+                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
               </div>
             )}
           </div>
         )}
 
-        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-50 bg-slate-50/50 backdrop-blur-md">
+        <div className={cn(
+          "flex items-center justify-between border-t border-slate-50 bg-slate-50/50 backdrop-blur-md",
+          parentId ? "px-3 py-2" : "px-4 py-2.5"
+        )}>
           <div className="flex items-center gap-1">
-            <label className="cursor-pointer p-2.5 rounded-xl hover:bg-white hover:text-red-600 text-slate-400 transition-all hover:shadow-sm">
-              <Paperclip className="w-5 h-5" />
+            <label className={cn(
+              "cursor-pointer rounded-lg hover:bg-white hover:text-red-600 text-slate-400 transition-all hover:shadow-sm",
+              parentId ? "p-1.5" : "p-2"
+            )}>
+              <Paperclip className={parentId ? "w-4 h-4" : "w-5 h-5"} />
               <input
                 type="file"
                 className="hidden"
@@ -163,32 +197,35 @@ export function CommentForm({
                 variant="ghost"
                 size="sm"
                 onClick={onCancel}
-                className="text-xs font-bold text-slate-400 hover:text-slate-600 px-4 h-10 rounded-xl"
+                className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 px-3 h-7 rounded-lg"
               >
-                Hủy bỏ
+                Hủy
               </Button>
             )}
             <Button
               type="submit"
               size="sm"
               disabled={isSubmitting || isUploading}
-              className="h-10 px-6 rounded-xl bg-slate-900 hover:bg-red-600 text-white font-black uppercase tracking-widest text-[10px] gap-2 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+              className={cn(
+                parentId ? "h-7 px-3.5 rounded-lg text-[9px]" : "h-8.5 px-4.5 rounded-xl text-[10px]",
+                "bg-red-500 hover:bg-red-600 text-white font-black uppercase tracking-widest gap-2 transition-all shadow-md active:scale-95 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+              )}
             >
               {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <>
-                  <span>Đăng bài</span>
-                  <Send className="h-3.5 w-3.5" />
+                  <span>Gửi</span>
+                  <Send className="h-3 w-3" />
                 </>
               )}
             </Button>
           </div>
         </div>
       </div>
-      
+
       {errors.content && (
-        <p className="text-[10px] text-red-500 px-4 font-black uppercase tracking-widest animate-pulse">
+        <p className="text-[10px] text-red-500 px-3 font-semibold tracking-wide animate-pulse">
           {errors.content.message}
         </p>
       )}

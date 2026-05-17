@@ -27,10 +27,6 @@ export function LandingHero() {
       </div>
 
       <div className="container relative z-10 px-4 sm:px-6 text-center space-y-4 sm:space-y-6">
-        <div className="inline-block px-3 py-1 rounded-full border border-red-500/30 bg-red-500/10 text-red-500 text-[9px] sm:text-[10px] font-black uppercase tracking-widest animate-bounce mb-1 sm:mb-2">
-          New Season: Luyện Thi Đại Học 2026
-        </div>
-        
         <div className="space-y-2 sm:space-y-3">
           <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter uppercase leading-[1.1] text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-500 text-balance">
             <span className="block mb-1 sm:mb-2">Làm Chủ</span>

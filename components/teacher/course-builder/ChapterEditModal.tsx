@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Chapter } from "@prisma/client";
 import {
   Dialog,
@@ -32,6 +32,10 @@ export function ChapterEditModal({
   const [title, setTitle] = useState(chapter.title);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    setTitle(chapter.title);
+  }, [chapter.id, chapter.title]);
 
   const handleSave = async () => {
     setIsSaving(true);

@@ -102,7 +102,7 @@ export function CourseBuilder({ course: initialCourse }: CourseBuilderProps) {
   // ==============================
   const handleCreateChapter = async () => {
     startTransition(async () => {
-      await createChapter(course.id, "Chương mới");
+      await createChapter(course.id, "");
       refreshData();
     });
   };
