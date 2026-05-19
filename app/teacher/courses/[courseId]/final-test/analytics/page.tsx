@@ -87,8 +87,8 @@ export default async function CourseFinalTestAnalyticsPage({
     );
   }
 
-  // Ownership check
-  if (course.userId !== session.user.id && session.user.role !== "ADMIN") {
+  // Ownership check - Allow admins and all teachers
+  if (course.userId !== session.user.id && session.user.role !== "ADMIN" && session.user.role !== "TEACHER") {
     return redirect("/");
   }
 

@@ -365,13 +365,13 @@ export default function UnifiedTestBuilder({
     });
   };
 
-  const handleFastEntry = (answers: string[]) => {
+  const handleFastEntry = (answers: string[], type: "MULTIPLE_CHOICE" | "TRUE_FALSE" = "MULTIPLE_CHOICE") => {
     markDirty();
     const batchId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const newQuestions = answers.map((ans, idx) => ({
       id: `temp-q-fast-${batchId}-${idx}`,
       position: idx,
-      type: "MULTIPLE_CHOICE",
+      type,
       correctAnswer: ans.toUpperCase(),
       points: 1.0,
       explanation: "",
@@ -730,6 +730,28 @@ export default function UnifiedTestBuilder({
                                   </button>
                                 ))}
                               </div>
+                            ) : q.type === "TRUE_FALSE" ? (
+                              <div className="flex gap-1">
+                                {[
+                                  { label: "Đúng", value: "T" },
+                                  { label: "Sai", value: "F" },
+                                ].map((opt) => (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() =>
+                                      handleUpdateQuestion(sIdx, qIdx, "correctAnswer", opt.value)
+                                    }
+                                    className={cn(
+                                      "px-3 h-8 rounded-lg border text-[11px] font-black transition-all",
+                                      q.correctAnswer === opt.value
+                                        ? "bg-blue-600 border-blue-600 text-white shadow-md"
+                                        : "bg-white border-slate-200 text-slate-400 hover:border-blue-400 hover:text-blue-500",
+                                    )}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
                             ) : (
                               <Input
                                 value={q.correctAnswer}
@@ -792,6 +814,14 @@ export default function UnifiedTestBuilder({
                         className="rounded-lg border-dashed border-slate-300 text-slate-500 gap-1.5 font-bold"
                       >
                         <Plus className="w-3.5 h-3.5" /> Thêm Trắc nghiệm
+                      </Button>
+                      <Button
+                        onClick={() => handleAddQuestion(sIdx, "TRUE_FALSE")}
+                        size="sm"
+                        variant="outline"
+                        className="rounded-lg border-dashed border-slate-300 text-slate-500 gap-1.5 font-bold"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Thêm Đúng/Sai
                       </Button>
                       <Button
                         onClick={() => handleAddQuestion(sIdx, "SHORT_ANSWER")}

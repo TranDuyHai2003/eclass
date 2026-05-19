@@ -17,9 +17,10 @@ services:
 
   # --- NEXT.JS APP SERVICE ---
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # 1. Đã xóa phần build (context, dockerfile)
+    # 2. Thêm dòng gọi image từ Docker Hub (HÃY THAY <TÊN_DOCKER_CỦA_BẠN> BẰNG USERNAME THẬT)
+    image: haiduytran/eclass-app:latest
+
     container_name: eclass_app
     restart: always
     ports:

@@ -42,8 +42,8 @@ export default async function TestBuilderPage({
 
   if (!lesson) return notFound();
 
-  // Basic ownership check
-  if (lesson.chapter.course.userId !== session.user.id && session.user.role !== "ADMIN") {
+  // Basic ownership check - Allow admins and all teachers
+  if (lesson.chapter.course.userId !== session.user.id && session.user.role !== "ADMIN" && session.user.role !== "TEACHER") {
     return redirect("/");
   }
 

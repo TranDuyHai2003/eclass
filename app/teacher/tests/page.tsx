@@ -31,11 +31,14 @@ export default async function TeacherTestsPage() {
     return redirect("/login");
   }
 
+  const isAdminOrTeacher =
+    session.user.role === "ADMIN" || session.user.role === "TEACHER";
+
   const testBankRecords = await prisma.test.findMany({
     where: {
       lessonId: null,
       courseId: null,
-      userId: session.user.role === "ADMIN" ? undefined : session.user.id,
+      userId: isAdminOrTeacher ? undefined : session.user.id,
     },
     include: {
       sections: {
@@ -68,7 +71,7 @@ export default async function TeacherTestsPage() {
 
   // Fetch courses and their tests (mapping area)
   const courses = await prisma.course.findMany({
-    where: session.user.role === "ADMIN" ? {} : { userId: session.user.id },
+    where: isAdminOrTeacher ? {} : { userId: session.user.id },
     include: {
       finalTest: {
         include: {

@@ -19,7 +19,8 @@ export default async function TeacherCoursesPage() {
     const session = await auth();
     if (!session?.user?.id) return redirect("/login");
 
-    const courses = (await getCourses({ userId: session.user.id })) as unknown as TeacherCourse[]
+    const isAdminOrTeacher = session.user.role === "ADMIN" || session.user.role === "TEACHER";
+    const courses = (await getCourses(isAdminOrTeacher ? {} : { userId: session.user.id })) as unknown as TeacherCourse[]
 
     return (
         <div className="space-y-10">

@@ -91,10 +91,11 @@ export default async function TestAnalyticsPage({
     );
   }
 
-  // Ownership check
+  // Ownership check - Allow admins and all teachers
   if (
     lesson.chapter.course.userId !== session.user.id &&
-    session.user.role !== "ADMIN"
+    session.user.role !== "ADMIN" &&
+    session.user.role !== "TEACHER"
   ) {
     return redirect("/");
   }
