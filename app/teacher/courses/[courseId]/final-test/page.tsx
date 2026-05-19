@@ -31,7 +31,7 @@ export default async function CourseFinalTestPage({
 
   if (!course) return notFound();
 
-  if (course.userId !== session.user.id && session.user.role !== "ADMIN") {
+  if (course.userId !== session.user.id && session.user.role !== "ADMIN" && session.user.role !== "TEACHER") {
     redirect("/teacher/courses");
   }
 

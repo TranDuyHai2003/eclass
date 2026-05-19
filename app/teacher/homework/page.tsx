@@ -10,10 +10,10 @@ export default async function HomeworkManagementPage() {
     redirect("/login");
   }
 
-  const isAdmin = session.user.role === "ADMIN";
+  const isAdminOrTeacher = session.user.role === "ADMIN" || session.user.role === "TEACHER";
 
   const allSubmissions = await prisma.homeworkSubmission.findMany({
-    where: isAdmin ? {} : {
+    where: isAdminOrTeacher ? {} : {
       lesson: {
         chapter: {
           course: {

@@ -248,6 +248,7 @@ export default function TestTakerClient({
                       ? rawType.trim().toUpperCase()
                       : "MULTIPLE_CHOICE";
                     const isChoice = normalizedType === "MULTIPLE_CHOICE" || normalizedType === "MCQ" || normalizedType === "MULTIPLE_CHOICE_SINGLE";
+                    const isTrueFalse = normalizedType === "TRUE_FALSE";
                     const isShort = normalizedType === "SHORT_ANSWER";
                     const isEssay = normalizedType === "ESSAY";
 
@@ -289,6 +290,28 @@ export default function TestTakerClient({
                                   )}
                                 >
                                   {opt}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {isTrueFalse && (
+                            <div className="flex gap-1.5">
+                              {[
+                                { label: "Đúng", value: "T" },
+                                { label: "Sai", value: "F" },
+                              ].map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => handleSelectAnswer(q.id, opt.value)}
+                                  className={cn(
+                                    "px-4 h-8 rounded-lg border text-xs font-black transition-all",
+                                    val === opt.value
+                                      ? "bg-blue-600 text-white border-blue-600 shadow-md scale-105"
+                                      : "bg-white text-slate-500 border-slate-200 hover:border-blue-400 hover:bg-blue-50/30"
+                                  )}
+                                >
+                                  {opt.label}
                                 </button>
                               ))}
                             </div>

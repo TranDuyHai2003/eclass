@@ -29,6 +29,7 @@ export function MobileMenu({ user }: MobileMenuProps) {
         </SheetTrigger>
         <SheetContent
           side="left"
+          onOpenAutoFocus={(event) => event.preventDefault()}
           className="p-0 border-none bg-white w-[280px] sm:w-[320px] shadow-2xl"
         >
           <div className="flex flex-col h-full">

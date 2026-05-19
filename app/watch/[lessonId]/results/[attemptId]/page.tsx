@@ -213,6 +213,8 @@ export default async function TestResultPage({
                                           <ExternalLink className="w-3 h-3" />
                                         </a>
                                       ) : "Làm ra giấy"
+                                    ) : (q.type as any) === "TRUE_FALSE" ? (
+                                      studentAns?.answerProvided === "T" ? "Đúng" : studentAns?.answerProvided === "F" ? "Sai" : "Bỏ trống"
                                     ) : (studentAns?.answerProvided || "Bỏ trống")}
                                   </p>
                                 </div>
@@ -223,7 +225,7 @@ export default async function TestResultPage({
                                       Đáp án đúng
                                     </p>
                                     <p className="font-black text-base md:text-lg text-emerald-600">
-                                      {q.correctAnswer}
+                                      {(q.type as any) === "TRUE_FALSE" ? (q.correctAnswer === "T" ? "Đúng" : "Sai") : q.correctAnswer}
                                     </p>
                                   </div>
                                 )}

@@ -65,10 +65,8 @@ export async function upsertTest(
     include: { chapter: { include: { course: true } } },
   });
 
-  if (!lesson || lesson.chapter.course.userId !== session.user.id) {
-    if (session.user.role !== "ADMIN") {
-      throw new Error("Unauthorized access to this lesson");
-    }
+  if (!lesson || (lesson.chapter.course.userId !== session.user.id && session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
+    throw new Error("Unauthorized access to this lesson");
   }
 
   const test = await prisma.test.upsert({
@@ -101,10 +99,8 @@ export async function upsertCourseTest(
   const session = await requireTeacherOrAdmin();
 
   const course = await prisma.course.findUnique({ where: { id: courseId } });
-  if (!course || course.userId !== session.user.id) {
-    if (session.user.role !== "ADMIN") {
-      throw new Error("Unauthorized access to this course");
-    }
+  if (!course || (course.userId !== session.user.id && session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
+    throw new Error("Unauthorized access to this course");
   }
 
   const test = await prisma.test.upsert({
@@ -129,7 +125,7 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
     if (typeof raw !== "string") return "MULTIPLE_CHOICE";
     const type = raw.trim().toUpperCase();
     if (type === "MCQ" || type === "MULTIPLE_CHOICE_SINGLE") return "MULTIPLE_CHOICE";
-    if (type === "SHORT_ANSWER" || type === "ESSAY" || type === "MULTIPLE_CHOICE") return type;
+    if (type === "TRUE_FALSE" || type === "SHORT_ANSWER" || type === "ESSAY" || type === "MULTIPLE_CHOICE") return type;
     return "MULTIPLE_CHOICE";
   };
 
@@ -151,7 +147,7 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
   if (!test) throw new Error("Test not found");
 
   const ownerId = test.lesson?.chapter?.course?.userId ?? test.course?.userId;
-  if (ownerId !== session.user.id && session.user.role !== "ADMIN") {
+  if (ownerId !== session.user.id && session.user.role !== "ADMIN" && session.user.role !== "TEACHER") {
     throw new Error("Unauthorized access to this test");
   }
 
@@ -292,6 +288,8 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
     if (q) {
       if (q.type === 'MULTIPLE_CHOICE') {
         isCorrect = ans.answerProvided === q.correctAnswer;
+      } else if (q.type === 'TRUE_FALSE') {
+        isCorrect = ans.answerProvided === q.correctAnswer;
       } else if (q.type === 'SHORT_ANSWER') {
         isCorrect = normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
       } else if (q.type === 'ESSAY') {
@@ -372,8 +370,10 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
 export async function getTeacherCoursesWithLessons() {
   const session = await requireTeacherOrAdmin();
 
+  const isAdminOrTeacher = session.user.role === "ADMIN" || session.user.role === "TEACHER";
+
   const courses = await prisma.course.findMany({
-    where: session.user.role === "ADMIN" ? {} : { userId: session.user.id },
+    where: isAdminOrTeacher ? {} : { userId: session.user.id },
     orderBy: { updatedAt: "desc" },
     include: {
       chapters: {
@@ -407,7 +407,7 @@ export async function mapTestToLesson(testId: string, lessonId: string) {
   if (!test) throw new Error("Test not found");
 
   const ownerId = test.lesson?.chapter?.course?.userId ?? test.course?.userId ?? test.userId;
-  if (ownerId !== session.user.id && session.user.role !== "ADMIN") {
+  if (ownerId !== session.user.id && session.user.role !== "ADMIN" && session.user.role !== "TEACHER") {
     throw new Error("Unauthorized");
   }
 
@@ -445,7 +445,7 @@ export async function unmapTest(testId: string) {
   if (!test) throw new Error("Test not found");
 
   const ownerId = test.lesson?.chapter?.course?.userId ?? test.course?.userId ?? test.userId;
-  if (ownerId !== session.user.id && session.user.role !== "ADMIN") {
+  if (ownerId !== session.user.id && session.user.role !== "ADMIN" && session.user.role !== "TEACHER") {
     throw new Error("Unauthorized");
   }
 
@@ -490,7 +490,7 @@ export async function gradeStudentAnswer(
   const ownerId =
     answer.attempt.test.lesson?.chapter?.course?.userId ??
     answer.attempt.test.course?.userId;
-  if (ownerId !== session.user.id && session.user.role !== "ADMIN") {
+  if (ownerId !== session.user.id && session.user.role !== "ADMIN" && session.user.role !== "TEACHER") {
     throw new Error("Unauthorized access");
   }
 
