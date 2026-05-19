@@ -35,7 +35,12 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd ~/eclass
-            # Kéo bản build mới nhất về (siêu nhanh)
+
+            # 1. Kéo file cấu hình mới nhất (docker-compose.yml, .env...) từ Github về VPS
+            git pull origin master
+
+            # 2. Kéo bản build mới nhất từ Docker Hub về (siêu nhanh)
             docker pull ${{ secrets.DOCKER_USERNAME }}/eclass-app:latest
-            # Chạy lại container, nó sẽ tự động dùng image mới thay cho cũ
-            docker compose up -d
+
+            # 3. Ép Docker đập bỏ container cũ và chạy lại bằng image mới
+            docker compose up -d --force-recreate app
