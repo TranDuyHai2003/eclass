@@ -250,7 +250,10 @@ export default function ProfileClient({ user }: ProfileClientProps) {
 
           {/* Log Out Button */}
           <button
-            onClick={() => signOut({ callbackUrl: window.location.origin + "/login" })}
+            onClick={async () => {
+              await signOut({ redirect: false });
+              window.location.href = "/login";
+            }}
             className="px-6 py-4 bg-slate-950 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all"
           >
             Đăng xuất hệ thống
