@@ -13,7 +13,7 @@ import {
   defaultLayoutIcons,
   DefaultVideoLayout,
 } from "@vidstack/react/player/layouts/default";
-import { useRef, CSSProperties, useEffect } from "react";
+import { useRef, CSSProperties, useEffect, useState } from "react";
 
 interface VideoPlayerProps {
   src: string;
@@ -53,8 +53,34 @@ export default function VideoPlayer({
   subtitles,
 }: VideoPlayerProps) {
   const playerRef = useRef<MediaPlayerInstance>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const isYoutube = isYoutubeUrl(src);
   const youtubeId = isYoutube ? getYoutubeId(src) : null;
+
+  useEffect(() => {
+    // Detect mobile device
+    const checkMobile = () => {
+      const ua = navigator.userAgent;
+      const mobile = /Android|iPhone|iPad|iPod/i.test(ua);
+      setIsMobile(mobile);
+      console.log("[VideoPlayer] Device Check:", { mobile, ua });
+    };
+    checkMobile();
+  }, []);
+
+  // Force muted if autoplay on mobile
+  const finalMuted = isMobile && autoPlay ? true : muted;
+
+  if (isYoutube && !youtubeId) {
+    return (
+      <div className="aspect-video w-full bg-slate-950 flex items-center justify-center rounded-[12px] border border-white/10 shadow-2xl">
+        <div className="text-center p-6">
+          <p className="text-white font-medium mb-2">Không thể tải video</p>
+          <p className="text-white/40 text-xs">Đường dẫn YouTube không hợp lệ hoặc đã bị gỡ bỏ.</p>
+        </div>
+      </div>
+    );
+  }
 
   const actualPoster =
     isYoutube && !poster && youtubeId
@@ -67,9 +93,11 @@ export default function VideoPlayer({
       title,
       isYoutube,
       autoPlay,
-      muted,
+      muted: finalMuted,
+      originalMuted: muted,
+      isMobile,
     });
-  }, [src, title, isYoutube, autoPlay, muted]);
+  }, [src, title, isYoutube, autoPlay, finalMuted, isMobile]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -79,7 +107,12 @@ export default function VideoPlayer({
   const handleProviderSetup = (provider: any) => {
     if (provider.type === "youtube") {
       provider.cookies = true;
+      console.log("[VideoPlayer] YouTube provider setup");
     }
+  };
+
+  const handlePlayError = (detail: any) => {
+    console.error("[VideoPlayer] Play Error:", detail);
   };
 
   return (
@@ -94,31 +127,16 @@ export default function VideoPlayer({
     --video-brand: #3b82f6;
   }
 
-  /* ĐÃ XÓA FIX 1 CỦA BẠN: 
-     Vidstack tự động quản lý pointer-events của iframe để vượt rào Autoplay iOS/Android. 
-     Việc tự ý set pointer-events sẽ làm hỏng luồng click nội bộ của Vidstack. */
+  /* GỠ BỎ CÁC CSS CAN THIỆP SÂU GÂY LỖI TRÊN MOBILE NHƯ GỢI Ý */
+  /* Vidstack tự quản lý z-index và pointer-events rất tốt, ta chỉ can thiệp tối thiểu */
 
-  /* FIX 1 MỚI: Đưa lớp Gesture (chạm để hiện/ẩn UI) xuống dưới cùng để KHÔNG che mất nút Play */
-  vds-media-player vds-gesture {
-    z-index: 10 !important;
-  }
-
-  /* FIX 2: Nâng cụm Controls lên trên Gesture */
-  vds-media-player .vds-controls {
-    z-index: 40 !important;
-  }
-
-  /* FIX 3: Ép nút Play ở giữa luôn nổi lên trên cùng, 
-     và thêm touch-action để fix lỗi đơ click / delay tap trên Mobile */
   .vds-button[slot="centered-play"],
   .vds-play-button[data-center] {
-    z-index: 9999 !important;
-    pointer-events: auto !important;
-    touch-action: manipulation !important; /* <--- CỰC KỲ QUAN TRỌNG TRÊN MOBILE */
+    touch-action: manipulation !important; /* Giảm độ trễ tap trên mobile */
     cursor: pointer !important;
   }
 
-  /* FIX LỖI 2 ICON SVG TRONG NÚT PLAY */
+  /* FIX LỖI 2 ICON SVG TRONG NÚT PLAY (vẫn giữ vì là lỗi hiển thị) */
   .vds-play-button[data-paused] [data-pause-icon] {
     display: none !important;
   }
@@ -129,15 +147,11 @@ export default function VideoPlayer({
     display: block; 
   }
 
-  /* UI Tùy chỉnh */
+  /* UI Tùy chỉnh nhẹ nhàng */
   vds-media-slider {
     --vds-slider-track-height: 4px;
     --vds-slider-thumb-size: 16px;
     --vds-slider-active-color: var(--video-brand);
-  }
-
-  vds-media-slider:hover {
-    --vds-slider-track-height: 6px;
   }
 
   @media (max-width: 768px) {
@@ -147,14 +161,6 @@ export default function VideoPlayer({
   .vds-title {
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     font-weight: 800 !important;
-  }
-
-  vds-media-player[data-paused] .vds-provider::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.2);
-    pointer-events: none;
   }
 `,
         }}
@@ -167,8 +173,9 @@ export default function VideoPlayer({
         logLevel="warn"
         playsInline
         autoPlay={autoPlay}
-        muted={muted}
+        muted={finalMuted}
         onProviderSetup={handleProviderSetup}
+        onPlayFail={handlePlayError}
         {...(isYoutube ? {} : { crossOrigin: "anonymous" })}
         className="w-full aspect-video bg-black text-white font-sans overflow-hidden ring-media-focus data-[focus]:ring-4 group relative"
         style={
@@ -185,7 +192,6 @@ export default function VideoPlayer({
         <MediaProvider>
           {actualPoster && (
             <Poster
-              /* ĐÃ SỬA: Bổ sung pointer-events-none để lớp mờ này không hấp thụ sự kiện Touch */
               className="absolute inset-0 block h-full w-full opacity-0 transition-opacity data-[visible]:opacity-100 object-cover z-10 pointer-events-none"
               src={actualPoster}
               alt={title}
