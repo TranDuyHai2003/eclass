@@ -22,10 +22,19 @@ import {
   TooltipProvider, 
   TooltipTrigger 
 } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { filterStudents, PerformanceFilter } from "@/lib/analytics-utils";
+import { AnalyticsExportButton } from "@/components/analytics/AnalyticsExportButton";
 
 interface SmartMatrixProps {
   courseId: string;
@@ -36,10 +45,12 @@ interface SmartMatrixProps {
 export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<PerformanceFilter>("all");
+  const [studentTypeFilter, setStudentTypeFilter] = useState<"all" | "ONLINE" | "OFFLINE">("all");
 
   const filteredMatrix = filterStudents(matrix, { 
     searchQuery, 
-    performanceFilter: statusFilter 
+    performanceFilter: statusFilter,
+    studentTypeFilter
   });
 
   return (
@@ -69,13 +80,34 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
           ))}
         </div>
 
-        <div className="relative w-full md:w-[260px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <Input
-            placeholder="Tìm học sinh..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-10 rounded-xl border-slate-200 text-xs font-bold"
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <Select value={studentTypeFilter} onValueChange={(v: any) => setStudentTypeFilter(v)}>
+            <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold w-full sm:w-[150px]">
+              <SelectValue placeholder="Học sinh..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả lớp</SelectItem>
+              <SelectItem value="ONLINE">Học Online</SelectItem>
+              <SelectItem value="OFFLINE">Học Offline</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div className="relative w-full md:w-[260px]">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input
+              placeholder="Tìm học sinh..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 rounded-xl border-slate-200 text-xs font-bold"
+            />
+          </div>
+
+          <AnalyticsExportButton 
+            data={{ tests, matrix: filteredMatrix }}
+            mode="matrix"
+            filename={`Ma_tran_diem_khoa_hoc_${courseId}`}
+            variant="premium"
+            className="w-full sm:w-auto"
           />
         </div>
       </div>
@@ -144,13 +176,26 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
                   </TableCell>
 
                   {/* Name - Clickable to Cấp độ 2 */}
-                  <TableCell className="font-bold text-slate-900 sticky left-[60px] bg-white group-hover:bg-slate-50 z-20 border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
-                    <Link
-                      href={`/teacher/courses/${courseId}/analytics/students/${student.studentId}`}
-                      className="hover:text-blue-600 hover:underline"
-                    >
-                      {student.studentName}
-                    </Link>
+                  <TableCell className="sticky left-[60px] bg-white group-hover:bg-slate-50 z-20 border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                    <div className="flex flex-col">
+                      <Link
+                        href={`/teacher/courses/${courseId}/analytics/students/${student.studentId}`}
+                        className="font-bold text-slate-900 hover:text-blue-600 hover:underline"
+                      >
+                        {student.studentName}
+                      </Link>
+                      <div className="mt-1">
+                        <Badge 
+                          variant="secondary" 
+                          className={cn(
+                              "text-[9px] font-black uppercase tracking-tight px-1 py-0 h-4",
+                              student.studentType === "OFFLINE" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                          )}
+                        >
+                          {student.studentType}
+                        </Badge>
+                      </div>
+                    </div>
                   </TableCell>
 
                   {/* Average Score */}

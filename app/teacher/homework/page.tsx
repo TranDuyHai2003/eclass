@@ -28,7 +28,8 @@ export default async function HomeworkManagementPage() {
           id: true,
           name: true,
           email: true,
-          image: true
+          image: true,
+          studentType: true,
         }
       },
       lesson: {

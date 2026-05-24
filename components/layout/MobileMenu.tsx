@@ -54,7 +54,7 @@ export function MobileMenu({ user }: MobileMenuProps) {
               <MobileSearchBar onSearch={() => setOpen(false)} />
               
               <div className="px-4 mt-6">
-                <HomeSidebar user={user} />
+                <HomeSidebar user={user} onClick={() => setOpen(false)} />
               </div>
 
               <div className="mt-8 px-8 pb-10 space-y-6">

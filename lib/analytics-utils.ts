@@ -5,23 +5,31 @@ export type PerformanceFilter = "all" | "excellent" | "passed" | "failed" | "com
 export interface StudentFilterParams {
   searchQuery: string;
   performanceFilter: PerformanceFilter;
+  studentTypeFilter?: "all" | "ONLINE" | "OFFLINE";
 }
 
 /**
  * Common filtering logic for student analytics data
  */
-export function filterStudents<T extends { studentName?: string; name?: string; averageScore?: number; stats?: { averageScore: number; completedCount: number; totalAssigned: number }; missedCount?: number; completedCount?: number }>(
+export function filterStudents<T extends { studentName?: string; name?: string; averageScore?: number; stats?: { averageScore: number; completedCount: number; totalAssigned: number }; missedCount?: number; completedCount?: number; studentType?: string }>(
   data: T[],
   params: StudentFilterParams
 ): T[] {
-  const { searchQuery, performanceFilter } = params;
+  const { searchQuery, performanceFilter, studentTypeFilter = "all" } = params;
   const query = searchQuery.trim().toLowerCase();
 
   return data.filter((student) => {
+    // 1. Student Type Filter
+    if (studentTypeFilter !== "all" && student.studentType !== studentTypeFilter) {
+      return false;
+    }
+
+    // 2. Search Filter
     const name = (student.studentName || student.name || "").toLowerCase();
     const matchesSearch = name.includes(query);
-    
     if (!matchesSearch) return false;
+
+    // 3. Performance Filter
     if (performanceFilter === "all") return true;
 
     const score = student.averageScore ?? student.stats?.averageScore ?? 0;

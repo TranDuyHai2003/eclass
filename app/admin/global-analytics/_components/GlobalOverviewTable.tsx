@@ -21,10 +21,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { filterStudents, PerformanceFilter } from "@/lib/analytics-utils";
+import { AnalyticsExportButton } from "@/components/analytics/AnalyticsExportButton";
 
 interface GlobalOverviewTableProps {
   data: any[];
@@ -33,6 +41,7 @@ interface GlobalOverviewTableProps {
 export function GlobalOverviewTable({ data }: GlobalOverviewTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<PerformanceFilter>("all");
+  const [studentTypeFilter, setStudentTypeFilter] = useState<"all" | "ONLINE" | "OFFLINE">("all");
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
 
   const toggleRow = (id: string) => {
@@ -43,7 +52,8 @@ export function GlobalOverviewTable({ data }: GlobalOverviewTableProps) {
 
   const filteredData = filterStudents(data, {
     searchQuery,
-    performanceFilter: statusFilter
+    performanceFilter: statusFilter,
+    studentTypeFilter
   });
 
   return (
@@ -73,13 +83,34 @@ export function GlobalOverviewTable({ data }: GlobalOverviewTableProps) {
           ))}
         </div>
 
-        <div className="relative w-full md:w-[260px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <Input
-            placeholder="Tìm học sinh..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-10 rounded-xl border-slate-200 text-xs font-bold"
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <Select value={studentTypeFilter} onValueChange={(v: any) => setStudentTypeFilter(v)}>
+            <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold w-full sm:w-[150px]">
+              <SelectValue placeholder="Học sinh..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả lớp</SelectItem>
+              <SelectItem value="ONLINE">Học Online</SelectItem>
+              <SelectItem value="OFFLINE">Học Offline</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div className="relative w-full md:w-[260px]">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input
+              placeholder="Tìm học sinh..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 rounded-xl border-slate-200 text-xs font-bold"
+            />
+          </div>
+
+          <AnalyticsExportButton 
+            data={filteredData}
+            mode="overview"
+            filename="Bao_cao_tong_hop_hoc_sinh"
+            variant="premium"
+            className="w-full sm:w-auto"
           />
         </div>
       </div>
@@ -126,7 +157,18 @@ export function GlobalOverviewTable({ data }: GlobalOverviewTableProps) {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-900">{student.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">{student.name}</span>
+                          <Badge 
+                            variant="secondary" 
+                            className={cn(
+                                "text-[10px] font-black uppercase tracking-tight px-1.5 py-0",
+                                student.studentType === "OFFLINE" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                            )}
+                          >
+                            {student.studentType}
+                          </Badge>
+                        </div>
                         <span className="text-xs text-slate-400">{student.email}</span>
                       </div>
                     </TableCell>

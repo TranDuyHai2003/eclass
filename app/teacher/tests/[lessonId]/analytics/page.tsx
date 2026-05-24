@@ -149,6 +149,7 @@ export default async function TestAnalyticsPage({
       name: a.user.name,
       email: a.user.email,
       image: a.user.image,
+      studentType: a.user.studentType,
     },
     score: a.score ?? null,
     startedAt: a.startedAt.toISOString(),
