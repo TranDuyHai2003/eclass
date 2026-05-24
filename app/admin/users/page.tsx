@@ -1,24 +1,52 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react"
-import { getUsers, toggleUserApproval, deleteUser, updateUserRole } from "@/actions/user"
+import { getUsers, toggleUserApproval, deleteUser, updateUserRole, updateStudentType } from "@/actions/user"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { User } from "@prisma/client"
+import { User, StudentType, Role } from "@prisma/client"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { Trash2, ShieldCheck, ShieldAlert, Info } from "lucide-react"
+import { Trash2, ShieldCheck, ShieldAlert, Info, Search, Filter } from "lucide-react"
+import { Input } from "@/components/ui/input"
 
 export default function UserManagementPage() {
     const [users, setUsers] = useState<User[]>([])
+    const [filteredUsers, setFilteredUsers] = useState<User[]>([])
     const [loading, setLoading] = useState(true)
     const [isPending, startTransition] = useTransition()
+    
+    // Filters
+    const [search, setSearch] = useState("")
+    const [roleFilter, setRoleFilter] = useState<Role | "ALL">("ALL")
+    const [typeFilter, setTypeFilter] = useState<StudentType | "ALL">("ALL")
 
     useEffect(() => {
         loadUsers()
     }, [])
+
+    useEffect(() => {
+        let result = users
+        
+        if (search) {
+            result = result.filter(u => 
+                u.name?.toLowerCase().includes(search.toLowerCase()) || 
+                u.email.toLowerCase().includes(search.toLowerCase())
+            )
+        }
+        
+        if (roleFilter !== "ALL") {
+            result = result.filter(u => u.role === roleFilter)
+        }
+        
+        if (typeFilter !== "ALL") {
+            result = result.filter(u => u.studentType === typeFilter)
+        }
+        
+        setFilteredUsers(result)
+    }, [search, roleFilter, typeFilter, users])
 
     const loadUsers = async () => {
         try {
@@ -46,7 +74,7 @@ export default function UserManagementPage() {
         })
     }
 
-    const handleRoleChange = async (userId: string, newRole: "ADMIN" | "TEACHER" | "STUDENT") => {
+    const handleRoleChange = async (userId: string, newRole: Role) => {
         startTransition(async () => {
             const res = await updateUserRole(userId, newRole)
             if (res.success) {
@@ -56,6 +84,20 @@ export default function UserManagementPage() {
                 ))
             } else {
                 toast.error(res.error || "Không thể cập nhật quyền")
+            }
+        })
+    }
+
+    const handleTypeChange = async (userId: string, newType: StudentType) => {
+        startTransition(async () => {
+            const res = await updateStudentType(userId, newType)
+            if (res.success) {
+                toast.success("Đã cập nhật hình thức học")
+                setUsers(prev => prev.map(u => 
+                    u.id === userId ? { ...u, studentType: newType } : u
+                ))
+            } else {
+                toast.error(res.error || "Không thể cập nhật hình thức học")
             }
         })
     }
@@ -92,64 +134,153 @@ export default function UserManagementPage() {
                 </div>
             </div>
 
+            {/* Filters */}
+            <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input 
+                        placeholder="Tìm kiếm theo tên hoặc email..." 
+                        className="pl-10 h-11 rounded-2xl border-slate-200"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
+                <div className="flex gap-2">
+                    <Select value={roleFilter} onValueChange={(val) => setRoleFilter(val as any)}>
+                        <SelectTrigger className="w-[140px] h-11 rounded-2xl border-slate-200">
+                            <div className="flex items-center gap-2">
+                                <Filter className="w-3.5 h-3.5 text-slate-500" />
+                                <SelectValue placeholder="Vai trò" />
+                            </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="ALL">Tất cả vai trò</SelectItem>
+                            <SelectItem value="ADMIN">ADMIN</SelectItem>
+                            <SelectItem value="TEACHER">TEACHER</SelectItem>
+                            <SelectItem value="STUDENT">STUDENT</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={typeFilter} onValueChange={(val) => setTypeFilter(val as any)}>
+                        <SelectTrigger className="w-[140px] h-11 rounded-2xl border-slate-200">
+                            <div className="flex items-center gap-2">
+                                <Filter className="w-3.5 h-3.5 text-slate-500" />
+                                <SelectValue placeholder="Hình thức" />
+                            </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="ALL">Tất cả hình thức</SelectItem>
+                            <SelectItem value="ONLINE">Online</SelectItem>
+                            <SelectItem value="OFFLINE">Offline</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
             <div className="card-surface rounded-[2rem] overflow-x-auto border border-border/50">
-                <div className="min-w-[700px] md:min-w-full">
+                <div className="min-w-[800px] md:min-w-full">
                     <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Tên</TableHead>
+                            <TableHead>Thông tin</TableHead>
                             <TableHead className="hidden sm:table-cell">Email</TableHead>
                             <TableHead className="hidden sm:table-cell">Vai trò</TableHead>
+                            <TableHead className="hidden sm:table-cell">Hình thức</TableHead>
                             <TableHead className="hidden sm:table-cell">Trạng thái</TableHead>
                             <TableHead className="text-right">Hành động</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {users.map(user => (
+                        {filteredUsers.map(user => (
                             <TableRow key={user.id}>
                                 <TableCell>
-                                    <div className="font-medium">{user.name || "N/A"}</div>
-                                    <div className="text-xs text-muted-foreground sm:hidden">{user.email}</div>
-                                    <div className="flex flex-wrap gap-2 mt-2 sm:hidden">
+                                    <div className="font-bold text-slate-900">{user.name || "Chưa đặt tên"}</div>
+                                    <div className="text-[10px] text-muted-foreground sm:hidden">{user.email}</div>
+                                    <div className="flex flex-wrap gap-1.5 mt-2 sm:hidden">
                                         <Select 
                                             defaultValue={user.role} 
                                             onValueChange={(val) => handleRoleChange(user.id, val as any)}
                                             disabled={isPending}
                                         >
-                                            <SelectTrigger className="w-[100px] h-6 text-[10px] font-semibold border-slate-200">
+                                            <SelectTrigger className="w-[90px] h-7 text-[10px] font-bold border-slate-200 rounded-lg">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="ADMIN" className="text-[10px] font-semibold text-blue-600">ADMIN</SelectItem>
-                                                <SelectItem value="TEACHER" className="text-[10px] font-semibold text-blue-600">TEACHER</SelectItem>
-                                                <SelectItem value="STUDENT" className="text-[10px] font-semibold">STUDENT</SelectItem>
+                                                <SelectItem value="ADMIN" className="text-[10px] font-bold text-blue-600">ADMIN</SelectItem>
+                                                <SelectItem value="TEACHER" className="text-[10px] font-bold text-blue-600">TEACHER</SelectItem>
+                                                <SelectItem value="STUDENT" className="text-[10px] font-bold">STUDENT</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-6 flex items-center ${user.isApproved ? "bg-green-100 text-green-700 border-green-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}>
-                                            {user.isApproved ? "Đã duyệt" : "Chưa duyệt"}
+
+                                        {user.role === "STUDENT" && (
+                                            <Select 
+                                                defaultValue={user.studentType} 
+                                                onValueChange={(val) => handleTypeChange(user.id, val as any)}
+                                                disabled={isPending}
+                                            >
+                                                <SelectTrigger className={cn(
+                                                    "w-[90px] h-7 text-[10px] font-bold border-slate-200 rounded-lg",
+                                                    user.studentType === "OFFLINE" ? "bg-orange-50 text-orange-700" : "bg-blue-50 text-blue-700"
+                                                )}>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="ONLINE" className="text-[10px] font-bold">ONLINE</SelectItem>
+                                                    <SelectItem value="OFFLINE" className="text-[10px] font-bold">OFFLINE</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                        
+                                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-7 flex items-center rounded-lg ${user.isApproved ? "bg-green-100 text-green-700 border-green-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}>
+                                            {user.isApproved ? "Duyệt" : "Chờ"}
                                         </Badge>
                                     </div>
                                 </TableCell>
-                                <TableCell className="hidden sm:table-cell">{user.email}</TableCell>
+                                <TableCell className="hidden sm:table-cell text-xs font-medium text-slate-500">{user.email}</TableCell>
                                 <TableCell className="hidden sm:table-cell">
                                     <Select 
                                         defaultValue={user.role} 
                                         onValueChange={(val) => handleRoleChange(user.id, val as any)}
                                         disabled={isPending}
                                     >
-                                        <SelectTrigger className="w-[120px] h-8 text-xs font-semibold border-slate-200 bg-slate-50 hover:bg-slate-100">
+                                        <SelectTrigger className="w-[110px] h-8 text-xs font-bold border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-xl">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="ADMIN" className="text-xs font-semibold text-blue-600">ADMIN</SelectItem>
-                                            <SelectItem value="TEACHER" className="text-xs font-semibold text-blue-600">TEACHER</SelectItem>
-                                            <SelectItem value="STUDENT" className="text-xs font-semibold text-slate-700">STUDENT</SelectItem>
+                                            <SelectItem value="ADMIN" className="text-xs font-bold text-blue-600">ADMIN</SelectItem>
+                                            <SelectItem value="TEACHER" className="text-xs font-bold text-blue-600">TEACHER</SelectItem>
+                                            <SelectItem value="STUDENT" className="text-xs font-bold text-slate-700">STUDENT</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </TableCell>
                                 <TableCell className="hidden sm:table-cell">
-                                    <Badge variant="outline" className={`${user.isApproved ? "bg-green-100 text-green-700 hover:bg-green-200 border-green-200" : "bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200"}`}>
-                                        {user.isApproved ? "Đã duyệt" : "Chưa duyệt"}
+                                    {user.role === "STUDENT" ? (
+                                        <Select 
+                                            defaultValue={user.studentType} 
+                                            onValueChange={(val) => handleTypeChange(user.id, val as any)}
+                                            disabled={isPending}
+                                        >
+                                            <SelectTrigger className={cn(
+                                                "w-[110px] h-8 text-xs font-bold border-transparent rounded-xl transition-colors",
+                                                user.studentType === "OFFLINE" ? "bg-orange-100 text-orange-700 hover:bg-orange-200" : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                            )}>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="ONLINE" className="text-xs font-bold text-blue-700">ONLINE</SelectItem>
+                                                <SelectItem value="OFFLINE" className="text-xs font-bold text-orange-700">OFFLINE</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest pl-2">N/A</span>
+                                    )}
+                                </TableCell>
+                                <TableCell className="hidden sm:table-cell">
+                                    <Badge variant="outline" className={cn(
+                                        "rounded-xl px-3 py-1 text-[10px] font-black uppercase tracking-widest border-transparent",
+                                        user.isApproved ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                                    )}>
+                                        {user.isApproved ? "Đã duyệt" : "Chờ duyệt"}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -160,7 +291,7 @@ export default function UserManagementPage() {
                                             onClick={() => handleToggleApproval(user.id, user.isApproved)}
                                             disabled={isPending}
                                             className={cn(
-                                                user.isApproved ? "border-amber-500 text-amber-600 hover:bg-amber-50" : "bg-green-600 hover:bg-green-700",
+                                                user.isApproved ? "border-amber-500 text-amber-600 hover:bg-amber-50 rounded-xl" : "bg-green-600 hover:bg-green-700 rounded-xl",
                                                 "px-2 sm:px-3 h-8 sm:h-9"
                                             )}
                                             title={user.isApproved ? "Khóa tài khoản" : "Duyệt tài khoản"}
@@ -178,7 +309,7 @@ export default function UserManagementPage() {
                                             onClick={() => handleDelete(user.id)}
                                             disabled={isPending}
                                             title="Xóa người dùng"
-                                            className="h-8 sm:h-9 w-8 sm:w-9 p-0"
+                                            className="h-8 sm:h-9 w-8 sm:w-9 p-0 rounded-xl"
                                         >
                                             <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                         </Button>
@@ -188,6 +319,15 @@ export default function UserManagementPage() {
                         ))}
                     </TableBody>
                     </Table>
+                    {filteredUsers.length === 0 && (
+                        <div className="p-20 text-center space-y-3">
+                            <div className="text-slate-300 flex justify-center"><Search className="w-12 h-12" /></div>
+                            <p className="text-slate-500 font-bold tracking-tight uppercase">Không tìm thấy người dùng nào phù hợp</p>
+                            <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setRoleFilter("ALL"); setTypeFilter("ALL"); }}>
+                                Xóa bộ lọc
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

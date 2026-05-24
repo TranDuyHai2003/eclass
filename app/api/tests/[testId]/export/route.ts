@@ -79,8 +79,17 @@ export async function GET(
     });
   });
 
-  // Overwrite with attempt data
+  // Overwrite with attempt data - KEEPING ONLY THE HIGHEST SCORE
+  const bestAttemptsMap = new Map<string, typeof test.attempts[0]>();
+  
   test.attempts.forEach(attempt => {
+    const existing = bestAttemptsMap.get(attempt.userId);
+    if (!existing || (attempt.score || 0) > (existing.score || 0)) {
+      bestAttemptsMap.set(attempt.userId, attempt);
+    }
+  });
+
+  bestAttemptsMap.forEach(attempt => {
     const student = attempt.user;
     const correctCount = attempt.answers.filter(a => a.isCorrect === true).length;
     

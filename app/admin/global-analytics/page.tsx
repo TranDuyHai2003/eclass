@@ -169,19 +169,6 @@ export default async function GlobalAnalyticsPage({
             </p>
           </div>
         </div>
-        <AnalyticsExportButton 
-          apiUrl={matrixData 
-            ? `/api/courses/${courseIds[0]}/analytics/export?month=${new Date().getMonth() + 1}&year=${new Date().getFullYear()}`
-            : `/api/analytics/global-export?${new URLSearchParams({
-                ...(startDate && { startDate }),
-                ...(endDate && { endDate }),
-                ...(courseIdsRaw && { courseIds: courseIdsRaw })
-              }).toString()}`
-          }
-          filename={matrixData ? `Thong_ke_Ma_tran_${courseIds[0]}` : `Bao_cao_tong_hop_eClass`}
-          variant="premium"
-          className="border-white/20 hover:bg-white/10 shadow-none"
-        />
       </div>
     </div>
   );

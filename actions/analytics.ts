@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
+import { StudentType } from "@prisma/client"
 
 export async function getAnalytics() {
     const session = await auth()
@@ -71,7 +72,7 @@ export async function getAnalytics() {
     const topUserIds = topUsersGrouped.map(item => item.userId)
     const topUsersDetails = await prisma.user.findMany({
         where: { id: { in: topUserIds } },
-        select: { id: true, name: true, email: true, image: true }
+        select: { id: true, name: true, email: true, image: true, studentType: true }
     })
 
     const topUsers = topUsersDetails.map(user => {
@@ -230,7 +231,7 @@ export async function getCourseProgressMatrix(courseId: string, month: number, y
     // 1. Get all students enrolled in the course (ACTIVE or PENDING)
     const enrollments = await prisma.enrollment.findMany({
         where: { courseId, status: { in: ["ACTIVE", "PENDING"] } },
-        include: { user: { select: { id: true, name: true, email: true } } }
+        include: { user: { select: { id: true, name: true, email: true, studentType: true } } }
     });
     
     // 2. Get all tests in this course
@@ -275,7 +276,7 @@ export async function getCourseProgressMatrix(courseId: string, month: number, y
     const extraStudents = extraStudentIds.length > 0 
         ? await prisma.user.findMany({
             where: { id: { in: extraStudentIds } },
-            select: { id: true, name: true, email: true }
+            select: { id: true, name: true, email: true, studentType: true }
           })
         : [];
 
@@ -348,6 +349,7 @@ export async function getCourseProgressMatrix(courseId: string, month: number, y
             studentId: student.id,
             studentName: student.name || student.email,
             studentEmail: student.email,
+            studentType: student.studentType,
             testStatuses,
             totalScore,
             completedCount,
@@ -491,6 +493,7 @@ export async function getGlobalTestAnalytics(filters: {
             name: true,
             email: true,
             image: true,
+            studentType: true,
             enrollments: {
                 select: {
                     course: {

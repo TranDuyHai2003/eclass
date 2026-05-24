@@ -37,9 +37,10 @@ const DiscordIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 interface HomeSidebarProps {
   user?: any;
+  onClick?: () => void;
 }
 
-export function HomeSidebar({ user: propUser }: HomeSidebarProps) {
+export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
   const [showDiscordModal, setShowDiscordModal] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -131,6 +132,7 @@ export function HomeSidebar({ user: propUser }: HomeSidebarProps) {
               e.preventDefault();
               setShowDiscordModal(true);
             }
+            if (onClick) onClick();
           }}
           className={cn(
             "flex items-center justify-between p-3 transition-all rounded-xl group",
@@ -183,6 +185,9 @@ export function HomeSidebar({ user: propUser }: HomeSidebarProps) {
               href={item.href}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => {
+                if (onClick) onClick();
+              }}
               className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#FFF1F2]/40 transition-all text-slate-600 hover:text-blue-600 group"
             >
               <div

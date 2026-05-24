@@ -47,6 +47,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           role: user.role,
+          studentType: user.studentType,
           image: user.image,
         };
       },
@@ -59,6 +60,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.role && session.user) {
         session.user.role = token.role as Role;
       }
+      if (token.studentType && session.user) {
+        session.user.studentType = token.studentType as any;
+      }
       if (token.sub && session.user) {
         session.user.id = token.sub;
       }
@@ -67,12 +71,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.sub) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.sub },
-          select: { name: true, image: true, role: true }
+          select: { name: true, image: true, role: true, studentType: true }
         });
         if (dbUser) {
           session.user.name = dbUser.name;
           session.user.image = dbUser.image;
           session.user.role = dbUser.role as Role;
+          session.user.studentType = dbUser.studentType;
         }
       }
 

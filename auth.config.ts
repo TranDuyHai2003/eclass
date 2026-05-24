@@ -11,6 +11,7 @@ export default {
     jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = (user as any).role;
+        token.studentType = (user as any).studentType;
         token.id = user.id;
       }
 

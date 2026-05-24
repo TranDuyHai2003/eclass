@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { gradeHomework } from "@/actions/homework";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 interface TeacherHomeworkReviewProps {
   submissions: any[];
@@ -153,7 +154,18 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
                      {sub.user.image ? <img src={sub.user.image} alt="" className="w-full h-full object-cover" /> : <User className="w-6 h-6" />}
                   </div>
                   <div>
-                     <p className="font-black text-slate-800 uppercase tracking-tight">{sub.user.name || "Học viên"}</p>
+                     <div className="flex items-center gap-2">
+                        <p className="font-black text-slate-800 uppercase tracking-tight">{sub.user.name || "Học viên"}</p>
+                        <Badge 
+                            variant="secondary" 
+                            className={cn(
+                                "text-[9px] font-black uppercase tracking-tight px-1.5 py-0",
+                                sub.user.studentType === "OFFLINE" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                            )}
+                        >
+                            {sub.user.studentType}
+                        </Badge>
+                     </div>
                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{sub.user.email}</p>
                   </div>
                </div>

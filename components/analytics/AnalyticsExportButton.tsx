@@ -30,7 +30,7 @@ interface AnalyticsExportButtonProps {
   /**
    * Mode for CSV export
    */
-  mode?: "overview" | "matrix";
+  mode?: "overview" | "matrix" | "scoreboard";
 }
 
 export function AnalyticsExportButton({
@@ -70,13 +70,14 @@ export function AnalyticsExportButton({
         // Client-side CSV Export (as seen in previous logic)
         let csvContent = "";
         if (mode === "overview") {
-            csvContent = "Hoc sinh,Email,Khoa hoc,So bai hoan thanh,Tong so bai,Ti le (%),Diem TB\n";
+            csvContent = "Hoc sinh,Email,Hinh thuc,Khoa hoc,So bai hoan thanh,Tong so bai,Ti le (%),Diem TB\n";
             const students = data as any[];
             students.forEach(student => {
               const courseTitles = student.courses.map((c: any) => c.title).join("; ");
               const row = [
                 `"${student.name}"`,
                 `"${student.email}"`,
+                `"${student.studentType}"`,
                 `"${courseTitles}"`,
                 student.stats.completedCount,
                 student.stats.totalAssigned,
@@ -88,18 +89,44 @@ export function AnalyticsExportButton({
         } else if (mode === "matrix") {
             const { tests, matrix } = data;
             const testTitles = tests.map((t: any) => `"${t.title}"`).join(",");
-            csvContent = `Hoc sinh,Diem TB,${testTitles},Bo bai\n`;
+            csvContent = `Hoc sinh,Hinh thuc,Diem TB,${testTitles},Bo bai\n`;
             matrix.forEach((student: any) => {
               const scores = student.testStatuses.map((s: any) => 
                 s.status === "COMPLETED" ? s.score : "X"
               ).join(",");
               const row = [
                 `"${student.studentName}"`,
+                `"${student.studentType}"`,
                 student.averageScore,
                 scores,
                 student.missedCount
               ].join(",");
               csvContent += row + "\n";
+            });
+        } else if (mode === "scoreboard") {
+            csvContent = "Hoc sinh,Email,Diem,Bat dau,Ket thuc\n";
+            const attempts = data as any[];
+            
+            // Deduplicate: keep only the highest score per user
+            const bestAttemptsMap = new Map<string, any>();
+            attempts.forEach(attempt => {
+                const key = attempt.user.email || attempt.user.name;
+                const existing = bestAttemptsMap.get(key);
+                if (!existing || (attempt.score || 0) > (existing.score || 0)) {
+                    bestAttemptsMap.set(key, attempt);
+                }
+            });
+
+            const uniqueAttempts = Array.from(bestAttemptsMap.values());
+            uniqueAttempts.forEach(attempt => {
+                const row = [
+                    `"${attempt.user.name}"`,
+                    `"${attempt.user.email}"`,
+                    attempt.score !== null ? attempt.score : "Chua hoan thanh",
+                    `"${attempt.startedAt}"`,
+                    `"${attempt.completedAt || ""}"`
+                ].join(",");
+                csvContent += row + "\n";
             });
         }
 

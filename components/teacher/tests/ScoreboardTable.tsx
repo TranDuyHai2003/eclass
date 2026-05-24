@@ -22,6 +22,7 @@ export interface ScoreboardAttempt {
     name: string | null;
     email: string | null;
     image: string | null;
+    studentType: string;
   };
   score: number | null;
   startedAt: string;
@@ -74,12 +75,16 @@ export default function ScoreboardTable({
         return true;
       })
       .filter((attempt) => {
+        if (classFilter === "all") return true;
+        return attempt.user.studentType === classFilter;
+      })
+      .filter((attempt) => {
         if (!normalizedSearch) return true;
         const name = attempt.user.name?.toLowerCase() || "";
         const email = attempt.user.email?.toLowerCase() || "";
         return name.includes(normalizedSearch) || email.includes(normalizedSearch);
       });
-  }, [attempts, search, status]);
+  }, [attempts, search, status, classFilter]);
 
   const sortedAttempts = useMemo(() => {
     return [...filteredAttempts].sort((a, b) => {
@@ -152,6 +157,8 @@ export default function ScoreboardTable({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả lớp</SelectItem>
+                <SelectItem value="ONLINE">Học Online</SelectItem>
+                <SelectItem value="OFFLINE">Học Offline</SelectItem>
               </SelectContent>
             </Select>
 
@@ -166,7 +173,8 @@ export default function ScoreboardTable({
             </div>
 
             <AnalyticsExportButton
-              apiUrl={testId ? `/api/tests/${testId}/export` : undefined}
+              data={sortedAttempts}
+              mode="scoreboard"
               filename={testId ? `Ket_qua_bai_thi_${testId}` : undefined}
               variant="outline"
               className="px-4"

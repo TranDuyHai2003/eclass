@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
+import { StudentType, Role } from "@prisma/client"
 
 export async function getUsers() {
     const session = await auth()
@@ -40,7 +41,7 @@ export async function toggleUserApproval(userId: string) {
     }
 }
 
-export async function updateUserRole(userId: string, newRole: "ADMIN" | "TEACHER" | "STUDENT") {
+export async function updateUserRole(userId: string, newRole: Role) {
     const session = await auth()
     if (!session || session.user.role !== "ADMIN") {
         return { success: false, error: "Unauthorized" }
@@ -58,6 +59,29 @@ export async function updateUserRole(userId: string, newRole: "ADMIN" | "TEACHER
         await prisma.user.update({
             where: { id: userId },
             data: { role: newRole }
+        })
+
+        revalidatePath("/admin/users")
+        return { success: true }
+    } catch (error) {
+        console.error(error)
+        return { success: false, error: "Internal Server Error" }
+    }
+}
+
+export async function updateStudentType(userId: string, newType: StudentType) {
+    const session = await auth()
+    if (!session || session.user.role !== "ADMIN") {
+        return { success: false, error: "Unauthorized" }
+    }
+
+    try {
+        const user = await prisma.user.findUnique({ where: { id: userId } })
+        if (!user) return { success: false, error: "User not found" }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { studentType: newType }
         })
 
         revalidatePath("/admin/users")

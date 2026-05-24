@@ -140,12 +140,14 @@ export default async function CourseFinalTestAnalyticsPage({
       name: a.user.name,
       email: a.user.email,
       image: a.user.image,
+      studentType: a.user.studentType,
     },
     score: a.score ?? null,
     startedAt: a.startedAt.toISOString(),
     completedAt: a.completedAt ? a.completedAt.toISOString() : null,
     answersCount: a.answers.length,
   }));
+
 
   let qCounter = 1;
   const killerQuestions = test.sections.flatMap(s => s.questions.map(q => {

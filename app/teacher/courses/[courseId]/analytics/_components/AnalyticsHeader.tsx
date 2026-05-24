@@ -76,11 +76,6 @@ export const AnalyticsHeader = ({
             </SelectContent>
           </Select>
         </div>
-
-        <AnalyticsExportButton
-          apiUrl={`/api/courses/${courseId}/analytics/export?month=${month}&year=${year}`}
-          filename={`Thống_kê_${courseTitle.replace(/\s+/g, "_")}_Tháng_${month}_${year}`}
-        />
       </div>
     </div>
   );

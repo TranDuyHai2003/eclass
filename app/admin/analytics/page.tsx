@@ -5,6 +5,9 @@ import { getAnalytics } from "@/actions/analytics"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "sonner"
+import { StudentType } from "@prisma/client"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
 type AnalyticsData = {
     overall: {
@@ -27,6 +30,7 @@ type AnalyticsData = {
         name: string | null
         email: string
         completedLessons: number
+        studentType: StudentType
     }[]
 }
 
@@ -181,7 +185,18 @@ export default function AnalyticsPage() {
                                 {data.topUsers.map((user) => (
                                     <TableRow key={user.id}>
                                         <TableCell>
-                                            <div className="font-medium">{user.name || "N/A"}</div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="font-medium">{user.name || "N/A"}</div>
+                                                <Badge 
+                                                    variant="secondary" 
+                                                    className={cn(
+                                                        "text-[10px] font-black uppercase tracking-tight px-1.5 py-0",
+                                                        user.studentType === "OFFLINE" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                                                    )}
+                                                >
+                                                    {user.studentType}
+                                                </Badge>
+                                            </div>
                                             <div className="text-sm text-muted-foreground">{user.email}</div>
                                         </TableCell>
                                         <TableCell className="text-right font-bold w-[100px]">

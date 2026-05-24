@@ -13,6 +13,11 @@ enum Role {
   TEACHER
 }
 
+enum StudentType {
+  ONLINE
+  OFFLINE
+}
+
 enum EnrollmentStatus {
   PENDING
   ACTIVE
@@ -40,6 +45,7 @@ model User {
   image         String?
   password      String?
   role          Role      @default(STUDENT)
+  studentType   StudentType @default(ONLINE)
   isApproved    Boolean   @default(false)
   accounts      Account[]
   sessions      Session[]
