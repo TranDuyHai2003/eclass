@@ -41,11 +41,24 @@ export default function CourseCard({ course, isLocked = false, progress }: Cours
     >
       {/* Thumbnail area with vibrant overlay */}
       <div className="aspect-[16/10] relative overflow-hidden bg-slate-100 shrink-0">
-        <img 
-          src={course.thumbnail || "/placeholder-course.jpg"} 
-          alt={course.title}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-        />
+        {course.thumbnail ? (
+          <img 
+            src={course.thumbnail} 
+            alt={course.title}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+            <div className="text-center">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-white/80 flex items-center justify-center shadow-sm border border-slate-200/60 mb-2">
+                <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{course.title?.slice(0, 2) || "..."}</p>
+            </div>
+          </div>
+        )}
 
         {/* Premium Badge */}
         <div className="absolute top-4 left-4 z-10">

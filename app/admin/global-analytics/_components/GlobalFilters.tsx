@@ -19,6 +19,7 @@ export function GlobalFilters({ courses }: GlobalFiltersProps) {
 
   const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
   const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
+  const [studentType, setStudentType] = useState(searchParams.get("studentType") || "all");
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>(
     searchParams.get("courseIds")?.split(",").filter(Boolean) || []
   );
@@ -30,6 +31,9 @@ export function GlobalFilters({ courses }: GlobalFiltersProps) {
 
     if (endDate) params.set("endDate", endDate);
     else params.delete("endDate");
+
+    if (studentType && studentType !== "all") params.set("studentType", studentType);
+    else params.delete("studentType");
 
     if (selectedCourseIds.length > 0) params.set("courseIds", selectedCourseIds.join(","));
     else params.delete("courseIds");
@@ -46,6 +50,7 @@ export function GlobalFilters({ courses }: GlobalFiltersProps) {
   const clearFilters = () => {
     setStartDate("");
     setEndDate("");
+    setStudentType("all");
     setSelectedCourseIds([]);
     router.push("?");
   };
@@ -69,6 +74,28 @@ export function GlobalFilters({ courses }: GlobalFiltersProps) {
             onChange={(e) => setEndDate(e.target.value)}
             className="bg-transparent border-none text-sm focus:ring-0 text-slate-600 mr-2"
           />
+        </div>
+
+        {/* Student Type Toggle */}
+        <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100">
+            {[
+                { id: "all", label: "Tất cả" },
+                { id: "ONLINE", label: "Online" },
+                { id: "OFFLINE", label: "Offline" },
+            ].map((type) => (
+                <button
+                    key={type.id}
+                    onClick={() => setStudentType(type.id)}
+                    className={cn(
+                        "px-4 py-1.5 rounded-xl text-xs font-bold transition-all",
+                        studentType === type.id 
+                            ? "bg-white text-slate-900 shadow-sm" 
+                            : "text-slate-400 hover:text-slate-600"
+                    )}
+                >
+                    {type.label}
+                </button>
+            ))}
         </div>
 
         {/* Course Multi-select Popover */}

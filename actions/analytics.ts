@@ -220,17 +220,21 @@ export async function getAttemptStatistics(attemptId: string) {
   };
 }
 
-export async function getCourseProgressMatrix(courseId: string, month: number, year: number) {
+export async function getCourseProgressMatrix(courseId: string, month: number, year: number, studentType?: StudentType) {
     const session = await auth();
     if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
         throw new Error("Unauthorized");
     }
 
-    console.log(`[MATRIX] Fetching progress for course: ${courseId}, month: ${month}/${year}`);
+    console.log(`[MATRIX] Fetching progress for course: ${courseId}, month: ${month}/${year}, type: ${studentType}`);
 
     // 1. Get all students enrolled in the course (ACTIVE or PENDING)
     const enrollments = await prisma.enrollment.findMany({
-        where: { courseId, status: { in: ["ACTIVE", "PENDING"] } },
+        where: { 
+            courseId, 
+            status: { in: ["ACTIVE", "PENDING"] },
+            user: studentType ? { studentType } : undefined
+        },
         include: { user: { select: { id: true, name: true, email: true, studentType: true } } }
     });
     
@@ -264,7 +268,10 @@ export async function getCourseProgressMatrix(courseId: string, month: number, y
 
     // 3. Find any additional students who took tests in this course but aren't in the enrollment list
     const attemptsForThisCourse = await prisma.studentAttempt.findMany({
-        where: { testId: { in: testIds } },
+        where: { 
+            testId: { in: testIds },
+            user: studentType ? { studentType } : undefined
+        },
         select: { userId: true },
         distinct: ['userId']
     });
@@ -275,7 +282,10 @@ export async function getCourseProgressMatrix(courseId: string, month: number, y
     
     const extraStudents = extraStudentIds.length > 0 
         ? await prisma.user.findMany({
-            where: { id: { in: extraStudentIds } },
+            where: { 
+                id: { in: extraStudentIds },
+                studentType: studentType ? studentType : undefined
+            },
             select: { id: true, name: true, email: true, studentType: true }
           })
         : [];
@@ -332,7 +342,8 @@ export async function getCourseProgressMatrix(courseId: string, month: number, y
                     testId: test.id,
                     status: "COMPLETED",
                     score: bestAttempt.score,
-                    completedAt: bestAttempt.completedAt
+                    completedAt: bestAttempt.completedAt,
+                    attemptId: bestAttempt.id
                 };
             } else {
                 return {
@@ -364,7 +375,14 @@ export async function getCourseProgressMatrix(courseId: string, month: number, y
 
     return {
         tests: filteredTests.map(t => ({ id: t.id, title: t.lessonTitle })),
-        matrix
+        matrix,
+        summary: {
+            totalStudents: matrix.length,
+            onlineStudents: matrix.filter(s => s.studentType === 'ONLINE').length,
+            offlineStudents: matrix.filter(s => s.studentType === 'OFFLINE').length,
+            averageScore: matrix.length > 0 ? matrix.reduce((acc, s) => acc + s.averageScore, 0) / matrix.length : 0,
+            averageCompletion: matrix.length > 0 ? matrix.reduce((acc, s) => acc + (s.completedCount / (s.completedCount + s.missedCount)) * 100, 0) / matrix.length : 0,
+        }
     };
 }
 
@@ -470,13 +488,14 @@ export async function getGlobalTestAnalytics(filters: {
     startDate?: string;
     endDate?: string;
     courseIds?: string[];
+    studentType?: StudentType;
 }) {
     const session = await auth();
     if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
         throw new Error("Unauthorized");
     }
 
-    const { startDate, endDate, courseIds } = filters;
+    const { startDate, endDate, courseIds, studentType } = filters;
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
 
@@ -484,6 +503,7 @@ export async function getGlobalTestAnalytics(filters: {
     const students = await prisma.user.findMany({
         where: {
             role: 'STUDENT',
+            studentType: studentType ? studentType : undefined,
             enrollments: courseIds && courseIds.length > 0
                 ? { some: { courseId: { in: courseIds } } }
                 : undefined,
@@ -549,7 +569,7 @@ export async function getGlobalTestAnalytics(filters: {
 
     // 2. Get all tests in the selected courses to calculate "Total Assigned"
     const allTests = await prisma.test.findMany({
-        where: (courseIds && courseIds.length > 0) 
+        where: (courseIds && courseIds.length > 0)
             ? {
                 OR: [
                     { courseId: { in: courseIds } },
@@ -564,9 +584,11 @@ export async function getGlobalTestAnalytics(filters: {
             },
         select: {
             id: true,
+            title: true,
             courseId: true,
             lesson: {
                 select: {
+                    title: true,
                     chapter: {
                         select: {
                             courseId: true
@@ -641,6 +663,7 @@ export async function getGlobalTestAnalytics(filters: {
             name: student.name || student.email,
             email: student.email,
             image: student.image,
+            studentType: student.studentType,
             courses: courseProgress,
             stats: {
                 totalAssigned,
@@ -650,6 +673,7 @@ export async function getGlobalTestAnalytics(filters: {
             },
             // For the expandable row (backwards compatibility)
             details: studentAttempts.map(a => ({
+                id: a.id,
                 testId: a.testId,
                 testTitle: a.test.lesson?.title || (a.test.courseId ? "Bài kiểm tra cuối khóa" : a.test.title),
                 score: a.score,
@@ -659,9 +683,64 @@ export async function getGlobalTestAnalytics(filters: {
         };
     });
 
+    // Calculate score distribution
+    const distribution = {
+        excellent: results.filter(s => s.stats.averageScore >= 8).length,
+        good: results.filter(s => s.stats.averageScore >= 6.5 && s.stats.averageScore < 8).length,
+        average: results.filter(s => s.stats.averageScore >= 5 && s.stats.averageScore < 6.5).length,
+        weak: results.filter(s => s.stats.averageScore < 5).length,
+    };
+
+    const scores = results.map(s => s.stats.averageScore).filter(s => s > 0);
+    const maxScore = scores.length > 0 ? Math.max(...scores) : 0;
+    const minScore = scores.length > 0 ? Math.min(...scores) : 0;
+
+    // Build courses schema for multi-level matrix
+    const coursesSchemaMap = new Map<string, { id: string, title: string, tests: { id: string, title: string }[] }>();
+    
+    // Sort allTests by ID or creation for consistent default numbering
+    const sortedAllTests = [...allTests].sort((a, b) => a.id.localeCompare(b.id));
+
+    sortedAllTests.forEach((t, idx) => {
+        const cId = t.courseId || t.lesson?.chapter?.courseId;
+        // Priority: Manually set title -> Lesson title -> Automatic "Bài [Index]"
+        const testTitle = t.title || t.lesson?.title || (t.courseId ? "Bài kiểm tra cuối khóa" : `Bài ${idx + 1}`);
+        
+        if (cId) {
+            if (!coursesSchemaMap.has(cId)) {
+                coursesSchemaMap.set(cId, { id: cId, title: "Course", tests: [] }); // We will update title below
+            }
+            coursesSchemaMap.get(cId)!.tests.push({ id: t.id, title: testTitle });
+        }
+    });
+
+    // Populate course titles
+    coursesSchemaMap.forEach((courseSchema, courseId) => {
+        const sampleStudentCourse = results.find(s => s.courses.find(c => c.id === courseId))?.courses.find(c => c.id === courseId);
+        if (sampleStudentCourse) {
+            courseSchema.title = sampleStudentCourse.title;
+        } else {
+             // fallback to direct db query if no student has it but test exists
+             courseSchema.title = "Khóa học " + courseId.slice(-4);
+        }
+    });
+
+    const coursesSchema = Array.from(coursesSchemaMap.values());
+
     return {
         students: results,
-        totalTestsAcrossFilteredCourses: allTests.length
+        coursesSchema,
+        totalTestsAcrossFilteredCourses: allTests.length,
+        summary: {
+            totalStudents: results.length,
+            onlineStudents: results.filter(s => s.studentType === 'ONLINE').length,
+            offlineStudents: results.filter(s => s.studentType === 'OFFLINE').length,
+            averageScore: results.length > 0 ? results.reduce((acc, s) => acc + s.stats.averageScore, 0) / results.length : 0,
+            averageCompletion: results.length > 0 ? results.reduce((acc, s) => acc + s.stats.completionRate, 0) / results.length : 0,
+            maxScore,
+            minScore,
+            distribution
+        }
     };
 }
 

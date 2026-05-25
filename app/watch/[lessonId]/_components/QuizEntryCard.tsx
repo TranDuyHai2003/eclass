@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface QuizEntryCardProps {
   lessonId: string;
@@ -17,6 +18,7 @@ interface QuizEntryCardProps {
   lesson: any;
   duration: number; // minutes
   test: any;
+  currentAttempt?: any;
 }
 
 export default function QuizEntryCard({
@@ -25,9 +27,12 @@ export default function QuizEntryCard({
   lesson,
   duration,
   test,
+  currentAttempt,
 }: QuizEntryCardProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+
+  const isCompleted = !!currentAttempt?.completedAt;
 
   if (!test) {
     return (
@@ -47,7 +52,11 @@ export default function QuizEntryCard({
 
   const handleStart = () => {
     setIsLoading(true);
-    router.push(`/watch/${lessonId}/quiz`);
+    if (isCompleted) {
+      router.push(`/watch/${lessonId}/results/${currentAttempt.id}`);
+    } else {
+      router.push(`/watch/${lessonId}/quiz`);
+    }
   };
 
   return (
@@ -82,10 +91,20 @@ export default function QuizEntryCard({
         <Button
           onClick={handleStart}
           disabled={isLoading}
-          className="w-full h-14 text-base font-black bg-blue-600 hover:bg-blue-700 rounded-2xl gap-2 shadow-lg shadow-blue-200"
+          className={cn(
+            "w-full h-14 text-base font-black rounded-2xl gap-2 shadow-lg",
+            isCompleted 
+              ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200" 
+              : "bg-blue-600 hover:bg-blue-700 shadow-blue-200"
+          )}
         >
           {isLoading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
+          ) : isCompleted ? (
+            <>
+              Xem kết quả
+              <ChevronRight className="w-5 h-5" />
+            </>
           ) : (
             <>
               Bắt đầu làm bài

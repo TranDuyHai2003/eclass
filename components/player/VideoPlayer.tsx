@@ -5,7 +5,6 @@ import "@vidstack/react/player/styles/default/layouts/video.css";
 import {
   MediaPlayer,
   MediaProvider,
-  Poster,
   Gesture,
   type MediaPlayerInstance,
 } from "@vidstack/react";
@@ -13,246 +12,203 @@ import {
   defaultLayoutIcons,
   DefaultVideoLayout,
 } from "@vidstack/react/player/layouts/default";
-import { useRef, CSSProperties } from "react";
-
-interface VideoPlayerProps {
-  src: string;
-  title: string;
-  poster?: string;
-  autoPlay?: boolean;
-  muted?: boolean;
-}
-
-interface CustomCSSProperties extends CSSProperties {
-  [key: `--${string}`]: string | number | undefined;
-}
-
-const isYoutubeUrl = (url: string) => {
-  return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)/.test(url);
-};
-
-const getYoutubeId = (url: string) => {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-  const match = url.match(regExp);
-  return match && match[2].length === 11 ? match[2] : null;
-};
+import { useState, useEffect, useMemo, useRef } from "react";
 
 export default function VideoPlayer({ 
   src, 
   title, 
   poster,
   autoPlay = false,
-  muted = false 
-}: VideoPlayerProps) {
+  muted = false
+}: { 
+  src: string; 
+  title: string; 
+  poster?: string;
+  autoPlay?: boolean;
+  muted?: boolean;
+}) {
+  const [isMounted, setIsMounted] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  
+  const [isFakeFullscreen, setIsFakeFullscreen] = useState(false);
   const playerRef = useRef<MediaPlayerInstance>(null);
-  const isYoutube = isYoutubeUrl(src);
-  const youtubeId = isYoutube ? getYoutubeId(src) : null;
+  
+  // State lưu trữ kích thước pixel thực tế của màn hình
+  const [viewport, setViewport] = useState({ width: '100vw', height: '100vh' });
 
-  if (isYoutube && !youtubeId) {
-    return (
-      <div className="aspect-video w-full bg-slate-950 flex items-center justify-center rounded-[12px] border border-white/10 shadow-2xl">
-        <div className="text-center p-6">
-          <p className="text-white font-medium mb-2">Không thể tải video</p>
-          <p className="text-white/40 text-xs">
-            Đường dẫn YouTube không hợp lệ hoặc đã bị gỡ bỏ.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const youtubeId = useMemo(() => {
+    const match = src.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
+    return match && match[2].length === 11 ? match[2] : null;
+  }, [src]);
 
-  const actualPoster =
-    isYoutube && !poster && youtubeId
-      ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`
-      : poster;
+  useEffect(() => {
+    setIsMounted(true);
+    const checkIOS = 
+      /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    
+    setIsIOS(checkIOS);
+  }, []);
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    return false;
-  };
+  // HIỆU ỨNG ĐO PIXEL THỰC TẾ: Chạy mỗi khi xoay máy hoặc bật Fullscreen
+  useEffect(() => {
+    if (!isFakeFullscreen) return;
 
-  const handleProviderSetup = (provider: any) => {
-    if (provider.type === "youtube") {
-      provider.cookies = true;
-      // Ép Youtube tắt TẤT CẢ giao diện mặc định của nó để nhường sân khấu cho Vidstack
-      provider.options = {
-        ...provider.options,
-        controls: 0, // Tắt thanh điều khiển gốc của Youtube
-        disablekb: 1, // Tắt phím tắt Youtube (dùng của Vidstack)
-        modestbranding: 1, // Ẩn logo Youtube
-        rel: 0, // Không hiện video liên quan
-        iv_load_policy: 3, // Tắt chú thích popup
-      };
-    }
-  };
+    const updateSize = () => {
+      // Dùng setTimeout 100ms để chờ Safari tính toán xong thanh địa chỉ sau khi xoay ngang
+      setTimeout(() => {
+        setViewport({
+          width: `${window.innerWidth}px`,
+          height: `${window.innerHeight}px` // Đây là chiều cao chính xác đến từng pixel
+        });
+      }, 100);
+    };
+
+    updateSize(); // Đo ngay lần đầu
+    window.addEventListener('resize', updateSize);
+    window.addEventListener('orientationchange', updateSize);
+
+    return () => {
+      window.removeEventListener('resize', updateSize);
+      window.removeEventListener('orientationchange', updateSize);
+    };
+  }, [isFakeFullscreen]);
+
+  // Xử lý chặn Fullscreen gốc trên iOS
+  useEffect(() => {
+    if (!isIOS || !playerRef.current) return;
+
+    const player = playerRef.current;
+
+    const handleFullscreenRequest = (e: Event) => {
+      e.preventDefault();
+      setIsFakeFullscreen(true);
+    };
+
+    const handleFullscreenExitRequest = (e: Event) => {
+      e.preventDefault();
+      setIsFakeFullscreen(false);
+    };
+
+    // @ts-ignore - Vidstack events
+    player.addEventListener('fullscreen-request', handleFullscreenRequest);
+    // @ts-ignore - Vidstack events
+    player.addEventListener('fullscreen-exit-request', handleFullscreenExitRequest);
+
+    return () => {
+      // @ts-ignore
+      player.removeEventListener('fullscreen-request', handleFullscreenRequest);
+      // @ts-ignore
+      player.removeEventListener('fullscreen-exit-request', handleFullscreenExitRequest);
+    };
+  }, [isIOS, isMounted]);
+
+  const thumbnailSrc = useMemo(() => {
+    if (poster) return poster;
+    if (youtubeId) return `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
+    return '';
+  }, [poster, youtubeId]);
+
+  const [thumbnailSrcFinal, setThumbnailSrcFinal] = useState(thumbnailSrc);
+
+  useEffect(() => {
+    setThumbnailSrcFinal(thumbnailSrc);
+  }, [thumbnailSrc]);
+
+  if (!isMounted) return <div className="aspect-video w-full bg-slate-900 rounded-xl animate-pulse" />;
 
   return (
-    <div
-      className="relative w-full rounded-[12px] overflow-hidden bg-black shadow-2xl"
-      onContextMenu={handleContextMenu}
+    <div 
+      className={
+        isFakeFullscreen 
+          ? "fixed top-0 left-0 z-[9999] bg-black flex flex-col justify-center items-center overflow-hidden" 
+          : "relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl group transition-all duration-300 landscape:max-h-[80vh] landscape:w-auto landscape:mx-auto"
+      }
+      style={isFakeFullscreen ? {
+        // Áp dụng số pixel đo được bằng JS (Loại bỏ hoàn toàn CSS vh/svh)
+        width: viewport.width,
+        height: viewport.height,
+        boxSizing: 'border-box',
+        // Né tai thỏ
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      } : {}}
     >
-    <style
-  dangerouslySetInnerHTML={{
-    __html: `
-      :root {
-        --video-brand: #3b82f6;
-      }
-
-      /* Chặn ngón tay/chuột bấm xuyên qua lớp bảo vệ trúng iframe Youtube */
-      .vds-youtube iframe {
-        pointer-events: none !important;
-      }
-
-      .vds-title {
-        text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-        font-weight: 800 !important;
-      }
-
-      /* Ẩn hoàn toàn iframe YouTube trước khi video bắt đầu để giấu nút Play gốc của YouTube */
-      media-player:not([data-started]) iframe,
-      .group:not([data-started]) iframe {
-        opacity: 0 !important;
-        visibility: hidden !important;
-      }
-
-      /* ẨN HIỆU ỨNG CHỚP TO (Gesture Indicator) đè lên nút Play chính */
-      .vds-gesture-action {
-        display: none !important;
-      }
-
-      /* --- FIX KÍCH THƯỚC FULLSCREEN KHÔNG BỊ CROP/XÉN --- */
-      
-      /* 1. Ép root player bung full màn hình và tạo nền đen */
-      media-player[data-fullscreen],
-      media-player:fullscreen {
-        width: 100vw !important;
-        height: 100dvh !important; 
-        background: black !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        --media-aspect-ratio: auto !important;
-      }
-
-      /* 2. ĐẶC BIỆT QUAN TRỌNG: Công thức toán học ép cục Video & Layout UI giữ chuẩn 16:9
-         - Chiều rộng không bao giờ vượt qua tỷ lệ của chiều cao.
-         - Chiều cao không bao giờ vượt qua tỷ lệ của chiều rộng.
-         -> Video luôn giữ chuẩn 16:9 và lọt thỏm nguyên vẹn trong màn hình. */
-      media-player[data-fullscreen] > media-provider,
-      media-player:fullscreen > media-provider,
-      media-player[data-fullscreen] > .vds-video-layout,
-      media-player:fullscreen > .vds-video-layout {
-        width: 100% !important;
-        height: 100% !important;
-        max-width: calc(100dvh * (16 / 9)) !important;
-        max-height: calc(100vw * (9 / 16)) !important;
-        aspect-ratio: 16 / 9 !important;
-        margin: auto !important;
-        inset: 0 !important; /* Bắt buộc để center layout absolute */
-      }
-
-      /* 3. Ngăn chặn Vidstack tự động thêm transform scale() (zoom video) */
-      media-player[data-fullscreen] iframe,
-      media-player:fullscreen iframe,
-      media-player[data-fullscreen] video,
-      media-player:fullscreen video {
-        width: 100% !important;
-        height: 100% !important;
-        max-width: 100% !important;
-        max-height: 100% !important;
-        object-fit: contain !important;
-        transform: none !important; /* Chặn zoom mất gốc dọc của video */
-      }
-
-      /* --- TỐI ƯU GIAO DIỆN MOBILE --- */
-      @media (max-width: 768px) {
-        .vds-controls { 
-          padding: 12px 10px !important; 
-        }
-        
-        /* Chỉ phóng to các nút ở dưới, KHÔNG áp dụng margin cho nút to ở giữa màn hình */
-        .vds-controls .vds-button {
-          transform: scale(1.15);
-        }
-
-        /* Bổ sung margin cho các nút bên dưới thanh control, loại trừ nút play ở giữa */
-        .vds-controls-group .vds-button {
-          margin: 0 4px;
-        }
-
-        /* Tăng độ dày thanh tua video để ngón tay dễ kéo */
-        vds-media-slider {
-          --vds-slider-track-height: 6px;
-          --vds-slider-thumb-size: 20px;
-        }
-
-        .vds-title {
-          font-size: 14px !important;
-        }
-      }
-    `,
-  }}
-/>
+      {thumbnailSrcFinal && !isFakeFullscreen && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={thumbnailSrcFinal}
+          alt={title}
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          onError={() => {
+            if (poster || !youtubeId) return;
+            setThumbnailSrcFinal(`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`);
+          }}
+        />
+      )}
 
       <MediaPlayer
         ref={playerRef}
         title={title}
-        src={isYoutube && youtubeId ? `youtube/${youtubeId}` : src}
+        src={youtubeId ? `youtube/${youtubeId}` : src}
         viewType="video"
-        load="visible" // FIX: Ép player load giao diện (bao gồm nút Play to) ngay khi cuộn tới
-        logLevel="warn"
-        playsInline
+        load="visible"
+        playsInline 
         autoPlay={autoPlay}
         muted={muted}
-        onProviderSetup={handleProviderSetup}
-        className="w-full aspect-video bg-black text-white font-sans overflow-hidden ring-media-focus data-[focus]:ring-4 group relative"
-        style={
-          {
-            "--brand": "var(--video-brand)",
-            "--media-brand": "var(--video-brand)",
-            "--media-focus-ring-color": "var(--video-brand)",
-            "--media-slider-track-height": "4px",
-            "--media-slider-thumb-size": "14px",
-            "--media-controls-gap": "12px",
-          } as CustomCSSProperties
-        }
+        // Bắt buộc Vidstack không được phình to hơn container
+        style={isFakeFullscreen ? { maxWidth: '100%', maxHeight: '100%', width: '100%', height: '100%' } : {}}
+        className={isFakeFullscreen ? "text-white" : "w-full h-full text-white"}
       >
-        <MediaProvider>
-          {actualPoster && (
-            <Poster
-              className="vds-poster absolute inset-0 block h-full w-full opacity-0 transition-opacity data-[visible]:opacity-100 object-cover pointer-events-none"
-              src={actualPoster}
-              alt={title}
-            />
-          )}
-        </MediaProvider>
+        <MediaProvider />
 
-        {/* --- LOGIC TUA VIDEO CHO MOBILE (YouTube-style) --- */}
-        {/* Vùng 1: 40% bên trái -> Tua lùi 10 giây */}
-        <Gesture
-          className="absolute inset-y-0 left-0 z-50 w-[40%] block"
-          event="dblpointerup"
-          action="seek:-10"
+        <Gesture 
+          className="absolute inset-0 z-0" 
+          event="pointerup" 
+          action="toggle:paused" 
         />
-
-        {/* Vùng 2: 40% bên phải -> Tua tới 10 giây */}
-        <Gesture
-          className="absolute inset-y-0 right-0 z-50 w-[40%] block"
-          event="dblpointerup"
-          action="seek:10"
+        
+        <DefaultVideoLayout 
+          icons={defaultLayoutIcons}
+          smallLayoutWhen={({ width }) => width < 576} 
         />
-
-        {/* Vùng 3: 20% ở giữa -> Đổi thành Play/Pause để đè sự kiện thoát Fullscreen */}
-        <Gesture
-          className="absolute inset-y-0 left-[40%] z-50 w-[20%] block"
-          event="dblpointerup"
-          action="toggle:paused"
-        />
-        {/* ---------------------------------- */}
-
-        {/* Layout chuẩn mặc định của Vidstack, chứa sẵn nút Play to ở giữa */}
-        <DefaultVideoLayout icons={defaultLayoutIcons} />
       </MediaPlayer>
+
+      {/* NÚT ZOOM OUT/IN TÙY CHỈNH */}
+      {isIOS && (
+        <button
+          onClickCapture={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsFakeFullscreen(!isFakeFullscreen);
+          }}
+          onPointerDownCapture={(e) => {
+            e.stopPropagation(); 
+          }}
+          className={`
+            absolute transition-all duration-300 flex items-center justify-center
+            border border-white/10 shadow-lg text-white rounded-full backdrop-blur-md 
+            bg-black/50 hover:bg-black/80
+            right-4 top-1/2 -translate-y-1/2
+            pointer-events-auto cursor-pointer
+            ${isFakeFullscreen ? 'p-3' : 'p-2'}
+          `}
+          style={{ zIndex: 999999 }}
+          aria-label="Toggle Fullscreen"
+        >
+          {isFakeFullscreen ? (
+             <svg className="pointer-events-none" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+             </svg>
+          ) : (
+             <svg className="pointer-events-none" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+             </svg>
+          )}
+        </button>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { nanoid } from "nanoid";
-import { b2Client, B2_BUCKET_NAME, CDN_DOMAIN, sanitizeFileName } from "@/lib/b2";
+import { b2Client, B2_BUCKET_NAME, CDN_DOMAIN, sanitizeFileName, validateB2Config } from "@/lib/b2";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 export async function PUT(req: NextRequest) {
@@ -9,6 +9,12 @@ export async function PUT(req: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const configError = validateB2Config();
+    if (configError) {
+      console.error("[Proxy Upload] B2 config error:", configError);
+      return new NextResponse(`Upload chưa được cấu hình: ${configError}`, { status: 500 });
     }
 
     const { searchParams } = new URL(req.url);

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Outfit } from "next/font/google";
 import { Toaster } from "sonner";
 import Header from "@/components/layout/Header";
@@ -80,6 +80,13 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -101,8 +108,6 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <head>
-        {/* Thêm đúng dòng này vào để điện thoại gọi về máy tính */}
-        <script src="http://192.168.100.135:8080/target.js" defer></script>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
