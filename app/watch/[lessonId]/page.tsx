@@ -155,6 +155,14 @@ export default async function WatchPage({
   const quizDuration = lesson.test?.duration || 15;
   const commentCount = await prisma.comment.count({ where: { lessonId } });
 
+  const currentAttempt = await prisma.studentAttempt.findFirst({
+    where: {
+      testId: lesson.test?.id,
+      userId: session.user.id!,
+    },
+    orderBy: { startedAt: "desc" },
+  });
+
   return (
     <div className="flex flex-col min-h-screen bg-[#F8FAFC] font-sans selection:bg-blue-100 selection:text-blue-900">
       {/* PREMIUM BREADCRUMB NAVIGATION */}
@@ -220,6 +228,7 @@ export default async function WatchPage({
                   lesson={lesson}
                   duration={quizDuration}
                   test={lesson.test}
+                  currentAttempt={currentAttempt}
                 />
               ) : lesson.type === "DOCUMENT" &&
                 lesson.attachments.find((a) =>

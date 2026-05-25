@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useTransition, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { ArrowLeft, Clock, Send, AlertTriangle, Flag, Upload, X, Image as ImageIcon, FileText, Loader2, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { startTestAttempt, submitTestAttempt } from "@/actions/test";
-import { useCountdown } from "@/hooks/use-countdown";
+import { startTestAttempt, submitTestAttempt, saveTestDraft, getTestDraft } from "@/actions/test";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -45,37 +44,124 @@ export default function TestTakerClient({
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [isUploading, setIsUploading] = useState<Record<string, boolean>>({});
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const answersRef = useRef(answers);
+  // Keep ref in sync
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+
+  // Sync answers to server (debounced)
+  const syncToServer = useCallback(() => {
+    const currentAttemptId = attemptIdRef.current;
+    if (!currentAttemptId) return;
+    const currentAnswers = answersRef.current;
+    const answersArray = Object.keys(currentAnswers)
+      .filter((k) => currentAnswers[k] !== "")
+      .map((qId) => ({
+        questionId: qId,
+        answerProvided: currentAnswers[qId],
+      }));
+    if (answersArray.length === 0) return;
+    saveTestDraft(currentAttemptId, answersArray).catch((e) =>
+      console.error("[Auto-save] Sync failed:", e)
+    );
+  }, []);
+
+  const attemptIdRef = useRef(attemptId);
+  useEffect(() => { attemptIdRef.current = attemptId; }, [attemptId]);
+
+  // Load initial attempt + reconcile server + localStorage
   useEffect(() => {
-    // 1. Fetch or create attempt
-    startTestAttempt(test.id).then((res) => {
-      if (res.success && res.attempt) {
-        // IMPORTANT: If attempt is already completed, redirect to results immediately
-        if (res.attempt.completedAt) {
-          const path = resultsPath
-            ? `${resultsPath}/${res.attempt.id}`
-            : `/watch/${lesson.id}/results/${res.attempt.id}`;
-          router.replace(path);
-          return;
-        }
-
-        setAttemptId(res.attempt.id);
-        setStartedAt(new Date(res.attempt.startedAt));
-
-        // 2. Load draft from localStorage
-        const draft = localStorage.getItem(`draft_${res.attempt.id}`);
-        if (draft) {
-          try {
-            setAnswers(JSON.parse(draft));
-          } catch (e) {}
-        }
-      } else {
+    startTestAttempt(test.id).then(async (res) => {
+      if (!res.success || !res.attempt) {
         toast.error("Không thể bắt đầu làm bài");
+        setLoadingInitial(false);
+        return;
       }
+
+      if (res.attempt.completedAt) {
+        const path = resultsPath
+          ? `${resultsPath}/${res.attempt.id}`
+          : `/watch/${lesson.id}/results/${res.attempt.id}`;
+        router.replace(path);
+        return;
+      }
+
+      setAttemptId(res.attempt.id);
+      setStartedAt(new Date(res.attempt.startedAt));
+
+      // Load server draft
+      let serverAnswers: Record<string, string> = {};
+      try {
+        const draftRes = await getTestDraft(res.attempt.id);
+        if (draftRes.success) {
+          for (const a of draftRes.answers) {
+            if (a.answerProvided) serverAnswers[a.questionId] = a.answerProvided;
+          }
+        }
+      } catch (e) {
+        console.error("[Reconciliation] Failed to fetch server draft:", e);
+      }
+
+      // Load localStorage draft
+      let localAnswers: Record<string, string> = {};
+      const localRaw = localStorage.getItem(`draft_${res.attempt.id}`);
+      if (localRaw) {
+        try { localAnswers = JSON.parse(localRaw); } catch (e) {}
+      }
+
+      // Load flagged questions from localStorage
+      const flagsRaw = localStorage.getItem(`flags_${res.attempt.id}`);
+      if (flagsRaw) {
+        try { setFlags(JSON.parse(flagsRaw)); } catch (e) {}
+      }
+
+      // Reconciliation: local wins (more recent if user was working)
+      // But only for questions that exist in the test
+      const merged = { ...serverAnswers, ...localAnswers };
+      setAnswers(merged);
+
+      // If local is newer, push to server immediately
+      if (Object.keys(localAnswers).length > Object.keys(serverAnswers).length) {
+        const mergedArray = Object.keys(merged)
+          .filter((k) => merged[k] !== "")
+          .map((qId) => ({ questionId: qId, answerProvided: merged[qId] }));
+        if (mergedArray.length > 0) {
+          saveTestDraft(res.attempt.id, mergedArray).catch((e) =>
+            console.error("[Reconciliation] Push to server failed:", e)
+          );
+        }
+      }
+
       setLoadingInitial(false);
     });
   }, [test.id, lesson.id, resultsPath, router]);
 
-  // Duration count-down has been removed per request (unlimited time)
+  // Auto-save to localStorage immediately + debounce sync to server
+  useEffect(() => {
+    if (!attemptId) return;
+
+    // Save to localStorage immediately
+    localStorage.setItem(`draft_${attemptId}`, JSON.stringify(answers));
+    localStorage.setItem(`flags_${attemptId}`, JSON.stringify(flags));
+
+    // Debounce server sync (2s after last change)
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(syncToServer, 2000);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [answers, flags, attemptId, syncToServer]);
+
+  // Periodic sync every 30s as safety net
+  useEffect(() => {
+    if (!attemptId) return;
+    syncIntervalRef.current = setInterval(syncToServer, 30000);
+    return () => {
+      if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
+    };
+  }, [attemptId, syncToServer]);
 
   const handleSubmit = useCallback(() => {
     if (!attemptId) return;
@@ -107,6 +193,7 @@ export default function TestTakerClient({
         if (res.success) {
           toast.success("Nộp bài thành công!");
           localStorage.removeItem(`draft_${attemptId}`);
+          localStorage.removeItem(`flags_${attemptId}`);
           const path = resultsPath
             ? `${resultsPath}/${attemptId}`
             : `/watch/${lesson.id}/results/${attemptId}`;
@@ -120,15 +207,6 @@ export default function TestTakerClient({
     });
   }, [attemptId, answers, isTimeUp, test, lesson, resultsPath, router]);
 
-  // Auto-submit on time up has been disabled
-
-  // Auto-save logic
-  useEffect(() => {
-    if (attemptId && Object.keys(answers).length > 0) {
-      localStorage.setItem(`draft_${attemptId}`, JSON.stringify(answers));
-    }
-  }, [answers, attemptId]);
-
   const handleSelectAnswer = (qId: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [qId]: value }));
   };
@@ -141,9 +219,14 @@ export default function TestTakerClient({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    const file = files[0];
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error(`Tệp "${file.name}" vượt quá 50MB. Vui lòng chọn tệp nhỏ hơn.`);
+      return;
+    }
+
     setIsUploading(prev => ({ ...prev, [qId]: true }));
     try {
-      const file = files[0];
       const res = await axios.put<{ publicUrl: string }>(
         `/api/upload/proxy?fileName=essay_${qId}_${Date.now()}_${encodeURIComponent(file.name)}`,
         file,
@@ -152,8 +235,10 @@ export default function TestTakerClient({
       
       handleSelectAnswer(qId, res.data.publicUrl);
       toast.success("Tải tệp lên thành công");
-    } catch (error) {
-      toast.error("Lỗi tải tệp lên");
+    } catch (error: any) {
+      const message = error?.response?.data || error?.message || "Lỗi tải tệp lên";
+      console.error("[Essay Upload Error]", error);
+      toast.error(`Lỗi tải tệp lên: ${message}`);
     } finally {
       setIsUploading(prev => ({ ...prev, [qId]: false }));
     }

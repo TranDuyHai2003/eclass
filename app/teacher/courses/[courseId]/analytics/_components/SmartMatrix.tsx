@@ -36,6 +36,12 @@ import { Input } from "@/components/ui/input";
 import { filterStudents, PerformanceFilter } from "@/lib/analytics-utils";
 import { AnalyticsExportButton } from "@/components/analytics/AnalyticsExportButton";
 
+import { deleteStudentAttempt } from "@/actions/test";
+import { toast } from "sonner";
+import { 
+  ConfirmModal 
+} from "@/components/modals/ConfirmModal";
+
 interface SmartMatrixProps {
   courseId: string;
   tests: { id: string; title: string }[];
@@ -45,12 +51,27 @@ interface SmartMatrixProps {
 export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<PerformanceFilter>("all");
-  const [studentTypeFilter, setStudentTypeFilter] = useState<"all" | "ONLINE" | "OFFLINE">("all");
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
+  const onDeleteAttempt = async (attemptId: string) => {
+    try {
+      setIsDeleting(attemptId);
+      const res = await deleteStudentAttempt(attemptId);
+      if (res.success) {
+        toast.success("Xóa bài nộp thành công. Học sinh có thể làm lại bài.");
+      } else {
+        throw new Error("Lỗi khi xóa bài nộp");
+      }
+    } catch (error) {
+      toast.error("Không thể xóa bài nộp");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
 
   const filteredMatrix = filterStudents(matrix, { 
     searchQuery, 
     performanceFilter: statusFilter,
-    studentTypeFilter
   });
 
   return (
@@ -81,17 +102,6 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-          <Select value={studentTypeFilter} onValueChange={(v: any) => setStudentTypeFilter(v)}>
-            <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold w-full sm:w-[150px]">
-              <SelectValue placeholder="Học sinh..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả lớp</SelectItem>
-              <SelectItem value="ONLINE">Học Online</SelectItem>
-              <SelectItem value="OFFLINE">Học Offline</SelectItem>
-            </SelectContent>
-          </Select>
-
           <div className="relative w-full md:w-[260px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <Input
@@ -206,33 +216,52 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
                   {/* Individual Test Scores */}
                   {student.testStatuses.map((status: any, idx: number) => (
                     <TableCell key={idx} className="text-center p-2">
-                      <div
-                        className={cn(
-                          "w-12 h-12 rounded-2xl mx-auto flex flex-col items-center justify-center transition-all border",
-                          status.status === "COMPLETED"
-                            ? status.score >= 8
-                              ? "bg-emerald-50 border-emerald-100"
-                              : status.score >= 5
-                                ? "bg-blue-50 border-blue-100"
-                                : "bg-orange-50 border-orange-100"
-                            : "bg-blue-50 border-blue-100 opacity-60",
-                        )}
-                      >
-                        {status.status === "COMPLETED" ? (
-                          <span
+                       <div className="relative group/score">
+                        <div
                             className={cn(
-                              "text-xs font-black",
-                              status.score >= 8
-                                ? "text-emerald-700"
+                            "w-12 h-12 rounded-2xl mx-auto flex flex-col items-center justify-center transition-all border",
+                            status.status === "COMPLETED"
+                                ? status.score >= 8
+                                ? "bg-emerald-50 border-emerald-100"
                                 : status.score >= 5
-                                  ? "text-blue-700"
-                                  : "text-orange-700",
+                                    ? "bg-blue-50 border-blue-100"
+                                    : "bg-orange-50 border-orange-100"
+                                : "bg-blue-50 border-blue-100 opacity-60",
                             )}
-                          >
-                            {status.score?.toFixed(2)}
-                          </span>
-                        ) : (
-                          <X className="w-4 h-4 text-blue-400 stroke-[3]" />
+                        >
+                            {status.status === "COMPLETED" ? (
+                            <span
+                                className={cn(
+                                "text-xs font-black",
+                                status.score >= 8
+                                    ? "text-emerald-700"
+                                    : status.score >= 5
+                                    ? "text-blue-700"
+                                    : "text-orange-700",
+                                )}
+                            >
+                                {status.score?.toFixed(2)}
+                            </span>
+                            ) : (
+                            <X className="w-4 h-4 text-blue-400 stroke-[3]" />
+                            )}
+                        </div>
+
+                        {/* Quick Action - Delete (only if completed and has attemptId) */}
+                        {status.status === "COMPLETED" && status.attemptId && (
+                            <ConfirmModal
+                                onConfirm={() => onDeleteAttempt(status.attemptId)}
+                                title="Xóa bài nộp?"
+                                description={`Xóa bài nộp này? Học sinh ${student.studentName} sẽ có thể làm lại bài.`}
+                            >
+                                <button
+                                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover/score:opacity-100 transition-opacity z-10"
+                                    disabled={isDeleting === status.attemptId}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <X className="w-3 h-3 stroke-[3]" />
+                                </button>
+                            </ConfirmModal>
                         )}
                       </div>
                     </TableCell>

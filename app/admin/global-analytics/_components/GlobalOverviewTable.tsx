@@ -38,11 +38,19 @@ interface GlobalOverviewTableProps {
   data: any[];
 }
 
+import { deleteStudentAttempt } from "@/actions/test";
+import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
+import { 
+  ConfirmModal 
+} from "@/components/modals/ConfirmModal";
+
 export function GlobalOverviewTable({ data }: GlobalOverviewTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<PerformanceFilter>("all");
-  const [studentTypeFilter, setStudentTypeFilter] = useState<"all" | "ONLINE" | "OFFLINE">("all");
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
 
   const toggleRow = (id: string) => {
     setExpandedRows((prev) =>
@@ -50,11 +58,52 @@ export function GlobalOverviewTable({ data }: GlobalOverviewTableProps) {
     );
   };
 
-  const filteredData = filterStudents(data, {
+  const onSort = (key: string) => {
+    setSortConfig((prev) => {
+      if (prev?.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "desc" };
+    });
+  };
+
+  const onDeleteAttempt = async (attemptId: string) => {
+    try {
+      setIsDeleting(attemptId);
+      const res = await deleteStudentAttempt(attemptId);
+      if (res.success) {
+        toast.success("Xóa bài nộp thành công. Học sinh có thể làm lại bài.");
+      } else {
+        throw new Error("Lỗi khi xóa bài nộp");
+      }
+    } catch (error) {
+      toast.error("Không thể xóa bài nộp");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  let filteredData = filterStudents(data, {
     searchQuery,
     performanceFilter: statusFilter,
-    studentTypeFilter
   });
+
+  if (sortConfig) {
+    filteredData = [...filteredData].sort((a, b) => {
+      let valA, valB;
+      if (sortConfig.key === "name") {
+        valA = a.name; valB = b.name;
+      } else if (sortConfig.key === "completion") {
+        valA = a.stats.completionRate; valB = b.stats.completionRate;
+      } else if (sortConfig.key === "score") {
+        valA = a.stats.averageScore; valB = b.stats.averageScore;
+      }
+
+      if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+  }
 
   return (
     <div className="space-y-4">
@@ -84,17 +133,6 @@ export function GlobalOverviewTable({ data }: GlobalOverviewTableProps) {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-          <Select value={studentTypeFilter} onValueChange={(v: any) => setStudentTypeFilter(v)}>
-            <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-xs font-bold w-full sm:w-[150px]">
-              <SelectValue placeholder="Học sinh..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả lớp</SelectItem>
-              <SelectItem value="ONLINE">Học Online</SelectItem>
-              <SelectItem value="OFFLINE">Học Offline</SelectItem>
-            </SelectContent>
-          </Select>
-
           <div className="relative w-full md:w-[260px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <Input
@@ -121,8 +159,16 @@ export function GlobalOverviewTable({ data }: GlobalOverviewTableProps) {
             <TableHeader className="bg-slate-50/50">
               <TableRow>
                 <TableHead className="w-[40px]"></TableHead>
-                <TableHead className="min-w-[200px] font-black uppercase text-[10px] tracking-widest text-slate-500">
-                  Học sinh
+                <TableHead 
+                  className="min-w-[200px] font-black uppercase text-[10px] tracking-widest text-slate-500 cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => onSort("name")}
+                >
+                  <div className="flex items-center gap-1">
+                    Học sinh
+                    {sortConfig?.key === "name" && (
+                       sortConfig.direction === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                    )}
+                  </div>
                 </TableHead>
                 <TableHead className="min-w-[150px] font-black uppercase text-[10px] tracking-widest text-slate-500">
                   Khóa học
@@ -130,11 +176,27 @@ export function GlobalOverviewTable({ data }: GlobalOverviewTableProps) {
                 <TableHead className="text-center font-black uppercase text-[10px] tracking-widest text-slate-500">
                   Bài tập
                 </TableHead>
-                <TableHead className="min-w-[150px] font-black uppercase text-[10px] tracking-widest text-slate-500">
-                  Tiến độ
+                <TableHead 
+                  className="min-w-[150px] font-black uppercase text-[10px] tracking-widest text-slate-500 cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => onSort("completion")}
+                >
+                   <div className="flex items-center gap-1">
+                    Tiến độ
+                    {sortConfig?.key === "completion" && (
+                       sortConfig.direction === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                    )}
+                  </div>
                 </TableHead>
-                <TableHead className="text-center font-black uppercase text-[10px] tracking-widest text-indigo-600">
-                  Điểm TB
+                <TableHead 
+                  className="text-center font-black uppercase text-[10px] tracking-widest text-indigo-600 cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => onSort("score")}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    Điểm TB
+                    {sortConfig?.key === "score" && (
+                       sortConfig.direction === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                    )}
+                  </div>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -223,7 +285,7 @@ export function GlobalOverviewTable({ data }: GlobalOverviewTableProps) {
                           {student.details && student.details.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                               {student.details.map((attempt: any, idx: number) => (
-                                <div key={attempt.id || idx} className="flex items-center gap-3 p-3 rounded-2xl border border-slate-100 bg-slate-50/30">
+                                <div key={attempt.id || idx} className="flex items-center gap-3 p-3 rounded-2xl border border-slate-100 bg-slate-50/30 group/attempt">
                                   <div className={cn(
                                     "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
                                     attempt.score >= 8 ? "bg-emerald-100 text-emerald-600" :
@@ -231,7 +293,7 @@ export function GlobalOverviewTable({ data }: GlobalOverviewTableProps) {
                                   )}>
                                     <span className="font-black text-sm">{attempt.score?.toFixed(2)}</span>
                                   </div>
-                                  <div className="min-w-0">
+                                  <div className="min-w-0 flex-1">
                                     <p className="text-sm font-bold text-slate-700 truncate">{attempt.testTitle}</p>
                                     <div className="flex items-center gap-2 mt-0.5">
                                       <Clock className="w-3 h-3 text-slate-400" />
@@ -240,6 +302,21 @@ export function GlobalOverviewTable({ data }: GlobalOverviewTableProps) {
                                       </span>
                                     </div>
                                   </div>
+
+                                  {/* Delete Button */}
+                                  <ConfirmModal
+                                    onConfirm={() => onDeleteAttempt(attempt.id)}
+                                    title="Xóa bài nộp?"
+                                    description={`Bạn có chắc chắn muốn xóa bài nộp của ${student.name} cho bài "${attempt.testTitle}"? Hành động này không thể hoàn tác và học sinh sẽ được phép làm lại bài.`}
+                                  >
+                                    <button 
+                                      className="p-2 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover/attempt:opacity-100"
+                                      disabled={isDeleting === attempt.id}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </ConfirmModal>
                                 </div>
                               ))}
                             </div>

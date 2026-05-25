@@ -48,6 +48,7 @@ async function requireTeacherOrAdmin() {
 export async function upsertTest(
   lessonId: string,
   data: {
+    title?: string;
     pdfUrl: string;
     duration: number;
     showAnswers: boolean;
@@ -69,11 +70,32 @@ export async function upsertTest(
     throw new Error("Unauthorized access to this lesson");
   }
 
+  // Tự động đặt tên "Bài 1", "Bài 2"... nếu chưa có tên và không truyền title
+  const existingTest = await prisma.test.findUnique({ where: { lessonId }, select: { title: true } });
+  let finalTitle = data.title;
+  
+  if (!finalTitle && (!existingTest || !existingTest.title)) {
+    const testCount = await prisma.test.count({
+      where: {
+        lesson: {
+          chapter: {
+            courseId: lesson.chapter.courseId,
+          },
+        },
+      },
+    });
+    finalTitle = `Bài ${testCount + 1}`;
+  }
+
   const test = await prisma.test.upsert({
     where: { lessonId },
-    update: data,
+    update: {
+      ...data,
+      title: finalTitle,
+    },
     create: {
       ...data,
+      title: finalTitle,
       lesson: { connect: { id: lessonId } },
     },
   });
@@ -103,11 +125,15 @@ export async function upsertCourseTest(
     throw new Error("Unauthorized access to this course");
   }
 
+  const existingTest = await prisma.test.findUnique({ where: { courseId }, select: { title: true } });
+  const title = existingTest?.title || "Bài kiểm tra cuối khóa";
+
   const test = await prisma.test.upsert({
     where: { courseId },
     update: data,
     create: {
       ...data,
+      title,
       course: { connect: { id: courseId } },
     },
   });
@@ -220,11 +246,12 @@ export async function startTestAttempt(testId: string) {
     where: {
       testId,
       userId: session.user.id,
-      completedAt: null
     }
   });
 
   if (existingAttempt) {
+    // If it's already completed, the caller should handle the redirect (already does in TestTakerClient)
+    // But we should strictly only return success if it's the SAME attempt we're working on.
     return { success: true, attempt: existingAttempt };
   }
 
@@ -236,6 +263,33 @@ export async function startTestAttempt(testId: string) {
   });
 
   return { success: true, attempt };
+}
+
+export async function deleteStudentAttempt(attemptId: string) {
+  const session = await auth();
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
+    throw new Error("Unauthorized");
+  }
+
+  const attempt = await prisma.studentAttempt.findUnique({
+    where: { id: attemptId },
+    include: { test: true }
+  });
+
+  if (!attempt) throw new Error("Attempt not found");
+
+  await prisma.studentAttempt.delete({
+    where: { id: attemptId }
+  });
+
+  // Revalidate relevant paths
+  if (attempt.test.lessonId) {
+    revalidatePath(`/watch/${attempt.test.lessonId}`);
+  }
+  revalidatePath(`/teacher/tests/${attempt.testId}/analytics`);
+  revalidatePath(`/admin/global-analytics`);
+
+  return { success: true };
 }
 
 // Function to normalize short answers
@@ -529,4 +583,75 @@ export async function gradeStudentAnswer(
 
   revalidatePath(`/watch/${answer.attempt.test.lessonId}/results/${answer.attemptId}`);
   return { success: true };
+}
+
+// =============================================
+// AUTO-SAVE DRAFT ACTIONS
+// =============================================
+
+export async function saveTestDraft(attemptId: string, answers: { questionId: string, answerProvided: string }[]) {
+  const session = await auth();
+  if (!session || !session.user.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const attempt = await prisma.studentAttempt.findUnique({
+    where: { id: attemptId },
+  });
+
+  if (!attempt || attempt.userId !== session.user.id) {
+    throw new Error("Invalid attempt");
+  }
+
+  if (attempt.completedAt) {
+    throw new Error("Attempt already submitted");
+  }
+
+  // Upsert each answer individually
+  for (const ans of answers) {
+    await prisma.studentAnswer.upsert({
+      where: {
+        attemptId_questionId: {
+          attemptId,
+          questionId: ans.questionId,
+        },
+      },
+      update: {
+        answerProvided: ans.answerProvided,
+      },
+      create: {
+        attemptId,
+        questionId: ans.questionId,
+        answerProvided: ans.answerProvided,
+        pointsAwarded: 0,
+      },
+    });
+  }
+
+  return { success: true };
+}
+
+export async function getTestDraft(attemptId: string) {
+  const session = await auth();
+  if (!session || !session.user.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const attempt = await prisma.studentAttempt.findUnique({
+    where: { id: attemptId },
+  });
+
+  if (!attempt || attempt.userId !== session.user.id) {
+    throw new Error("Invalid attempt");
+  }
+
+  const answers = await prisma.studentAnswer.findMany({
+    where: { attemptId },
+    select: {
+      questionId: true,
+      answerProvided: true,
+    },
+  });
+
+  return { success: true, answers };
 }

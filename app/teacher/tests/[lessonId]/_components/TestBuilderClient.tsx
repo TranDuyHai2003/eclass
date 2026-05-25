@@ -37,6 +37,7 @@ export default function TestBuilderClient({
       }}
       onSave={async (data) => {
         const resTest = await upsertTest(lesson.id, {
+          title: data.title,
           pdfUrl: data.pdfUrl,
           duration: data.duration,
           showAnswers: data.showAnswers,

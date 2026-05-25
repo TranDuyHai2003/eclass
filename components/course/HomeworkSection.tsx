@@ -18,6 +18,8 @@ import axios from "axios";
 import { submitHomework } from "@/actions/homework";
 import { cn } from "@/lib/utils";
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
 interface HomeworkSectionProps {
   lessonId: string;
   initialSubmission: any;
@@ -40,6 +42,10 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
       const newAttachments = [...attachments];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error(`Tệp "${file.name}" vượt quá 50MB. Vui lòng chọn tệp nhỏ hơn.`);
+          continue;
+        }
         const res = await axios.put<{ publicUrl: string }>(
           `/api/upload/proxy?fileName=homework_${Date.now()}_${encodeURIComponent(file.name)}`,
           file,
@@ -49,8 +55,10 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
       }
       setAttachments(newAttachments);
       toast.success("Tải tệp lên thành công");
-    } catch (error) {
-      toast.error("Lỗi tải tệp lên");
+    } catch (error: any) {
+      const message = error?.response?.data || error?.message || "Lỗi tải tệp lên";
+      console.error("[Upload Error]", error);
+      toast.error(`Lỗi tải tệp lên: ${message}`);
     } finally {
       setIsUploading(false);
     }
@@ -73,11 +81,12 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
         setSubmission(res.submission);
         toast.success("Nộp bài tập thành công!");
       }
-    } catch (error) {
-      toast.error("Lỗi khi nộp bài");
+    } catch (error: any) {
+      const message = error?.message || "Lỗi khi nộp bài";
+      console.error("[Submit Error]", error);
+      toast.error(`Lỗi khi nộp bài: ${message}`);
     } finally {
-      setIsSubmitting(true);
-      // Giả lập load lại state sau khi nộp
+      setIsSubmitting(false);
       window.location.reload();
     }
   };

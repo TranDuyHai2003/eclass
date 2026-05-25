@@ -47,6 +47,7 @@ const PDFViewer = dynamic(() => import("@/components/ui/pdf-viewer"), {
 });
 
 export interface UnifiedSaveData {
+  title: string;
   pdfUrl: string;
   duration: number;
   showAnswers: boolean;
@@ -86,6 +87,7 @@ export default function UnifiedTestBuilder({
 }: UnifiedTestBuilderProps) {
   const [isPending, startTransition] = useTransition();
 
+  const [testName, setTestName] = useState(initialTest?.title || "");
   const [pdfUrl, setPdfUrl] = useState(initialTest?.pdfUrl || "");
   const [duration, setDuration] = useState(initialTest?.duration || 45);
   const [dueDate, setDueDate] = useState(
@@ -343,6 +345,7 @@ export default function UnifiedTestBuilder({
     startTransition(async () => {
       try {
         const resSave = await onSave({
+          title: testName,
           pdfUrl,
           duration,
           showAnswers,
@@ -663,6 +666,18 @@ export default function UnifiedTestBuilder({
               </div>
             ) : (
               <div className="space-y-8">
+                <div className="space-y-2 pb-6 border-b border-slate-100">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">
+                    Tên bài kiểm tra / Quiz Title
+                  </Label>
+                  <Input
+                    value={testName}
+                    onChange={(e) => { setTestName(e.target.value); markDirty(); }}
+                    placeholder="Nhập tên bài kiểm tra (VD: Bài 1, Kiểm tra 15 phút...)"
+                    className="h-10 rounded-xl font-bold text-slate-700 bg-slate-50/30 focus-visible:bg-white transition-all"
+                  />
+                </div>
+
                 {sections.map((section, sIdx) => (
                   <div key={section.id || sIdx} className="space-y-4">
                     <div className="flex items-center justify-between group/sec">

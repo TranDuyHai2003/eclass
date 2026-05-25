@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Search, ArrowDown } from "lucide-react";
+import { Search, ArrowDown, Trash2, Bell } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,10 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { AnalyticsExportButton } from "@/components/analytics/AnalyticsExportButton";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { deleteStudentAttempt } from "@/actions/test";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export interface ScoreboardAttempt {
   id: string;
@@ -50,6 +54,8 @@ export default function ScoreboardTable({
   attempts,
   resultsBasePath,
 }: ScoreboardTableProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
@@ -284,15 +290,50 @@ export default function ScoreboardTable({
                   <td className="px-4 py-5 text-xs font-bold text-slate-600">
                     --
                   </td>
-                  <td className="px-6 py-5 text-right">
+                  <td className="px-6 py-5 text-right flex items-center justify-end gap-2">
+                    {!attempt.completedAt && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        title="Nhắc nhở nộp bài"
+                        className="h-8 w-8 text-amber-600 border-amber-200 hover:bg-amber-50"
+                        onClick={() => {
+                          toast.success(`Đã gửi thông báo nhắc nhở đến ${attempt.user.name}`);
+                        }}
+                      >
+                        <Bell className="w-4 h-4" />
+                      </Button>
+                    )}
                     <Button
                       asChild
                       variant="ghost"
                       size="sm"
-                      className="text-blue-600 font-bold hover:bg-blue-50"
+                      className="text-blue-600 font-bold hover:bg-blue-50 h-8"
                     >
                       <Link href={`${resultsBasePath}/${attempt.id}`}>Chi tiết</Link>
                     </Button>
+                    <ConfirmModal
+                      title="Xóa bài nộp?"
+                      description={`Bạn có chắc muốn xóa bài làm của ${attempt.user.name}? Hành động này sẽ reset trạng thái học sinh về chưa làm.`}
+                      disabled={isPending}
+                      onConfirm={async () => {
+                        try {
+                          await deleteStudentAttempt(attempt.id);
+                          toast.success("Đã xóa bài nộp thành công");
+                          router.refresh();
+                        } catch {
+                          toast.error("Không thể xóa bài nộp");
+                        }
+                      }}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </ConfirmModal>
                   </td>
                 </tr>
               ))}

@@ -6,9 +6,11 @@ import {
   getCourseProgressMatrix,
 } from "@/actions/analytics";
 import { GlobalFilters } from "./_components/GlobalFilters";
-import { GlobalOverviewTable } from "./_components/GlobalOverviewTable";
+import { MultiLevelMatrixTable } from "./_components/MultiLevelMatrixTable";
 import { AnalyticsExportButton } from "@/components/analytics/AnalyticsExportButton";
 import { SmartMatrix } from "@/app/teacher/courses/[courseId]/analytics/_components/SmartMatrix";
+import { GlobalSummaryCards } from "./_components/GlobalSummaryCards";
+import { ScoreDistributionChart } from "./_components/ScoreDistributionChart";
 import {
   LayoutDashboard,
   TrendingUp,
@@ -18,6 +20,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+import { StudentType } from "@prisma/client";
+
 export default async function GlobalAnalyticsPage({
   searchParams,
 }: {
@@ -25,6 +29,7 @@ export default async function GlobalAnalyticsPage({
     startDate?: string;
     endDate?: string;
     courseIds?: string;
+    studentType?: string;
   }>;
 }) {
   const session = await auth();
@@ -35,15 +40,16 @@ export default async function GlobalAnalyticsPage({
     return redirect("/");
   }
 
-  const { startDate, endDate, courseIds: courseIdsRaw } = await searchParams;
+  const { startDate, endDate, courseIds: courseIdsRaw, studentType: studentTypeRaw } = await searchParams;
   const courseIds = courseIdsRaw ? courseIdsRaw.split(",").filter(Boolean) : [];
+  const studentType = (studentTypeRaw === "ONLINE" || studentTypeRaw === "OFFLINE") ? studentTypeRaw as StudentType : undefined;
 
   const allCourses = await getAnalyticsCourses();
 
   // Decide which data to fetch
   const isSingleCourse = courseIds.length === 1;
 
-  let globalData = null;
+  let globalData: any = null;
   let matrixData = null;
 
   if (isSingleCourse && !startDate && !endDate) {
@@ -53,14 +59,18 @@ export default async function GlobalAnalyticsPage({
       courseIds[0],
       new Date().getMonth() + 1,
       new Date().getFullYear(),
+      studentType
     );
   } else {
     globalData = await getGlobalTestAnalytics({
       startDate,
       endDate,
       courseIds,
+      studentType
     });
   }
+
+  const summary = globalData?.summary || matrixData?.summary;
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-8">
@@ -82,37 +92,17 @@ export default async function GlobalAnalyticsPage({
             Theo dõi tiến độ học tập của toàn bộ hệ thống eClass.
           </p>
         </div>
-
-        {/* Mini Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600">
-              <Users className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase leading-none">
-                Học sinh
-              </div>
-              <div className="text-lg font-black text-slate-900">
-                {globalData?.students.length || matrixData?.matrix.length || 0}
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600">
-              <BookOpen className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase leading-none">
-                Khóa học
-              </div>
-              <div className="text-lg font-black text-slate-900">
-                {courseIds.length > 0 ? courseIds.length : allCourses.length}
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
+
+      {/* Summary Cards */}
+      {summary && (
+        <GlobalSummaryCards summary={summary} />
+      )}
+
+      {/* Score Distribution Chart */}
+      {summary && summary.distribution && (
+        <ScoreDistributionChart distribution={summary.distribution} />
+      )}
 
       {/* Filters Section */}
       <GlobalFilters courses={allCourses} />
@@ -145,7 +135,10 @@ export default async function GlobalAnalyticsPage({
                 )
               </h2>
             </div>
-            <GlobalOverviewTable data={globalData.students} />
+            <MultiLevelMatrixTable 
+              students={globalData.students} 
+              coursesSchema={globalData.coursesSchema} 
+            />
           </div>
         ) : (
           <div className="h-64 flex flex-col items-center justify-center text-slate-400 bg-white rounded-[2.5rem] border border-dashed border-slate-200">
@@ -153,22 +146,6 @@ export default async function GlobalAnalyticsPage({
             <p className="font-bold">Đang tải dữ liệu thống kê...</p>
           </div>
         )}
-      </div>
-
-      {/* Footer Info */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-slate-900 rounded-[2.5rem] text-white">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
-            <LayoutDashboard className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-sm font-bold">Mẹo tối ưu</p>
-            <p className="text-xs text-white/60">
-              Sử dụng bộ lọc khóa học để xem bảng Ma trận chi tiết điểm số của
-              từng học sinh.
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -41,13 +40,6 @@ interface HomeSidebarProps {
 }
 
 export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
-  const [showDiscordModal, setShowDiscordModal] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const pathname = usePathname();
   const { data: session } = useSession();
   const currentUser = propUser || session?.user;
@@ -130,7 +122,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
           onClick={(e) => {
             if (isDiscord) {
               e.preventDefault();
-              setShowDiscordModal(true);
+              window.dispatchEvent(new CustomEvent('open-discord-modal'));
             }
             if (onClick) onClick();
           }}
@@ -221,60 +213,6 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
           <nav className="flex flex-col gap-1">{renderLinks(adminLinks)}</nav>
         </div>
       )}
-
-      {/* Beautiful dialog popup modal */}
-      {mounted &&
-        typeof window !== "undefined" &&
-        showDiscordModal &&
-        createPortal(
-          <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-            {/* Backdrop blur */}
-            <div
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-md transition-opacity duration-300"
-              onClick={() => setShowDiscordModal(false)}
-            />
-
-            {/* Dialog Container */}
-            <div className="relative bg-white/95 backdrop-blur-xl rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-blue-100/50 transform transition-all duration-300 scale-100 animate-in zoom-in-95">
-              {/* Header Icon */}
-              <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-[1.25rem] flex items-center justify-center mb-6 shadow-sm border border-blue-100/60">
-                <DiscordIcon className="w-7 h-7" />
-              </div>
-
-              {/* Content Message */}
-              <div className="space-y-3">
-                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">
-                  Hãy vào phòng Discord của lớp
-                </h3>
-                <p className="text-slate-500 text-xs font-bold leading-relaxed uppercase tracking-tight">
-                  Bạn chuẩn bị tham gia vào cộng đồng học tập trực tuyến eClass
-                  trên Discord để cùng nhau trao đổi bài giảng, thảo luận bài
-                  tập về nhà và nhận hỗ trợ nhanh chóng từ trợ giảng!
-                </p>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                <a
-                  href="https://discord.com/invite/3vQmegstD"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setShowDiscordModal(false)}
-                  className="flex-1 py-4 bg-[#2563EB] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest text-center shadow-lg hover:bg-slate-900 hover:shadow-xl active:scale-95 transition-all animate-none"
-                >
-                  Bắt đầu tham gia ngay
-                </a>
-                <button
-                  onClick={() => setShowDiscordModal(false)}
-                  className="py-4 px-6 bg-slate-50 border border-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all"
-                >
-                  Đóng lại
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
     </div>
   );
 }
