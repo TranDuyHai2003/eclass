@@ -38,9 +38,11 @@ import { Separator } from "@/components/ui/separator";
 export function MultiLevelMatrixTable({
   students,
   coursesSchema,
+  allCourses,
 }: {
   students: any[];
   coursesSchema: any[];
+  allCourses: { id: string; title: string }[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -153,7 +155,7 @@ export function MultiLevelMatrixTable({
     <div className="space-y-4">
       {/* UNIFIED TOOLBAR & FILTERS */}
       <div className="bg-white p-4 rounded-[28px] border border-slate-100 shadow-sm">
-        <GlobalFilters courses={coursesSchema}>
+        <GlobalFilters courses={allCourses}>
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

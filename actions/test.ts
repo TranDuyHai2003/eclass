@@ -316,7 +316,7 @@ function normalizeShortAnswer(answer: string) {
 export async function submitTestAttempt(attemptId: string, studentAnswers: { questionId: string, answerProvided: string }[]) {
   const session = await auth();
   if (!session || !session.user.id) {
-    throw new Error("Unauthorized");
+    return { success: false, error: "Unauthorized" };
   }
 
   const attempt = await prisma.studentAttempt.findUnique({
@@ -325,11 +325,12 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
   });
 
   if (!attempt || attempt.userId !== session.user.id) {
-    throw new Error("Invalid attempt");
+    return { success: false, error: "Invalid attempt" };
   }
 
+  // Gracefully handle already submitted attempts
   if (attempt.completedAt) {
-    throw new Error("Attempt already submitted");
+    return { success: true, score: attempt.score, alreadySubmitted: true };
   }
 
   // Map questions for quick lookup
@@ -344,43 +345,44 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
 
   // Check due date
   if (attempt.test.dueDate && new Date() > new Date(attempt.test.dueDate)) {
-    throw new Error("Hạn nộp bài đã kết thúc.");
+    return { success: false, error: "Hạn nộp bài đã kết thúc." };
   }
 
   let rawTotalScore = 0;
-  const answersData = studentAnswers.map(ans => {
+  const answersData: any[] = [];
+  
+  studentAnswers.forEach(ans => {
     const q = questionMap.get(ans.questionId);
+    if (!q) return; // Skip answers for questions that don't exist in this test
+
     let isCorrect = false;
     let pointsAwarded = 0;
 
-    if (q) {
-      if (q.type === 'MULTIPLE_CHOICE') {
-        isCorrect = ans.answerProvided === q.correctAnswer;
-      } else if (q.type === 'TRUE_FALSE') {
-        isCorrect = ans.answerProvided === q.correctAnswer;
-      } else if (q.type === 'SHORT_ANSWER') {
-        isCorrect = normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
-      } else if (q.type === 'ESSAY') {
-        // Essay needs manual grading, so we leave it as null (pending)
-        isCorrect = null as any; 
-      }
+    if (q.type === 'MULTIPLE_CHOICE') {
+      isCorrect = ans.answerProvided === q.correctAnswer;
+    } else if (q.type === 'TRUE_FALSE') {
+      isCorrect = ans.answerProvided === q.correctAnswer;
+    } else if (q.type === 'SHORT_ANSWER') {
+      isCorrect = normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
+    } else if (q.type === 'ESSAY') {
+      isCorrect = null as any; 
+    }
 
-      if (isCorrect === true) {
-        pointsAwarded = q.points;
-      }
+    if (isCorrect === true) {
+      pointsAwarded = q.points;
     }
 
     if (pointsAwarded > 0) {
       rawTotalScore += pointsAwarded;
     }
 
-    return {
+    answersData.push({
       attemptId,
       questionId: ans.questionId,
       answerProvided: ans.answerProvided,
       isCorrect,
       pointsAwarded
-    };
+    });
   });
 
   const finalScore = maxPointsPossible > 0 ? Math.round((rawTotalScore / maxPointsPossible) * 10 * 100) / 100 : 0;
@@ -611,6 +613,7 @@ export async function saveTestDraft(attemptId: string, answers: { questionId: st
 
   const attempt = await prisma.studentAttempt.findUnique({
     where: { id: attemptId },
+    select: { userId: true, completedAt: true }
   });
 
   if (!attempt || attempt.userId !== session.user.id) {
@@ -618,29 +621,28 @@ export async function saveTestDraft(attemptId: string, answers: { questionId: st
   }
 
   if (attempt.completedAt) {
-    throw new Error("Attempt already submitted");
+    return { success: false, error: "Attempt already submitted" };
   }
 
-  // Upsert each answer individually
-  for (const ans of answers) {
-    await prisma.studentAnswer.upsert({
-      where: {
-        attemptId_questionId: {
+  // Use a transaction to clear and set the draft to ensure atomicity and performance
+  await prisma.$transaction(async (tx) => {
+    // 1. Delete existing answers for this attempt
+    await tx.studentAnswer.deleteMany({
+      where: { attemptId }
+    });
+
+    // 2. Insert new draft answers
+    if (answers.length > 0) {
+      await tx.studentAnswer.createMany({
+        data: answers.map(ans => ({
           attemptId,
           questionId: ans.questionId,
-        },
-      },
-      update: {
-        answerProvided: ans.answerProvided,
-      },
-      create: {
-        attemptId,
-        questionId: ans.questionId,
-        answerProvided: ans.answerProvided,
-        pointsAwarded: 0,
-      },
-    });
-  }
+          answerProvided: ans.answerProvided,
+          pointsAwarded: 0,
+        }))
+      });
+    }
+  });
 
   return { success: true };
 }

@@ -7,6 +7,340 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                  String               @id @default(cuid())
+  name                String?
+  email               String               @unique
+  emailVerified       DateTime?
+  image               String?
+  password            String?
+  role                Role                 @default(STUDENT)
+  isApproved          Boolean              @default(false)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  studentType         StudentType          @default(ONLINE)
+  level               Level                @default(BASIC)
+  accounts            Account[]
+  comments            Comment[]
+  courses             Course[]
+  enrollments         Enrollment[]
+  homeworkSubmissions HomeworkSubmission[]
+  notifications       Notification[]
+  progress            Progress[]
+  sessions            Session[]
+  attempts            StudentAttempt[]
+  tests               Test[]
+  videoAssets         VideoAsset[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model Category {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  courses Course[]
+}
+
+model Course {
+  id           String       @id @default(cuid())
+  userId       String
+  title        String
+  description  String?
+  thumbnail    String?
+  price        Float?
+  examDate     DateTime?
+  isPublished  Boolean      @default(false)
+  isStructured Boolean      @default(true)
+  categoryId   String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  level        Level        @default(BASIC)
+  attachments  Attachment[]
+  chapters     Chapter[]
+  category     Category?    @relation(fields: [categoryId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollments  Enrollment[]
+  finalTest    Test?        @relation("CourseFinalTest")
+
+  @@index([categoryId])
+}
+
+model Chapter {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  position    Int      @default(0)
+  isPublished Boolean  @default(false)
+  isHidden    Boolean  @default(false)
+  courseId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons     Lesson[]
+
+  @@index([courseId])
+}
+
+model Lesson {
+  id                  String               @id @default(cuid())
+  title               String
+  description         String?
+  videoUrl            String?
+  position            Int                  @default(0)
+  isPublished         Boolean              @default(false)
+  isFree              Boolean              @default(false)
+  type                LessonType           @default(VIDEO)
+  muxData             String?
+  duration            Int?
+  chapterId           String
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  hasHomework         Boolean              @default(false)
+  homeworkVideoUrl    String?
+  attachments         Attachment[]
+  comments            Comment[]
+  homeworkSubmissions HomeworkSubmission[]
+  chapter             Chapter              @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  progress            Progress[]
+  test                Test?
+
+  @@index([chapterId])
+}
+
+model HomeworkSubmission {
+  id          String         @id @default(cuid())
+  userId      String
+  lessonId    String
+  attachments Json[]
+  status      HomeworkStatus @default(PENDING)
+  feedback    String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  lesson      Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([lessonId])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  type      String
+  courseId  String?
+  lessonId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  course    Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson    Lesson?  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@index([lessonId])
+}
+
+model Progress {
+  id          String   @id @default(cuid())
+  userId      String
+  lessonId    String
+  watchedTime Int      @default(0)
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  content   String
+  isEdited  Boolean   @default(false)
+  userId    String
+  lessonId  String
+  parentId  String?
+  images    String[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  lesson    Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Comment[] @relation("CommentReplies")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@index([userId])
+  @@index([parentId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  link      String?
+  type      NotificationType @default(SYSTEM)
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Enrollment {
+  id        String           @id @default(cuid())
+  userId    String
+  courseId  String
+  status    EnrollmentStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  course    Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model VideoAsset {
+  id        String   @id @default(cuid())
+  fileName  String   @unique
+  title     String
+  url       String
+  size      BigInt
+  status    String   @default("READY")
+  userId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Test {
+  id             String           @id @default(cuid())
+  title          String?
+  subject        String?
+  description    String?
+  passScore      Float?
+  accessCode     String?
+  userId         String?
+  lessonId       String?          @unique
+  courseId       String?          @unique
+  pdfUrl         String
+  duration       Int
+  showAnswers    Boolean          @default(false)
+  explanation    String?
+  videoUrl       String?
+  audioUrl       String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  dueDate        DateTime?
+  solutionVideos Json?
+  attempts       StudentAttempt[]
+  course         Course?          @relation("CourseFinalTest", fields: [courseId], references: [id], onDelete: Cascade)
+  lesson         Lesson?          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user           User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sections       TestSection[]
+}
+
+model TestSection {
+  id        String     @id @default(cuid())
+  testId    String
+  name      String
+  position  Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  questions Question[]
+  test      Test       @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@index([testId])
+}
+
+model Question {
+  id                 String          @id @default(cuid())
+  sectionId          String
+  position           Int             @default(0)
+  type               QuestionType    @default(MULTIPLE_CHOICE)
+  correctAnswer      String?
+  points             Float           @default(1.0)
+  explanation        String?
+  videoUrl           String?
+  audioUrl           String?
+  needsManualGrading Boolean         @default(false)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  category           String?
+  difficulty         String          @default("Medium")
+  subCategory        String?
+  section            TestSection     @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  studentAnswers     StudentAnswer[]
+
+  @@index([sectionId])
+}
+
+model StudentAttempt {
+  id          String          @id @default(cuid())
+  userId      String
+  testId      String
+  score       Float?
+  startedAt   DateTime        @default(now())
+  completedAt DateTime?
+  answers     StudentAnswer[]
+  test        Test            @relation(fields: [testId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([testId])
+}
+
+model StudentAnswer {
+  id             String         @id @default(cuid())
+  attemptId      String
+  questionId     String
+  answerProvided String?
+  isCorrect      Boolean?
+  pointsAwarded  Float          @default(0)
+  attempt        StudentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question       Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+}
+
 enum Role {
   ADMIN
   STUDENT
@@ -37,241 +371,10 @@ enum QuestionType {
   TRUE_FALSE
 }
 
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          Role      @default(STUDENT)
-  studentType   StudentType @default(ONLINE)
-  isApproved    Boolean   @default(false)
-  accounts      Account[]
-  sessions      Session[]
-
-  progress      Progress[]
-  comments      Comment[]
-  notifications Notification[]
-  courses       Course[]
-  enrollments   Enrollment[]
-  videoAssets   VideoAsset[]
-  attempts      StudentAttempt[]
-  tests         Test[]
-  homeworkSubmissions HomeworkSubmission[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Account {
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([provider, providerAccountId])
-}
-
-model Session {
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model VerificationToken {
-  identifier String
-  token      String
-  expires    DateTime
-
-  @@id([identifier, token])
-}
-
-// Domain Models
-
-model Category {
-  id      String   @id @default(cuid())
-  name    String   @unique
-  courses Course[]
-}
-
-model Course {
-  id           String    @id @default(cuid())
-  userId       String // Add userId to track who created the course (Teacher)
-  title        String
-  description  String?
-  thumbnail    String?
-  price        Float?
-  examDate     DateTime?
-  isPublished  Boolean   @default(false)
-  isStructured Boolean   @default(true) // true = hierarchical (chapters), false = flat (lessons only)
-
-  categoryId String?
-  category   Category? @relation(fields: [categoryId], references: [id])
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  chapters    Chapter[]
-  attachments Attachment[]
-  enrollments Enrollment[]
-
-  finalTest Test? @relation("CourseFinalTest")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([categoryId])
-}
-
-model Chapter {
-  id          String  @id @default(cuid())
-  title       String
-  description String?
-  position    Int     @default(0)
-  isPublished Boolean @default(false)
-  isHidden    Boolean @default(false) // Hidden chapter for flat structure courses
-
-  courseId String
-  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  lessons Lesson[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([courseId])
-}
-
-model Lesson {
-  id          String     @id @default(cuid())
-  title       String
-  description String?
-  videoUrl          String?
-  homeworkVideoUrl  String?
-  position          Int        @default(0)
-  isPublished Boolean    @default(false)
-  isFree      Boolean    @default(false)
-  hasHomework Boolean    @default(false)
-  type        LessonType @default(VIDEO)
-
-  muxData  String?
-  duration Int?
-
-  chapterId String
-  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-
-  attachments Attachment[] // Attachments specific to a lesson
-  progress    Progress[]
-  comments    Comment[]
-  test        Test?
-  homeworkSubmissions HomeworkSubmission[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([chapterId])
-}
-
 enum HomeworkStatus {
   PENDING
   SATISFACTORY
   UNSATISFACTORY
-}
-
-model HomeworkSubmission {
-  id        String         @id @default(cuid())
-  userId    String
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lessonId  String
-  lesson    Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  
-  attachments Json[] // { name: string, url: string }[]
-  status      HomeworkStatus @default(PENDING)
-  feedback    String? // Nhận xét của giáo viên
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, lessonId])
-  @@index([lessonId])
-}
-
-model Attachment {
-  id   String @id @default(cuid())
-  name String
-  url  String
-  type String // e.g., 'PDF', 'DOC', 'LINK'
-
-  courseId String?
-  course   Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  lessonId String?
-  lesson   Lesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([courseId])
-  @@index([lessonId])
-}
-
-model Progress {
-  id          String  @id @default(cuid())
-  userId      String
-  lessonId    String
-  watchedTime Int     @default(0) // in seconds
-  isCompleted Boolean @default(false)
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, lessonId])
-}
-
-// ==============================
-// COMMENT & NOTIFICATION SYSTEM
-// ==============================
-
-model Comment {
-  id       String  @id @default(cuid())
-  content  String
-  isEdited Boolean @default(false)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  lessonId String
-  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-
-  parentId String?
-  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  children Comment[] @relation("CommentReplies")
-
-  images String[] // Added to support image uploads in comments
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([lessonId])
-  @@index([userId])
-  @@index([parentId])
 }
 
 enum NotificationType {
@@ -280,153 +383,7 @@ enum NotificationType {
   SYSTEM
 }
 
-model Notification {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  title   String
-  message String
-  link    String?
-  type    NotificationType @default(SYSTEM)
-  isRead  Boolean          @default(false)
-
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-}
-
-model Enrollment {
-  id        String           @id @default(cuid())
-  userId    String
-  courseId  String
-  status    EnrollmentStatus @default(PENDING)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, courseId])
-  @@index([userId])
-  @@index([courseId])
-}
-
-model VideoAsset {
-  id        String   @id @default(cuid())
-  fileName  String   @unique
-  title     String
-  url       String
-  size      BigInt
-  status    String   @default("READY")
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-}
-
-model Test {
-  id String @id @default(cuid())
-
-  title       String?
-  subject     String?
-  description String?
-  passScore   Float?
-  accessCode  String?
-  userId      String?
-  user        User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  lessonId String? @unique
-  lesson   Lesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-
-  courseId String? @unique
-  course   Course? @relation("CourseFinalTest", fields: [courseId], references: [id], onDelete: Cascade)
-
-  pdfUrl      String
-  duration    Int // Thời gian làm bài (phút)
-  showAnswers Boolean @default(false) // Cho phép xem đáp án ngay sau khi nộp
-
-  explanation String? // Lời giải toàn bài
-  videoUrl    String? // Video lời giải toàn bài (deprecated in favor of solutionVideos)
-  solutionVideos Json? // Danh sách video lời giải: { title: string, url: string }[]
-  audioUrl    String? // File nghe lời giải toàn bài
-  dueDate     DateTime? // Hạn nộp bài
-
-  sections TestSection[]
-  attempts StudentAttempt[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model TestSection {
-  id       String @id @default(cuid())
-  testId   String
-  test     Test   @relation(fields: [testId], references: [id], onDelete: Cascade)
-  name     String // VD: "Phần 1: Đại số"
-  position Int    @default(0)
-
-  questions Question[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([testId])
-}
-
-model Question {
-  id                 String       @id @default(cuid())
-  sectionId          String
-  section            TestSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  position           Int          @default(0)
-  category           String? // Dạng bài
-  subCategory        String? // Chủ đề chi tiết
-  difficulty         String   @default("Medium") // Easy, Medium, Hard
-  type               QuestionType @default(MULTIPLE_CHOICE)
-  correctAnswer      String? // Dành cho MULTIPLE_CHOICE và SHORT_ANSWER
-  points             Float        @default(1.0)
-  explanation        String? // Giải thích chi tiết
-  videoUrl           String? // Video lời giải từng câu
-  audioUrl           String? // File nghe lời giải từng câu
-  needsManualGrading Boolean      @default(false) // Dành cho ESSAY
-
-  studentAnswers StudentAnswer[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([sectionId])
-}
-
-model StudentAttempt {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  testId String
-  test   Test   @relation(fields: [testId], references: [id], onDelete: Cascade)
-
-  score       Float? // Điểm tổng
-  startedAt   DateTime  @default(now())
-  completedAt DateTime?
-
-  answers StudentAnswer[]
-
-  @@index([userId])
-  @@index([testId])
-}
-
-model StudentAnswer {
-  id         String         @id @default(cuid())
-  attemptId  String
-  attempt    StudentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  questionId String
-  question   Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  answerProvided String? // Đáp án học sinh điền
-  isCorrect      Boolean? // True nếu đúng, false nếu sai, null nếu chưa chấm
-  pointsAwarded  Float    @default(0)
-
-  @@unique([attemptId, questionId])
+enum Level {
+  BASIC
+  ADVANCED
 }
