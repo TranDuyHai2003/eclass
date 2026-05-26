@@ -6,22 +6,20 @@ import { StudentType } from "@prisma/client"
 
 export async function getAnalytics() {
     const session = await auth()
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
         throw new Error("Unauthorized")
     }
 
-    // 1. Overall Stats
-    const totalUsers = await prisma.user.count()
+    // 1. Overall Statistics
+    const totalUsers = await prisma.user.count({ where: { role: 'STUDENT' } })
     const totalCourses = await prisma.course.count()
-    const totalViews = await prisma.progress.count() // Basic "views" metric
+    const totalViews = await prisma.progress.count({ where: { isCompleted: true } })
 
-    // 2. Top Lessons (by number of Progress entries)
-    // Note: Prisma doesn't support complex group-by + relation fetch easily in one go.
-    // We'll use groupBy to get IDs and counts, then fetch details.
-    const topLessonsGrouped = await prisma.progress.groupBy({
+    // 2. Top Lessons (by completion count as proxy for views)
+    const topLessonsRaw = await prisma.progress.groupBy({
         by: ['lessonId'],
         _count: {
-            lessonId: true
+            _all: true
         },
         orderBy: {
             _count: {
@@ -29,37 +27,37 @@ export async function getAnalytics() {
             }
         },
         take: 5
-    })
+    });
 
-    const topLessonIds = topLessonsGrouped.map(item => item.lessonId)
-    const topLessonsDetails = await prisma.lesson.findMany({
-        where: { id: { in: topLessonIds } },
-        include: {
-            chapter: {
-                include: {
-                    course: {
-                        select: { title: true }
+    const topLessons = await Promise.all(topLessonsRaw.map(async (item) => {
+        const lesson = await prisma.lesson.findUnique({
+            where: { id: item.lessonId },
+            select: {
+                id: true,
+                title: true,
+                chapter: {
+                    select: {
+                        course: {
+                            select: { title: true }
+                        }
                     }
                 }
             }
-        }
-    })
-
-    // Merge count back into details
-    const topLessons = topLessonsDetails.map(lesson => {
-        const stats = topLessonsGrouped.find(g => g.lessonId === lesson.id)
+        });
         return {
-            ...lesson,
-            viewCount: stats?._count.lessonId || 0
-        }
-    }).sort((a, b) => b.viewCount - a.viewCount)
+            id: lesson?.id || item.lessonId,
+            title: lesson?.title || "N/A",
+            viewCount: item._count._all,
+            chapter: lesson?.chapter
+        };
+    }));
 
-
-    // 3. Top Learners (by number of Progress entries)
-    const topUsersGrouped = await prisma.progress.groupBy({
+    // 3. Top Users (by completed lessons)
+    const topUsersRaw = await prisma.progress.groupBy({
         by: ['userId'],
+        where: { isCompleted: true },
         _count: {
-            userId: true
+            _all: true
         },
         orderBy: {
             _count: {
@@ -67,21 +65,26 @@ export async function getAnalytics() {
             }
         },
         take: 5
-    })
+    });
 
-    const topUserIds = topUsersGrouped.map(item => item.userId)
-    const topUsersDetails = await prisma.user.findMany({
-        where: { id: { in: topUserIds } },
-        select: { id: true, name: true, email: true, image: true, studentType: true }
-    })
-
-    const topUsers = topUsersDetails.map(user => {
-        const stats = topUsersGrouped.find(u => u.userId === user.id)
+    const topUsers = await Promise.all(topUsersRaw.map(async (item) => {
+        const user = await prisma.user.findUnique({
+            where: { id: item.userId },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                studentType: true
+            }
+        });
         return {
-            ...user,
-            completedLessons: stats?._count.userId || 0
-        }
-    }).sort((a, b) => b.completedLessons - a.completedLessons)
+            id: user?.id || item.userId,
+            name: user?.name || "N/A",
+            email: user?.email || "N/A",
+            completedLessons: item._count._all,
+            studentType: user?.studentType || "ONLINE"
+        };
+    }));
 
     return {
         overall: {
@@ -91,133 +94,7 @@ export async function getAnalytics() {
         },
         topLessons,
         topUsers
-    }
-}
-
-export async function getAttemptStatistics(attemptId: string) {
-  const session = await auth();
-  if (!session || !session.user.id) {
-    throw new Error("Unauthorized");
-  }
-
-  const attempt = await prisma.studentAttempt.findUnique({
-    where: { id: attemptId },
-    include: {
-      test: {
-        include: {
-          lesson: { select: { title: true } },
-          course: { select: { title: true } },
-          sections: {
-            include: {
-              questions: {
-                orderBy: { position: "asc" }
-              }
-            }
-          }
-        }
-      },
-      answers: {
-        include: {
-          question: true
-        }
-      }
-    }
-  });
-
-  if (!attempt) throw new Error("Attempt not found");
-
-  // Synchronize test title with parent name
-  const effectiveTestTitle = attempt.test.lesson?.title || (attempt.test.courseId ? "Bài kiểm tra cuối khóa" : attempt.test.title || "Bài kiểm tra");
-  
-  // Authorization: Student who made the attempt, or Admin/Teacher
-  const isOwner = attempt.userId === session.user.id;
-  const isAuthorized = isOwner || session.user.role === "ADMIN" || session.user.role === "TEACHER";
-  
-  if (!isAuthorized) {
-    throw new Error("Unauthorized");
-  }
-
-  const answers = attempt.answers;
-  const totalQuestions = attempt.test.sections.reduce((acc, section) => acc + section.questions.length, 0);
-  const correctAnswers = answers.filter(a => a.isCorrect === true).length;
-  const wrongAnswers = answers.filter(a => a.isCorrect === false).length;
-  const unanswered = totalQuestions - answers.length;
-
-  // Analytics by category
-  const categoryStats: Record<string, { total: number, correct: number, wrong: number }> = {};
-
-  // Initialize categories from all questions in the test to show 0% if none answered
-  attempt.test.sections.forEach(s => {
-    s.questions.forEach(q => {
-      const cat = q.category || "Chưa phân loại";
-      if (!categoryStats[cat]) {
-        categoryStats[cat] = { total: 0, correct: 0, wrong: 0 };
-      }
-      categoryStats[cat].total++;
-    });
-  });
-
-  answers.forEach(ans => {
-    const cat = ans.question.category || "Chưa phân loại";
-    if (ans.isCorrect === true) categoryStats[cat].correct++;
-    else if (ans.isCorrect === false) categoryStats[cat].wrong++;
-  });
-
-  const analytics = Object.entries(categoryStats).map(([category, stats]) => ({
-    category,
-    ...stats,
-    accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0
-  }));
-
-  // Recommendations: Find categories with low accuracy (< 60%)
-  const weakCategories = analytics
-    .filter(a => a.accuracy < 60 && a.total > 0)
-    .map(a => a.category);
-
-  let recommendations: any[] = [];
-  if (weakCategories.length > 0) {
-     // Search for lessons that might be relevant
-     recommendations = await prisma.lesson.findMany({
-       where: {
-         OR: weakCategories.map(cat => ({
-           title: { contains: cat, mode: 'insensitive' }
-         }))
-       },
-       take: 3,
-       select: { id: true, title: true, type: true }
-     });
-  }
-
-  // List of wrong questions with their explanations
-  const wrongQuestions = answers
-    .filter(a => a.isCorrect === false)
-    .map(a => ({
-      id: a.question.id,
-      content: "Câu hỏi " + (a.question.position + 1), // Simplification: we might need actual content if stored
-      userAnswer: a.answerProvided,
-      correctAnswer: a.question.correctAnswer,
-      explanation: a.question.explanation,
-      category: a.question.category,
-      subCategory: a.question.subCategory,
-      difficulty: a.question.difficulty,
-      videoUrl: a.question.videoUrl
-    }));
-
-  return {
-    attempt, // Return the full object for the UI to use
-    summary: {
-      score: attempt.score,
-      correct: correctAnswers,
-      wrong: wrongAnswers,
-      unanswered,
-      total: totalQuestions,
-      startedAt: attempt.startedAt,
-      completedAt: attempt.completedAt,
-    },
-    analytics,
-    wrongQuestions,
-    recommendations
-  };
+    };
 }
 
 export async function getCourseProgressMatrix(courseId: string, month: number, year: number, studentType?: StudentType) {
@@ -452,22 +329,28 @@ export async function getGlobalTestAnalytics(filters: {
     endDate?: string;
     courseIds?: string[];
     studentType?: StudentType;
+    search?: string;
+    sortBy?: string;
 }) {
     const session = await auth();
     if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
         throw new Error("Unauthorized");
     }
 
-    const { startDate, endDate, courseIds, studentType } = filters;
+    const { startDate, endDate, courseIds, studentType, search, sortBy } = filters;
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
 
-    // 1. Get all approved students (universal access model)
+    // 1. Get all approved students (universal access model) with optional search
     const students = await prisma.user.findMany({
         where: {
             role: 'STUDENT',
             isApproved: true,
             studentType: studentType ? studentType : undefined,
+            OR: search ? [
+                { name: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } }
+            ] : undefined
         },
         select: {
             id: true,
@@ -506,9 +389,11 @@ export async function getGlobalTestAnalytics(filters: {
                             lesson: {
                                 select: {
                                     title: true,
+                                    position: true,
                                     chapter: {
                                         select: { 
                                             courseId: true,
+                                            position: true,
                                             course: { select: { title: true } }
                                         }
                                     }
@@ -583,10 +468,10 @@ export async function getGlobalTestAnalytics(filters: {
         return aLessonPos - bLessonPos;
     });
 
-    sortedAllTests.forEach((t, idx) => {
+    sortedAllTests.forEach((t) => {
         const cId = t.courseId || t.lesson?.chapter?.courseId;
         const cTitle = t.course?.title || t.lesson?.chapter?.course?.title || "Khóa học";
-        const testTitle = t.title || t.lesson?.title || (t.courseId ? "Bài kiểm tra cuối khóa" : `Bài ${idx + 1}`);
+        const testTitle = t.title || t.lesson?.title || (t.courseId ? "Bài kiểm tra cuối khóa" : `Bài ${t.id.slice(-4)}`);
         if (cId) {
             if (!coursesSchemaMap.has(cId)) {
                 coursesSchemaMap.set(cId, { id: cId, title: cTitle, tests: [] }); 
@@ -597,7 +482,7 @@ export async function getGlobalTestAnalytics(filters: {
 
     const coursesSchema = Array.from(coursesSchemaMap.values());
     // 4. Process student data
-    const results = students.map(student => {
+    let results = students.map(student => {
         const studentAttemptsRaw = student.attempts;
         
         // Group by testId and keep only the best attempt for each test
@@ -667,6 +552,13 @@ export async function getGlobalTestAnalytics(filters: {
         };
     });
 
+    // 5. Apply Sorting
+    if (sortBy === "score_desc") {
+        results.sort((a, b) => b.stats.averageScore - a.stats.averageScore);
+    } else if (sortBy === "score_asc") {
+        results.sort((a, b) => a.stats.averageScore - b.stats.averageScore);
+    }
+
     // Calculate additional statistics for summary
     const distribution = {
         excellent: results.filter(s => s.stats.averageScore >= 8).length,
@@ -696,4 +588,32 @@ export async function getGlobalTestAnalytics(filters: {
     };
 }
 
+export async function getAttemptStatistics(attemptId: string) {
+    const session = await auth();
+    if (!session) throw new Error("Unauthorized");
 
+    const attempt = await prisma.studentAttempt.findUnique({
+        where: { id: attemptId },
+        include: {
+            answers: {
+                include: {
+                    question: true
+                }
+            },
+            test: {
+                include: {
+                    sections: {
+                        include: {
+                            questions: {
+                                orderBy: { position: 'asc' }
+                            }
+                        },
+                        orderBy: { position: 'asc' }
+                    }
+                }
+            }
+        }
+    });
+
+    return { attempt };
+}

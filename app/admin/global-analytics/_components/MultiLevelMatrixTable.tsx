@@ -32,6 +32,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { deleteStudentAttempt } from "@/actions/test";
 import { toast } from "sonner";
+import { GlobalFilters } from "./GlobalFilters";
+import { Separator } from "@/components/ui/separator";
 
 export function MultiLevelMatrixTable({
   students,
@@ -43,7 +45,6 @@ export function MultiLevelMatrixTable({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
-  const [search, setSearch] = useState("");
   const [collapsedCourses, setCollapsedCourses] = useState<Set<string>>(new Set());
   const [hiddenCourses, setHiddenCourses] = useState<Set<string>>(new Set());
   const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
@@ -107,14 +108,8 @@ export function MultiLevelMatrixTable({
   }, []);
   // -----------------------------
 
-  // Filter students
-  const filteredStudents = useMemo(() => {
-    const s = search.toLowerCase();
-    return students.filter(
-      (st) =>
-        st.name?.toLowerCase().includes(s) || st.email?.toLowerCase().includes(s)
-    );
-  }, [students, search]);
+  // Students are already filtered and sorted by the server
+  const filteredStudents = students;
 
   // Filter courses schema (Hidden Columns)
   const visibleCourses = useMemo(() => {
@@ -156,46 +151,39 @@ export function MultiLevelMatrixTable({
 
   return (
     <div className="space-y-4">
-      {/* TOOLBAR */}
-      <div className="flex flex-col sm:flex-row justify-between gap-4 bg-white p-4 rounded-[28px] border border-slate-100 shadow-sm">
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input
-            placeholder="Tìm theo Mã HS, Họ & Tên..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-10 rounded-xl bg-slate-50 border-transparent focus-visible:bg-white text-xs font-bold"
-          />
-        </div>
+      {/* UNIFIED TOOLBAR & FILTERS */}
+      <div className="bg-white p-4 rounded-[28px] border border-slate-100 shadow-sm">
+        <GlobalFilters courses={coursesSchema}>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl border-slate-100">
+                <div className="p-3 text-[9px] font-black uppercase tracking-widest text-slate-400">Ẩn/Hiện Khóa Học</div>
+                <Separator className="mb-1" />
+                <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
+                  {coursesSchema.map((c) => (
+                    <DropdownMenuCheckboxItem
+                      key={c.id}
+                      checked={!hiddenCourses.has(c.id)}
+                      onCheckedChange={() => toggleCourseVisibility(c.id)}
+                      className="text-[10px] font-bold py-2 rounded-lg"
+                    >
+                      {c.title}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-        <div className="flex gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="rounded-xl h-10 text-xs font-bold gap-2">
-                <Settings2 className="w-4 h-4" /> Ẩn/Hiện Khóa Học
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-2xl">
-              {coursesSchema.map((c) => (
-                <DropdownMenuCheckboxItem
-                  key={c.id}
-                  checked={!hiddenCourses.has(c.id)}
-                  onCheckedChange={() => toggleCourseVisibility(c.id)}
-                  className="text-xs font-medium"
-                >
-                  {c.title}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <AnalyticsExportButton
-            apiUrl={`/api/admin/export-matrix?${searchParams.toString()}`}
-            filename="Master_Gradebook.xlsx"
-            variant="premium"
-            className="rounded-xl h-10 text-xs font-bold gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200 text-white px-4"
-          />
-        </div>
+            <AnalyticsExportButton
+              apiUrl={`/api/admin/export-matrix?${searchParams.toString()}`}
+              filename="Master_Gradebook.xlsx"
+              variant="premium"
+              className="rounded-xl h-10 text-[9px] font-black uppercase tracking-widest gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200 text-white px-4 border-none transition-all"
+            />
+          </div>
+        </GlobalFilters>
       </div>
 
       {/* MATRIX TABLE */}

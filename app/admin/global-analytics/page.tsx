@@ -5,20 +5,14 @@ import {
   getAnalyticsCourses,
   getCourseProgressMatrix,
 } from "@/actions/analytics";
-import { GlobalFilters } from "./_components/GlobalFilters";
 import { MultiLevelMatrixTable } from "./_components/MultiLevelMatrixTable";
-import { AnalyticsExportButton } from "@/components/analytics/AnalyticsExportButton";
 import { SmartMatrix } from "@/app/teacher/courses/[courseId]/analytics/_components/SmartMatrix";
 import { GlobalSummaryCards } from "./_components/GlobalSummaryCards";
 import { ScoreDistributionChart } from "./_components/ScoreDistributionChart";
 import {
   LayoutDashboard,
   TrendingUp,
-  Users,
-  BookOpen,
-  ArrowRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 import { StudentType } from "@prisma/client";
 
@@ -30,6 +24,8 @@ export default async function GlobalAnalyticsPage({
     endDate?: string;
     courseIds?: string;
     studentType?: string;
+    search?: string;
+    sortBy?: string;
   }>;
 }) {
   const session = await auth();
@@ -40,7 +36,14 @@ export default async function GlobalAnalyticsPage({
     return redirect("/");
   }
 
-  const { startDate, endDate, courseIds: courseIdsRaw, studentType: studentTypeRaw } = await searchParams;
+  const { 
+    startDate, 
+    endDate, 
+    courseIds: courseIdsRaw, 
+    studentType: studentTypeRaw,
+    search,
+    sortBy
+  } = await searchParams;
   const courseIds = courseIdsRaw ? courseIdsRaw.split(",").filter(Boolean) : [];
   const studentType = (studentTypeRaw === "ONLINE" || studentTypeRaw === "OFFLINE") ? studentTypeRaw as StudentType : undefined;
 
@@ -52,9 +55,8 @@ export default async function GlobalAnalyticsPage({
   let globalData: any = null;
   let matrixData = null;
 
-  if (isSingleCourse && !startDate && !endDate) {
-    // If exactly one course and no date range, use the high-perf matrix view
-    // (Note: we could also enhance matrix view to support dates later)
+  if (isSingleCourse && !startDate && !endDate && !search) {
+    // If exactly one course and no date range/search, use the high-perf matrix view
     matrixData = await getCourseProgressMatrix(
       courseIds[0],
       new Date().getMonth() + 1,
@@ -66,7 +68,9 @@ export default async function GlobalAnalyticsPage({
       startDate,
       endDate,
       courseIds,
-      studentType
+      studentType,
+      search,
+      sortBy
     });
   }
 
@@ -75,37 +79,36 @@ export default async function GlobalAnalyticsPage({
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-8">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-indigo-600 font-black uppercase text-[10px] tracking-[0.2em]">
-            <TrendingUp className="w-3 h-3" />
-            LMS Analytics Engine
+      <div className="flex flex-col space-y-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-indigo-600 font-black uppercase text-[10px] tracking-[0.2em]">
+              <TrendingUp className="w-3 h-3" />
+              LMS Analytics Engine
+            </div>
+            <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
+              Quản lý{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+                điểm số
+              </span>
+            </h1>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
-            Thống kê{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
-              toàn cục
-            </span>
-          </h1>
-          <p className="text-slate-500 font-medium">
-            {" "}
-            Theo dõi tiến độ học tập của toàn bộ hệ thống eClass.
-          </p>
+        </div>
+
+        {/* Summary Statistics */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              {summary && (
+                <GlobalSummaryCards summary={summary} />
+              )}
+            </div>
+            <div className="lg:col-span-1">
+              {summary && summary.distribution && (
+                <ScoreDistributionChart distribution={summary.distribution} />
+              )}
+            </div>
         </div>
       </div>
-
-      {/* Summary Cards */}
-      {summary && (
-        <GlobalSummaryCards summary={summary} />
-      )}
-
-      {/* Score Distribution Chart */}
-      {summary && summary.distribution && (
-        <ScoreDistributionChart distribution={summary.distribution} />
-      )}
-
-      {/* Filters Section */}
-      <GlobalFilters courses={allCourses} />
 
       {/* Content Section */}
       <div className="space-y-6">
