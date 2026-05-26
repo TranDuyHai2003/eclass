@@ -64,28 +64,18 @@ export default async function WatchPage({
 
   // 2. Access Control Check
   const isAdmin = session.user.role === "ADMIN";
-  const isOwner = lesson.chapter.course.userId === session.user.id;
   const isTeacher = session.user.role === "TEACHER" || isAdmin;
+  const isApproved = (session.user as any).isApproved || isTeacher;
+  const isOwner = lesson.chapter.course.userId === session.user.id;
 
-  let enrollment = null;
-
-  if (!isAdmin && !isOwner) {
-    enrollment = await prisma.enrollment.findUnique({
-      where: {
-        userId_courseId: {
-          userId: session.user.id!,
-          courseId,
-        },
-      },
-    });
-
-    // Simulate active enrollment to allow learning
-    if (!enrollment || enrollment.status !== "ACTIVE") {
-      enrollment = { status: "ACTIVE" } as any;
-    }
-  } else {
-    enrollment = { status: "ACTIVE" } as any;
+  if (!isApproved && !isOwner) {
+    // If not approved and not the owner/admin/teacher, they can't watch.
+    // In this model, they probably shouldn't even reach here, but good for safety.
+    return redirect("/profile"); // Or a specific "Not Approved" page
   }
+
+  // Enrollment is no longer strictly used for access, but we set it to ACTIVE to keep UI components happy
+  const enrollment = { status: "ACTIVE" };
 
   // 4. Fetch Course Full Data with Curriculum Details
   const course = await prisma.course.findUnique({

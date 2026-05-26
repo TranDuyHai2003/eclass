@@ -30,34 +30,9 @@ export function EnrollButton({
   userEmail,
   className,
 }: EnrollButtonProps) {
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleEnrollClick = async () => {
-    if (!isLoggedIn) {
-      router.push("/login");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const res = await createEnrollment(courseId);
-      if (res.success) {
-        toast.success(
-          "Tuyệt vời! Yêu cầu của bạn đã được gửi. Vui lòng chờ Admin duyệt nhé!",
-        );
-        router.refresh();
-      } else {
-        toast.error(res.error || "Có lỗi xảy ra");
-      }
-    } catch (error) {
-      toast.error("Lỗi hệ thống");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 1. Cấp quyền ngay nếu là Admin, Teacher hoặc đã được duyệt
+  // 1. Nếu là Admin, Teacher hoặc đã được duyệt (truy cập tất cả khóa học)
   if (enrollmentStatus === "ACTIVE" || isAdminOrTeacher) {
     return (
       <Link
@@ -80,36 +55,33 @@ export function EnrollButton({
     );
   }
 
-  // 2. Chờ duyệt
-  if (enrollmentStatus === "PENDING") {
+  // 2. Chưa đăng nhập
+  if (!isLoggedIn) {
     return (
-      <button
-        disabled
+      <Link
+        href="/login"
         className={cn(
-          "relative inline-flex w-full items-center justify-center px-6 py-3 bg-slate-100 text-slate-400 font-black text-xs rounded-2xl shadow-inner opacity-90 cursor-not-allowed uppercase tracking-widest border-2 border-slate-200",
+          "group relative inline-flex w-full items-center justify-center px-6 py-3 bg-blue-600 text-white font-black text-xs rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-widest overflow-hidden",
           className,
         )}
       >
-        <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse mr-2" />
-        Chờ duyệt...
-      </button>
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+        <span className="relative z-10">Đăng nhập để học</span>
+      </Link>
     );
   }
 
-  // 3. Chưa ghi danh (hoặc bị từ chối)
+  // 3. Đã đăng nhập nhưng chưa được duyệt tài khoản
   return (
     <button
-      onClick={handleEnrollClick}
-      disabled={isLoading}
+      disabled
       className={cn(
-        "group relative inline-flex w-full items-center justify-center px-6 py-3 bg-blue-600 text-white font-black text-xs rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-widest disabled:opacity-70 disabled:cursor-not-allowed overflow-hidden",
+        "relative inline-flex w-full items-center justify-center px-6 py-3 bg-slate-100 text-slate-400 font-black text-xs rounded-2xl shadow-inner opacity-90 cursor-not-allowed uppercase tracking-widest border-2 border-slate-200",
         className,
       )}
     >
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-      <span className="relative z-10">
-        {isLoading ? "Đang xử lý..." : "Ghi danh ngay"}
-      </span>
+      <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse mr-2" />
+      Chờ kích hoạt tài khoản...
     </button>
   );
 }
