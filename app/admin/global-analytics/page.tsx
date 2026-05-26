@@ -3,12 +3,9 @@ import { redirect } from "next/navigation";
 import {
   getGlobalTestAnalytics,
   getAnalyticsCourses,
-  getCourseProgressMatrix,
 } from "@/actions/analytics";
 import { MultiLevelMatrixTable } from "./_components/MultiLevelMatrixTable";
-import { SmartMatrix } from "@/app/teacher/courses/[courseId]/analytics/_components/SmartMatrix";
 import { GlobalSummaryCards } from "./_components/GlobalSummaryCards";
-import { ScoreDistributionChart } from "./_components/ScoreDistributionChart";
 import {
   LayoutDashboard,
   TrendingUp,
@@ -49,32 +46,16 @@ export default async function GlobalAnalyticsPage({
 
   const allCourses = await getAnalyticsCourses();
 
-  // Decide which data to fetch
-  const isSingleCourse = courseIds.length === 1;
+  const globalData = await getGlobalTestAnalytics({
+    startDate,
+    endDate,
+    courseIds,
+    studentType,
+    search,
+    sortBy
+  });
 
-  let globalData: any = null;
-  let matrixData = null;
-
-  if (isSingleCourse && !startDate && !endDate && !search) {
-    // If exactly one course and no date range/search, use the high-perf matrix view
-    matrixData = await getCourseProgressMatrix(
-      courseIds[0],
-      new Date().getMonth() + 1,
-      new Date().getFullYear(),
-      studentType
-    );
-  } else {
-    globalData = await getGlobalTestAnalytics({
-      startDate,
-      endDate,
-      courseIds,
-      studentType,
-      search,
-      sortBy
-    });
-  }
-
-  const summary = globalData?.summary || matrixData?.summary;
+  const summary = globalData.summary;
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-8">
@@ -102,31 +83,12 @@ export default async function GlobalAnalyticsPage({
                 <GlobalSummaryCards summary={summary} />
               )}
             </div>
-            <div className="lg:col-span-1">
-              {summary && summary.distribution && (
-                <ScoreDistributionChart distribution={summary.distribution} />
-              )}
-            </div>
         </div>
       </div>
 
       {/* Content Section */}
       <div className="space-y-6">
-        {matrixData ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 px-2">
-              <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-              <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">
-                Chế độ Ma trận (Single Course Mode)
-              </h2>
-            </div>
-            <SmartMatrix
-              courseId={courseIds[0]}
-              tests={matrixData.tests}
-              matrix={matrixData.matrix}
-            />
-          </div>
-        ) : globalData ? (
+        {globalData ? (
           <div className="space-y-4">
             <div className="flex items-center gap-2 px-2">
               <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
@@ -134,13 +96,16 @@ export default async function GlobalAnalyticsPage({
                 Bảng tổng hợp (
                 {courseIds.length === 0
                   ? "Tất cả khóa học"
-                  : `${courseIds.length} khóa học`}
+                  : courseIds.length === 1 
+                    ? `Khóa học: ${allCourses.find(c => c.id === courseIds[0])?.title || "Đang chọn"}`
+                    : `${courseIds.length} khóa học`}
                 )
               </h2>
             </div>
             <MultiLevelMatrixTable 
               students={globalData.students} 
               coursesSchema={globalData.coursesSchema} 
+              allCourses={allCourses}
             />
           </div>
         ) : (

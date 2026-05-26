@@ -213,6 +213,10 @@ export async function getCourseProgressMatrix(courseId: string, month: number, y
     matrix.sort((a, b) => b.totalScore - a.totalScore);
     console.log(`[MATRIX] Matrix generation complete`);
 
+    const allAverageScores = matrix.map(s => s.averageScore).filter(s => s > 0);
+    const maxScore = allAverageScores.length > 0 ? Math.max(...allAverageScores) : 0;
+    const minScore = allAverageScores.length > 0 ? Math.min(...allAverageScores) : 0;
+
     return {
         tests: filteredTests.map(t => ({ id: t.id, title: t.lessonTitle })),
         matrix,
@@ -222,6 +226,8 @@ export async function getCourseProgressMatrix(courseId: string, month: number, y
             offlineStudents: matrix.filter(s => s.studentType === 'OFFLINE').length,
             averageScore: matrix.length > 0 ? matrix.reduce((acc, s) => acc + s.averageScore, 0) / matrix.length : 0,
             averageCompletion: matrix.length > 0 ? matrix.reduce((acc, s) => acc + (s.completedCount / (s.completedCount + s.missedCount)) * 100, 0) / matrix.length : 0,
+            maxScore,
+            minScore,
         }
     };
 }

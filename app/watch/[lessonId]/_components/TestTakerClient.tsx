@@ -50,10 +50,12 @@ export default function TestTakerClient({
   // Keep ref in sync
   useEffect(() => { answersRef.current = answers; }, [answers]);
 
+  const isSubmittingRef = useRef(false);
+
   // Sync answers to server (debounced)
   const syncToServer = useCallback(() => {
     const currentAttemptId = attemptIdRef.current;
-    if (!currentAttemptId) return;
+    if (!currentAttemptId || isPending || isSubmittingRef.current) return;
     const currentAnswers = answersRef.current;
     const answersArray = Object.keys(currentAnswers)
       .filter((k) => currentAnswers[k] !== "")
@@ -65,11 +67,11 @@ export default function TestTakerClient({
     saveTestDraft(currentAttemptId, answersArray).catch((e) =>
       console.error("[Auto-save] Sync failed:", e)
     );
-  }, []);
+  }, [isPending]);
 
   const attemptIdRef = useRef(attemptId);
   useEffect(() => { attemptIdRef.current = attemptId; }, [attemptId]);
-
+  
   // Load initial attempt + reconcile server + localStorage
   useEffect(() => {
     startTestAttempt(test.id).then(async (res) => {
@@ -164,7 +166,7 @@ export default function TestTakerClient({
   }, [attemptId, syncToServer]);
 
   const handleSubmit = useCallback(() => {
-    if (!attemptId) return;
+    if (!attemptId || isPending || isSubmittingRef.current) return;
 
     let totalQuestions = 0;
     test.sections.forEach((s: any) => (totalQuestions += s.questions.length));
@@ -182,6 +184,7 @@ export default function TestTakerClient({
       }
     }
 
+    isSubmittingRef.current = true;
     startTransition(async () => {
       try {
         const answersArray = Object.keys(answers).map((qId) => ({
@@ -191,7 +194,11 @@ export default function TestTakerClient({
 
         const res = await submitTestAttempt(attemptId, answersArray);
         if (res.success) {
-          toast.success("Nộp bài thành công!");
+          if ("alreadySubmitted" in res && !res.alreadySubmitted) {
+            toast.success("Nộp bài thành công!");
+          } else if (!("alreadySubmitted" in res)) {
+            toast.success("Nộp bài thành công!");
+          }
           localStorage.removeItem(`draft_${attemptId}`);
           localStorage.removeItem(`flags_${attemptId}`);
           const path = resultsPath
@@ -199,13 +206,14 @@ export default function TestTakerClient({
             : `/watch/${lesson.id}/results/${attemptId}`;
           router.push(path);
         } else {
-          throw new Error("Lỗi nộp bài");
+          throw new Error((res as any).error || "Lỗi nộp bài");
         }
-      } catch (e) {
-        toast.error("Không thể nộp bài");
+      } catch (e: any) {
+        toast.error(e.message || "Không thể nộp bài");
+        isSubmittingRef.current = false;
       }
     });
-  }, [attemptId, answers, isTimeUp, test, lesson, resultsPath, router]);
+  }, [attemptId, answers, isTimeUp, test, lesson, resultsPath, router, isPending]);
 
   const handleSelectAnswer = (qId: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [qId]: value }));

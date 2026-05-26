@@ -37,13 +37,13 @@ export function GlobalSummaryCards({ summary }: GlobalSummaryCardsProps) {
     },
     {
       title: "Điểm trung bình",
-      value: summary.averageScore.toFixed(2),
+      value: summary.averageScore?.toFixed(2) || "0.00",
       icon: Award,
       color: "indigo",
       suffix: "/ 10",
       details: [
-        { label: "Cao nhất", value: summary.maxScore.toFixed(1), icon: Award },
-        { label: "Thấp nhất", value: summary.minScore.toFixed(1), icon: Award },
+        { label: "Cao nhất", value: summary.maxScore?.toFixed(1) || "0.0", icon: Award },
+        { label: "Thấp nhất", value: summary.minScore?.toFixed(1) || "0.0", icon: Award },
       ]
     },
     {
