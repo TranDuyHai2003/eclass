@@ -3,15 +3,13 @@ import Google from "next-auth/providers/google"
 import Facebook from "next-auth/providers/facebook"
 
 export default {
-  providers: [
-    Google,
-    Facebook
-  ],
+  providers: [],
   callbacks: {
     jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = (user as any).role;
         token.studentType = (user as any).studentType;
+        token.isApproved = (user as any).isApproved;
         token.id = user.id;
       }
 

@@ -69,25 +69,25 @@ export default async function CoursePage({
 
   const firstLesson = c.chapters[0]?.lessons[0];
 
-  if (firstLesson) {
+  const session = await auth();
+  const isLoggedIn = !!session?.user;
+  const isAdminOrTeacher =
+    session?.user?.role === "ADMIN" || session?.user?.role === "TEACHER";
+  const isApproved = (session?.user as any)?.isApproved || isAdminOrTeacher;
+  const userEmail = session?.user?.email || "";
+
+  if (isApproved && firstLesson) {
     return redirect(`/watch/${firstLesson.id}`);
-  } else {
-    return redirect("/courses");
   }
 
   const totalLessons = c.chapters.reduce(
     (acc, ch) => acc + ch.lessons.length,
     0,
   );
-  const session = await auth();
-  // const enrollmentStatus = await getEnrollmentStatus(courseId);
-  // TEMPORARILY BYPASS ENROLLMENT:
-  const enrollmentStatus = "ACTIVE";
-
-  const isLoggedIn = !!session?.user;
-  const isAdminOrTeacher =
-    session?.user?.role === "ADMIN" || session?.user?.role === "TEACHER";
-  const userEmail = session?.user?.email || "";
+  
+  // enrollmentStatus is used to determine if they see the Start button or Enroll button
+  // If we want to hide enrollment entirely, we could just set it to ACTIVE if isApproved is true.
+  const enrollmentStatus = isApproved ? "ACTIVE" : null;
 
   return (
     <div className="page-shell bg-[#F8FAFC] relative">

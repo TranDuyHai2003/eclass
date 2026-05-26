@@ -73,10 +73,13 @@ export default function CourseSidebar({
   course,
   currentLessonId,
   progress = 0,
-  isEnrolled = false,
+  isEnrolled = true,
   className,
 }: CourseSidebarProps) {
   const searchParams = useSearchParams();
+
+  // Use isEnrolled as a proxy for 'isApproved' in this component's scope
+  const isApproved = isEnrolled;
   
   // Automatically open the chapter containing the current lesson
   const [openChapters, setOpenChapters] = useState<Record<string, boolean>>(
@@ -273,11 +276,15 @@ export default function CourseSidebar({
                         )}
                       >
                         <Link
-                          href={isLocked ? "/courses" : `/watch/${lesson.id}`}
+                          href={isLocked ? `/courses/${course.id}` : `/watch/${lesson.id}`}
                           onClick={(e) => {
                             if (isMainVideoActive) {
                               e.preventDefault();
                               if (hasExtras) toggleLesson(lesson.id);
+                            }
+                            if (isLocked) {
+                               e.preventDefault();
+                               toast.error("Vui lòng chờ Admin kích hoạt tài khoản để học bài này.");
                             }
                           }}
                           className={cn(

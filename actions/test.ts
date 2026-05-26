@@ -228,6 +228,13 @@ export async function startTestAttempt(testId: string) {
     throw new Error("Unauthorized");
   }
 
+  // Security: Only approved students (or staff) can start tests
+  const isAdminOrTeacher = session.user.role === "ADMIN" || session.user.role === "TEACHER";
+  const isApproved = (session.user as any).isApproved || isAdminOrTeacher;
+  if (!isApproved) {
+    throw new Error("Tài khoản của bạn chưa được kích hoạt để tham gia kiểm tra.");
+  }
+
   const test = await prisma.test.findUnique({
     where: { id: testId },
     select: { dueDate: true },

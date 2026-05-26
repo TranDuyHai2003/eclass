@@ -357,7 +357,7 @@ export function MultiLevelMatrixTable({
                     {/* COURSES CELLS */}
                     {visibleCourses.map((c) => {
                       const isCollapsed = collapsedCourses.has(c.id);
-                      const courseProgress = student.courses.find((sc: any) => sc.id === c.id);
+                      const courseProgress = student.courses.find((sc: any) => String(sc.id) === String(c.id));
                       
                       let tbKhoa = null;
                       if (courseProgress && courseProgress.tests.length > 0) {
@@ -379,9 +379,9 @@ export function MultiLevelMatrixTable({
                       return (
                         <React.Fragment key={c.id + "_details"}>
                           {c.tests.map((t: any) => {
-                            const testAttempt = courseProgress?.tests.find((st: any) => st.testId === t.id);
+                            const testAttempt = courseProgress?.tests.find((st: any) => String(st.testId) === String(t.id));
                             const hasScore = testAttempt?.score !== null && testAttempt?.score !== undefined;
-                            const attemptDetail = hasScore ? student.details.find((d: any) => d.testId === t.id) : null;
+                            const attemptDetail = hasScore ? student.details.find((d: any) => String(d.testId) === String(t.id)) : null;
 
                             return (
                               <td

@@ -228,14 +228,14 @@ export async function getCourseProgressMatrix(courseId: string, month: number, y
 
     console.log(`[MATRIX] Fetching progress for course: ${courseId}, month: ${month}/${year}, type: ${studentType}`);
 
-    // 1. Get all students enrolled in the course (ACTIVE or PENDING)
-    const enrollments = await prisma.enrollment.findMany({
+    // 1. Get all approved students (universal access model)
+    const allStudents = await prisma.user.findMany({
         where: { 
-            courseId, 
-            status: { in: ["ACTIVE", "PENDING"] },
-            user: studentType ? { studentType } : undefined
+            role: "STUDENT",
+            isApproved: true,
+            studentType: studentType ? studentType : undefined
         },
-        include: { user: { select: { id: true, name: true, email: true, studentType: true } } }
+        select: { id: true, name: true, email: true, studentType: true }
     });
     
     // 2. Get all tests in this course
@@ -266,43 +266,7 @@ export async function getCourseProgressMatrix(courseId: string, month: number, y
     
     const testIds = allTests.map(t => t.id);
 
-    // 3. Find any additional students who took tests in this course but aren't in the enrollment list
-    const attemptsForThisCourse = await prisma.studentAttempt.findMany({
-        where: { 
-            testId: { in: testIds },
-            user: studentType ? { studentType } : undefined
-        },
-        select: { userId: true },
-        distinct: ['userId']
-    });
-    
-    const extraStudentIds = attemptsForThisCourse
-        .map(a => a.userId)
-        .filter(id => !enrollments.some(e => e.userId === id));
-    
-    const extraStudents = extraStudentIds.length > 0 
-        ? await prisma.user.findMany({
-            where: { 
-                id: { in: extraStudentIds },
-                studentType: studentType ? studentType : undefined
-            },
-            select: { id: true, name: true, email: true, studentType: true }
-          })
-        : [];
-
-    const allStudents = [
-        ...enrollments.map(e => e.user),
-        ...extraStudents
-    ];
-    
-    console.log(`[MATRIX] Total students to show: ${allStudents.length} (${enrollments.length} enrolled, ${extraStudents.length} from attempts)`);
-
-    // Filter tests assigned in the specific month/year - REMOVED strictly for createdAt
-    // Instead, we show ALL tests if no specific filter matches, or we keep it for now but maybe broaden it.
-    // THE BUG: Filtering by test.createdAt makes the matrix columns disappear if tests were created in old months.
-    // SOLUTION: Show all tests that have AT LEAST ONE attempt in the selected month OR all tests in course.
-    
-    // For now, let's show ALL tests in the course to ensure nothing is missed.
+    // 3. Filter tests (show all tests in the course)
     const filteredTests = allTests; 
     
     const studentIds = allStudents.map(s => s.id);
@@ -331,8 +295,7 @@ export async function getCourseProgressMatrix(courseId: string, month: number, y
             // Find all attempts for this student and this test
             const studentTestAttempts = attempts.filter(a => a.userId === student.id && a.testId === test.id);
             
-            // If month/year filter is provided, we might want to prioritize attempts in that month
-            // but for a matrix, usually we want the best score ever or latest.
+            // For a matrix, we want the best score.
             const bestAttempt = studentTestAttempts.length > 0 ? studentTestAttempts[0] : null;
 
             if (bestAttempt) {
@@ -499,14 +462,12 @@ export async function getGlobalTestAnalytics(filters: {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
 
-    // 1. Get all relevant students
+    // 1. Get all approved students (universal access model)
     const students = await prisma.user.findMany({
         where: {
             role: 'STUDENT',
+            isApproved: true,
             studentType: studentType ? studentType : undefined,
-            enrollments: courseIds && courseIds.length > 0
-                ? { some: { courseId: { in: courseIds } } }
-                : undefined,
         },
         select: {
             id: true,
@@ -514,13 +475,6 @@ export async function getGlobalTestAnalytics(filters: {
             email: true,
             image: true,
             studentType: true,
-            enrollments: {
-                select: {
-                    course: {
-                        select: { id: true, title: true }
-                    }
-                }
-            },
             attempts: {
                 where: {
                     completedAt: {
@@ -553,7 +507,10 @@ export async function getGlobalTestAnalytics(filters: {
                                 select: {
                                     title: true,
                                     chapter: {
-                                        select: { courseId: true }
+                                        select: { 
+                                            courseId: true,
+                                            course: { select: { title: true } }
+                                        }
                                     }
                                 }
                             },
@@ -589,33 +546,58 @@ export async function getGlobalTestAnalytics(filters: {
             lesson: {
                 select: {
                     title: true,
+                    position: true,
                     chapter: {
                         select: {
-                            courseId: true
+                            courseId: true,
+                            position: true,
+                            course: { select: { title: true } }
                         }
                     }
                 }
+            },
+            course: {
+                select: { title: true }
             }
         }
     });
 
-    // Map tests to their courseId for easy lookup
-    const testToCourseMap = new Map<string, string>();
-    allTests.forEach(t => {
-        const cId = t.courseId || t.lesson?.chapter?.courseId;
-        if (cId) testToCourseMap.set(t.id, cId);
+    // 3. Build global courses schema (Universal Access) with natural sorting
+    const coursesSchemaMap = new Map<string, { id: string, title: string, tests: { id: string, title: string, position: number }[] }>();
+
+    // Custom sort: Course Title -> Chapter Position -> Lesson Position
+    const sortedAllTests = [...allTests].sort((a, b) => {
+        const aCourseTitle = a.course?.title || a.lesson?.chapter?.course?.title || "";
+        const bCourseTitle = b.course?.title || b.lesson?.chapter?.course?.title || "";
+
+        if (aCourseTitle !== bCourseTitle) return aCourseTitle.localeCompare(bCourseTitle);
+
+        const aChapterPos = a.lesson?.chapter?.position ?? 999;
+        const bChapterPos = b.lesson?.chapter?.position ?? 999;
+
+        if (aChapterPos !== bChapterPos) return aChapterPos - bChapterPos;
+
+        const aLessonPos = a.lesson?.position ?? 999;
+        const bLessonPos = b.lesson?.position ?? 999;
+
+        return aLessonPos - bLessonPos;
     });
 
-    // 3. Process data
-    const results = students.map(student => {
-        const studentEnrollments = student.enrollments.map(e => e.course.id);
-        
-        // Tests that this student *should* have done (tests in courses they are enrolled in)
-        const testsInStudentCourses = allTests.filter(t => {
-            const cId = t.courseId || t.lesson?.chapter?.courseId;
-            return cId && studentEnrollments.includes(cId);
-        });
+    sortedAllTests.forEach((t, idx) => {
+        const cId = t.courseId || t.lesson?.chapter?.courseId;
+        const cTitle = t.course?.title || t.lesson?.chapter?.course?.title || "Khóa học";
+        const testTitle = t.title || t.lesson?.title || (t.courseId ? "Bài kiểm tra cuối khóa" : `Bài ${idx + 1}`);
+        if (cId) {
+            if (!coursesSchemaMap.has(cId)) {
+                coursesSchemaMap.set(cId, { id: cId, title: cTitle, tests: [] }); 
+            }
+            coursesSchemaMap.get(cId)!.tests.push({ id: t.id, title: testTitle, position: t.lesson?.position ?? 999 });
+        }
+    });
 
+    const coursesSchema = Array.from(coursesSchemaMap.values());
+    // 4. Process student data
+    const results = students.map(student => {
         const studentAttemptsRaw = student.attempts;
         
         // Group by testId and keep only the best attempt for each test
@@ -630,7 +612,8 @@ export async function getGlobalTestAnalytics(filters: {
         const studentAttempts = Array.from(bestAttemptsMap.values());
         const completedTestIds = new Set(studentAttempts.map(a => a.testId));
         
-        const totalAssigned = testsInStudentCourses.length;
+        // Universal access: totalAssigned is all tests in filtered view
+        const totalAssigned = allTests.length;
         const completedCount = completedTestIds.size;
         
         const totalBestScores = studentAttempts.reduce((acc, a) => acc + (a.score || 0), 0);
@@ -651,11 +634,11 @@ export async function getGlobalTestAnalytics(filters: {
             }
         });
 
-        const courseProgress = student.enrollments.map(e => {
+        const courseProgress = coursesSchema.map(schema => {
             return {
-                id: e.course.id,
-                title: e.course.title,
-                tests: attemptsByCourse.get(e.course.id) || []
+                id: schema.id,
+                title: schema.title,
+                tests: attemptsByCourse.get(schema.id) || []
             };
         });
 
@@ -684,7 +667,7 @@ export async function getGlobalTestAnalytics(filters: {
         };
     });
 
-    // Calculate score distribution
+    // Calculate additional statistics for summary
     const distribution = {
         excellent: results.filter(s => s.stats.averageScore >= 8).length,
         good: results.filter(s => s.stats.averageScore >= 6.5 && s.stats.averageScore < 8).length,
@@ -695,38 +678,6 @@ export async function getGlobalTestAnalytics(filters: {
     const scores = results.map(s => s.stats.averageScore).filter(s => s > 0);
     const maxScore = scores.length > 0 ? Math.max(...scores) : 0;
     const minScore = scores.length > 0 ? Math.min(...scores) : 0;
-
-    // Build courses schema for multi-level matrix
-    const coursesSchemaMap = new Map<string, { id: string, title: string, tests: { id: string, title: string }[] }>();
-    
-    // Sort allTests by ID or creation for consistent default numbering
-    const sortedAllTests = [...allTests].sort((a, b) => a.id.localeCompare(b.id));
-
-    sortedAllTests.forEach((t, idx) => {
-        const cId = t.courseId || t.lesson?.chapter?.courseId;
-        // Priority: Manually set title -> Lesson title -> Automatic "Bài [Index]"
-        const testTitle = t.title || t.lesson?.title || (t.courseId ? "Bài kiểm tra cuối khóa" : `Bài ${idx + 1}`);
-        
-        if (cId) {
-            if (!coursesSchemaMap.has(cId)) {
-                coursesSchemaMap.set(cId, { id: cId, title: "Course", tests: [] }); // We will update title below
-            }
-            coursesSchemaMap.get(cId)!.tests.push({ id: t.id, title: testTitle });
-        }
-    });
-
-    // Populate course titles
-    coursesSchemaMap.forEach((courseSchema, courseId) => {
-        const sampleStudentCourse = results.find(s => s.courses.find(c => c.id === courseId))?.courses.find(c => c.id === courseId);
-        if (sampleStudentCourse) {
-            courseSchema.title = sampleStudentCourse.title;
-        } else {
-             // fallback to direct db query if no student has it but test exists
-             courseSchema.title = "Khóa học " + courseId.slice(-4);
-        }
-    });
-
-    const coursesSchema = Array.from(coursesSchemaMap.values());
 
     return {
         students: results,
