@@ -205,7 +205,35 @@ export function MultiLevelMatrixTable({
           className="flex-1 overflow-auto custom-scrollbar relative cursor-grab active:cursor-grabbing select-none"
           onMouseDown={handleMouseDown}
         >
-          <table className="w-full text-left border-collapse" style={{ tableLayout: "fixed", minWidth: "1200px" }}>
+          <table className="text-left border-collapse" style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
+            <colgroup>
+              {/* Cột 1: STT */}
+              <col style={{ width: "60px", minWidth: "60px" }} />
+              {/* Cột 2: Học Sinh */}
+              <col style={{ width: "240px", minWidth: "240px" }} />
+              
+              {/* Các cột Khóa học */}
+              {visibleCourses.map((c) => {
+                const isCollapsed = collapsedCourses.has(c.id);
+                
+                if (isCollapsed) {
+                  return <col key={`${c.id}_col_tb`} style={{ width: "100px", minWidth: "100px" }} />;
+                }
+
+                return (
+                  <React.Fragment key={`${c.id}_cols`}>
+                    {c.tests.map((t: any) => (
+                      <col key={`${t.id}_col`} style={{ width: "120px", minWidth: "120px" }} />
+                    ))}
+                    {/* Cột TB Khóa của khóa học đó */}
+                    <col key={`${c.id}_col_final`} style={{ width: "100px", minWidth: "100px" }} /> 
+                  </React.Fragment>
+                );
+              })}
+
+              {/* Cột cuối: TB Chung */}
+              <col style={{ width: "100px", minWidth: "100px" }} />
+            </colgroup>
             <thead className="sticky top-0 z-40 bg-slate-50 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
               {/* HEADER ROW 1 */}
               <tr>

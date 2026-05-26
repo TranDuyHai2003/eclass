@@ -616,23 +616,24 @@ export async function getGlobalTestAnalytics(filters: {
             return cId && studentEnrollments.includes(cId);
         });
 
-        const studentAttempts = student.attempts;
-        // Group by testId to get unique completed tests
+        const studentAttemptsRaw = student.attempts;
+        
+        // Group by testId and keep only the best attempt for each test
+        const bestAttemptsMap = new Map<string, any>();
+        studentAttemptsRaw.forEach(a => {
+            const currentBest = bestAttemptsMap.get(a.testId);
+            if (!currentBest || (a.score !== null && a.score > (currentBest.score || 0))) {
+                bestAttemptsMap.set(a.testId, a);
+            }
+        });
+        
+        const studentAttempts = Array.from(bestAttemptsMap.values());
         const completedTestIds = new Set(studentAttempts.map(a => a.testId));
         
         const totalAssigned = testsInStudentCourses.length;
         const completedCount = completedTestIds.size;
         
-        // Calculate average score (best attempt per test)
-        const bestScoresMap = new Map<string, number>();
-        studentAttempts.forEach(a => {
-            const currentBest = bestScoresMap.get(a.testId) || 0;
-            if (a.score !== null && a.score > currentBest) {
-                bestScoresMap.set(a.testId, a.score);
-            }
-        });
-
-        const totalBestScores = Array.from(bestScoresMap.values()).reduce((a, b) => a + b, 0);
+        const totalBestScores = studentAttempts.reduce((acc, a) => acc + (a.score || 0), 0);
         const averageScore = completedCount > 0 ? totalBestScores / completedCount : 0;
 
         // Group student attempts by course for better reporting

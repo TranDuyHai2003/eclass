@@ -288,6 +288,13 @@ export async function deleteStudentAttempt(attemptId: string) {
   }
   revalidatePath(`/teacher/tests/${attempt.testId}/analytics`);
   revalidatePath(`/admin/global-analytics`);
+  
+  // Also revalidate course-specific analytics if applicable
+  const courseId = attempt.test.courseId || (attempt.test as any).lesson?.chapter?.courseId;
+  if (courseId) {
+    revalidatePath(`/teacher/courses/${courseId}/analytics`);
+    revalidatePath(`/teacher/courses/${courseId}/analytics/students/${attempt.userId}`);
+  }
 
   return { success: true };
 }
