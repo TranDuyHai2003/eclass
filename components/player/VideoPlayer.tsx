@@ -150,6 +150,7 @@ export default function VideoPlayer({
       )}
 
       <MediaPlayer
+        key={src}
         ref={playerRef}
         title={title}
         src={youtubeId ? `youtube/${youtubeId}` : src}
