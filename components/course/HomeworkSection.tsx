@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import { submitHomework } from "@/actions/homework";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -26,6 +27,7 @@ interface HomeworkSectionProps {
 }
 
 export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSectionProps) {
+  const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<{ name: string, url: string }[]>(
@@ -80,9 +82,7 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
       if (res.success) {
         setSubmission(res.submission);
         toast.success("Nộp bài tập thành công!");
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+        router.refresh();
       }
     } catch (error: any) {
       const message = error?.message || "Lỗi khi nộp bài";
@@ -226,7 +226,7 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
                       className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 font-black uppercase text-xs tracking-widest flex items-center gap-2 group"
                     >
                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
-                       {submission ? "Cập nhật bài làm" : "Gửi bài tập"}
+                       Nộp bài
                     </Button>
                  </div>
               </div>

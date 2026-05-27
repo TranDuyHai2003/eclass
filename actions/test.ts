@@ -322,7 +322,7 @@ async function reCalculateAllAttempts(testId: string) {
         isCorrect = normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
       } else if (q.type === 'ESSAY') {
         // Keep teacher's manual grading for essays
-        isCorrect = ans.isCorrect;
+        isCorrect = ans.isCorrect ?? false;
         pointsAwarded = ans.pointsAwarded;
       }
 
@@ -444,7 +444,7 @@ export async function deleteStudentAttempt(attemptId: string) {
 }
 
 // Function to normalize short answers
-function normalizeShortAnswer(answer: string) {
+function normalizeShortAnswer(answer: string | null | undefined) {
   if (!answer) return "";
   // Trim spaces at the ends and convert to lower case
   return answer.trim().toLowerCase();

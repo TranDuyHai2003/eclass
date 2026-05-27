@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronDown,
   PlayCircle,
@@ -82,6 +82,7 @@ export default function CourseSidebar({
   isEnrolled = true,
   className,
 }: CourseSidebarProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   // Use isEnrolled as a proxy for 'isApproved' in this component's scope
@@ -118,7 +119,7 @@ export default function CourseSidebar({
   const homeworkStatusConfig = {
     PENDING: { text: "Đang chờ duyệt", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
     SATISFACTORY: { text: "Đạt yêu cầu", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-    UNSATISFACTORY: { text: "Cần nộp lại", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100" }
+    UNSATISFACTORY: { text: "Chưa đạt yêu cầu", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100" }
   };
 
   const handleInlineUpload = async (lessonId: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,9 +160,7 @@ export default function CourseSidebar({
         toast.success("Nộp bài tập thành công!");
         setInlineAttachments([]);
         setActiveHomeworkLessonId(null);
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+        router.refresh();
       }
     } catch (err: any) {
       toast.error(err.message || "Lỗi khi nộp bài");
@@ -565,7 +564,7 @@ export default function CourseSidebar({
                                           ) : (
                                             <Send className="w-3 h-3" />
                                           )}
-                                          Lưu
+                                          Nộp bài
                                         </button>
                                       </div>
                                     </div>

@@ -119,7 +119,7 @@ export default function RootLayout({
       >
         <Providers>
           <AntiInspectLayout>
-            <VConsole />
+            {process.env.NODE_ENV === "development" && <VConsole />}
             <Toaster position="top-right" richColors toastOptions={{ className: "p-4" }} gap={12} />
             <Header />
             {children}
