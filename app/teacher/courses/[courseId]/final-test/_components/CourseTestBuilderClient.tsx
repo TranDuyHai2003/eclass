@@ -34,7 +34,6 @@ export default function CourseTestBuilderClient({
           dueDate: data.dueDate,
         });
         if (!resTest.success) throw new Error("Lỗi khi lưu thông tin chung");
-        router.refresh();
         return { success: true, testId: resTest.test!.id };
       }}
     />

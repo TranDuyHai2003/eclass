@@ -120,7 +120,7 @@ export default function RootLayout({
         <Providers>
           <AntiInspectLayout>
             <VConsole />
-            <Toaster position="top-right" richColors />
+            <Toaster position="top-right" richColors toastOptions={{ className: "p-4" }} gap={12} />
             <Header />
             {children}
           </AntiInspectLayout>

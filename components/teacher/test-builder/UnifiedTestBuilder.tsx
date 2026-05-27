@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 import {
   Save,
   Plus,
@@ -331,6 +332,8 @@ export default function UnifiedTestBuilder({
     setSolutionVideos(solutionVideos.filter((_, i) => i !== index));
   };
 
+  const router = useRouter();
+
   const handleSave = () => {
     if (!pdfUrl) return toast.error("Vui lòng tải file PDF");
 
@@ -361,6 +364,7 @@ export default function UnifiedTestBuilder({
         if (resMatrix.success) {
           resetDirty();
           toast.success("Đã lưu ma trận đáp án & lời giải");
+          router.refresh();
         }
       } catch (e: any) {
         toast.error(e.message || "Lỗi khi lưu");
