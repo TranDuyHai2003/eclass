@@ -80,6 +80,9 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
       if (res.success) {
         setSubmission(res.submission);
         toast.success("Nộp bài tập thành công!");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       }
     } catch (error: any) {
       const message = error?.message || "Lỗi khi nộp bài";
@@ -87,7 +90,6 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
       toast.error(`Lỗi khi nộp bài: ${message}`);
     } finally {
       setIsSubmitting(false);
-      window.location.reload();
     }
   };
 
@@ -98,6 +100,7 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
   };
 
   const currentStatus = submission ? statusConfig[submission.status as keyof typeof statusConfig] : null;
+  const isReviewed = submission && submission.status !== "PENDING";
 
   return (
     <div className="bg-white rounded-[2rem] border border-blue-100 shadow-xl shadow-blue-500/5 overflow-hidden">
@@ -108,8 +111,10 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
                  <Upload className="w-5 h-5" />
               </div>
               <div>
-                 <h3 className="font-black text-slate-800 uppercase tracking-tight">Nộp bài tập bài học</h3>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Đính kèm ảnh hoặc file PDF</p>
+                 <h3 className="font-black text-slate-800 uppercase tracking-tight">Bài tập tự luận</h3>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    {submission ? "Thông tin bài làm của bạn" : "Đính kèm ảnh hoặc file PDF để nộp bài"}
+                 </p>
               </div>
            </div>
            
@@ -122,66 +127,125 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
         </div>
 
         {submission?.feedback && (
-           <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-2">
-              <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Nhận xét từ giáo viên:</p>
-              <p className="text-sm font-medium text-slate-600 leading-relaxed italic">"{submission.feedback}"</p>
+           <div className="p-5 bg-blue-50/50 rounded-3xl border border-blue-100 space-y-2">
+              <div className="flex items-center gap-2">
+                 <div className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center text-white">
+                    <Send className="w-3 h-3" />
+                 </div>
+                 <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Nhận xét từ giáo viên:</p>
+              </div>
+              <p className="text-sm font-medium text-slate-600 leading-relaxed italic ml-8">"{submission.feedback}"</p>
            </div>
         )}
 
-        <div className="space-y-4">
-           {attachments.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                 {attachments.map((file, idx) => (
-                    <div key={idx} className="group relative flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-white hover:border-blue-200 transition-all">
-                       <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm border border-slate-100">
-                          {file.name.match(/\.(jpg|jpeg|png|gif)$/i) ? <ImageIcon className="w-5 h-5 text-blue-500" /> : <FileText className="w-5 h-5 text-blue-500" />}
+        <div className="space-y-6">
+           {/* Hiển thị danh sách file đã nộp */}
+           {submission && (
+              <div className="space-y-3">
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tệp đã nộp ngày {new Date(submission.createdAt).toLocaleDateString('vi-VN')}:</p>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(submission.attachments as any[]).map((file, idx) => (
+                       <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-2xl">
+                          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm border border-slate-100">
+                             {file.name.match(/\.(jpg|jpeg|png|gif)$/i) ? <ImageIcon className="w-5 h-5 text-blue-500" /> : <FileText className="w-5 h-5 text-blue-500" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                             <p className="text-xs font-bold text-slate-700 truncate">{file.name}</p>
+                             <a href={file.url} target="_blank" className="text-[9px] font-black text-blue-600 uppercase hover:underline">Xem tệp</a>
+                          </div>
                        </div>
-                       <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-slate-700 truncate">{file.name}</p>
-                          <a href={file.url} target="_blank" className="text-[9px] font-black text-blue-600 uppercase hover:underline">Xem tệp</a>
-                       </div>
-                       <button 
-                         onClick={() => removeAttachment(idx)}
-                         className="p-1.5 rounded-lg bg-blue-50 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                       >
-                          <X className="w-3.5 h-3.5" />
-                       </button>
-                    </div>
-                 ))}
+                    ))}
+                 </div>
               </div>
            )}
 
-           <div className="flex flex-col sm:flex-row gap-3">
-              <label className="flex-1 cursor-pointer">
-                 <div className="h-14 border-2 border-dashed border-blue-100 rounded-2xl flex items-center justify-center gap-3 bg-blue-50/30 hover:bg-blue-50 hover:border-blue-300 transition-all group">
-                    {isUploading ? (
-                       <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                    ) : (
-                       <Upload className="w-5 h-5 text-blue-400 group-hover:text-blue-600 transition-colors" />
+           {/* Phần nộp bài mới / nộp lại */}
+           {(!submission || !isReviewed) && (
+              <div className="pt-6 border-t border-dashed border-slate-200 space-y-4">
+                 <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                       {submission ? "Cập nhật bài làm (Nộp lại):" : "Tải lên tệp mới:"}
+                    </p>
+                    {attachments.length > 0 && (
+                       <button 
+                          onClick={() => setAttachments([])}
+                          className="text-[9px] font-black text-rose-500 uppercase hover:underline"
+                       >
+                          Xóa tất cả tệp nháp
+                       </button>
                     )}
-                    <span className="text-sm font-bold text-slate-500 group-hover:text-blue-700 uppercase tracking-tight">
-                       {isUploading ? "Đang tải lên..." : "Chọn tệp nộp bài"}
-                    </span>
                  </div>
-                 <input 
-                   type="file" 
-                   multiple 
-                   className="hidden" 
-                   accept="image/*,application/pdf" 
-                   onChange={handleFileUpload}
-                   disabled={isUploading || isSubmitting}
-                 />
-              </label>
 
-              <Button 
-                onClick={handleSubmit}
-                disabled={isSubmitting || isUploading || attachments.length === 0}
-                className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 font-black uppercase text-xs tracking-widest flex items-center gap-2 group"
-              >
-                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
-                 {submission ? "Nộp lại bài" : "Gửi bài tập"}
-              </Button>
-           </div>
+                 {attachments.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                       {attachments.map((file, idx) => (
+                          <div key={idx} className="group relative flex items-center gap-3 p-3 bg-blue-50/30 border border-blue-100 rounded-2xl transition-all">
+                             <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                                {file.name.match(/\.(jpg|jpeg|png|gif)$/i) ? <ImageIcon className="w-5 h-5 text-blue-500" /> : <FileText className="w-5 h-5 text-blue-500" />}
+                             </div>
+                             <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-blue-700 truncate">{file.name}</p>
+                                <span className="text-[9px] font-black text-blue-400 uppercase">Mới thêm</span>
+                             </div>
+                             <button 
+                               onClick={() => removeAttachment(idx)}
+                               className="p-1.5 rounded-lg bg-white text-rose-500 shadow-sm transition-all hover:bg-rose-50"
+                             >
+                                <X className="w-3.5 h-3.5" />
+                             </button>
+                          </div>
+                       ))}
+                    </div>
+                 )}
+
+                 <div className="flex flex-col sm:flex-row gap-3">
+                    <label className="flex-1 cursor-pointer">
+                       <div className="h-14 border-2 border-dashed border-blue-100 rounded-2xl flex items-center justify-center gap-3 bg-blue-50/30 hover:bg-blue-50 hover:border-blue-300 transition-all group">
+                          {isUploading ? (
+                             <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                          ) : (
+                             <Upload className="w-5 h-5 text-blue-400 group-hover:text-blue-600 transition-colors" />
+                          )}
+                          <span className="text-sm font-bold text-slate-500 group-hover:text-blue-700 uppercase tracking-tight">
+                             {isUploading ? "Đang tải lên..." : "Chọn tệp nộp bài"}
+                          </span>
+                       </div>
+                       <input 
+                         type="file" 
+                         multiple 
+                         className="hidden" 
+                         accept="image/*,application/pdf" 
+                         onChange={handleFileUpload}
+                         disabled={isUploading || isSubmitting}
+                       />
+                    </label>
+
+                    <Button 
+                      onClick={handleSubmit}
+                      disabled={isSubmitting || isUploading || attachments.length === 0}
+                      className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 font-black uppercase text-xs tracking-widest flex items-center gap-2 group"
+                    >
+                       {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
+                       {submission ? "Cập nhật bài làm" : "Gửi bài tập"}
+                    </Button>
+                 </div>
+              </div>
+           )}
+
+           {isReviewed && submission.status === "UNSATISFACTORY" && (
+              <div className="pt-6 border-t border-dashed border-slate-200">
+                 <Button 
+                    variant="outline"
+                    onClick={() => {
+                       // Cho phép nộp lại bằng cách reset view nộp bài
+                       setSubmission({ ...submission, status: "PENDING" });
+                    }}
+                    className="w-full h-12 rounded-xl border-blue-200 text-blue-600 font-black uppercase text-[10px] tracking-widest hover:bg-blue-50"
+                 >
+                    Nộp lại bài làm mới
+                 </Button>
+              </div>
+           )}
         </div>
       </div>
     </div>

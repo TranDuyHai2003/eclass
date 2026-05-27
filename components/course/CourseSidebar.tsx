@@ -16,6 +16,7 @@ import {
   Upload,
   Send,
   X,
+  Eye,
   Loader2,
   Play,
   CirclePlay,
@@ -41,6 +42,11 @@ type Lesson = {
   isCompleted?: boolean;
   isFree?: boolean;
   hasHomework?: boolean;
+  homeworkSubmission?: {
+    id: string;
+    status: string;
+    attachments: any;
+  } | null;
   attachments?: Attachment[];
   test?: {
     id: string;
@@ -109,6 +115,12 @@ export default function CourseSidebar({
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const homeworkStatusConfig = {
+    PENDING: { text: "Đang chờ duyệt", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
+    SATISFACTORY: { text: "Đạt yêu cầu", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+    UNSATISFACTORY: { text: "Cần nộp lại", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100" }
+  };
+
   const handleInlineUpload = async (lessonId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -151,8 +163,8 @@ export default function CourseSidebar({
           window.location.reload();
         }, 1000);
       }
-    } catch (err) {
-      toast.error("Lỗi khi nộp bài");
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi khi nộp bài");
     } finally {
       setIsSubmitting(false);
     }
@@ -435,7 +447,12 @@ export default function CourseSidebar({
                                     setInlineAttachments([]);
                                   } else {
                                     setActiveHomeworkLessonId(lesson.id);
-                                    setInlineAttachments([]);
+                                    // Load existing attachments into the list for editing
+                                    if (lesson.homeworkSubmission?.attachments) {
+                                      setInlineAttachments(lesson.homeworkSubmission.attachments as any[]);
+                                    } else {
+                                      setInlineAttachments([]);
+                                    }
                                   }
                                 }}
                                 className={cn(
@@ -456,65 +473,108 @@ export default function CourseSidebar({
                                 <span className="text-[11px] font-black uppercase tracking-tight flex-1 text-left text-slate-600 group-hover/sub:text-slate-900">
                                   Nộp lại bài chữa (Tự luận)
                                 </span>
+
+                                {lesson.homeworkSubmission && (
+                                   <div className={cn(
+                                     "px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border shrink-0",
+                                     homeworkStatusConfig[lesson.homeworkSubmission.status as keyof typeof homeworkStatusConfig].bg,
+                                     homeworkStatusConfig[lesson.homeworkSubmission.status as keyof typeof homeworkStatusConfig].color,
+                                     homeworkStatusConfig[lesson.homeworkSubmission.status as keyof typeof homeworkStatusConfig].border
+                                   )}>
+                                      {homeworkStatusConfig[lesson.homeworkSubmission.status as keyof typeof homeworkStatusConfig].text}
+                                   </div>
+                                )}
                               </button>
 
                               {/* Inline Uploader Box */}
                               {activeHomeworkLessonId === lesson.id && (
                                 <div className="p-4 bg-slate-50/50 rounded-2xl border border-blue-100 space-y-3 animate-in slide-in-from-top-2 duration-300">
-                                  {/* List of uploaded files */}
+                                  {/* List of attachments */}
                                   {inlineAttachments.length > 0 && (
                                     <div className="space-y-1.5">
-                                      {inlineAttachments.map((file, idx) => (
-                                        <div key={idx} className="flex items-center gap-2 p-2 bg-white border border-slate-100 rounded-xl text-[10px]">
-                                          <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                          <span className="font-bold text-slate-700 truncate flex-1">{file.name}</span>
-                                          <button
-                                            onClick={() => setInlineAttachments(prev => prev.filter((_, i) => i !== idx))}
-                                            className="p-1 rounded bg-blue-50 text-blue-500 hover:bg-blue-100 transition-colors"
-                                          >
-                                            <X className="w-2.5 h-2.5" />
-                                          </button>
-                                        </div>
-                                      ))}
+                                      {inlineAttachments.map((file, idx) => {
+                                        // Check if this file was already in the submission
+                                        const isExisting = lesson.homeworkSubmission?.attachments?.some(
+                                          (existing: any) => existing.url === file.url
+                                        );
+                                        const canDelete = !lesson.homeworkSubmission || lesson.homeworkSubmission.status === "PENDING";
+
+                                        return (
+                                          <div key={idx} className="flex items-center gap-2 p-2 bg-white border border-slate-100 rounded-xl text-[10px]">
+                                            <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                            <div className="flex-1 min-w-0">
+                                              <span className="font-bold text-slate-700 truncate block">{file.name}</span>
+                                              <span className={cn(
+                                                "text-[8px] font-black uppercase",
+                                                isExisting ? "text-slate-400" : "text-blue-500"
+                                              )}>
+                                                {isExisting ? "Đã nộp" : "Mới thêm"}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              <a href={file.url} target="_blank" className="p-1 rounded bg-slate-50 text-slate-400 hover:text-blue-600 transition-colors">
+                                                <Eye className="w-2.5 h-2.5" />
+                                              </a>
+                                              {canDelete && (
+                                                <button
+                                                  onClick={() => setInlineAttachments(prev => prev.filter((_, i) => i !== idx))}
+                                                  className="p-1 rounded bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors"
+                                                >
+                                                  <X className="w-2.5 h-2.5" />
+                                                </button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
                                     </div>
                                   )}
 
-                                  {/* Input Field */}
-                                  <div className="flex gap-2">
-                                    <label className="flex-1 cursor-pointer">
-                                      <div className="h-10 border border-dashed border-blue-200 rounded-xl flex items-center justify-center gap-2 bg-white hover:bg-blue-50 transition-colors">
-                                        {isUploading ? (
-                                          <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
-                                        ) : (
-                                          <Upload className="w-3.5 h-3.5 text-blue-400" />
-                                        )}
-                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">
-                                          {isUploading ? "Tải lên..." : "Chọn file"}
-                                        </span>
-                                      </div>
-                                      <input 
-                                        type="file" 
-                                        multiple 
-                                        className="hidden" 
-                                        accept="image/*,application/pdf" 
-                                        onChange={(e) => handleInlineUpload(lesson.id, e)}
-                                        disabled={isUploading || isSubmitting}
-                                      />
-                                    </label>
+                                  {/* Input Field & Submit - Only if not reviewed or is pending */}
+                                  {(!lesson.homeworkSubmission || lesson.homeworkSubmission.status === "PENDING") ? (
+                                    <div className="space-y-2">
+                                      <div className="flex gap-2">
+                                        <label className="flex-1 cursor-pointer">
+                                          <div className="h-10 border border-dashed border-blue-200 rounded-xl flex items-center justify-center gap-2 bg-white hover:bg-blue-50 transition-colors">
+                                            {isUploading ? (
+                                              <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+                                            ) : (
+                                              <Upload className="w-3.5 h-3.5 text-blue-400" />
+                                            )}
+                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">
+                                              {isUploading ? "Tải thêm..." : "Chọn file"}
+                                            </span>
+                                          </div>
+                                          <input 
+                                            type="file" 
+                                            multiple 
+                                            className="hidden" 
+                                            accept="image/*,application/pdf" 
+                                            onChange={(e) => handleInlineUpload(lesson.id, e)}
+                                            disabled={isUploading || isSubmitting}
+                                          />
+                                        </label>
 
-                                    <button
-                                      onClick={() => handleInlineSubmit(lesson.id)}
-                                      disabled={isSubmitting || isUploading || inlineAttachments.length === 0}
-                                      className="px-4 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest flex items-center gap-1.5 disabled:opacity-50 shadow-lg shadow-blue-100"
-                                    >
-                                      {isSubmitting ? (
-                                        <Loader2 className="w-3 h-3 animate-spin" />
-                                      ) : (
-                                        <Send className="w-3 h-3" />
-                                      )}
-                                      Gửi
-                                    </button>
-                                  </div>
+                                        <button
+                                          onClick={() => handleInlineSubmit(lesson.id)}
+                                          disabled={isSubmitting || isUploading || inlineAttachments.length === 0}
+                                          className="px-4 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest flex items-center gap-1.5 disabled:opacity-50 shadow-lg shadow-blue-100"
+                                        >
+                                          {isSubmitting ? (
+                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                          ) : (
+                                            <Send className="w-3 h-3" />
+                                          )}
+                                          Lưu
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-center">
+                                       <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Bài làm đã được duyệt</p>
+                                       <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Không thể chỉnh sửa tệp đã nộp</p>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

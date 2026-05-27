@@ -8,6 +8,20 @@ export async function submitHomework(lessonId: string, attachments: { name: stri
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
+  // Check current status before allowing update
+  const existing = await prisma.homeworkSubmission.findUnique({
+    where: {
+      userId_lessonId: {
+        userId: session.user.id,
+        lessonId,
+      },
+    },
+  });
+
+  if (existing && existing.status === "SATISFACTORY") {
+    throw new Error("Bài làm đã đạt yêu cầu, không thể thay đổi nội dung.");
+  }
+
   const submission = await prisma.homeworkSubmission.upsert({
     where: {
       userId_lessonId: {

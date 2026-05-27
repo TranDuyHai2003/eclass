@@ -94,6 +94,9 @@ export default async function WatchPage({
                 select: { id: true, duration: true },
               },
               attachments: true,
+              homeworkSubmissions: {
+                where: { userId: session.user.id }
+              }
             },
           },
         },
@@ -138,6 +141,7 @@ export default async function WatchPage({
         attachments: less.attachments,
         hasHomework: less.hasHomework,
         homeworkVideoUrl: less.homeworkVideoUrl,
+        homeworkSubmission: less.homeworkSubmissions[0] || null,
       })),
     })),
   };

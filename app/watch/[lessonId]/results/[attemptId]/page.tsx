@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { PDFViewerClientWrapper } from "@/components/course/PDFViewerClientWrapper";
+import VideoPlayer from "@/components/player/VideoPlayer";
 import { GradeEssay } from "@/components/teacher/test-builder/GradeEssay";
 import { getAttemptStatistics } from "@/actions/analytics";
 import { ResultAnalytics } from "./_components/ResultAnalytics";
@@ -50,6 +51,18 @@ export default async function TestResultPage({
   if (!isOwner && !isTeacher) return redirect("/");
 
   const test = attempt.test;
+  let solutionVideos = (test.solutionVideos as any[]) || [];
+  
+  // If no solutionVideos array, but test.videoUrl exists, use it
+  if (solutionVideos.length === 0 && test.videoUrl) {
+    solutionVideos = [{ title: "Video chữa bài", url: test.videoUrl }];
+  }
+
+  // Fetch the main lesson (lecture) video
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    select: { videoUrl: true, title: true }
+  });
 
   // 2. Map answers for quick lookup
   const answerMap = new Map(attempt.answers.map((a) => [a.questionId, a]));
@@ -79,7 +92,7 @@ export default async function TestResultPage({
       <header className="h-16 px-6 border-b flex items-center justify-between shrink-0 bg-white z-[60] shadow-sm">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild className="rounded-xl">
-            <Link href="/courses">
+            <Link href={`/watch/${lessonId}`}>
               <ArrowLeft className="w-5 h-5" />
             </Link>
           </Button>
@@ -122,7 +135,7 @@ export default async function TestResultPage({
         <div className="w-full lg:w-1/2 flex flex-col bg-white overflow-hidden">
           <div className="h-12 px-6 border-b flex items-center justify-between bg-slate-50/50 shrink-0">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-              Đối chiếu đáp án
+              Đối chiếu đáp án & Video
             </span>
             <div className="flex gap-4 text-[10px] font-black uppercase tracking-widest">
               <span className="text-emerald-600">Đúng: {correctCount}</span>
@@ -133,7 +146,37 @@ export default async function TestResultPage({
           <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar space-y-8 md:space-y-10">
             {test.showAnswers || isTeacher ? (
               <>
-                {/* Overall Explanation Section - Optimized for UI */}
+                {/* Solution Videos Section */}
+                {solutionVideos.length > 0 && (
+                  <div className="bg-white rounded-[24px] md:rounded-[32px] p-5 md:p-6 border border-slate-200 shadow-sm space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-100">
+                        <Video className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-black text-slate-900 uppercase tracking-tight">
+                        Video chữa bài chi tiết
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-6">
+                      {solutionVideos.map((video: any, idx: number) => (
+                        <div key={idx} className="space-y-3">
+                          {solutionVideos.length > 1 && (
+                            <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] font-black">
+                                {idx + 1}
+                              </span>
+                              {video.title}
+                            </h4>
+                          )}
+                          <div className="aspect-video w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                            <VideoPlayer src={video.url} title={video.title} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {test.explanation && (
                   <div className="bg-blue-50/50 rounded-[24px] md:rounded-[32px] p-5 md:p-6 border border-blue-100 space-y-4">
                     <div className="flex items-center gap-3">

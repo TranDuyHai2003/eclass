@@ -177,46 +177,183 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
     throw new Error("Unauthorized access to this test");
   }
 
-  // To simplify, we delete existing sections and recreate them within a transaction
+  // 3. Update sections and questions non-destructively
   await prisma.$transaction(async (tx) => {
-    // Delete existing sections (cascade will delete questions)
-    await tx.testSection.deleteMany({
+    const existingSections = await tx.testSection.findMany({
       where: { testId },
+      include: { questions: true }
     });
 
-    // Create new sections and questions
-     for (const [sectionIndex, section] of sections.entries()) {
-       const createdSection = await tx.testSection.create({
-         data: {
-           testId,
-           name: section.name,
-           position: Number.isFinite(section.position) ? section.position : sectionIndex,
-         },
-       });
+    const existingSectionIds = existingSections.map(s => s.id);
+    const newSectionIds = sections.filter(s => s.id && !s.id.startsWith('temp-') && !s.id.startsWith('section-')).map(s => s.id);
+    
+    // Sections to delete
+    const sectionIdsToDelete = existingSectionIds.filter(id => !newSectionIds.includes(id));
+    if (sectionIdsToDelete.length > 0) {
+      await tx.testSection.deleteMany({
+        where: { id: { in: sectionIdsToDelete } }
+      });
+    }
 
-       if (section.questions && section.questions.length > 0) {
-         const questionsData = section.questions.map((q: any, qIndex: number) => ({
-           sectionId: createdSection.id,
-           position: Number.isFinite(q.position) ? q.position : qIndex,
-           category: q.category ?? q.question_category ?? null,
-           type: normalizeType(q.type),
-           correctAnswer: normalizeAnswer(q.correctAnswer),
-           points: Number.isFinite(q.points) ? q.points : 1.0,
-           explanation: q.explanation,
-           videoUrl: q.videoUrl,
-           audioUrl: q.audioUrl,
-           needsManualGrading: q.needsManualGrading || false,
-         }));
+    for (const [sectionIndex, section] of sections.entries()) {
+      let sectionId = section.id;
+      const isTempSection = !sectionId || sectionId.startsWith('temp-') || sectionId.startsWith('section-');
 
-        await tx.question.createMany({
-          data: questionsData,
+      if (isTempSection || !existingSectionIds.includes(sectionId)) {
+        // Create new section
+        const createdSection = await tx.testSection.create({
+          data: {
+            testId,
+            name: section.name,
+            position: Number.isFinite(section.position) ? section.position : sectionIndex,
+          }
         });
+        sectionId = createdSection.id;
+      } else {
+        // Update existing section
+        await tx.testSection.update({
+          where: { id: sectionId },
+          data: {
+            name: section.name,
+            position: Number.isFinite(section.position) ? section.position : sectionIndex,
+          }
+        });
+      }
+
+      // Handle questions for this section
+      const existingQuestions = existingSections.find(s => s.id === sectionId)?.questions || [];
+      const existingQuestionIds = existingQuestions.map(q => q.id);
+      const newQuestions = section.questions || [];
+      const newQuestionIds = newQuestions.filter((q: any) => q.id && !q.id.startsWith('temp-') && !q.id.startsWith('parsed-')).map((q: any) => q.id);
+
+      // Questions to delete in this section
+      const questionIdsToDelete = existingQuestionIds.filter(id => !newQuestionIds.includes(id));
+      if (questionIdsToDelete.length > 0) {
+        await tx.question.deleteMany({
+          where: { id: { in: questionIdsToDelete } }
+        });
+      }
+
+      // Update or Create questions
+      for (const [qIndex, q] of newQuestions.entries()) {
+        const isTempQuestion = !q.id || q.id.startsWith('temp-') || q.id.startsWith('parsed-');
+        const questionData: any = {
+          sectionId,
+          position: Number.isFinite(q.position) ? q.position : qIndex,
+          category: q.category ?? q.question_category ?? null,
+          type: normalizeType(q.type),
+          correctAnswer: normalizeAnswer(q.correctAnswer),
+          points: Number.isFinite(q.points) ? q.points : 1.0,
+          explanation: q.explanation,
+          videoUrl: q.videoUrl,
+          audioUrl: q.audioUrl,
+          needsManualGrading: q.needsManualGrading || false,
+        };
+
+        if (isTempQuestion || !existingQuestionIds.includes(q.id)) {
+          await tx.question.create({
+            data: questionData
+          });
+        } else {
+          await tx.question.update({
+            where: { id: q.id },
+            data: questionData
+          });
+        }
       }
     }
   });
 
+  // 4. Re-calculate scores for all existing attempts if keys changed
+  await reCalculateAllAttempts(testId);
+
   return { success: true };
 }
+
+/**
+ * Re-calculates scores for all completed attempts of a test.
+ * Used when a teacher updates the answer key or points.
+ */
+async function reCalculateAllAttempts(testId: string) {
+  const test = await prisma.test.findUnique({
+    where: { id: testId },
+    include: {
+      sections: {
+        include: {
+          questions: true
+        }
+      }
+    }
+  });
+
+  if (!test) return;
+
+  const attempts = await prisma.studentAttempt.findMany({
+    where: { testId, completedAt: { not: null } },
+    include: { answers: true }
+  });
+
+  if (attempts.length === 0) return;
+
+  // Map questions for quick lookup
+  const questionMap = new Map<string, any>();
+  let maxPointsPossible = 0;
+  test.sections.forEach(s => {
+    s.questions.forEach(q => {
+      questionMap.set(q.id, q);
+      maxPointsPossible += (q.points || 0);
+    });
+  });
+
+  for (const attempt of attempts) {
+    let rawTotalScore = 0;
+    const updates: Promise<any>[] = [];
+
+    for (const ans of attempt.answers) {
+      const q = questionMap.get(ans.questionId);
+      if (!q) continue;
+
+      let isCorrect = false;
+      let pointsAwarded = 0;
+
+      if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_FALSE') {
+        isCorrect = ans.answerProvided === q.correctAnswer;
+      } else if (q.type === 'SHORT_ANSWER') {
+        isCorrect = normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
+      } else if (q.type === 'ESSAY') {
+        // Keep teacher's manual grading for essays
+        isCorrect = ans.isCorrect;
+        pointsAwarded = ans.pointsAwarded;
+      }
+
+      if (q.type !== 'ESSAY' && isCorrect) {
+        pointsAwarded = q.points;
+      }
+
+      rawTotalScore += pointsAwarded;
+
+      // Only update if something changed to save DB calls
+      if (ans.isCorrect !== isCorrect || ans.pointsAwarded !== pointsAwarded) {
+        updates.push(prisma.studentAnswer.update({
+          where: { id: ans.id },
+          data: { isCorrect, pointsAwarded }
+        }));
+      }
+    }
+
+    const finalScore = maxPointsPossible > 0 ? Math.round((rawTotalScore / maxPointsPossible) * 10 * 100) / 100 : 0;
+
+    // Run answer updates and attempt update in parallel for this attempt
+    await Promise.all([
+      ...updates,
+      prisma.studentAttempt.update({
+        where: { id: attempt.id },
+        data: { score: finalScore }
+      })
+    ]);
+  }
+}
+
 
 // =============================================
 // STUDENT ACTIONS
@@ -384,6 +521,16 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
       pointsAwarded
     });
   });
+
+  // Safety check: if student provided answers but none matched current question IDs,
+  // it means the test structure changed while they were taking it.
+  if (studentAnswers.length > 0 && answersData.length === 0) {
+    console.error(`[Submit ERROR] No answers matched for attempt ${attemptId}. Test structure might have changed.`);
+    return { 
+      success: false, 
+      error: "Cấu trúc bài thi đã thay đổi. Vui lòng tải lại trang và chọn lại đáp án (Hệ thống đã lưu nháp tự động nếu có thể)." 
+    };
+  }
 
   const finalScore = maxPointsPossible > 0 ? Math.round((rawTotalScore / maxPointsPossible) * 10 * 100) / 100 : 0;
 
