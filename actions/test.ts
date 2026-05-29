@@ -275,83 +275,85 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
  * Used when a teacher updates the answer key or points.
  */
 async function reCalculateAllAttempts(testId: string) {
-  const test = await prisma.test.findUnique({
-    where: { id: testId },
-    include: {
-      sections: {
-        include: {
-          questions: true
+  await prisma.$transaction(async (tx) => {
+    const test = await tx.test.findUnique({
+      where: { id: testId },
+      include: {
+        sections: {
+          include: {
+            questions: true
+          }
         }
       }
-    }
-  });
-
-  if (!test) return;
-
-  const attempts = await prisma.studentAttempt.findMany({
-    where: { testId, completedAt: { not: null } },
-    include: { answers: true }
-  });
-
-  if (attempts.length === 0) return;
-
-  // Map questions for quick lookup
-  const questionMap = new Map<string, any>();
-  let maxPointsPossible = 0;
-  test.sections.forEach(s => {
-    s.questions.forEach(q => {
-      questionMap.set(q.id, q);
-      maxPointsPossible += (q.points || 0);
     });
-  });
 
-  for (const attempt of attempts) {
-    let rawTotalScore = 0;
-    const updates: Promise<any>[] = [];
+    if (!test) return;
 
-    for (const ans of attempt.answers) {
-      const q = questionMap.get(ans.questionId);
-      if (!q) continue;
+    const attempts = await tx.studentAttempt.findMany({
+      where: { testId, completedAt: { not: null } },
+      include: { answers: true }
+    });
 
-      let isCorrect = false;
-      let pointsAwarded = 0;
+    if (attempts.length === 0) return;
 
-      if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_FALSE') {
-        isCorrect = ans.answerProvided === q.correctAnswer;
-      } else if (q.type === 'SHORT_ANSWER') {
-        isCorrect = normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
-      } else if (q.type === 'ESSAY') {
-        // Keep teacher's manual grading for essays
-        isCorrect = ans.isCorrect ?? false;
-        pointsAwarded = ans.pointsAwarded;
+    // Map questions for quick lookup
+    const questionMap = new Map<string, any>();
+    let maxPointsPossible = 0;
+    test.sections.forEach(s => {
+      s.questions.forEach(q => {
+        questionMap.set(q.id, q);
+        maxPointsPossible += (q.points || 0);
+      });
+    });
+
+    for (const attempt of attempts) {
+      let rawTotalScore = 0;
+      const updates: Promise<any>[] = [];
+
+      for (const ans of attempt.answers) {
+        const q = questionMap.get(ans.questionId);
+        if (!q) continue;
+
+        let isCorrect = false;
+        let pointsAwarded = 0;
+
+        if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_FALSE') {
+          isCorrect = ans.answerProvided === q.correctAnswer;
+        } else if (q.type === 'SHORT_ANSWER') {
+          isCorrect = normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
+        } else if (q.type === 'ESSAY') {
+          // Keep teacher's manual grading for essays
+          isCorrect = ans.isCorrect ?? false;
+          pointsAwarded = ans.pointsAwarded;
+        }
+
+        if (q.type !== 'ESSAY' && isCorrect) {
+          pointsAwarded = q.points;
+        }
+
+        rawTotalScore += pointsAwarded;
+
+        // Only update if something changed to save DB calls
+        if (ans.isCorrect !== isCorrect || ans.pointsAwarded !== pointsAwarded) {
+          updates.push(tx.studentAnswer.update({
+            where: { id: ans.id },
+            data: { isCorrect, pointsAwarded }
+          }));
+        }
       }
 
-      if (q.type !== 'ESSAY' && isCorrect) {
-        pointsAwarded = q.points;
-      }
+      const finalScore = maxPointsPossible > 0 ? Math.round((rawTotalScore / maxPointsPossible) * 10 * 100) / 100 : 0;
 
-      rawTotalScore += pointsAwarded;
-
-      // Only update if something changed to save DB calls
-      if (ans.isCorrect !== isCorrect || ans.pointsAwarded !== pointsAwarded) {
-        updates.push(prisma.studentAnswer.update({
-          where: { id: ans.id },
-          data: { isCorrect, pointsAwarded }
-        }));
-      }
+      // Run answer updates and attempt update in parallel for this attempt
+      await Promise.all([
+        ...updates,
+        tx.studentAttempt.update({
+          where: { id: attempt.id },
+          data: { score: finalScore }
+        })
+      ]);
     }
-
-    const finalScore = maxPointsPossible > 0 ? Math.round((rawTotalScore / maxPointsPossible) * 10 * 100) / 100 : 0;
-
-    // Run answer updates and attempt update in parallel for this attempt
-    await Promise.all([
-      ...updates,
-      prisma.studentAttempt.update({
-        where: { id: attempt.id },
-        data: { score: finalScore }
-      })
-    ]);
-  }
+  });
 }
 
 
@@ -767,23 +769,21 @@ export async function saveTestDraft(attemptId: string, answers: { questionId: st
     throw new Error("Invalid attempt");
   }
 
-  // Use a transaction to clear and set the draft to ensure atomicity and performance
+  // Use a transaction with row-level lock to prevent race with submitTestAttempt
   await prisma.$transaction(async (tx) => {
-    // Re-check completedAt inside transaction to prevent race with submitTestAttempt
-    const currentAttempt = await tx.studentAttempt.findUnique({
-      where: { id: attemptId },
-      select: { completedAt: true }
-    });
-    if (currentAttempt?.completedAt) {
-      return;
-    }
+    // Lock the StudentAttempt row (FOR UPDATE) so that submitTestAttempt's
+    // concurrent UPDATE blocks until this transaction completes, preventing
+    // the race: saveTestDraft deleteMany+createMany after submitTestAttempt
+    // has already graded answers and marked completedAt.
+    const locked: Array<{ completedAt: Date | null }> = await tx.$queryRaw`
+      SELECT "completedAt" FROM "StudentAttempt" WHERE "id" = ${attemptId} FOR UPDATE
+    `;
+    if (locked.length === 0 || locked[0].completedAt) return;
 
-    // 1. Delete existing answers for this attempt
     await tx.studentAnswer.deleteMany({
       where: { attemptId }
     });
 
-    // 2. Insert new draft answers
     if (answers.length > 0) {
       await tx.studentAnswer.createMany({
         data: answers.map(ans => ({
