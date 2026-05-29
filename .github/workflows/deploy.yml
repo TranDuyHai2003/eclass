@@ -36,14 +36,17 @@ jobs:
           script: |
             cd ~/eclass
 
-            # 1. Kéo file cấu hình mới nhất (docker-compose.yml, .env...) từ Github về VPS
+            # 1. DỌN RÁC TRƯỚC: Xóa triệt để các image cũ không sử dụng để lấy chỗ trống
+            docker image prune -a -f
+
+            # 2. Kéo file cấu hình mới nhất (docker-compose.yml, .env...) từ Github về VPS
             git pull origin master
 
-            # 2. Kéo bản build mới nhất từ Docker Hub về (siêu nhanh)
+            # 3. Kéo bản build mới nhất từ Docker Hub về (lúc này ổ cứng đã có chỗ trống)
             docker pull ${{ secrets.DOCKER_USERNAME }}/eclass-app:latest
 
-            # 3. Ép Docker đập bỏ container cũ và chạy lại bằng image mới
+            # 4. Ép Docker đập bỏ container cũ và chạy lại bằng image mới
             docker compose up -d --force-recreate app
 
-            # 4. TỰ ĐỘNG DỌN RÁC (Xóa các image cũ lơ lửng, giải phóng ổ cứng)
+            # 5. DỌN RÁC LẦN NỮA: Xóa luôn cái vỏ image vừa bị đập bỏ ở bước 4
             docker image prune -f
