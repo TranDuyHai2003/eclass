@@ -73,5 +73,9 @@ export async function GET(
       completedAt: a.completedAt,
     })),
     questionStats,
+  }, {
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    },
   });
 }

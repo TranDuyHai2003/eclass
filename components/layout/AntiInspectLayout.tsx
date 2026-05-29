@@ -1,28 +1,23 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 export default function AntiInspectLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-
   useEffect(() => {
     // Chỉ kích hoạt khi chạy production (sau khi run build)
     if (process.env.NODE_ENV !== "production") {
       return;
     }
 
-    // 1. Chặn các phím tắt mở DevTools
+    // 1. Chặn các phím tắt mở DevTools (trừ F12 để dễ debug)
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
-        e.key === "F12" || 
         (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i")) || // Ctrl+Shift+I
         (e.ctrlKey && e.shiftKey && (e.key === "J" || e.key === "j")) || // Ctrl+Shift+J
         (e.ctrlKey && e.shiftKey && (e.key === "C" || e.key === "c")) || // Ctrl+Shift+C
         (e.ctrlKey && (e.key === "U" || e.key === "u")) // Ctrl+U (View Source)
       ) {
         e.preventDefault();
-        router.push("/404"); // Đẩy sang trang 404 khi cố gắng inspect
       }
     };
 
@@ -47,7 +42,7 @@ export default function AntiInspectLayout({ children }: { children: React.ReactN
       window.removeEventListener("contextmenu", handleContextMenu);
       window.removeEventListener("keydown", handlePrint);
     };
-  }, [router]);
+  }, []);
 
   return <>{children}</>;
 }
