@@ -165,8 +165,8 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
     <div className="w-full bg-blue-100 rounded-xl overflow-hidden">
       <div className="overflow-y-auto max-h-[calc(100vh-8rem)] p-2 space-y-6 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
         <nav className="flex flex-col gap-1">{renderLinks(generalLinks)}</nav>
-
-        {/* Social Links Section */}
+        
+        {/* 1.Social Links Section */}
         <div className="pt-4 border-t border-blue-100">
           <h4 className="px-3 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
             Liên kết
