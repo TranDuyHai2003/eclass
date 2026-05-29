@@ -48,10 +48,11 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
           toast.error(`Tệp "${file.name}" vượt quá 50MB. Vui lòng chọn tệp nhỏ hơn.`);
           continue;
         }
+        const fileBuffer = await file.arrayBuffer();
         const res = await axios.put<{ publicUrl: string }>(
           `/api/upload/proxy?fileName=homework_${Date.now()}_${encodeURIComponent(file.name)}`,
-          file,
-          { headers: { "Content-Type": file.type } }
+          fileBuffer,
+          { headers: { "Content-Type": file.type || "application/octet-stream" } }
         );
         newAttachments.push({ name: file.name, url: res.data.publicUrl });
       }
