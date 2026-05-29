@@ -390,12 +390,11 @@ export async function startTestAttempt(testId: string) {
     where: {
       testId,
       userId: session.user.id,
+      completedAt: null,
     }
   });
 
   if (existingAttempt) {
-    // If it's already completed, the caller should handle the redirect (already does in TestTakerClient)
-    // But we should strictly only return success if it's the SAME attempt we're working on.
     return { success: true, attempt: existingAttempt };
   }
 
@@ -522,9 +521,12 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
     });
   });
 
-  // Safety check: if student provided answers but none matched current question IDs,
-  // it means the test structure changed while they were taking it.
-  if (studentAnswers.length > 0 && answersData.length === 0) {
+  // Guard: empty submission or no answers matched
+  if (studentAnswers.length === 0) {
+    return { success: false, error: "Không có đáp án nào được ghi nhận. Vui lòng tải lại trang và làm bài lại." };
+  }
+
+  if (answersData.length === 0) {
     console.error(`[Submit ERROR] No answers matched for attempt ${attemptId}. Test structure might have changed.`);
     return { 
       success: false, 
@@ -535,16 +537,14 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
   const finalScore = maxPointsPossible > 0 ? Math.round((rawTotalScore / maxPointsPossible) * 10 * 100) / 100 : 0;
 
   await prisma.$transaction(async (tx) => {
-    // Delete any previous drafted answers for this attempt just in case
+    // Delete previous answers then insert new ones (safe: outer guards ensure answersData is non-empty)
     await tx.studentAnswer.deleteMany({
       where: { attemptId }
     });
 
-    if (answersData.length > 0) {
-      await tx.studentAnswer.createMany({
-        data: answersData
-      });
-    }
+    await tx.studentAnswer.createMany({
+      data: answersData
+    });
 
     await tx.studentAttempt.update({
       where: { id: attemptId },
@@ -767,12 +767,17 @@ export async function saveTestDraft(attemptId: string, answers: { questionId: st
     throw new Error("Invalid attempt");
   }
 
-  if (attempt.completedAt) {
-    return { success: false, error: "Attempt already submitted" };
-  }
-
   // Use a transaction to clear and set the draft to ensure atomicity and performance
   await prisma.$transaction(async (tx) => {
+    // Re-check completedAt inside transaction to prevent race with submitTestAttempt
+    const currentAttempt = await tx.studentAttempt.findUnique({
+      where: { id: attemptId },
+      select: { completedAt: true }
+    });
+    if (currentAttempt?.completedAt) {
+      return;
+    }
+
     // 1. Delete existing answers for this attempt
     await tx.studentAnswer.deleteMany({
       where: { attemptId }

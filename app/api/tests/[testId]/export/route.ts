@@ -27,21 +27,22 @@ export async function GET(
       },
       course: { select: { id: true } },
       sections: {
-        include: {
-          questions: true,
-        },
+    include: {
+      questions: true,
+    },
+  },
+  attempts: {
+    where: { completedAt: { not: null } },
+    include: {
+      user: {
+        select: { id: true, name: true, email: true },
       },
-      attempts: {
-        include: {
-          user: {
-            select: { id: true, name: true, email: true },
-          },
-          answers: {
-            select: { isCorrect: true }
-          }
-        },
-        orderBy: { completedAt: "desc" },
-      },
+      answers: {
+        select: { isCorrect: true }
+      }
+    },
+    orderBy: { completedAt: "desc" },
+  },
     },
   });
 
@@ -84,7 +85,7 @@ export async function GET(
   
   test.attempts.forEach(attempt => {
     const existing = bestAttemptsMap.get(attempt.userId);
-    if (!existing || (attempt.score || 0) > (existing.score || 0)) {
+    if (!existing || (attempt.score ?? 0) > (existing.score ?? 0)) {
       bestAttemptsMap.set(attempt.userId, attempt);
     }
   });

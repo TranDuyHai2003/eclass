@@ -153,6 +153,7 @@ export default async function WatchPage({
     where: {
       testId: lesson.test?.id,
       userId: session.user.id!,
+      completedAt: { not: null },
     },
     orderBy: { startedAt: "desc" },
   });

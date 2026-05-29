@@ -43,6 +43,7 @@ export default async function CourseFinalTestAnalyticsPage({
       finalTest: {
         include: {
           attempts: {
+            where: { completedAt: { not: null } },
             include: {
               user: true,
               answers: true,
@@ -134,7 +135,7 @@ export default async function CourseFinalTestAnalyticsPage({
     });
   });
 
-  const scoreboardAttempts: ScoreboardAttempt[] = allAttempts.map((a) => ({
+  const scoreboardAttempts: ScoreboardAttempt[] = finishedAttempts.map((a) => ({
     id: a.id,
     user: {
       name: a.user.name,
