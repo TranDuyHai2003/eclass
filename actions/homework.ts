@@ -56,10 +56,35 @@ export async function gradeHomework(submissionId: string, status: "SATISFACTORY"
       status,
       feedback,
     },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          studentType: true,
+        },
+      },
+    },
   });
 
   revalidatePath(`/watch/${submission.lessonId}`);
   return { success: true, submission };
+}
+
+export async function deleteHomeworkSubmission(submissionId: string) {
+  const session = await auth();
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
+    throw new Error("Unauthorized");
+  }
+
+  await prisma.homeworkSubmission.delete({
+    where: { id: submissionId },
+  });
+
+  revalidatePath("/teacher/homework");
+  return { success: true };
 }
 
 export async function getHomeworkSubmission(lessonId: string) {
