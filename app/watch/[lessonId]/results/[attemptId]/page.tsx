@@ -302,15 +302,14 @@ export default async function TestResultPage({
                               />
                             )}
 
-                            {/* Student: show teacher feedback + re-upload if rejected */}
-                            {!isTeacher && q.type === "ESSAY" && isCorrect === false && studentAns && (
+                            {isTeacher && q.type === "ESSAY" && studentAns && (
                               <div className="ml-9 md:ml-12 space-y-3">
                                 {studentAns.feedback && (
-                                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl flex gap-2">
-                                    <MessageSquareText className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex gap-2">
+                                    <MessageSquareText className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                                     <div>
-                                      <p className="text-[10px] font-black uppercase text-orange-600 tracking-wider mb-1">
-                                        Góp ý của giảng viên
+                                      <p className="text-[10px] font-black uppercase text-blue-600 tracking-wider mb-1">
+                                        Góp ý của bạn
                                       </p>
                                       <p className="text-sm text-slate-700 whitespace-pre-wrap">
                                         {studentAns.feedback}
@@ -318,10 +317,6 @@ export default async function TestResultPage({
                                     </div>
                                   </div>
                                 )}
-                                <ReuploadForm
-                                  attemptId={attemptId}
-                                  questionId={q.id}
-                                />
                               </div>
                             )}
 
@@ -389,6 +384,39 @@ export default async function TestResultPage({
                   <Link href={`/watch/${lessonId}`}>Quay lại bài học</Link>
                 </Button>
               </div>
+            )}
+
+            {/* Student essay feedback - always visible regardless of showAnswers */}
+            {!isTeacher && test.sections.map((section) =>
+              section.questions
+                .filter((q: any) => q.type === "ESSAY")
+                .map((q: any) => {
+                  const studentAns = answerMap.get(q.id);
+                  if (!studentAns) return null;
+                  const hasFeedback = !!studentAns.feedback;
+                  const isRejected = studentAns.isCorrect === false;
+                  if (!hasFeedback && !isRejected) return null;
+                  return (
+                    <div key={q.id} className="border-t border-slate-100 pt-4 mt-4 space-y-3">
+                      {hasFeedback && (
+                        <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl flex gap-3">
+                          <MessageSquareText className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-[10px] font-black uppercase text-orange-600 tracking-wider mb-1">
+                              Góp ý của giảng viên
+                            </p>
+                            <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                              {studentAns.feedback}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {isRejected && (
+                        <ReuploadForm attemptId={attemptId} questionId={q.id} />
+                      )}
+                    </div>
+                  );
+                })
             )}
           </div>
         </div>

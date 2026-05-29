@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { 
   CheckCircle2, 
   XCircle, 
@@ -13,7 +13,10 @@ import {
   BookOpen,
   ChevronRight,
   RefreshCw,
-  Trash2
+  Trash2,
+  Check,
+  ChevronDown,
+  Filter
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,8 +43,17 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState<TabType>("PENDING");
   
-  const [courseFilter, setCourseFilter] = useState("ALL");
-  const [lessonFilter, setLessonFilter] = useState("ALL");
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+  const [courseOpen, setCourseOpen] = useState(false);
+  const courseRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (courseRef.current && !courseRef.current.contains(e.target as Node)) setCourseOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleGrade = async (submissionId: string, status: "SATISFACTORY" | "UNSATISFACTORY") => {
     if (status === "UNSATISFACTORY") {
@@ -93,11 +105,11 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
   }
 
   const uniqueCourses = Array.from(new Set(submissions.map(s => s.lesson?.chapter?.course?.title).filter(Boolean))) as string[];
-  const uniqueLessons = Array.from(new Set(submissions.filter(s => courseFilter === "ALL" || s.lesson?.chapter?.course?.title === courseFilter).map(s => s.lesson?.title).filter(Boolean))) as string[];
+
+  const allCoursesSelected = selectedCourses.length === uniqueCourses.length;
 
   const filteredSubmissions = submissions.filter(s => {
-    if (courseFilter !== "ALL" && s.lesson?.chapter?.course?.title !== courseFilter) return false;
-    if (lessonFilter !== "ALL" && s.lesson?.title !== lessonFilter) return false;
+    if (selectedCourses.length > 0 && !selectedCourses.includes(s.lesson?.chapter?.course?.title)) return false;
     return true;
   });
 
@@ -145,28 +157,61 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
       </div>
 
       {uniqueCourses.length > 0 && (
-        <div className="flex flex-col sm:flex-row gap-4 bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100 animate-in fade-in duration-300">
-          <select 
-            className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
-            value={courseFilter}
-            onChange={(e) => {
-              setCourseFilter(e.target.value);
-              setLessonFilter("ALL");
-            }}
-          >
-            <option value="ALL">Tất cả Khóa học</option>
-            {uniqueCourses.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          
-          <select 
-            className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
-            value={lessonFilter}
-            onChange={(e) => setLessonFilter(e.target.value)}
-            disabled={uniqueLessons.length === 0}
-          >
-            <option value="ALL">Tất cả Bài học</option>
-            {uniqueLessons.map(l => <option key={l} value={l}>{l}</option>)}
-          </select>
+        <div className="bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100 animate-in fade-in duration-300">
+          <div ref={courseRef} className="relative">
+            <button
+              onClick={() => setCourseOpen(!courseOpen)}
+              className="w-full flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 outline-none hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer"
+            >
+              <Filter className="w-4 h-4 text-slate-400 shrink-0" />
+              <span className="flex-1 text-left truncate">
+                {allCoursesSelected
+                  ? "Tất cả Khóa học"
+                  : `${selectedCourses.length} Khóa học`}
+              </span>
+              <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", courseOpen && "rotate-180")} />
+            </button>
+            {courseOpen && (
+              <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg py-2 animate-in fade-in zoom-in-95 duration-150">
+                <button
+                  onClick={() => {
+                    setSelectedCourses(allCoursesSelected ? [] : [...uniqueCourses]);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 border-b border-slate-100"
+                >
+                  <div className={cn(
+                    "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all",
+                    allCoursesSelected ? "bg-blue-600 border-blue-600" : "border-slate-300"
+                  )}>
+                    {allCoursesSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                  </div>
+                  <span className="text-sm font-bold text-slate-700">Tất cả</span>
+                </button>
+                {uniqueCourses.map(c => {
+                  const checked = selectedCourses.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => {
+                        setSelectedCourses(prev =>
+                          prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]
+                        );
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
+                    >
+                      <div className={cn(
+                        "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all",
+                        checked ? "bg-blue-600 border-blue-600" : "border-slate-300"
+                      )}>
+                        {checked && <Check className="w-3.5 h-3.5 text-white" />}
+                      </div>
+                      <span className="text-sm font-semibold text-slate-700 text-left">{c}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
