@@ -335,6 +335,7 @@ model StudentAnswer {
   answerProvided String?
   isCorrect      Boolean?
   pointsAwarded  Float          @default(0)
+  feedback       String?
   attempt        StudentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   question       Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
 

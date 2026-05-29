@@ -418,10 +418,23 @@ export async function deleteStudentAttempt(attemptId: string) {
 
   const attempt = await prisma.studentAttempt.findUnique({
     where: { id: attemptId },
-    include: { test: true }
+    include: {
+      test: {
+        include: {
+          lesson: { include: { chapter: { include: { course: true } } } },
+          course: true,
+        },
+      },
+    },
   });
 
   if (!attempt) throw new Error("Attempt not found");
+
+  // Ownership check: only ADMIN or the course owner can delete
+  const ownerId = attempt.test.lesson?.chapter?.course?.userId ?? attempt.test.course?.userId;
+  if (ownerId !== session.user.id && session.user.role !== "ADMIN") {
+    throw new Error("Unauthorized to delete this attempt");
+  }
 
   await prisma.studentAttempt.delete({
     where: { id: attemptId }
@@ -435,7 +448,7 @@ export async function deleteStudentAttempt(attemptId: string) {
   revalidatePath(`/admin/global-analytics`);
   
   // Also revalidate course-specific analytics if applicable
-  const courseId = attempt.test.courseId || (attempt.test as any).lesson?.chapter?.courseId;
+  const courseId = attempt.test.courseId || attempt.test.lesson?.chapter?.courseId;
   if (courseId) {
     revalidatePath(`/teacher/courses/${courseId}/analytics`);
     revalidatePath(`/teacher/courses/${courseId}/analytics/students/${attempt.userId}`);
@@ -684,6 +697,7 @@ export async function gradeStudentAnswer(
   answerId: string,
   points: number,
   isCorrect: boolean,
+  feedback?: string,
 ) {
   const session = await requireTeacherOrAdmin();
 
@@ -720,6 +734,7 @@ export async function gradeStudentAnswer(
       data: {
         pointsAwarded: points,
         isCorrect,
+        ...(feedback !== undefined ? { feedback } : {}),
       },
     });
 
@@ -747,6 +762,69 @@ export async function gradeStudentAnswer(
   });
 
   revalidatePath(`/watch/${answer.attempt.test.lessonId}/results/${answer.attemptId}`);
+  return { success: true };
+}
+
+export async function resubmitEssayAnswer(
+  attemptId: string,
+  questionId: string,
+  answerProvided: string,
+) {
+  const session = await auth();
+  if (!session || !session.user.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const answer = await prisma.studentAnswer.findUnique({
+    where: { attemptId_questionId: { attemptId, questionId } },
+    include: {
+      attempt: {
+        include: {
+          test: {
+            include: { sections: { include: { questions: true } } },
+          },
+        },
+      },
+      question: true,
+    },
+  });
+
+  if (!answer) throw new Error("Answer not found");
+  if (answer.attempt.userId !== session.user.id) throw new Error("Unauthorized");
+  if (answer.question.type !== "ESSAY") throw new Error("Not an essay question");
+
+  await prisma.studentAnswer.update({
+    where: { attemptId_questionId: { attemptId, questionId } },
+    data: {
+      answerProvided,
+      isCorrect: null,
+      pointsAwarded: 0,
+      feedback: null,
+    },
+  });
+
+  // Recalculate score after resetting essay points to 0
+  const allAnswers = await prisma.studentAnswer.findMany({
+    where: { attemptId },
+  });
+
+  let maxPointsPossible = 0;
+  answer.attempt.test.sections.forEach(s => {
+    s.questions.forEach(q => {
+      maxPointsPossible += (q.points || 0);
+    });
+  });
+
+  const rawTotalScore = allAnswers.reduce((acc, curr) => acc + curr.pointsAwarded, 0);
+  const finalScore = maxPointsPossible > 0 ? Math.round((rawTotalScore / maxPointsPossible) * 10 * 100) / 100 : 0;
+
+  await prisma.studentAttempt.update({
+    where: { id: attemptId },
+    data: { score: finalScore },
+  });
+
+  revalidatePath(`/watch/${answer.attempt.test.lessonId}/results/${attemptId}`);
+
   return { success: true };
 }
 

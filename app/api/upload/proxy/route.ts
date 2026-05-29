@@ -34,9 +34,19 @@ export async function PUT(req: NextRequest) {
     
     const key = `${folder}/${uniqueFileName}`;
     
+    // Validate Content-Type BEFORE reading body
+    const contentType = req.headers.get("content-type") || "application/octet-stream";
+    if (!contentType.startsWith("image/") && contentType !== "application/pdf" && contentType !== "application/octet-stream") {
+      return new NextResponse("Chỉ chấp nhận file ảnh hoặc PDF.", { status: 415 });
+    }
+
     // Get body as a buffer/Uint8Array for S3 client
     // Next.js App Router req.body is a ReadableStream
     const arrayBuffer = await req.arrayBuffer();
+    const MAX_UPLOAD_SIZE = 64 * 1024 * 1024; // 64MB
+    if (arrayBuffer.byteLength > MAX_UPLOAD_SIZE) {
+      return new NextResponse("File vượt quá 64MB.", { status: 413 });
+    }
     const buffer = Buffer.from(arrayBuffer);
 
     console.log(`[Proxy Upload] B2 Uploading: ${key}`);
@@ -46,7 +56,7 @@ export async function PUT(req: NextRequest) {
         Bucket: B2_BUCKET_NAME,
         Key: key,
         Body: buffer,
-        ContentType: req.headers.get("content-type") || "application/octet-stream",
+        ContentType: contentType,
         CacheControl: "public, max-age=31536000",
       })
     );

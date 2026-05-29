@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
-import { ArrowLeft, Clock, Send, AlertTriangle, Flag, Upload, X, Image as ImageIcon, FileText, Loader2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Clock, Send, Flag, Upload, X, Image as ImageIcon, FileText, Loader2, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTestAttempt, submitTestAttempt, saveTestDraft, getTestDraft } from "@/actions/test";
 import { Button } from "@/components/ui/button";
@@ -92,7 +92,11 @@ export default function TestTakerClient({
       }
 
       setAttemptId(res.attempt.id);
-      setStartedAt(new Date(res.attempt.startedAt));
+      const rawDate = String(res.attempt.startedAt);
+      const parsedDate = new Date(
+        !rawDate.endsWith("Z") && !rawDate.includes("+") ? rawDate + "Z" : rawDate
+      );
+      setStartedAt(isNaN(parsedDate.getTime()) ? null : parsedDate);
 
       // Load server draft
       let serverAnswers: Record<string, string> = {};
@@ -112,13 +116,13 @@ export default function TestTakerClient({
       try {
         const localRaw = localStorage.getItem(`draft_${res.attempt.id}`);
         if (localRaw) localAnswers = JSON.parse(localRaw);
-      } catch (e) {}
+      } catch (e) { console.warn("[localStorage] draft_ getItem failed"); }
 
       // Load flagged questions from localStorage
       try {
         const flagsRaw = localStorage.getItem(`flags_${res.attempt.id}`);
         if (flagsRaw) setFlags(JSON.parse(flagsRaw));
-      } catch (e) {}
+      } catch (e) { console.warn("[localStorage] flags_ getItem failed"); }
 
       // Reconciliation: local wins (more recent if user was working)
       // But only for questions that exist in the test
@@ -153,7 +157,7 @@ export default function TestTakerClient({
     try {
       localStorage.setItem(`draft_${attemptId}`, JSON.stringify(answers));
       localStorage.setItem(`flags_${attemptId}`, JSON.stringify(flags));
-    } catch (e) {}
+    } catch (e) { console.warn("[localStorage] setItem failed"); }
 
     // Debounce server sync (2s after last change)
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -226,7 +230,7 @@ export default function TestTakerClient({
           try {
             localStorage.removeItem(`draft_${attemptId}`);
             localStorage.removeItem(`flags_${attemptId}`);
-          } catch (e) {}
+          } catch (e) { console.warn("[localStorage] removeItem failed"); }
           const path = resultsPath
             ? `${resultsPath}/${attemptId}`
             : `/watch/${lesson.id}/results/${attemptId}`;
@@ -269,10 +273,11 @@ export default function TestTakerClient({
 
     setIsUploading(prev => ({ ...prev, [qId]: true }));
     try {
+      const fileBuffer = await file.arrayBuffer();
       const res = await axios.put<{ publicUrl: string }>(
         `/api/upload/proxy?fileName=essay_${qId}_${Date.now()}_${encodeURIComponent(file.name)}`,
-        file,
-        { headers: { "Content-Type": file.type } }
+        fileBuffer,
+        { headers: { "Content-Type": file.type || "application/octet-stream" } }
       );
       
       handleSelectAnswer(qId, res.data.publicUrl);
@@ -299,14 +304,14 @@ export default function TestTakerClient({
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[#E2EEFF] overflow-hidden relative z-[60] w-full max-w-full">
+    <div className="flex h-dvh flex-col bg-[#E2EEFF] overflow-hidden relative z-[60] w-full max-w-full">
       {/* Hide Global Header on Test Page */}
       <style dangerouslySetInnerHTML={{ __html: `
         header { display: none !important; }
       `}} />
 
       {/* Main Split - 60/40 vertical on mobile, flex-1/fixed-width on desktop */}
-      <div className="flex flex-col md:flex-row flex-1 relative overflow-hidden w-full max-w-full">
+      <div className="flex flex-col md:flex-row flex-1 relative overflow-clip w-full max-w-full">
         {/* Left/Top: PDF (60% height on mobile, flex-1 on desktop) */}
         <div className="min-w-0 w-full flex-1 h-[60%] md:h-full border-r relative bg-[#E2EEFF] overflow-y-auto custom-scrollbar">
           {test.pdfUrl ? (
@@ -341,7 +346,7 @@ export default function TestTakerClient({
         </div>
 
         {/* Right/Bottom: Bubble Sheet (40% height on mobile, fixed-width on desktop) */}
-        <div className="min-w-0 w-full md:w-[350px] xl:w-[400px] shrink-0 h-[40%] md:h-full bg-white flex flex-col md:sticky md:top-0 overflow-hidden z-20 border-t md:border-t-0 shadow-[-4px_0_12px_rgba(0,0,0,0.02)]">
+        <div className="min-w-0 w-full md:w-[350px] xl:w-[400px] shrink-0 h-[40%] md:h-full bg-white flex flex-col md:sticky md:top-0 overflow-clip z-20 border-t md:border-t-0 shadow-[-4px_0_12px_rgba(0,0,0,0.02)]">
           <div className="h-14 md:h-16 border-b border-slate-200 bg-white flex items-center justify-between px-3 md:px-4 font-black text-slate-800 shadow-sm shrink-0">
             <div className="flex flex-col min-w-0">
                <span className="uppercase tracking-widest text-[8px] md:text-[10px] text-slate-400">PHIẾU TRẢ LỜI</span>
@@ -496,9 +501,13 @@ export default function TestTakerClient({
                                      </div>
                                      <div className="flex-1 min-w-0">
                                         <p className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Đã tải lên</p>
-                                        <a href={val} target="_blank" className="text-[10px] font-black text-blue-600 uppercase hover:underline flex items-center gap-1">
-                                           Xem bài làm <ExternalLink className="w-2.5 h-2.5" />
-                                        </a>
+                                        {val.startsWith("http://") || val.startsWith("https://") || val.startsWith("blob:") ? (
+                                           <a href={val} target="_blank" className="text-[10px] font-black text-blue-600 uppercase hover:underline flex items-center gap-1">
+                                              Xem bài làm <ExternalLink className="w-2.5 h-2.5" />
+                                           </a>
+                                        ) : (
+                                           <span className="text-[10px] font-black text-slate-600 uppercase">Đã tải lên</span>
+                                        )}
                                      </div>
                                      <button 
                                        onClick={() => removeFileUpload(q.id)}

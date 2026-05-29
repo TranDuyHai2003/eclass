@@ -16,6 +16,7 @@ import {
   Download,
   Image as ImageIcon,
   ExternalLink,
+  MessageSquareText,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import { vi } from "date-fns/locale";
 import { PDFViewerClientWrapper } from "@/components/course/PDFViewerClientWrapper";
 import VideoPlayer from "@/components/player/VideoPlayer";
 import { GradeEssay } from "@/components/teacher/test-builder/GradeEssay";
+import { ReuploadForm } from "./_components/ReuploadForm";
 import { getAttemptStatistics } from "@/actions/analytics";
 import { ResultAnalytics } from "./_components/ResultAnalytics";
 import { RecommendationList } from "./_components/RecommendationList";
@@ -296,7 +298,31 @@ export default async function TestResultPage({
                                 initialPoints={studentAns.pointsAwarded}
                                 maxPoints={q.points}
                                 isCorrect={studentAns.isCorrect}
+                                initialFeedback={studentAns.feedback}
                               />
+                            )}
+
+                            {/* Student: show teacher feedback + re-upload if rejected */}
+                            {!isTeacher && q.type === "ESSAY" && isCorrect === false && studentAns && (
+                              <div className="ml-9 md:ml-12 space-y-3">
+                                {studentAns.feedback && (
+                                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl flex gap-2">
+                                    <MessageSquareText className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                                    <div>
+                                      <p className="text-[10px] font-black uppercase text-orange-600 tracking-wider mb-1">
+                                        Góp ý của giảng viên
+                                      </p>
+                                      <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                                        {studentAns.feedback}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                                <ReuploadForm
+                                  attemptId={attemptId}
+                                  questionId={q.id}
+                                />
+                              </div>
                             )}
 
                             {(q.explanation || q.videoUrl || q.audioUrl) && (
