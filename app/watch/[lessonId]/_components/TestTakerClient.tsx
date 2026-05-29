@@ -51,6 +51,8 @@ export default function TestTakerClient({
   useEffect(() => { answersRef.current = answers; }, [answers]);
 
   const isSubmittingRef = useRef(false);
+  const hasAutoSubmittedRef = useRef(false);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null); // seconds remaining
 
   // Sync answers to server (debounced)
   const syncToServer = useCallback(() => {
@@ -107,16 +109,16 @@ export default function TestTakerClient({
 
       // Load localStorage draft
       let localAnswers: Record<string, string> = {};
-      const localRaw = localStorage.getItem(`draft_${res.attempt.id}`);
-      if (localRaw) {
-        try { localAnswers = JSON.parse(localRaw); } catch (e) {}
-      }
+      try {
+        const localRaw = localStorage.getItem(`draft_${res.attempt.id}`);
+        if (localRaw) localAnswers = JSON.parse(localRaw);
+      } catch (e) {}
 
       // Load flagged questions from localStorage
-      const flagsRaw = localStorage.getItem(`flags_${res.attempt.id}`);
-      if (flagsRaw) {
-        try { setFlags(JSON.parse(flagsRaw)); } catch (e) {}
-      }
+      try {
+        const flagsRaw = localStorage.getItem(`flags_${res.attempt.id}`);
+        if (flagsRaw) setFlags(JSON.parse(flagsRaw));
+      } catch (e) {}
 
       // Reconciliation: local wins (more recent if user was working)
       // But only for questions that exist in the test
@@ -136,6 +138,10 @@ export default function TestTakerClient({
       }
 
       setLoadingInitial(false);
+    }).catch((e) => {
+      console.error("[Init] startTestAttempt failed:", e);
+      toast.error("Không thể tải bài thi. Vui lòng tải lại trang.");
+      setLoadingInitial(false);
     });
   }, [test.id, lesson.id, resultsPath, router]);
 
@@ -143,9 +149,11 @@ export default function TestTakerClient({
   useEffect(() => {
     if (!attemptId) return;
 
-    // Save to localStorage immediately
-    localStorage.setItem(`draft_${attemptId}`, JSON.stringify(answers));
-    localStorage.setItem(`flags_${attemptId}`, JSON.stringify(flags));
+    // Save to localStorage immediately (safe: Safari PB throws on setItem)
+    try {
+      localStorage.setItem(`draft_${attemptId}`, JSON.stringify(answers));
+      localStorage.setItem(`flags_${attemptId}`, JSON.stringify(flags));
+    } catch (e) {}
 
     // Debounce server sync (2s after last change)
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -164,6 +172,22 @@ export default function TestTakerClient({
       if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
     };
   }, [attemptId, syncToServer]);
+
+  // Countdown timer: calculate timeLeft from startedAt + duration
+  useEffect(() => {
+    if (!startedAt || !test.duration || test.duration <= 0) return;
+    const endTime = startedAt.getTime() + test.duration * 60 * 1000;
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining <= 0) setIsTimeUp(true);
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [startedAt, test.duration]);
 
   const handleSubmit = useCallback(() => {
     if (!attemptId || isPending || isSubmittingRef.current) return;
@@ -199,8 +223,10 @@ export default function TestTakerClient({
           } else if (!("alreadySubmitted" in res)) {
             toast.success("Nộp bài thành công!");
           }
-          localStorage.removeItem(`draft_${attemptId}`);
-          localStorage.removeItem(`flags_${attemptId}`);
+          try {
+            localStorage.removeItem(`draft_${attemptId}`);
+            localStorage.removeItem(`flags_${attemptId}`);
+          } catch (e) {}
           const path = resultsPath
             ? `${resultsPath}/${attemptId}`
             : `/watch/${lesson.id}/results/${attemptId}`;
@@ -210,10 +236,18 @@ export default function TestTakerClient({
         }
       } catch (e: any) {
         toast.error(e.message || "Không thể nộp bài");
+      } finally {
         isSubmittingRef.current = false;
       }
     });
   }, [attemptId, answers, isTimeUp, test, lesson, resultsPath, router, isPending]);
+
+  // Auto-submit when time is up
+  useEffect(() => {
+    if (!isTimeUp || !attemptId || hasAutoSubmittedRef.current) return;
+    hasAutoSubmittedRef.current = true;
+    handleSubmit();
+  }, [isTimeUp, attemptId, handleSubmit]);
 
   const handleSelectAnswer = (qId: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [qId]: value }));
@@ -311,7 +345,16 @@ export default function TestTakerClient({
           <div className="h-14 md:h-16 border-b border-slate-200 bg-white flex items-center justify-between px-3 md:px-4 font-black text-slate-800 shadow-sm shrink-0">
             <div className="flex flex-col min-w-0">
                <span className="uppercase tracking-widest text-[8px] md:text-[10px] text-slate-400">PHIẾU TRẢ LỜI</span>
-               <span className="text-xs md:text-sm font-black text-blue-600 uppercase tracking-wider">Đang làm bài</span>
+               {timeLeft !== null && !isTimeUp ? (
+                 <span className="text-xs md:text-sm font-black text-blue-600 uppercase tracking-wider">
+                   <Clock className="inline w-3 h-3 md:w-3.5 md:h-3.5 mr-1 -mt-0.5" />
+                   {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
+                 </span>
+               ) : isTimeUp ? (
+                 <span className="text-xs md:text-sm font-black text-red-500 uppercase tracking-wider">Hết giờ</span>
+               ) : (
+                 <span className="text-xs md:text-sm font-black text-blue-600 uppercase tracking-wider">Đang làm bài</span>
+               )}
             </div>
             
             <Button
