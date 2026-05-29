@@ -44,3 +44,6 @@ jobs:
 
             # 3. Ép Docker đập bỏ container cũ và chạy lại bằng image mới
             docker compose up -d --force-recreate app
+
+            # 4. TỰ ĐỘNG DỌN RÁC (Xóa các image cũ lơ lửng, giải phóng ổ cứng)
+            docker image prune -f
