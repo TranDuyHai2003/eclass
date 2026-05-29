@@ -162,57 +162,59 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
   };
 
   return (
-    <div className="w-full bg-blue-100 rounded-xl overflow-hidden p-2 space-y-6">
-      <nav className="flex flex-col gap-1">{renderLinks(generalLinks)}</nav>
+    <div className="w-full bg-blue-100 rounded-xl overflow-hidden">
+      <div className="overflow-y-auto max-h-[calc(100vh-8rem)] p-2 space-y-6 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+        <nav className="flex flex-col gap-1">{renderLinks(generalLinks)}</nav>
 
-      {/* Social Links Section */}
-      <div className="pt-4 border-t border-blue-100">
-        <h4 className="px-3 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-          Liên kết
-        </h4>
-        <nav className="flex flex-col gap-1 mt-1">
-          {socialLinks.map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => {
-                if (onClick) onClick();
-              }}
-              className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#FFF1F2]/40 transition-all text-slate-600 hover:text-blue-600 group"
-            >
-              <div
-                className={cn(
-                  "p-1.5 rounded-lg bg-white border border-slate-100 group-hover:border-blue-100 transition-colors",
-                  item.color,
-                )}
+        {/* Social Links Section */}
+        <div className="pt-4 border-t border-blue-100">
+          <h4 className="px-3 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+            Liên kết
+          </h4>
+          <nav className="flex flex-col gap-1 mt-1">
+            {socialLinks.map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  if (onClick) onClick();
+                }}
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#FFF1F2]/40 transition-all text-slate-600 hover:text-blue-600 group"
               >
-                <item.icon className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-bold">{item.label}</span>
-            </a>
-          ))}
-        </nav>
+                <div
+                  className={cn(
+                    "p-1.5 rounded-lg bg-white border border-slate-100 group-hover:border-blue-100 transition-colors",
+                    item.color,
+                  )}
+                >
+                  <item.icon className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold">{item.label}</span>
+              </a>
+            ))}
+          </nav>
+        </div>
+
+        {isTeacher && (
+          <div className="pt-4 border-t border-blue-100">
+            <h4 className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+              Giảng viên
+            </h4>
+            <nav className="flex flex-col gap-1">{renderLinks(teacherLinks)}</nav>
+          </div>
+        )}
+
+        {isAdmin && (
+          <div className="pt-4 border-t border-blue-100">
+            <h4 className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+              Hệ thống
+            </h4>
+            <nav className="flex flex-col gap-1">{renderLinks(adminLinks)}</nav>
+          </div>
+        )}
       </div>
-
-      {isTeacher && (
-        <div className="pt-4 border-t border-blue-100">
-          <h4 className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-            Giảng viên
-          </h4>
-          <nav className="flex flex-col gap-1">{renderLinks(teacherLinks)}</nav>
-        </div>
-      )}
-
-      {isAdmin && (
-        <div className="pt-4 border-t border-blue-100">
-          <h4 className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-            Hệ thống
-          </h4>
-          <nav className="flex flex-col gap-1">{renderLinks(adminLinks)}</nav>
-        </div>
-      )}
     </div>
   );
 }
