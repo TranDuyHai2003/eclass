@@ -46,6 +46,7 @@ type Lesson = {
     id: string;
     status: string;
     attachments: any;
+    feedback: string | null;
   } | null;
   attachments?: Attachment[];
   test?: {
@@ -488,6 +489,14 @@ export default function CourseSidebar({
                               {/* Inline Uploader Box */}
                               {activeHomeworkLessonId === lesson.id && (
                                 <div className="p-4 bg-slate-50/50 rounded-2xl border border-blue-100 space-y-3 animate-in slide-in-from-top-2 duration-300">
+                                  {/* Giáo viên nhận xét */}
+                                  {lesson.homeworkSubmission?.feedback && (
+                                    <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-1.5">
+                                      <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Nhận xét từ giáo viên:</p>
+                                      <p className="text-xs font-medium text-slate-600 italic leading-relaxed">"{lesson.homeworkSubmission.feedback}"</p>
+                                    </div>
+                                  )}
+
                                   {/* List of attachments */}
                                   {inlineAttachments.length > 0 && (
                                     <div className="space-y-1.5">
@@ -496,7 +505,7 @@ export default function CourseSidebar({
                                         const isExisting = lesson.homeworkSubmission?.attachments?.some(
                                           (existing: any) => existing.url === file.url
                                         );
-                                        const canDelete = !lesson.homeworkSubmission || lesson.homeworkSubmission.status === "PENDING";
+                                        const canDelete = !lesson.homeworkSubmission || lesson.homeworkSubmission.status === "PENDING" || lesson.homeworkSubmission.status === "UNSATISFACTORY";
 
                                         return (
                                           <div key={idx} className="flex items-center gap-2 p-2 bg-white border border-slate-100 rounded-xl text-[10px]">
@@ -529,8 +538,8 @@ export default function CourseSidebar({
                                     </div>
                                   )}
 
-                                  {/* Input Field & Submit - Only if not reviewed or is pending */}
-                                  {(!lesson.homeworkSubmission || lesson.homeworkSubmission.status === "PENDING") ? (
+                                  {/* Input Field & Submit - Only if not SATISFACTORY */}
+                                  {(!lesson.homeworkSubmission || lesson.homeworkSubmission.status === "PENDING" || lesson.homeworkSubmission.status === "UNSATISFACTORY") ? (
                                     <div className="space-y-2">
                                       <div className="flex gap-2">
                                         <label className="flex-1 cursor-pointer">

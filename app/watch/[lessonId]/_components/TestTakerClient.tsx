@@ -177,6 +177,19 @@ export default function TestTakerClient({
     };
   }, [attemptId, syncToServer]);
 
+  // beforeunload: save to localStorage before tab closes
+  useEffect(() => {
+    if (!attemptId) return;
+    const handleBeforeUnload = () => {
+      try {
+        localStorage.setItem(`draft_${attemptId}`, JSON.stringify(answersRef.current));
+        localStorage.setItem(`flags_${attemptId}`, JSON.stringify(flags));
+      } catch (e) { /* ignore */ }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [attemptId, flags]);
+
   // Countdown timer: calculate timeLeft from startedAt + duration
   useEffect(() => {
     if (!startedAt || !test.duration || test.duration <= 0) return;
@@ -222,9 +235,7 @@ export default function TestTakerClient({
 
         const res = await submitTestAttempt(attemptId, answersArray);
         if (res.success) {
-          if ("alreadySubmitted" in res && !res.alreadySubmitted) {
-            toast.success("Nộp bài thành công!");
-          } else if (!("alreadySubmitted" in res)) {
+          if (!(res as any).alreadySubmitted) {
             toast.success("Nộp bài thành công!");
           }
           try {

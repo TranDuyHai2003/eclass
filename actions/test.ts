@@ -323,7 +323,12 @@ async function reCalculateAllAttempts(testId: string) {
           isCorrect = normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
         } else if (q.type === 'ESSAY') {
           // Keep teacher's manual grading for essays
-          isCorrect = ans.isCorrect ?? false;
+          // Skip ungraded essays entirely to avoid null→false conversion
+          if (ans.isCorrect === null) {
+            rawTotalScore += 0;
+            continue;
+          }
+          isCorrect = ans.isCorrect;
           pointsAwarded = ans.pointsAwarded;
         }
 
@@ -398,6 +403,20 @@ export async function startTestAttempt(testId: string) {
 
   if (existingAttempt) {
     return { success: true, attempt: existingAttempt };
+  }
+
+  // Check if there is already a completed attempt → redirect to results
+  const completedAttempt = await prisma.studentAttempt.findFirst({
+    where: {
+      testId,
+      userId: session.user.id,
+      completedAt: { not: null },
+    },
+    orderBy: { completedAt: "desc" },
+  });
+
+  if (completedAttempt) {
+    return { success: true, attempt: completedAttempt };
   }
 
   const attempt = await prisma.studentAttempt.create({
@@ -506,7 +525,7 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
     const q = questionMap.get(ans.questionId);
     if (!q) return; // Skip answers for questions that don't exist in this test
 
-    let isCorrect = false;
+    let isCorrect: boolean | null = false;
     let pointsAwarded = 0;
 
     if (q.type === 'MULTIPLE_CHOICE') {
@@ -516,7 +535,7 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
     } else if (q.type === 'SHORT_ANSWER') {
       isCorrect = normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
     } else if (q.type === 'ESSAY') {
-      isCorrect = null as any; 
+      isCorrect = null;
     }
 
     if (isCorrect === true) {
@@ -551,8 +570,15 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
 
   const finalScore = maxPointsPossible > 0 ? Math.round((rawTotalScore / maxPointsPossible) * 10 * 100) / 100 : 0;
 
-  await prisma.$transaction(async (tx) => {
-    // Delete previous answers then insert new ones (safe: outer guards ensure answersData is non-empty)
+  // Use FOR UPDATE to prevent race conditions with saveTestDraft
+  const alreadySubmitted = await prisma.$transaction(async (tx) => {
+    const locked: Array<{ completedAt: Date | null }> = await tx.$queryRaw`
+      SELECT "completedAt" FROM "StudentAttempt" WHERE "id" = ${attemptId} FOR UPDATE
+    `;
+    if (locked.length === 0 || locked[0].completedAt) {
+      return true;
+    }
+
     await tx.studentAnswer.deleteMany({
       where: { attemptId }
     });
@@ -586,7 +612,13 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
         },
       });
     }
+
+    return false;
   });
+
+  if (alreadySubmitted) {
+    return { success: true, score: attempt.score, alreadySubmitted: true };
+  }
 
   if (attempt.test.lessonId) {
     revalidatePath(`/watch/${attempt.test.lessonId}`);
@@ -725,6 +757,15 @@ export async function gradeStudentAnswer(
     answer.attempt.test.course?.userId;
   if (ownerId !== session.user.id && session.user.role !== "ADMIN" && session.user.role !== "TEACHER") {
     throw new Error("Unauthorized access");
+  }
+
+  // Server-side validation: ensure points are within valid range
+  const question = answer.attempt.test.sections
+    .flatMap(s => s.questions)
+    .find(q => q.id === answer.questionId);
+  const maxPoints = question?.points || 0;
+  if (points < 0 || points > maxPoints) {
+    throw new Error(`Điểm phải từ 0 đến ${maxPoints}`);
   }
 
   await prisma.$transaction(async (tx) => {

@@ -32,6 +32,7 @@ export async function submitHomework(lessonId: string, attachments: { name: stri
     update: {
       attachments: attachments as any,
       status: "PENDING", // Reset to pending if re-submitted
+      feedback: null, // Clear old feedback on resubmit
     },
     create: {
       userId: session.user.id,
