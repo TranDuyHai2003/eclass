@@ -54,14 +54,6 @@ export default function TestResultClient({ attempt, isTeacher = false }: { attem
     });
   });
 
-  const durationStr = attempt.completedAt
-    ? Math.round(
-        (new Date(attempt.completedAt).getTime() -
-          new Date(attempt.startedAt).getTime()) /
-          60000,
-      )
-    : 0;
-
   // Determine back path and title based on whether it's a course or lesson test
   const isCourseTest = !!test.courseId;
   const backPath = "/courses";
@@ -95,20 +87,15 @@ export default function TestResultClient({ attempt, isTeacher = false }: { attem
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-slate-400" />
-            <span className="text-sm font-bold text-slate-600">
-              {durationStr} phút
+        <div className="flex items-center gap-2 md:gap-6">
+          <div className="flex items-center gap-1 md:gap-2">
+            <Award className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />
+            <span className="text-sm md:text-xl font-black text-blue-600">
+              {attempt.score?.toFixed(2)}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-yellow-500" />
-            <span className="text-xl font-black text-blue-600">
-              {attempt.score?.toFixed(2)} / 10
-            </span>
-          </div>
-          <div className="flex gap-4 text-[10px] font-black uppercase tracking-widest border-l pl-6">
+          <span className="hidden md:inline text-[10px] font-black text-slate-300">/ 10</span>
+          <div className="flex gap-1.5 md:gap-4 text-[9px] md:text-[10px] font-black uppercase tracking-widest md:border-l md:pl-6">
             <span className="text-emerald-600">Đúng: {correctAnswers}</span>
             <span className="text-blue-500">Sai: {wrongAnswers}</span>
           </div>

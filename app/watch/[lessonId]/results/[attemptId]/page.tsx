@@ -90,8 +90,8 @@ export default async function TestResultPage({
   const minutes = Math.floor(durationInSeconds / 60);
   const seconds = durationInSeconds % 60;
 
-  return (
-    <div className="h-screen flex flex-col bg-[#E2EEFF] overflow-hidden">
+ return (
+    <div className="h-[100dvh] flex flex-col bg-[#E2EEFF] overflow-hidden">
       {/* Result Header */}
       <header className="h-16 px-6 border-b flex items-center justify-between shrink-0 bg-white z-[60] shadow-sm">
         <div className="flex items-center gap-4">
@@ -110,22 +110,6 @@ export default async function TestResultPage({
             </p>
           </div>
         </div>
-
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-slate-400" />
-            <span className="text-sm font-bold text-slate-600">
-              {minutes} phút {seconds} giây
-            </span>
-          </div>
-          <Separator orientation="vertical" className="h-6" />
-          <div className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-yellow-500" />
-            <span className="text-xl font-black text-blue-600">
-              {attempt.score?.toFixed(2)} / 10
-            </span>
-          </div>
-        </div>
       </header>
 
       {/* Main Split Body */}
@@ -137,13 +121,18 @@ export default async function TestResultPage({
 
         {/* Right: Answer Key & Student Answers */}
         <div className="w-full lg:w-1/2 flex flex-col bg-white overflow-hidden">
-          <div className="h-12 px-6 border-b flex items-center justify-between bg-slate-50/50 shrink-0">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-              Đối chiếu đáp án & Video
-            </span>
-            <div className="flex gap-4 text-[10px] font-black uppercase tracking-widest">
+          <div className="min-h-12 py-2 px-6 border-b flex flex-wrap items-center justify-between gap-4 bg-slate-50/50 shrink-0">
+            <div className="flex gap-4 text-[10px] md:text-sm font-black uppercase tracking-widest">
               <span className="text-emerald-600">Đúng: {correctCount}</span>
               <span className="text-blue-500">Sai: {totalQuestions - correctCount}</span>
+            </div>
+            
+            {/* Score block */}
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+              <Trophy className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />
+              <span className="text-sm md:text-base font-black text-blue-600">
+                {Number(attempt.score || 0).toFixed(2)} / 10
+              </span>
             </div>
           </div>
 
@@ -363,9 +352,6 @@ export default async function TestResultPage({
                     </div>
                   </div>
                 ))}
-
-                {/* Recommendations Section - Hidden as requested */}
-                {/* <RecommendationList recommendations={analyticsData.recommendations} /> */}
               </>
             ) : (
               <div className="flex flex-col items-center justify-center h-full p-12 text-center bg-slate-50/50">
