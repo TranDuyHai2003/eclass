@@ -115,6 +115,7 @@ export default function CourseSidebar({
   const [activeHomeworkLessonId, setActiveHomeworkLessonId] = useState<string | null>(null);
   const [inlineAttachments, setInlineAttachments] = useState<{ name: string; url: string }[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const homeworkStatusConfig = {
@@ -128,6 +129,7 @@ export default function CourseSidebar({
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
+    setUploadProgress(0);
     try {
       const newAttachments = [...inlineAttachments];
       for (let i = 0; i < files.length; i++) {
@@ -135,7 +137,16 @@ export default function CourseSidebar({
         const res = await axios.put<{ publicUrl: string }>(
           `/api/upload/proxy?fileName=homework_${Date.now()}_${encodeURIComponent(file.name)}`,
           file,
-          { headers: { "Content-Type": file.type } }
+          {
+            headers: { "Content-Type": file.type },
+            onUploadProgress: (e) => {
+              if (e.total) {
+                const filePercent = Math.round((e.loaded / e.total) * 100);
+                const overall = Math.round((i / files.length) * 100 + filePercent / files.length);
+                setUploadProgress(overall);
+              }
+            },
+          }
         );
         newAttachments.push({ name: file.name, url: res.data.publicUrl });
       }
@@ -145,6 +156,7 @@ export default function CourseSidebar({
       toast.error("Lỗi tải tệp lên");
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -545,12 +557,25 @@ export default function CourseSidebar({
                                         <label className="flex-1 cursor-pointer">
                                           <div className="h-10 border border-dashed border-blue-200 rounded-xl flex items-center justify-center gap-2 bg-white hover:bg-blue-50 transition-colors">
                                             {isUploading ? (
-                                              <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+                                              <>
+                                                <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin shrink-0" />
+                                                <div className="flex items-center gap-1.5">
+                                                  <div className="w-16 h-1.5 bg-blue-100 rounded-full overflow-hidden">
+                                                    <div
+                                                      className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                                                      style={{ width: `${uploadProgress}%` }}
+                                                    />
+                                                  </div>
+                                                  <span className="text-[9px] font-black text-blue-600 tabular-nums">
+                                                    {uploadProgress}%
+                                                  </span>
+                                                </div>
+                                              </>
                                             ) : (
                                               <Upload className="w-3.5 h-3.5 text-blue-400" />
                                             )}
                                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">
-                                              {isUploading ? "Tải thêm..." : "Chọn file"}
+                                              {isUploading ? "Đang tải..." : "Chọn file"}
                                             </span>
                                           </div>
                                           <input 
