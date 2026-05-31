@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
-import { ArrowLeft, Clock, Send, Flag, Upload, X, Image as ImageIcon, FileText, Loader2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Send, Flag, Upload, X, Image as ImageIcon, FileText, Loader2, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTestAttempt, submitTestAttempt, saveTestDraft, getTestDraft } from "@/actions/test";
 import { Button } from "@/components/ui/button";
@@ -38,11 +38,11 @@ export default function TestTakerClient({
   const [startedAt, setStartedAt] = useState<Date | null>(null);
   const [isPending, startTransition] = useTransition();
   const [loadingInitial, setLoadingInitial] = useState(true);
-  const [isTimeUp, setIsTimeUp] = useState(false); // Riêng biệt, chỉ true khi countdown thực sự hết
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [isUploading, setIsUploading] = useState<Record<string, boolean>>({});
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -51,8 +51,6 @@ export default function TestTakerClient({
   useEffect(() => { answersRef.current = answers; }, [answers]);
 
   const isSubmittingRef = useRef(false);
-  const hasAutoSubmittedRef = useRef(false);
-  const [timeLeft, setTimeLeft] = useState<number | null>(null); // seconds remaining
 
   // Sync answers to server (debounced)
   const syncToServer = useCallback(() => {
@@ -91,14 +89,8 @@ export default function TestTakerClient({
         return;
       }
 
-      setAttemptId(res.attempt.id);
-      const rawDate = String(res.attempt.startedAt);
-      const parsedDate = new Date(
-        !rawDate.endsWith("Z") && !rawDate.includes("+") ? rawDate + "Z" : rawDate
-      );
-      setStartedAt(isNaN(parsedDate.getTime()) ? null : parsedDate);
-
-      // Load server draft
+      // Load server draft + localStorage FIRST before setting attemptId
+      // (to prevent auto-save effect from overwriting localStorage with empty answers)
       let serverAnswers: Record<string, string> = {};
       try {
         const draftRes = await getTestDraft(res.attempt.id);
@@ -125,9 +117,16 @@ export default function TestTakerClient({
       } catch (e) { console.warn("[localStorage] flags_ getItem failed"); }
 
       // Reconciliation: local wins (more recent if user was working)
-      // But only for questions that exist in the test
       const merged = { ...serverAnswers, ...localAnswers };
       setAnswers(merged);
+
+      // Set attemptId AFTER answers are restored (so auto-save doesn't write empty)
+      setAttemptId(res.attempt.id);
+      const rawDate = String(res.attempt.startedAt);
+      const parsedDate = new Date(
+        !rawDate.endsWith("Z") && !rawDate.includes("+") ? rawDate + "Z" : rawDate
+      );
+      setStartedAt(isNaN(parsedDate.getTime()) ? null : parsedDate);
 
       // If local is newer, push to server immediately
       if (Object.keys(localAnswers).length > Object.keys(serverAnswers).length) {
@@ -190,22 +189,6 @@ export default function TestTakerClient({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [attemptId, flags]);
 
-  // Countdown timer: calculate timeLeft from startedAt + duration
-  useEffect(() => {
-    if (!startedAt || !test.duration || test.duration <= 0) return;
-    const endTime = startedAt.getTime() + test.duration * 60 * 1000;
-
-    const tick = () => {
-      const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
-      setTimeLeft(remaining);
-      if (remaining <= 0) setIsTimeUp(true);
-    };
-
-    tick();
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [startedAt, test.duration]);
-
   const handleSubmit = useCallback(() => {
     if (!attemptId || isPending || isSubmittingRef.current) return;
 
@@ -215,7 +198,7 @@ export default function TestTakerClient({
       (k) => answers[k] !== "",
     ).length;
 
-    if (answeredCount < totalQuestions && !isTimeUp) {
+    if (answeredCount < totalQuestions) {
       if (
         !confirm(
           `Bạn mới làm ${answeredCount}/${totalQuestions} câu. Bạn có chắc chắn muốn nộp bài?`,
@@ -255,14 +238,7 @@ export default function TestTakerClient({
         isSubmittingRef.current = false;
       }
     });
-  }, [attemptId, answers, isTimeUp, test, lesson, resultsPath, router, isPending]);
-
-  // Auto-submit when time is up
-  useEffect(() => {
-    if (!isTimeUp || !attemptId || hasAutoSubmittedRef.current) return;
-    hasAutoSubmittedRef.current = true;
-    handleSubmit();
-  }, [isTimeUp, attemptId, handleSubmit]);
+  }, [attemptId, answers, test, lesson, resultsPath, router, isPending]);
 
   const handleSelectAnswer = (qId: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [qId]: value }));
@@ -283,12 +259,20 @@ export default function TestTakerClient({
     }
 
     setIsUploading(prev => ({ ...prev, [qId]: true }));
+    setUploadProgress(prev => ({ ...prev, [qId]: 0 }));
     try {
-      const fileBuffer = await file.arrayBuffer();
       const res = await axios.put<{ publicUrl: string }>(
         `/api/upload/proxy?fileName=essay_${qId}_${Date.now()}_${encodeURIComponent(file.name)}`,
-        fileBuffer,
-        { headers: { "Content-Type": file.type || "application/octet-stream" } }
+        file,
+        {
+          headers: { "Content-Type": file.type || "application/octet-stream" },
+          onUploadProgress: (e) => {
+            const total = e.total;
+            if (total) {
+              setUploadProgress(prev => ({ ...prev, [qId]: Math.round((e.loaded / total) * 100) }));
+            }
+          },
+        }
       );
       
       handleSelectAnswer(qId, res.data.publicUrl);
@@ -299,6 +283,7 @@ export default function TestTakerClient({
       toast.error(`Lỗi tải tệp lên: ${message}`);
     } finally {
       setIsUploading(prev => ({ ...prev, [qId]: false }));
+      setUploadProgress(prev => ({ ...prev, [qId]: 0 }));
     }
   };
 
@@ -314,17 +299,20 @@ export default function TestTakerClient({
     );
   }
 
-  return (
+ return (
+    // 1. Fix root: Chỉ dùng overflow-hidden để khóa scroll tổng, ép scroll ở từng panel
     <div className="flex h-dvh flex-col bg-[#E2EEFF] overflow-hidden relative z-[60] w-full max-w-full">
       {/* Hide Global Header on Test Page */}
       <style dangerouslySetInnerHTML={{ __html: `
         header { display: none !important; }
       `}} />
 
-      {/* Main Split - 60/40 vertical on mobile, flex-1/fixed-width on desktop */}
-      <div className="flex flex-col md:flex-row flex-1 relative overflow-clip w-full max-w-full">
-        {/* Left/Top: PDF (60% height on mobile, flex-1 on desktop) */}
-        <div className="min-w-0 w-full flex-1 h-[60%] md:h-full border-r relative bg-[#E2EEFF] overflow-y-auto custom-scrollbar">
+      {/* 2. Thêm min-h-0 vào Main Split để flex flex-1 nhận diện đúng giới hạn chiều cao */}
+      <div className="flex flex-col md:flex-row flex-1 relative min-h-0 w-full max-w-full">
+        
+        {/* Left/Top: PDF */}
+        {/* 3. Dùng flex-[6] trên mobile và flex-1 trên PC, thêm min-h-0 và overflow-y-auto */}
+        <div className="flex-[6] md:flex-1 min-h-0 w-full border-b md:border-b-0 md:border-r relative bg-[#E2EEFF] overflow-y-auto custom-scrollbar">
           {test.pdfUrl ? (
             <div className="min-h-full w-full">
               <PDFViewer 
@@ -356,21 +344,14 @@ export default function TestTakerClient({
           )}
         </div>
 
-        {/* Right/Bottom: Bubble Sheet (40% height on mobile, fixed-width on desktop) */}
-        <div className="min-w-0 w-full md:w-[350px] xl:w-[400px] shrink-0 h-[40%] md:h-full bg-white flex flex-col md:sticky md:top-0 overflow-clip z-20 border-t md:border-t-0 shadow-[-4px_0_12px_rgba(0,0,0,0.02)]">
+        {/* Right/Bottom: Bubble Sheet */}
+        {/* 4. Dùng flex-[4] trên mobile để chiếm 4 phần, bỏ h-auto, THÊM min-h-0 */}
+        <div className="flex-[4] md:flex-none md:w-[350px] xl:w-[400px] min-h-0 w-full shrink-0 bg-white flex flex-col z-20 shadow-[-4px_0_12px_rgba(0,0,0,0.02)]">
+          
           <div className="h-14 md:h-16 border-b border-slate-200 bg-white flex items-center justify-between px-3 md:px-4 font-black text-slate-800 shadow-sm shrink-0">
             <div className="flex flex-col min-w-0">
                <span className="uppercase tracking-widest text-[8px] md:text-[10px] text-slate-400">PHIẾU TRẢ LỜI</span>
-               {timeLeft !== null && !isTimeUp ? (
-                 <span className="text-xs md:text-sm font-black text-blue-600 uppercase tracking-wider">
-                   <Clock className="inline w-3 h-3 md:w-3.5 md:h-3.5 mr-1 -mt-0.5" />
-                   {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
-                 </span>
-               ) : isTimeUp ? (
-                 <span className="text-xs md:text-sm font-black text-red-500 uppercase tracking-wider">Hết giờ</span>
-               ) : (
-                 <span className="text-xs md:text-sm font-black text-blue-600 uppercase tracking-wider">Đang làm bài</span>
-               )}
+               <span className="text-xs md:text-sm font-black text-blue-600 uppercase tracking-wider">Đang làm bài</span>
             </div>
             
             <Button
@@ -383,6 +364,7 @@ export default function TestTakerClient({
             </Button>
           </div>
 
+          {/* 5. Vùng chứa câu hỏi - chắc chắn sẽ cuộn được vì thẻ cha đã có flex-col và min-h-0 */}
           <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-4 md:space-y-6 custom-scrollbar w-full">
             {test.sections.map((section: any, sIdx: number) => (
               <div key={section.id} className="space-y-3">
@@ -391,6 +373,7 @@ export default function TestTakerClient({
                 </h3>
 
                 <div className="flex flex-col gap-2">
+                  {/* ... CODE RENDER CÂU HỎI CỦA BẠN GIỮ NGUYÊN (map qua section.questions) ... */}
                   {section.questions.map((q: any, qIdx: number) => {
                     const val = answers[q.id] || "";
                     const isFlagged = flags[q.id] || false;
@@ -412,6 +395,7 @@ export default function TestTakerClient({
                           isFlagged ? "bg-orange-50/50 border-orange-200" : "bg-gray-50/50 hover:bg-white border-slate-100"
                         )}
                       >
+                        {/* Giữ nguyên phần render UI câu hỏi bên trong block này */}
                         <div className="flex items-center gap-2 shrink-0 min-w-[65px]">
                           <button 
                             onClick={() => handleToggleFlag(q.id)}
@@ -482,20 +466,33 @@ export default function TestTakerClient({
 
                           {isEssay && (
                             <div className="py-2 space-y-2">
-                               <label className="flex items-center gap-2 cursor-pointer group">
-                                  <div className={cn(
-                                    "h-10 flex-1 border-2 border-dashed border-blue-200 rounded-xl flex items-center justify-center gap-2 bg-blue-50/30 group-hover:bg-blue-50 group-hover:border-blue-400 transition-all",
-                                    isUploading[q.id] && "opacity-50 cursor-not-allowed"
-                                  )}>
-                                     {isUploading[q.id] ? (
-                                        <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-                                     ) : (
-                                        <Upload className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors" />
-                                     )}
-                                     <span className="text-xs font-black text-slate-500 group-hover:text-blue-700 uppercase tracking-tight">
-                                        {isUploading[q.id] ? "Đang tải..." : "Nộp bài tự luận"}
-                                     </span>
-                                  </div>
+                              <label className="flex items-center gap-2 cursor-pointer group">
+                                   <div className={cn(
+                                     "h-10 flex-1 border-2 border-dashed border-blue-200 rounded-xl flex items-center justify-center gap-2 bg-blue-50/30 group-hover:bg-blue-50 group-hover:border-blue-400 transition-all",
+                                     isUploading[q.id] && "opacity-50 cursor-not-allowed"
+                                   )}>
+                                      {isUploading[q.id] ? (
+                                        <>
+                                          <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-20 h-2 bg-blue-100 rounded-full overflow-hidden">
+                                              <div
+                                                className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                                                style={{ width: `${uploadProgress[q.id] || 0}%` }}
+                                              />
+                                            </div>
+                                            <span className="text-[10px] font-black text-blue-600 tabular-nums">
+                                              {uploadProgress[q.id] || 0}%
+                                            </span>
+                                          </div>
+                                        </>
+                                      ) : (
+                                         <Upload className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors" />
+                                      )}
+                                      <span className="text-xs font-black text-slate-500 group-hover:text-blue-700 uppercase tracking-tight">
+                                         {isUploading[q.id] ? "Đang tải..." : "Nộp bài tự luận"}
+                                      </span>
+                                   </div>
                                   <input 
                                     type="file" 
                                     className="hidden" 
