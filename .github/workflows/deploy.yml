@@ -48,5 +48,13 @@ jobs:
             # 4. Ép Docker đập bỏ container cũ và chạy lại bằng image mới
             docker compose up -d --force-recreate app
 
+            # --- CHÈN LỆNH CHẠY SCRIPT VÀO ĐÂY ---
+            # Đợi khoảng 5 giây để app và database khởi động xong hẳn
+            sleep 5
+            
+            # Chạy script nhân bản bên trong container (nhớ dùng cờ -T vì chạy qua bot SSH)
+            docker compose exec -T app node clone-courses.js
+            # ------------------------------------
+
             # 5. DỌN RÁC LẦN NỮA: Xóa luôn cái vỏ image vừa bị đập bỏ ở bước 4
             docker image prune -f
