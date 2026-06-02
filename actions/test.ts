@@ -320,7 +320,7 @@ async function reCalculateAllAttempts(testId: string) {
         if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_FALSE') {
           isCorrect = ans.answerProvided === q.correctAnswer;
         } else if (q.type === 'SHORT_ANSWER') {
-          isCorrect = normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
+          isCorrect = !!q.correctAnswer && normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
         } else if (q.type === 'ESSAY') {
           // Keep teacher's manual grading for essays
           // Skip ungraded essays entirely to avoid null→false conversion
@@ -533,7 +533,7 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
     } else if (q.type === 'TRUE_FALSE') {
       isCorrect = ans.answerProvided === q.correctAnswer;
     } else if (q.type === 'SHORT_ANSWER') {
-      isCorrect = normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
+      isCorrect = !!q.correctAnswer && normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
     } else if (q.type === 'ESSAY') {
       isCorrect = null;
     }
