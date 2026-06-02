@@ -53,10 +53,10 @@ jobs:
             sleep 5
             
             # 1. Copy file từ VPS chèn thẳng vào thư mục gốc (/app) của container
-            docker compose cp clone-courses.js app:/app/clone-courses.js
+            docker compose cp clone-course.js app:/app/clone-course.js
             
             # 2. Chạy script đã được copy
-            docker compose exec -T app node clone-courses.js
+            docker compose exec -T app node clone-course.js
             # ------------------------------------
 
             # 5. DỌN RÁC LẦN NỮA: Xóa luôn cái vỏ image vừa bị đập bỏ ở bước 4
