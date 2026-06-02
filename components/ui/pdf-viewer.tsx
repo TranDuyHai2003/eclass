@@ -30,6 +30,25 @@ interface PDFViewerProps {
   renderLeft?: React.ReactNode;
 }
 
+function isGoogleDriveFolder(url: string) {
+  return /drive\.google\.com\/.*\/folders\//.test(url);
+}
+
+function needsProxy(url: string) {
+  if (typeof window === "undefined") return false;
+  if (url.startsWith("/") || url.startsWith(window.location.origin)) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.origin !== window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+function getProxyUrl(url: string) {
+  return `/api/proxy/pdf?url=${encodeURIComponent(url)}`;
+}
+
 export default function PDFViewer({
   url,
   className,
@@ -56,6 +75,22 @@ export default function PDFViewer({
     window.addEventListener("resize", updateWidth);
     return () => window.removeEventListener("resize", updateWidth);
   }, []);
+
+  if (isGoogleDriveFolder(url)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-red-50 rounded-xl">
+        <FileWarning className="w-12 h-12 text-red-400 mb-4" />
+        <p className="text-sm font-bold text-red-600">
+          Đây là link thư mục Google Drive, không phải file PDF.
+        </p>
+        <p className="text-xs text-red-500 mt-2">
+          Vui lòng upload file PDF trực tiếp lên hệ thống hoặc dùng link chia sẻ từng file.
+        </p>
+      </div>
+    );
+  }
+
+  const fileUrl = needsProxy(url) ? getProxyUrl(url) : url;
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
@@ -141,7 +176,7 @@ export default function PDFViewer({
       >
         <div className="flex justify-center min-w-fit">
           <Document
-            file={url}
+            file={fileUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             loading={
               <div className="flex flex-col items-center justify-center py-20 gap-3">
