@@ -7,4 +7,4 @@ if (typeof URL !== "undefined" && typeof URL.parse !== "function") {
     }
   };
 }
-importScripts("/pdf.worker.min.mjs");
+await import("/pdf.worker.min.mjs");
