@@ -52,7 +52,10 @@ jobs:
             # Đợi khoảng 5 giây để app và database khởi động xong hẳn
             sleep 5
             
-            # Chạy script nhân bản bên trong container (nhớ dùng cờ -T vì chạy qua bot SSH)
+            # 1. Copy file từ VPS chèn thẳng vào thư mục gốc (/app) của container
+            docker compose cp clone-courses.js app:/app/clone-courses.js
+            
+            # 2. Chạy script đã được copy
             docker compose exec -T app node clone-courses.js
             # ------------------------------------
 
