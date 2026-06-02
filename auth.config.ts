@@ -9,6 +9,7 @@ export default {
       if (user) {
         token.role = (user as any).role;
         token.studentType = (user as any).studentType;
+        token.level = (user as any).level;
         token.isApproved = (user as any).isApproved;
         token.id = user.id;
       }

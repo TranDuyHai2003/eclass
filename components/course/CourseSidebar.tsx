@@ -124,7 +124,7 @@ export default function CourseSidebar({
     UNSATISFACTORY: { text: "Chưa đạt yêu cầu", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100" }
   };
 
-  const handleInlineUpload = async (lessonId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+const handleInlineUpload = async (lessonId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -134,11 +134,17 @@ export default function CourseSidebar({
       const newAttachments = [...inlineAttachments];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+
+        // 1. TẠO TÊN FILE AN TOÀN TUYỆT ĐỐI
+        // Thêm một chuỗi random để tránh trùng lặp nếu vòng lặp chạy quá nhanh
+        const randomStr = Math.random().toString(36).substring(2, 8);
+        const safeFileName = `homework_${Date.now()}_${randomStr}_${encodeURIComponent(file.name)}`;
+
         const res = await axios.put<{ publicUrl: string }>(
-          `/api/upload/proxy?fileName=homework_${Date.now()}_${encodeURIComponent(file.name)}`,
+          `/api/upload/proxy?fileName=${safeFileName}`,
           file,
           {
-            headers: { "Content-Type": file.type },
+            headers: { "Content-Type": file.type || "application/octet-stream" },
             onUploadProgress: (e) => {
               if (e.total) {
                 const filePercent = Math.round((e.loaded / e.total) * 100);
@@ -149,14 +155,27 @@ export default function CourseSidebar({
           }
         );
         newAttachments.push({ name: file.name, url: res.data.publicUrl });
+
+        // 2. DELAY CHỐNG RATE-LIMIT
+        // Nghỉ 300ms giữa mỗi lần up ảnh để Server/Cloudflare không tưởng là đang bị spam request
+        if (i < files.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
       }
+      
       setInlineAttachments(newAttachments);
       toast.success("Tải tệp lên thành công");
-    } catch (error) {
-      toast.error("Lỗi tải tệp lên");
+    } catch (error: any) {
+      // 3. HIỂN THỊ LỖI THẬT SỰ TỪ SERVER
+      console.error("[Upload Error]", error);
+      const errorMsg = error.response?.data?.message || error.response?.data || error.message || "Lỗi không xác định";
+      toast.error(`Lỗi tải ảnh thứ ${inlineAttachments.length + 1}: ${errorMsg}`);
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
+      // 4. RESET THẺ INPUT
+      // Cực kỳ quan trọng: Cho phép người dùng chọn lại chính những file vừa bị lỗi để up lại
+      e.target.value = "";
     }
   };
 

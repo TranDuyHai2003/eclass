@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
-import { StudentType, Role } from "@prisma/client"
+import { StudentType, Role, Level } from "@prisma/client"
 
 export async function getUsers() {
     const session = await auth()
@@ -90,6 +90,29 @@ export async function updateStudentType(userId: string, newType: StudentType) {
         console.error(error)
         return { success: false, error: "Internal Server Error" }
     }
+}
+
+export async function updateUserLevel(userId: string, newLevel: Level) {
+  const session = await auth()
+  if (!session || session.user.role !== "ADMIN") {
+    return { success: false, error: "Unauthorized" }
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user) return { success: false, error: "User not found" }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { level: newLevel }
+    })
+
+    revalidatePath("/admin/users")
+    return { success: true }
+  } catch (error) {
+    console.error(error)
+    return { success: false, error: "Internal Server Error" }
+  }
 }
 
 export async function deleteUser(userId: string) {

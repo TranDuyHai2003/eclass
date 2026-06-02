@@ -67,6 +67,7 @@ export function CourseBuilder({ course: initialCourse }: CourseBuilderProps) {
       categoryId: data.categoryId === null ? undefined : data.categoryId,
       isPublished: data.isPublished,
       isStructured: data.isStructured,
+      level: data.level,
     };
 
     startTransition(async () => {

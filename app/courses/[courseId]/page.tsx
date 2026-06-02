@@ -19,6 +19,7 @@ import {
   FileCheck,
   Sparkles,
   ArrowLeft,
+  GraduationCap,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Prisma } from "@prisma/client";
@@ -26,6 +27,7 @@ import type { ReactNode, ElementType } from "react";
 import { auth } from "@/auth";
 import { getEnrollmentStatus } from "@/actions/enrollment";
 import { EnrollButton } from "@/components/course/EnrollButton";
+import CourseCard from "@/components/course/CourseCard";
 import { CourseAccordion } from "./_components/CourseAccordion";
 import { cn } from "@/lib/utils";
 
@@ -75,6 +77,12 @@ export default async function CoursePage({
     session?.user?.role === "ADMIN" || session?.user?.role === "TEACHER";
   const isApproved = (session?.user as any)?.isApproved || isAdminOrTeacher;
   const userEmail = session?.user?.email || "";
+  const userLevel = (session?.user as any)?.level;
+
+  // Visibility rule: students can only access courses matching their level
+  if (!isAdminOrTeacher && userLevel && course.level !== userLevel) {
+    return notFound();
+  }
 
   if (isApproved && firstLesson) {
     return redirect(`/watch/${firstLesson.id}`);
@@ -84,6 +92,23 @@ export default async function CoursePage({
     (acc, ch) => acc + ch.lessons.length,
     0,
   );
+
+  // Fetch related courses (same category & level, excluding current)
+  const relatedCourses = c.categoryId ? await prisma.course.findMany({
+    where: {
+      id: { not: c.id },
+      categoryId: c.categoryId,
+      level: c.level,
+      isPublished: true,
+    },
+    include: {
+      category: true,
+      user: { select: { name: true, image: true } },
+      chapters: { include: { lessons: { select: { id: true } } } },
+    },
+    take: 3,
+    orderBy: { createdAt: "desc" },
+  }) : [];
   
   // enrollmentStatus is used to determine if they see the Start button or Enroll button
   // If we want to hide enrollment entirely, we could just set it to ACTIVE if isApproved is true.
@@ -496,6 +521,31 @@ export default async function CoursePage({
           </div>
         </div>
       </div>
+
+      {/* Related Courses Section */}
+      {relatedCourses.length > 0 && (
+        <section className="container mx-auto px-4 sm:px-6 lg:px-8 pb-24 -mt-4">
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
+                <GraduationCap className="w-6 h-6 text-blue-600" />
+                Khóa học liên quan
+              </h2>
+              <Link
+                href="/courses"
+                className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-slate-900 transition-colors"
+              >
+                Xem tất cả
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {relatedCourses.map((rc) => (
+                <CourseCard key={rc.id} course={rc as any} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="pb-24 lg:pb-0" />
     </div>

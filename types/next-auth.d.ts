@@ -1,10 +1,11 @@
-import { Role, StudentType } from "@prisma/client";
+import { Role, StudentType, Level } from "@prisma/client";
 import NextAuth, { DefaultSession } from "next-auth";
 import { JWT } from "next-auth/jwt";
 
 export type ExtendedUser = DefaultSession["user"] & {
   role: Role;
   studentType: StudentType;
+  level: Level;
 };
 
 declare module "next-auth" {
@@ -15,6 +16,7 @@ declare module "next-auth" {
   interface User {
     role?: Role;
     studentType?: StudentType;
+    level?: Level;
   }
 }
 
@@ -23,5 +25,6 @@ declare module "next-auth/jwt" {
   interface JWT {
     role?: Role;
     studentType?: StudentType;
+    level?: Level;
   }
 }

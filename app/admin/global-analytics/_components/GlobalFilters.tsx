@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useTransition, useCallback, ReactNode } from "react";
-import { Calendar, X, ChevronDown, Check, Users, BookOpen, Search, SortAsc, SortDesc, Globe, User, RotateCcw } from "lucide-react";
+import { Calendar, X, ChevronDown, Check, Users, BookOpen, Search, SortAsc, SortDesc, Globe, User, GraduationCap, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
   const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
   const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
   const [studentType, setStudentType] = useState(searchParams.get("studentType") || "all");
+  const [level, setLevel] = useState(searchParams.get("level") || "all");
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "score_desc");
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>(
@@ -36,6 +37,7 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
     if (startDate) params.set("startDate", startDate); else params.delete("startDate");
     if (endDate) params.set("endDate", endDate); else params.delete("endDate");
     if (studentType && studentType !== "all") params.set("studentType", studentType); else params.delete("studentType");
+    if (level && level !== "all") params.set("level", level); else params.delete("level");
     if (search) params.set("search", search); else params.delete("search");
     if (sortBy) params.set("sortBy", sortBy); else params.delete("sortBy");
     if (selectedCourseIds.length > 0) params.set("courseIds", selectedCourseIds.join(",")); else params.delete("courseIds");
@@ -46,12 +48,12 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
         router.push(newUrl, { scroll: false });
       });
     }
-  }, [startDate, endDate, studentType, search, sortBy, selectedCourseIds, router, searchParams]);
+  },     [startDate, endDate, studentType, level, search, sortBy, selectedCourseIds, router, searchParams]);
 
   // Effect to apply filters instantly when basic toggles change
   useEffect(() => {
     applyFilters();
-  }, [studentType, sortBy, selectedCourseIds, startDate, endDate, applyFilters]);
+  }, [studentType, level, sortBy, selectedCourseIds, startDate, endDate, applyFilters]);
 
   // Debounced search effect
   useEffect(() => {
@@ -71,6 +73,7 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
     setStartDate("");
     setEndDate("");
     setStudentType("all");
+    setLevel("all");
     setSearch("");
     setSortBy("score_desc");
     setSelectedCourseIds([]);
@@ -107,6 +110,29 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
               className={cn(
                 "px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap",
                 studentType === type.id 
+                  ? "bg-white text-blue-600 shadow-sm ring-1 ring-slate-200" 
+                  : "text-slate-400 hover:text-slate-600"
+              )}
+            >
+              <type.icon className="w-3 h-3" />
+              {type.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Level Tabs */}
+        <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 h-10 overflow-hidden">
+          {[
+            { id: "all", label: "Tất cả", icon: GraduationCap },
+            { id: "BASIC", label: "Cơ bản", icon: GraduationCap },
+            { id: "ADVANCED", label: "Nâng cao", icon: GraduationCap },
+          ].map((type) => (
+            <button
+              key={type.id}
+              onClick={() => setLevel(type.id)}
+              className={cn(
+                "px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap",
+                level === type.id 
                   ? "bg-white text-blue-600 shadow-sm ring-1 ring-slate-200" 
                   : "text-slate-400 hover:text-slate-600"
               )}

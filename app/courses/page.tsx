@@ -22,7 +22,8 @@ export default async function CoursesPage({
 }) {
   const session = await auth();
   const { query } = await searchParams;
-  const courses = await getCourses({ search: query });
+  const userLevel = session?.user && (session.user as any).level;
+  const courses = await getCourses({ search: query, level: userLevel || undefined });
 
   return (
     <div className="page-shell min-h-screen bg-[#EBF3FF]">

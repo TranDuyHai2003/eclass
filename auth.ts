@@ -49,6 +49,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           role: user.role,
           studentType: user.studentType,
+          level: user.level,
           image: user.image,
           isApproved: user.isApproved,
         };
@@ -65,6 +66,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.studentType && session.user) {
         session.user.studentType = token.studentType as any;
       }
+      if (token.level && session.user) {
+        (session.user as any).level = token.level as any;
+      }
       if (token.isApproved !== undefined && session.user) {
         (session.user as any).isApproved = token.isApproved;
       }
@@ -76,13 +80,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.sub) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.sub },
-          select: { name: true, image: true, role: true, studentType: true, isApproved: true }
+          select: { name: true, image: true, role: true, studentType: true, level: true, isApproved: true }
         });
         if (dbUser) {
           session.user.name = dbUser.name;
           session.user.image = dbUser.image;
           session.user.role = dbUser.role as Role;
           session.user.studentType = dbUser.studentType;
+          (session.user as any).level = dbUser.level;
           (session.user as any).isApproved = dbUser.isApproved;
         }
       }
