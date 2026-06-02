@@ -301,7 +301,7 @@ export default function TestTakerClient({
 
  return (
     // 1. Fix root: Chỉ dùng overflow-hidden để khóa scroll tổng, ép scroll ở từng panel
-    <div className="flex h-dvh flex-col bg-[#E2EEFF] overflow-hidden relative z-[60] w-full max-w-full">
+    <div className="flex min-h-[100svh] supports-[height:100dvh]:min-h-dvh flex-col bg-[#E2EEFF] overflow-hidden relative z-[60] w-full max-w-full">
       {/* Hide Global Header on Test Page */}
       <style dangerouslySetInnerHTML={{ __html: `
         header { display: none !important; }
