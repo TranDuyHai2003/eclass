@@ -91,7 +91,7 @@ export default function TestTakerClient({
 
       // Load server draft + localStorage FIRST before setting attemptId
       // (to prevent auto-save effect from overwriting localStorage with empty answers)
-      let serverAnswers: Record<string, string> = {};
+      const serverAnswers: Record<string, string> = {};
       try {
         const draftRes = await getTestDraft(res.attempt.id);
         if (draftRes.success) {

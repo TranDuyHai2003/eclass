@@ -3,7 +3,6 @@ import { Plus_Jakarta_Sans, Outfit } from "next/font/google";
 import { Toaster } from "sonner";
 import Header from "@/components/layout/Header";
 import { Providers } from "./providers";
-import VConsole from "@/components/VConsole";
 import AntiInspectLayout from "@/components/layout/AntiInspectLayout";
 import "./globals.css";
 
@@ -119,7 +118,6 @@ export default function RootLayout({
       >
         <Providers>
           <AntiInspectLayout>
-            {process.env.NODE_ENV === "development" && <VConsole />}
             <Toaster position="top-right" richColors toastOptions={{ className: "p-4" }} gap={12} />
             <Header />
             {children}
