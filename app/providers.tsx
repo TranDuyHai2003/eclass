@@ -2,6 +2,9 @@
 
 import { SessionProvider } from "next-auth/react";
 import { GlobalDiscordModal } from "@/components/modals/GlobalDiscordModal";
+import { polyfillURLParse } from "@/lib/utils";
+
+polyfillURLParse();
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (

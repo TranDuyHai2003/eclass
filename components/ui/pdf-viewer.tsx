@@ -14,10 +14,12 @@ import {
   FileWarning,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, polyfillURLParse } from "@/lib/utils";
+
+polyfillURLParse();
 
 // Cấu hình worker cho PDF.js (dùng file local để tránh CORS)
-pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.wrapper.js";
 
 interface PDFViewerProps {
   url: string;
