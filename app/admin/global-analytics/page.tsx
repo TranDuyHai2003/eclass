@@ -11,7 +11,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-import { StudentType } from "@prisma/client";
+import { StudentType, Level } from "@prisma/client";
 
 export default async function GlobalAnalyticsPage({
   searchParams,
@@ -21,6 +21,7 @@ export default async function GlobalAnalyticsPage({
     endDate?: string;
     courseIds?: string;
     studentType?: string;
+    level?: string;
     search?: string;
     sortBy?: string;
   }>;
@@ -38,11 +39,13 @@ export default async function GlobalAnalyticsPage({
     endDate, 
     courseIds: courseIdsRaw, 
     studentType: studentTypeRaw,
+    level: levelRaw,
     search,
     sortBy
   } = await searchParams;
   const courseIds = courseIdsRaw ? courseIdsRaw.split(",").filter(Boolean) : [];
   const studentType = (studentTypeRaw === "ONLINE" || studentTypeRaw === "OFFLINE") ? studentTypeRaw as StudentType : undefined;
+  const level = (levelRaw === "BASIC" || levelRaw === "ADVANCED") ? levelRaw as Level : undefined;
 
   const allCourses = await getAnalyticsCourses();
 
@@ -51,6 +54,7 @@ export default async function GlobalAnalyticsPage({
     endDate,
     courseIds,
     studentType,
+    level,
     search,
     sortBy
   });

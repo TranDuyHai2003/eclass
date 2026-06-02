@@ -14,9 +14,13 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 export async function getDashboardData() {
   const session = await auth();
   const userId = session?.user?.id;
+  const userLevel = session?.user && (session.user as any).level;
 
-  // 1. Fetch all courses (both published and draft)
+  // 1. Fetch courses filtered by user's level
   const allCourses = await prisma.course.findMany({
+    where: {
+      ...(userLevel ? { level: userLevel } : {}),
+    },
     include: {
       chapters: {
         include: {
@@ -127,13 +131,15 @@ export async function getCourses(options?: {
   search?: string;
   isPublished?: boolean;
   userId?: string;
+  level?: "BASIC" | "ADVANCED";
 }) {
-  const { search, isPublished, userId } = options || {};
+  const { search, isPublished, userId, level } = options || {};
 
   const courses = await prisma.course.findMany({
     where: {
       ...(isPublished !== undefined ? { isPublished } : {}),
       ...(userId ? { userId } : {}),
+      ...(level ? { level } : {}),
       ...(search
         ? {
             OR: [
@@ -190,6 +196,7 @@ export async function createCourse(data: {
   description?: string;
   thumbnail?: string;
   isStructured?: boolean;
+  level?: "BASIC" | "ADVANCED";
 }) {
   const session = await auth();
   if (
@@ -211,7 +218,7 @@ export async function createCourse(data: {
     throw new Error("Session expired. Please sign in again.");
   }
 
-  const { title, description, thumbnail, isStructured = true } = data;
+  const { title, description, thumbnail, isStructured = true, level } = data;
 
   const course = await prisma.course.create({
     data: {
@@ -220,6 +227,7 @@ export async function createCourse(data: {
       description,
       thumbnail,
       isStructured,
+      ...(level ? { level } : {}),
     },
   });
 
@@ -283,6 +291,7 @@ export async function updateCourse(
     isPublished?: boolean;
     isStructured?: boolean;
     examDate?: Date | null;
+    level?: "BASIC" | "ADVANCED";
   },
 ) {
   const session = await auth();
@@ -303,6 +312,13 @@ export async function updateCourse(
       return {
         success: false,
         error: "Vui lòng điền đầy đủ thông tin khóa học trước khi publish.",
+      };
+    }
+    const level = data.level || course?.level;
+    if (!level) {
+      return {
+        success: false,
+        error: "Vui lòng chọn cấp độ khóa học (Cơ bản / Nâng cao) trước khi publish.",
       };
     }
     const hasPublishedChapter = course.chapters.some((ch) => ch.isPublished);

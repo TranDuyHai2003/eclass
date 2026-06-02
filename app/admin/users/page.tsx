@@ -1,15 +1,15 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react"
-import { getUsers, toggleUserApproval, deleteUser, updateUserRole, updateStudentType } from "@/actions/user"
+import { getUsers, toggleUserApproval, deleteUser, updateUserRole, updateStudentType, updateUserLevel } from "@/actions/user"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { User, StudentType, Role } from "@prisma/client"
+import { User, StudentType, Role, Level } from "@prisma/client"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { Trash2, ShieldCheck, ShieldAlert, Info, Search, Filter } from "lucide-react"
+import { Trash2, ShieldCheck, ShieldAlert, Info, Search, Filter, GraduationCap } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
 export default function UserManagementPage() {
@@ -22,6 +22,7 @@ export default function UserManagementPage() {
     const [search, setSearch] = useState("")
     const [roleFilter, setRoleFilter] = useState<Role | "ALL">("ALL")
     const [typeFilter, setTypeFilter] = useState<StudentType | "ALL">("ALL")
+    const [levelFilter, setLevelFilter] = useState<Level | "ALL">("ALL")
 
     useEffect(() => {
         loadUsers()
@@ -45,8 +46,12 @@ export default function UserManagementPage() {
             result = result.filter(u => u.studentType === typeFilter)
         }
         
+        if (levelFilter !== "ALL") {
+            result = result.filter(u => u.level === levelFilter)
+        }
+        
         setFilteredUsers(result)
-    }, [search, roleFilter, typeFilter, users])
+    }, [search, roleFilter, typeFilter, levelFilter, users])
 
     const loadUsers = async () => {
         try {
@@ -84,6 +89,20 @@ export default function UserManagementPage() {
                 ))
             } else {
                 toast.error(res.error || "Không thể cập nhật quyền")
+            }
+        })
+    }
+
+    const handleLevelChange = async (userId: string, newLevel: Level) => {
+        startTransition(async () => {
+            const res = await updateUserLevel(userId, newLevel)
+            if (res.success) {
+                toast.success("Đã cập nhật cấp độ học tập")
+                setUsers(prev => prev.map(u => 
+                    u.id === userId ? { ...u, level: newLevel } : u
+                ))
+            } else {
+                toast.error(res.error || "Không thể cập nhật cấp độ")
             }
         })
     }
@@ -174,6 +193,20 @@ export default function UserManagementPage() {
                             <SelectItem value="OFFLINE">Offline</SelectItem>
                         </SelectContent>
                     </Select>
+
+                    <Select value={levelFilter} onValueChange={(val) => setLevelFilter(val as any)}>
+                        <SelectTrigger className="w-[140px] h-11 rounded-2xl border-slate-200">
+                            <div className="flex items-center gap-2">
+                                <GraduationCap className="w-3.5 h-3.5 text-slate-500" />
+                                <SelectValue placeholder="Cấp độ" />
+                            </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="ALL">Tất cả cấp độ</SelectItem>
+                            <SelectItem value="BASIC">Cơ bản</SelectItem>
+                            <SelectItem value="ADVANCED">Nâng cao</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
@@ -186,6 +219,7 @@ export default function UserManagementPage() {
                             <TableHead className="hidden sm:table-cell">Email</TableHead>
                             <TableHead className="hidden sm:table-cell">Vai trò</TableHead>
                             <TableHead className="hidden sm:table-cell">Hình thức</TableHead>
+                            <TableHead className="hidden sm:table-cell">Cấp độ</TableHead>
                             <TableHead className="hidden sm:table-cell">Trạng thái</TableHead>
                             <TableHead className="text-right">Hành động</TableHead>
                         </TableRow>
@@ -213,6 +247,7 @@ export default function UserManagementPage() {
                                         </Select>
 
                                         {user.role === "STUDENT" && (
+                                            <>
                                             <Select 
                                                 defaultValue={user.studentType} 
                                                 onValueChange={(val) => handleTypeChange(user.id, val as any)}
@@ -229,6 +264,23 @@ export default function UserManagementPage() {
                                                     <SelectItem value="OFFLINE" className="text-[10px] font-bold">OFFLINE</SelectItem>
                                                 </SelectContent>
                                             </Select>
+                                            <Select 
+                                                defaultValue={user.level} 
+                                                onValueChange={(val) => handleLevelChange(user.id, val as any)}
+                                                disabled={isPending}
+                                            >
+                                                <SelectTrigger className={cn(
+                                                    "w-[90px] h-7 text-[10px] font-bold border-slate-200 rounded-lg",
+                                                    user.level === "ADVANCED" ? "bg-purple-50 text-purple-700" : "bg-green-50 text-green-700"
+                                                )}>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="BASIC" className="text-[10px] font-bold">Cơ bản</SelectItem>
+                                                    <SelectItem value="ADVANCED" className="text-[10px] font-bold">Nâng cao</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            </>
                                         )}
                                         
                                         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-7 flex items-center rounded-lg ${user.isApproved ? "bg-green-100 text-green-700 border-green-200" : "bg-blue-100 text-blue-700 border-blue-200"}`}>
@@ -269,6 +321,28 @@ export default function UserManagementPage() {
                                             <SelectContent>
                                                 <SelectItem value="ONLINE" className="text-xs font-bold text-blue-700">ONLINE</SelectItem>
                                                 <SelectItem value="OFFLINE" className="text-xs font-bold text-orange-700">OFFLINE</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest pl-2">N/A</span>
+                                    )}
+                                </TableCell>
+                                <TableCell className="hidden sm:table-cell">
+                                    {user.role === "STUDENT" ? (
+                                        <Select 
+                                            defaultValue={user.level} 
+                                            onValueChange={(val) => handleLevelChange(user.id, val as any)}
+                                            disabled={isPending}
+                                        >
+                                            <SelectTrigger className={cn(
+                                                "w-[110px] h-8 text-xs font-bold border-transparent rounded-xl transition-colors",
+                                                user.level === "ADVANCED" ? "bg-purple-100 text-purple-700 hover:bg-purple-200" : "bg-green-100 text-green-700 hover:bg-green-200"
+                                            )}>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="BASIC" className="text-xs font-bold text-green-700">Cơ bản</SelectItem>
+                                                <SelectItem value="ADVANCED" className="text-xs font-bold text-purple-700">Nâng cao</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     ) : (

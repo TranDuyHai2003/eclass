@@ -81,6 +81,7 @@ interface CourseUpdateData {
   isStructured?: boolean;
   thumbnail?: string;
   examDate?: Date | null;
+  level?: "BASIC" | "ADVANCED";
 }
 
 interface CourseHeaderProps {
@@ -145,6 +146,11 @@ export const CourseHeader = ({
     if (e.key === "Enter") {
       disableEditing();
     }
+  };
+
+  // --- HANDLERS: Change Level ---
+  const handleLevelChange = (value: string) => {
+    onUpdate({ level: value as "BASIC" | "ADVANCED" });
   };
 
   // --- HANDLERS: Sửa mô tả/cấu trúc ---
@@ -288,6 +294,20 @@ export const CourseHeader = ({
           <SelectContent>
             <SelectItem value="hierarchical">📂 Phân cấp (Chương)</SelectItem>
             <SelectItem value="flat">📄 Danh sách bài</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={course.level}
+          onValueChange={handleLevelChange}
+          disabled={isLoading}
+        >
+          <SelectTrigger className="w-full md:w-[180px] bg-gray-50">
+            <SelectValue placeholder="Cấp độ" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="BASIC">📘 Cơ bản</SelectItem>
+            <SelectItem value="ADVANCED">📗 Nâng cao</SelectItem>
           </SelectContent>
         </Select>
 

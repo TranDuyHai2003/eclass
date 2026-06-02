@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Loader2, BookOpen, X } from "lucide-react";
 import { getCourses } from "@/actions/course";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 type CourseResult = {
   id: string;
@@ -18,6 +19,8 @@ type CourseResult = {
 export function SearchBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
+  const userLevel = (session?.user as any)?.level;
   const [query, setQuery] = useState(searchParams.get("query") || "");
   const [results, setResults] = useState<CourseResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +40,7 @@ export function SearchBar() {
 
     const delayDebounceFn = setTimeout(async () => {
       try {
-        const data = await getCourses({ search: query });
+        const data = await getCourses({ search: query, level: userLevel || undefined });
         setResults(data as CourseResult[]);
       } catch (error) {
         console.error("Search failed:", error);

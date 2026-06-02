@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
-import { StudentType } from "@prisma/client"
+import { StudentType, Level } from "@prisma/client"
 
 export async function getAnalytics() {
     const session = await auth()
@@ -335,6 +335,7 @@ export async function getGlobalTestAnalytics(filters: {
     endDate?: string;
     courseIds?: string[];
     studentType?: StudentType;
+    level?: Level;
     search?: string;
     sortBy?: string;
 }) {
@@ -343,7 +344,7 @@ export async function getGlobalTestAnalytics(filters: {
         throw new Error("Unauthorized");
     }
 
-    const { startDate, endDate, courseIds, studentType, search, sortBy } = filters;
+    const { startDate, endDate, courseIds, studentType, level, search, sortBy } = filters;
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
 
@@ -353,6 +354,7 @@ export async function getGlobalTestAnalytics(filters: {
             role: 'STUDENT',
             isApproved: true,
             studentType: studentType ? studentType : undefined,
+            level: level ? level : undefined,
             OR: search ? [
                 { name: { contains: search, mode: 'insensitive' } },
                 { email: { contains: search, mode: 'insensitive' } }

@@ -21,10 +21,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import type { SubmitHandler } from "react-hook-form"
 import Link from 'next/link'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const formSchema = z.object({
   title: z.string().min(1, { message: "Tiêu đề là bắt buộc" }),
   description: z.string().optional(),
+  level: z.enum(["BASIC", "ADVANCED"]),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -36,6 +38,7 @@ export default function CreateCoursePage() {
         defaultValues: {
             title: "",
             description: "",
+            level: "BASIC",
         }
     })
 
@@ -45,8 +48,8 @@ export default function CreateCoursePage() {
         try {
             const res = await createCourse({
                 title: values.title,
-                description: values.description, 
-                // thumbnail is optional and handled later or we add a field now if simple link
+                description: values.description,
+                level: values.level,
             })
             if (res.success && res.courseId) {
                 toast.success("Khóa học đã được tạo")
@@ -94,6 +97,28 @@ export default function CreateCoursePage() {
                                     <FormControl>
                                         <Textarea disabled={isSubmitting} placeholder="Mô tả về những gì học viên sẽ học được..." {...field} />
                                     </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="level"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Cấp độ khóa học</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Chọn cấp độ" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="BASIC">Cơ bản</SelectItem>
+                                            <SelectItem value="ADVANCED">Nâng cao</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                     <FormMessage />
                                 </FormItem>
                             )}
