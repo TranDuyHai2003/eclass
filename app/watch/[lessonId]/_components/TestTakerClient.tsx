@@ -301,7 +301,7 @@ export default function TestTakerClient({
 
  return (
     // 1. Fix root: Chỉ dùng overflow-hidden để khóa scroll tổng, ép scroll ở từng panel
-    <div className="flex min-h-[100svh] supports-[height:100dvh]:min-h-dvh flex-col bg-[#E2EEFF] overflow-hidden relative z-[60] w-full max-w-full">
+        <div className="flex h-dvh flex-col bg-[#E2EEFF] overflow-hidden relative z-[60] w-full max-w-full">
       {/* Hide Global Header on Test Page */}
       <style dangerouslySetInnerHTML={{ __html: `
         header { display: none !important; }
@@ -365,7 +365,7 @@ export default function TestTakerClient({
           </div>
 
           {/* 5. Vùng chứa câu hỏi - chắc chắn sẽ cuộn được vì thẻ cha đã có flex-col và min-h-0 */}
-          <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-4 md:space-y-6 custom-scrollbar w-full">
+          <div className="flex-1 pb-28 overflow-y-auto p-2 md:p-4 space-y-4 md:space-y-6 custom-scrollbar w-full">
             {test.sections.map((section: any, sIdx: number) => (
               <div key={section.id} className="space-y-3">
                 <h3 className="font-bold text-blue-800 border-b pb-2 uppercase tracking-wide text-[10px]">
