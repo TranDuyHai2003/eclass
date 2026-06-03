@@ -20,6 +20,8 @@ export function SearchBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const isAdminOrTeacher =
+    session?.user?.role === "ADMIN" || session?.user?.role === "TEACHER";
   const userLevel = (session?.user as any)?.level;
   const [query, setQuery] = useState(searchParams.get("query") || "");
   const [results, setResults] = useState<CourseResult[]>([]);
@@ -40,7 +42,7 @@ export function SearchBar() {
 
     const delayDebounceFn = setTimeout(async () => {
       try {
-        const data = await getCourses({ search: query, level: userLevel || undefined });
+        const data = await getCourses({ search: query, level: isAdminOrTeacher ? undefined : (userLevel || undefined) });
         setResults(data as CourseResult[]);
       } catch (error) {
         console.error("Search failed:", error);
