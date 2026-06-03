@@ -14,12 +14,14 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 export async function getDashboardData() {
   const session = await auth();
   const userId = session?.user?.id;
+  const isAdminOrTeacher =
+    session?.user?.role === "ADMIN" || session?.user?.role === "TEACHER";
   const userLevel = session?.user && (session.user as any).level;
 
-  // 1. Fetch courses filtered by user's level
+  // 1. Fetch courses (filter by level for students only, admin/teacher sees all)
   const allCourses = await prisma.course.findMany({
     where: {
-      ...(userLevel ? { level: userLevel } : {}),
+      ...(!isAdminOrTeacher && userLevel ? { level: userLevel } : {}),
     },
     include: {
       chapters: {

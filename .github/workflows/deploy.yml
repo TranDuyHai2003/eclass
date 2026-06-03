@@ -48,16 +48,5 @@ jobs:
             # 4. Ép Docker đập bỏ container cũ và chạy lại bằng image mới
             docker compose up -d --force-recreate app
 
-            # --- CHÈN LỆNH CHẠY SCRIPT VÀO ĐÂY ---
-            # Đợi khoảng 5 giây để app và database khởi động xong hẳn
-            sleep 5
-            
-            # 1. Copy file từ VPS chèn thẳng vào thư mục gốc (/app) của container
-            docker compose cp clone-course.js app:/app/clone-course.js
-            
-            # 2. Chạy script đã được copy
-            docker compose exec -T app node clone-course.js
-            # ------------------------------------
-
             # 5. DỌN RÁC LẦN NỮA: Xóa luôn cái vỏ image vừa bị đập bỏ ở bước 4
             docker image prune -f
