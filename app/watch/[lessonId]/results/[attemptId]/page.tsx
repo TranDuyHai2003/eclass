@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { PDFViewerClientWrapper } from "@/components/course/PDFViewerClientWrapper";
+import { LazyLoadWrapper } from "@/components/ui/LazyLoadWrapper";
 import VideoPlayer from "@/components/player/VideoPlayer";
 import { GradeEssay } from "@/components/teacher/test-builder/GradeEssay";
 import { ReuploadForm } from "./_components/ReuploadForm";
@@ -186,7 +187,9 @@ export default async function TestResultPage({
                         <FileText className="w-3 h-3" /> Tài liệu lời giải chi tiết
                       </div>
                       <div className="h-[500px] border border-blue-100 rounded-2xl overflow-hidden bg-slate-100 shadow-inner">
-                        <PDFViewerClientWrapper url={test.explanation} />
+                        <LazyLoadWrapper placeholderHeight="500px">
+                          <PDFViewerClientWrapper url={test.explanation} />
+                        </LazyLoadWrapper>
                       </div>
                       <a
                         href={test.explanation}
