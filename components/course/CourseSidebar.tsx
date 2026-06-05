@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronDown,
-  PlayCircle,
   Lock,
   CheckCircle,
   Video,
@@ -25,6 +24,7 @@ import { cn } from "@/lib/utils";
 import axios from "axios";
 import { toast } from "sonner";
 import { submitHomework } from "@/actions/homework";
+import { compressImage } from "@/lib/compressImage";
 
 type Attachment = {
   id: string;
@@ -45,7 +45,7 @@ type Lesson = {
   homeworkSubmission?: {
     id: string;
     status: string;
-    attachments: any;
+    attachments: { name: string; url: string }[];
     feedback: string | null;
   } | null;
   attachments?: Attachment[];
@@ -86,9 +86,6 @@ export default function CourseSidebar({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Use isEnrolled as a proxy for 'isApproved' in this component's scope
-  const isApproved = isEnrolled;
-  
   // Automatically open the chapter containing the current lesson
   const [openChapters, setOpenChapters] = useState<Record<string, boolean>>(
     () => {
@@ -124,58 +121,83 @@ export default function CourseSidebar({
     UNSATISFACTORY: { text: "Chưa đạt yêu cầu", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100" }
   };
 
-const handleInlineUpload = async (lessonId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const CHUNK_SIZE = 3;
+
+  const uploadSingleFile = async (
+    file: File,
+    index: number,
+    total: number,
+  ): Promise<{ name: string; url: string } | null> => {
+    try {
+      const compressed = await compressImage(file);
+      const safeFileName = `homework_${Date.now()}_${Math.random().toString(36).substring(2, 8)}_${encodeURIComponent(compressed.name)}`;
+      const res = await axios.put<{ publicUrl: string }>(
+        `/api/upload/proxy?fileName=${safeFileName}`,
+        compressed,
+        {
+          headers: { "Content-Type": compressed.type },
+          onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
+              const filePercent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+              const overall = Math.round((index / total) * 100 + filePercent / total);
+              setUploadProgress(overall);
+            }
+          },
+        },
+      );
+      if (!res.data?.publicUrl) {
+        throw new Error("Server không trả về URL hợp lệ");
+      }
+      return { name: file.name, url: res.data.publicUrl };
+    } catch (error) {
+      console.error(`[Upload Error] File ${file.name}:`, error);
+      const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMsg =
+        axiosError.response?.data?.message || axiosError.response?.data || axiosError.message || "Lỗi không xác định";
+      toast.error(`Ảnh ${file.name} thất bại: ${errorMsg}`);
+      return null;
+    }
+  };
+
+  const handleInlineUpload = async (lessonId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
     setUploadProgress(0);
-    try {
-      const newAttachments = [...inlineAttachments];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
 
-        // 1. TẠO TÊN FILE AN TOÀN TUYỆT ĐỐI
-        // Thêm một chuỗi random để tránh trùng lặp nếu vòng lặp chạy quá nhanh
-        const randomStr = Math.random().toString(36).substring(2, 8);
-        const safeFileName = `homework_${Date.now()}_${randomStr}_${encodeURIComponent(file.name)}`;
+    const fileArray = Array.from(files);
+    let currentAttachments = [...inlineAttachments];
+    let successCount = 0;
+    let failCount = 0;
 
-        const res = await axios.put<{ publicUrl: string }>(
-          `/api/upload/proxy?fileName=${safeFileName}`,
-          file,
-          {
-            headers: { "Content-Type": file.type || "application/octet-stream" },
-            onUploadProgress: (e) => {
-              if (e.total) {
-                const filePercent = Math.round((e.loaded / e.total) * 100);
-                const overall = Math.round((i / files.length) * 100 + filePercent / files.length);
-                setUploadProgress(overall);
-              }
-            },
-          }
-        );
-        newAttachments.push({ name: file.name, url: res.data.publicUrl });
+    for (let i = 0; i < fileArray.length; i += CHUNK_SIZE) {
+      const chunk = fileArray.slice(i, i + CHUNK_SIZE);
+      const results = await Promise.all(
+        chunk.map((file, chunkIdx) => uploadSingleFile(file, i + chunkIdx, fileArray.length)),
+      );
 
-        // 2. DELAY CHỐNG RATE-LIMIT
-        // Nghỉ 300ms giữa mỗi lần up ảnh để Server/Cloudflare không tưởng là đang bị spam request
-        if (i < files.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 300));
+      for (const result of results) {
+        if (result) {
+          currentAttachments = [...currentAttachments, result];
+          setInlineAttachments(currentAttachments);
+          successCount++;
+        } else {
+          failCount++;
         }
       }
-      
-      setInlineAttachments(newAttachments);
-      toast.success("Tải tệp lên thành công");
-    } catch (error: any) {
-      // 3. HIỂN THỊ LỖI THẬT SỰ TỪ SERVER
-      console.error("[Upload Error]", error);
-      const errorMsg = error.response?.data?.message || error.response?.data || error.message || "Lỗi không xác định";
-      toast.error(`Lỗi tải ảnh thứ ${inlineAttachments.length + 1}: ${errorMsg}`);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-      // 4. RESET THẺ INPUT
-      // Cực kỳ quan trọng: Cho phép người dùng chọn lại chính những file vừa bị lỗi để up lại
-      e.target.value = "";
+    }
+
+    setIsUploading(false);
+    setUploadProgress(0);
+    e.target.value = "";
+
+    if (successCount > 0 && failCount === 0) {
+      toast.success(`Đã tải lên thành công ${successCount} tệp`);
+    } else if (successCount > 0 && failCount > 0) {
+      toast.warning(`Tải xong ${successCount} tệp, có ${failCount} tệp bị lỗi`);
+    } else if (failCount > 0) {
+      toast.error(`Tải lên thất bại: ${failCount} tệp không thể upload`);
     }
   };
 
@@ -194,8 +216,8 @@ const handleInlineUpload = async (lessonId: string, e: React.ChangeEvent<HTMLInp
         setActiveHomeworkLessonId(null);
         router.refresh();
       }
-    } catch (err: any) {
-      toast.error(err.message || "Lỗi khi nộp bài");
+    } catch (error) {
+      toast.error((error as Error).message || "Lỗi khi nộp bài");
     } finally {
       setIsSubmitting(false);
     }
@@ -473,14 +495,14 @@ const handleInlineUpload = async (lessonId: string, e: React.ChangeEvent<HTMLInp
                             <div className="space-y-2">
                               <button
                                 onClick={() => {
+                                  if (isUploading) return;
                                   if (activeHomeworkLessonId === lesson.id) {
                                     setActiveHomeworkLessonId(null);
                                     setInlineAttachments([]);
                                   } else {
                                     setActiveHomeworkLessonId(lesson.id);
-                                    // Load existing attachments into the list for editing
                                     if (lesson.homeworkSubmission?.attachments) {
-                                      setInlineAttachments(lesson.homeworkSubmission.attachments as any[]);
+                                      setInlineAttachments(lesson.homeworkSubmission.attachments);
                                     } else {
                                       setInlineAttachments([]);
                                     }
@@ -490,7 +512,8 @@ const handleInlineUpload = async (lessonId: string, e: React.ChangeEvent<HTMLInp
                                   "w-full flex items-center gap-3 p-3 bg-white border rounded-2xl transition-all group/sub",
                                   activeHomeworkLessonId === lesson.id
                                     ? "border-blue-500 bg-blue-50/10"
-                                    : "border-slate-100 hover:border-blue-200"
+                                    : "border-slate-100 hover:border-blue-200",
+                                  isUploading && "opacity-50 cursor-not-allowed"
                                 )}
                               >
                                 <div className={cn(
@@ -524,7 +547,7 @@ const handleInlineUpload = async (lessonId: string, e: React.ChangeEvent<HTMLInp
                                   {lesson.homeworkSubmission?.feedback && (
                                     <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-1.5">
                                       <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Nhận xét từ giáo viên:</p>
-                                      <p className="text-xs font-medium text-slate-600 italic leading-relaxed">"{lesson.homeworkSubmission.feedback}"</p>
+                                      <p className="text-xs font-medium text-slate-600 italic leading-relaxed">&ldquo;{lesson.homeworkSubmission.feedback}&rdquo;</p>
                                     </div>
                                   )}
 
@@ -534,9 +557,9 @@ const handleInlineUpload = async (lessonId: string, e: React.ChangeEvent<HTMLInp
                                       {inlineAttachments.map((file, idx) => {
                                         // Check if this file was already in the submission
                                         const isExisting = lesson.homeworkSubmission?.attachments?.some(
-                                          (existing: any) => existing.url === file.url
+                                          (existing) => existing.url === file.url
                                         );
-                                        const canDelete = !lesson.homeworkSubmission || lesson.homeworkSubmission.status === "PENDING" || lesson.homeworkSubmission.status === "UNSATISFACTORY";
+                                        const canDelete = !isUploading && (!lesson.homeworkSubmission || lesson.homeworkSubmission.status === "PENDING" || lesson.homeworkSubmission.status === "UNSATISFACTORY");
 
                                         return (
                                           <div key={idx} className="flex items-center gap-2 p-2 bg-white border border-slate-100 rounded-xl text-[10px]">
