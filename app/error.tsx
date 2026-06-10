@@ -48,13 +48,23 @@ export default function Error({
         </Button>
       </div>
 
-      <div className="mt-12 p-4 bg-slate-50 rounded-xl border border-slate-100 max-w-lg">
+      <div className="mt-12 p-4 bg-slate-50 rounded-xl border border-slate-100 max-w-lg text-left overflow-auto max-h-64">
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
           Mã lỗi kỹ thuật
         </p>
-        <p className="text-[11px] font-mono text-slate-400 break-all">
+        <p className="text-[11px] font-mono text-slate-600 break-all mb-2">
           {error.message || "Unknown Exception"} {error.digest && `(Digest: ${error.digest})`}
         </p>
+        {error.stack && (
+          <>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 border-t border-slate-200 pt-2 mt-2">
+              Chi tiết (Stack Trace)
+            </p>
+            <pre className="text-[10px] font-mono text-slate-500 whitespace-pre-wrap break-all">
+              {error.stack}
+            </pre>
+          </>
+        )}
       </div>
     </div>
   );
