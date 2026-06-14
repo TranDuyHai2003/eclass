@@ -253,7 +253,7 @@ export default async function TestResultPage({
                                         </a>
                                       ) : "Làm ra giấy"
                                     ) : (q.type as any) === "TRUE_FALSE" ? (
-                                      studentAns?.answerProvided === "T" ? "Đúng" : studentAns?.answerProvided === "F" ? "Sai" : "Bỏ trống"
+                                      studentAns?.answerProvided ? studentAns.answerProvided.split(',').map(v => v.trim() === "T" ? "Đúng" : v.trim() === "F" ? "Sai" : v).join(", ") : "Bỏ trống"
                                     ) : (studentAns?.answerProvided || "Bỏ trống")}
                                   </p>
                                 </div>
@@ -264,7 +264,7 @@ export default async function TestResultPage({
                                       Đáp án đúng
                                     </p>
                                     <p className="font-black text-base md:text-lg text-emerald-600">
-                                      {(q.type as any) === "TRUE_FALSE" ? (q.correctAnswer === "T" ? "Đúng" : "Sai") : q.correctAnswer}
+                                      {(q.type as any) === "TRUE_FALSE" ? (q.correctAnswer ? q.correctAnswer.split(/[,|]/).map(v => v.trim() === "T" ? "Đúng" : v.trim() === "F" ? "Sai" : v).join(q.correctAnswer.includes("|") ? " hoặc " : ", ") : "") : (q.correctAnswer?.includes("|") ? q.correctAnswer.split("|").join(" hoặc ") : q.correctAnswer)}
                                     </p>
                                   </div>
                                 )}

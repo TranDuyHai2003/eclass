@@ -121,8 +121,8 @@ export default function VideoPlayer({
     <div 
       className={
         isFakeFullscreen 
-          ? "fixed top-0 left-0 z-[9999] bg-black flex flex-col justify-center items-center overflow-hidden" 
-          : "relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl group transition-all duration-300 landscape:max-h-[80vh] landscape:w-auto landscape:mx-auto"
+          ? "fixed top-0 left-0 z-[9999] bg-black flex flex-col justify-center items-center overflow-hidden"
+          : "relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl group transition-all duration-300 max-md:landscape:max-h-[80vh] max-md:landscape:w-auto max-md:landscape:mx-auto"
       }
       style={isFakeFullscreen ? {
         // Áp dụng số pixel đo được bằng JS (Loại bỏ hoàn toàn CSS vh/svh)

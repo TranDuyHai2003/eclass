@@ -186,6 +186,7 @@ export default function PDFViewer({
                 </p>
               </div>
             }
+            onLoadError={(error) => console.error("Lỗi tải PDF chi tiết:", error)}
             error={
               <div className="flex flex-col items-center justify-center py-20 gap-3 text-blue-500">
                 <FileWarning className="h-10 w-10" />

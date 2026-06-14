@@ -143,24 +143,44 @@ export function ParsedQuestionsForm({ questions, onChange }: ParsedQuestionsForm
                   Xác nhận đáp án đúng
                 </Label>
                 {q.type === "MULTIPLE_CHOICE" ? (
-                  <div className="flex gap-2">
-                    {["A", "B", "C", "D"].map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() =>
-                          updateQuestion(q.id, { correctAnswer: opt })
-                        }
-                        className={cn(
-                          "w-10 h-10 rounded-xl border font-black text-xs transition-all",
-                          q.correctAnswer === opt
-                            ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200"
-                            : "bg-white border-slate-200 text-slate-400 hover:border-blue-400 hover:text-blue-600"
-                        )}
-                      >
-                        {opt}
-                      </button>
-                    ))}
+                  <div className="flex gap-2 items-center">
+                    <div className="flex gap-2">
+                      {["A", "B", "C", "D"].map((opt) => {
+                        const opts = (q.correctAnswer || "").split(/[,|]/).map(s => s.trim());
+                        const isSelected = opts.includes(opt);
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => {
+                              let currentOpts = (q.correctAnswer || "").split(',').map(s => s.trim()).filter(Boolean);
+                              if ((q.correctAnswer || "").includes('|')) currentOpts = [];
+                              if (currentOpts.includes(opt)) {
+                                currentOpts = currentOpts.filter(o => o !== opt);
+                              } else {
+                                currentOpts.push(opt);
+                                currentOpts.sort();
+                              }
+                              updateQuestion(q.id, { correctAnswer: currentOpts.join(',') });
+                            }}
+                            className={cn(
+                              "w-10 h-10 rounded-xl border font-black text-xs transition-all",
+                              isSelected
+                                ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200"
+                                : "bg-white border-slate-200 text-slate-400 hover:border-blue-400 hover:text-blue-600"
+                            )}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <Input
+                      value={q.correctAnswer || ""}
+                      onChange={(e) => updateQuestion(q.id, { correctAnswer: e.target.value.toUpperCase() })}
+                      placeholder="Hoặc nhập (VD: A|B)"
+                      className="h-10 text-xs font-bold w-[130px] rounded-xl bg-white"
+                    />
                   </div>
                 ) : (
                   <div className="relative">
