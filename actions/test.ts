@@ -318,9 +318,9 @@ async function reCalculateAllAttempts(testId: string) {
         let pointsAwarded = 0;
 
         if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_FALSE') {
-          isCorrect = ans.answerProvided === q.correctAnswer;
+          isCorrect = checkAnswerMatch(ans.answerProvided, q.correctAnswer, q.type);
         } else if (q.type === 'SHORT_ANSWER') {
-          isCorrect = !!q.correctAnswer && normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
+          isCorrect = checkAnswerMatch(ans.answerProvided, q.correctAnswer, q.type);
         } else if (q.type === 'ESSAY') {
           // Keep teacher's manual grading for essays
           // Skip ungraded essays entirely to avoid null→false conversion
@@ -483,6 +483,25 @@ function normalizeShortAnswer(answer: string | null | undefined) {
   return answer.trim().toLowerCase();
 }
 
+function checkAnswerMatch(provided: string | null | undefined, expected: string | null | undefined, type: string): boolean {
+  if (!expected) return false;
+  if (!provided) return false;
+
+  const providedNorm = normalizeShortAnswer(provided);
+  const expectedOptions = expected.split('|').map(s => normalizeShortAnswer(s));
+
+  if (type === 'MULTIPLE_CHOICE' || type === 'TRUE_FALSE') {
+    const providedSorted = providedNorm.split(',').map(s => s.trim()).sort().join(',');
+    return expectedOptions.some(opt => {
+      const optSorted = opt.split(',').map(s => s.trim()).sort().join(',');
+      return providedSorted === optSorted;
+    });
+  }
+
+  // SHORT_ANSWER
+  return expectedOptions.includes(providedNorm);
+}
+
 export async function submitTestAttempt(attemptId: string, studentAnswers: { questionId: string, answerProvided: string }[]) {
   const session = await auth();
   if (!session || !session.user.id) {
@@ -529,11 +548,11 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
     let pointsAwarded = 0;
 
     if (q.type === 'MULTIPLE_CHOICE') {
-      isCorrect = ans.answerProvided === q.correctAnswer;
+      isCorrect = checkAnswerMatch(ans.answerProvided, q.correctAnswer, q.type);
     } else if (q.type === 'TRUE_FALSE') {
-      isCorrect = ans.answerProvided === q.correctAnswer;
+      isCorrect = checkAnswerMatch(ans.answerProvided, q.correctAnswer, q.type);
     } else if (q.type === 'SHORT_ANSWER') {
-      isCorrect = !!q.correctAnswer && normalizeShortAnswer(ans.answerProvided) === normalizeShortAnswer(q.correctAnswer);
+      isCorrect = checkAnswerMatch(ans.answerProvided, q.correctAnswer, q.type);
     } else if (q.type === 'ESSAY') {
       isCorrect = null;
     }

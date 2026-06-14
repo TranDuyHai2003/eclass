@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { ArrowLeft, Send, Flag, Upload, X, Image as ImageIcon, FileText, Loader2, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { startTestAttempt, submitTestAttempt, saveTestDraft, getTestDraft } from "@/actions/test";
+import { startTestAttempt, getTestDraft } from "@/actions/test";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -64,7 +64,7 @@ export default function TestTakerClient({
         answerProvided: currentAnswers[qId],
       }));
     if (answersArray.length === 0) return;
-    saveTestDraft(currentAttemptId, answersArray).catch((e) =>
+    axios.post("/api/tests/draft", { attemptId: currentAttemptId, answersArray }).catch((e) =>
       console.error("[Auto-save] Sync failed:", e)
     );
   }, [isPending]);
@@ -134,7 +134,7 @@ export default function TestTakerClient({
           .filter((k) => merged[k] !== "")
           .map((qId) => ({ questionId: qId, answerProvided: merged[qId] }));
         if (mergedArray.length > 0) {
-          saveTestDraft(res.attempt.id, mergedArray).catch((e) =>
+          axios.post("/api/tests/draft", { attemptId: res.attempt.id, answersArray: mergedArray }).catch((e) =>
             console.error("[Reconciliation] Push to server failed:", e)
           );
         }
@@ -216,9 +216,9 @@ export default function TestTakerClient({
           answerProvided: answers[qId],
         }));
 
-        const res = await submitTestAttempt(attemptId, answersArray);
+        const { data: res } = await axios.post("/api/tests/submit", { attemptId, answersArray });
         if (res.success) {
-          if (!(res as any).alreadySubmitted) {
+          if (!res.alreadySubmitted) {
             toast.success("Nộp bài thành công!");
           }
           try {
@@ -242,6 +242,20 @@ export default function TestTakerClient({
 
   const handleSelectAnswer = (qId: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [qId]: value }));
+  };
+
+  const handleToggleAnswer = (qId: string, value: string) => {
+    setAnswers((prev) => {
+      const current = prev[qId] || "";
+      const currentArray = current ? current.split(",") : [];
+      if (currentArray.includes(value)) {
+        const newArray = currentArray.filter((v) => v !== value);
+        return { ...prev, [qId]: newArray.join(",") };
+      } else {
+        const newArray = [...currentArray, value].sort();
+        return { ...prev, [qId]: newArray.join(",") };
+      }
+    });
   };
 
   const handleToggleFlag = (qId: string) => {
@@ -417,10 +431,10 @@ export default function TestTakerClient({
                               {["A", "B", "C", "D"].map((opt) => (
                                 <button
                                   key={opt}
-                                   onClick={() => handleSelectAnswer(q.id, opt)}
+                                   onClick={() => handleToggleAnswer(q.id, opt)}
                                   className={cn(
                                     "w-8 h-8 rounded-lg border text-xs font-black transition-all",
-                                    val === opt
+                                    (val ? val.split(",") : []).includes(opt)
                                       ? "bg-blue-600 text-white border-blue-600 shadow-md scale-105"
                                       : "bg-white text-slate-500 border-slate-200 hover:border-blue-400 hover:bg-blue-50/30"
                                   )}

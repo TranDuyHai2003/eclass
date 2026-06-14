@@ -731,23 +731,43 @@ export default function UnifiedTestBuilder({
                             </div>
 
                             {q.type === "MULTIPLE_CHOICE" ? (
-                              <div className="flex gap-1">
-                                {["A", "B", "C", "D"].map((opt) => (
-                                  <button
-                                    key={opt}
-                                    onClick={() =>
-                                      handleUpdateQuestion(sIdx, qIdx, "correctAnswer", opt)
-                                    }
-                                    className={cn(
-                                      "w-8 h-8 rounded-lg border text-[11px] font-black transition-all",
-                                      q.correctAnswer === opt
-                                        ? "bg-blue-600 border-blue-600 text-white shadow-md"
-                                        : "bg-white border-slate-200 text-slate-400 hover:border-blue-400 hover:text-blue-500",
-                                    )}
-                                  >
-                                    {opt}
-                                  </button>
-                                ))}
+                              <div className="flex gap-2 items-center">
+                                <div className="flex gap-1">
+                                  {["A", "B", "C", "D"].map((opt) => {
+                                    const opts = (q.correctAnswer || "").split(/[,|]/).map((s: string) => s.trim());
+                                    const isSelected = opts.includes(opt);
+                                    return (
+                                      <button
+                                        key={opt}
+                                        onClick={() => {
+                                          let currentOpts = (q.correctAnswer || "").split(',').map((s: string) => s.trim()).filter(Boolean);
+                                          if ((q.correctAnswer || "").includes('|')) currentOpts = [];
+                                          if (currentOpts.includes(opt)) {
+                                            currentOpts = currentOpts.filter((o: string) => o !== opt);
+                                          } else {
+                                            currentOpts.push(opt);
+                                            currentOpts.sort();
+                                          }
+                                          handleUpdateQuestion(sIdx, qIdx, "correctAnswer", currentOpts.join(','));
+                                        }}
+                                        className={cn(
+                                          "w-8 h-8 rounded-lg border text-[11px] font-black transition-all",
+                                          isSelected
+                                            ? "bg-blue-600 border-blue-600 text-white shadow-md"
+                                            : "bg-white border-slate-200 text-slate-400 hover:border-blue-400 hover:text-blue-500",
+                                        )}
+                                      >
+                                        {opt}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <Input
+                                  value={q.correctAnswer || ""}
+                                  onChange={(e) => handleUpdateQuestion(sIdx, qIdx, "correctAnswer", e.target.value.toUpperCase())}
+                                  placeholder="Hoặc nhập (VD: A|B)"
+                                  className="h-8 text-xs font-bold w-[130px] rounded-lg bg-white"
+                                />
                               </div>
                             ) : q.type === "TRUE_FALSE" ? (
                               <div className="flex gap-1">
