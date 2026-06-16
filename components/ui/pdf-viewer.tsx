@@ -12,6 +12,7 @@ import {
   RotateCw,
   Loader2,
   FileWarning,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn, polyfillURLParse } from "@/lib/utils";
@@ -36,9 +37,12 @@ function isGoogleDriveFolder(url: string) {
 
 function needsProxy(url: string) {
   if (typeof window === "undefined") return false;
-  if (url.startsWith("/") || url.startsWith(window.location.origin)) return false;
+  if (url.startsWith("/") || url.startsWith(window.location.origin))
+    return false;
   try {
     const parsed = new URL(url);
+    // Bỏ qua proxy cho CDN của mình vì đã có CORS, tránh lỗi với file lớn (>10MB)
+    if (parsed.hostname === "cdn.teacherduc.me") return false;
     return parsed.origin !== window.location.origin;
   } catch {
     return false;
@@ -67,7 +71,7 @@ export default function PDFViewer({
     const updateWidth = () => {
       const container = document.getElementById("pdf-container");
       if (container) {
-        setContainerWidth(container.clientWidth - 32); 
+        setContainerWidth(container.clientWidth - 32);
       }
     };
 
@@ -84,7 +88,8 @@ export default function PDFViewer({
           Đây là link thư mục Google Drive, không phải file PDF.
         </p>
         <p className="text-xs text-red-500 mt-2">
-          Vui lòng upload file PDF trực tiếp lên hệ thống hoặc dùng link chia sẻ từng file.
+          Vui lòng upload file PDF trực tiếp lên hệ thống hoặc dùng link chia sẻ
+          từng file.
         </p>
       </div>
     );
@@ -126,9 +131,7 @@ export default function PDFViewer({
           )}
         >
           {renderLeft ? (
-            <div className="flex-1 min-w-0 mr-4">
-              {renderLeft}
-            </div>
+            <div className="flex-1 min-w-0 mr-4">{renderLeft}</div>
           ) : (
             <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
               {numPages} trang | {Math.round(zoom * 100)}%
@@ -154,6 +157,15 @@ export default function PDFViewer({
             >
               <ZoomIn className="h-4 w-4" />
             </Button>
+            <div className="w-px h-4 bg-slate-200 mx-1" />
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-3 py-1.5 ml-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-medium rounded-lg transition-all touch-manipulation"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
             <div className="w-px h-4 bg-slate-200 mx-1" />
             <Button
               variant="ghost"
@@ -186,7 +198,9 @@ export default function PDFViewer({
                 </p>
               </div>
             }
-            onLoadError={(error) => console.error("Lỗi tải PDF chi tiết:", error)}
+            onLoadError={(error) =>
+              console.error("Lỗi tải PDF chi tiết:", error)
+            }
             error={
               <div className="flex flex-col items-center justify-center py-20 gap-3 text-blue-500">
                 <FileWarning className="h-10 w-10" />

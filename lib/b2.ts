@@ -1,4 +1,4 @@
-import { S3Client } from "@aws-sdk/client-s3";
+import { S3Client, CopyObjectCommand } from "@aws-sdk/client-s3";
 
 export const b2Client = new S3Client({
   endpoint: `https://s3.${process.env.B2_REGION || "us-east-004"}.backblazeb2.com`,
@@ -26,9 +26,53 @@ export function validateB2Config(): string | null {
   return null;
 }
 
+export function slugify(str: string): string {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // remove accents
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-") // replace non-alphanumeric with hyphen
+    .replace(/^-+|-+$/g, ""); // remove leading/trailing hyphens
+}
+
 export function sanitizeFileName(fileName: string): string {
-  return fileName
-    .replace(/[^\w.-]/g, "_")
-    .replace(/_{2,}/g, "_")
-    .replace(/^_+|_+$/g, "");
+  const parts = fileName.split(".");
+  const ext = parts.length > 1 ? parts.pop() : "";
+  const name = parts.join(".");
+  
+  let safeName = slugify(name);
+  if (!safeName) safeName = "file";
+  
+  return ext ? `${safeName}.${ext}` : safeName;
+}
+
+export async function commitTempFile(url: string | null | undefined): Promise<string | null> {
+  if (!url || typeof url !== "string") return url || null;
+  if (!url.includes("/temp/")) return url;
+
+  try {
+    const parsedUrl = new URL(url);
+    const pathname = parsedUrl.pathname;
+
+    const tempIndex = pathname.indexOf("temp/");
+    if (tempIndex === -1) return url;
+
+    const sourceKey = pathname.substring(tempIndex);
+    const destinationKey = sourceKey.replace("temp/", "");
+
+    const command = new CopyObjectCommand({
+      Bucket: B2_BUCKET_NAME,
+      CopySource: encodeURI(`${B2_BUCKET_NAME}/${sourceKey}`),
+      Key: destinationKey,
+    });
+
+    await b2Client.send(command);
+
+    return url.replace("/temp/", "/");
+  } catch (error) {
+    console.error("[B2] Failed to commit temp file:", error);
+    return url;
+  }
 }

@@ -64,7 +64,9 @@ interface UnifiedTestBuilderProps {
   subtitle: string;
   backHref?: string;
   onBack?: () => void;
-  onSave: (data: UnifiedSaveData) => Promise<{ success: boolean; testId?: string }>;
+  onSave: (
+    data: UnifiedSaveData,
+  ) => Promise<{ success: boolean; testId?: string }>;
   previewHref?: string;
   analyticsHref?: string;
   showDelete?: boolean;
@@ -92,7 +94,9 @@ export default function UnifiedTestBuilder({
   const [pdfUrl, setPdfUrl] = useState(initialTest?.pdfUrl || "");
   const [duration, setDuration] = useState(initialTest?.duration || 45);
   const [dueDate, setDueDate] = useState(
-    initialTest?.dueDate ? new Date(initialTest.dueDate).toISOString().slice(0, 16) : "",
+    initialTest?.dueDate
+      ? new Date(initialTest.dueDate).toISOString().slice(0, 16)
+      : "",
   );
   const [showAnswers, setShowAnswers] = useState(
     initialTest?.showAnswers ?? true,
@@ -100,8 +104,13 @@ export default function UnifiedTestBuilder({
   const [explanation, setExplanation] = useState(
     initialTest?.explanation || "",
   );
-  const [solutionVideos, setSolutionVideos] = useState<{ title: string; url: string }[]>(() => {
-    if (initialTest?.solutionVideos && Array.isArray(initialTest.solutionVideos)) {
+  const [solutionVideos, setSolutionVideos] = useState<
+    { title: string; url: string }[]
+  >(() => {
+    if (
+      initialTest?.solutionVideos &&
+      Array.isArray(initialTest.solutionVideos)
+    ) {
       return initialTest.solutionVideos;
     }
     if (initialTest?.videoUrl) {
@@ -114,8 +123,12 @@ export default function UnifiedTestBuilder({
   const [isUploadingExplanation, setIsUploadingExplanation] = useState(false);
 
   const isDirtyRef = useRef(false);
-  const markDirty = () => { isDirtyRef.current = true; };
-  const resetDirty = () => { isDirtyRef.current = false; };
+  const markDirty = () => {
+    isDirtyRef.current = true;
+  };
+  const resetDirty = () => {
+    isDirtyRef.current = false;
+  };
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -127,42 +140,59 @@ export default function UnifiedTestBuilder({
 
   const [isUploading, setIsUploading] = useState(false);
   const [isFastEntryOpen, setIsFastEntryOpen] = useState(false);
-  const [fastEntrySectionIdx, setFastEntrySectionIdx] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<"matrix" | "explanation">("matrix");
+  const [fastEntrySectionIdx, setFastEntrySectionIdx] = useState<number | null>(
+    null,
+  );
+  const [activeTab, setActiveTab] = useState<"matrix" | "explanation">(
+    "matrix",
+  );
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setPdfUrl(initialTest?.pdfUrl || "");
     setDuration(initialTest?.duration || 45);
-    setDueDate(initialTest?.dueDate ? new Date(initialTest.dueDate).toISOString().slice(0, 16) : "");
+    setDueDate(
+      initialTest?.dueDate
+        ? new Date(initialTest.dueDate).toISOString().slice(0, 16)
+        : "",
+    );
     setShowAnswers(initialTest?.showAnswers ?? true);
     setExplanation(initialTest?.explanation || "");
-    
-    if (initialTest?.solutionVideos && Array.isArray(initialTest.solutionVideos)) {
+
+    if (
+      initialTest?.solutionVideos &&
+      Array.isArray(initialTest.solutionVideos)
+    ) {
       setSolutionVideos(initialTest.solutionVideos);
     } else if (initialTest?.videoUrl) {
-      setSolutionVideos([{ title: "Video lời giải", url: initialTest.videoUrl }]);
+      setSolutionVideos([
+        { title: "Video lời giải", url: initialTest.videoUrl },
+      ]);
     } else {
       setSolutionVideos([{ title: "Video lời giải phần 1", url: "" }]);
     }
 
     setAudioUrl(initialTest?.audioUrl || "");
-    setSections(initialTest?.sections?.map((s: any) => ({
-      ...s,
-      questions: s.questions?.map((q: any) => ({ ...q })) || [],
-    })) || [
-      {
-        id: "temp-section-1",
-        name: "Phần 1: Trắc nghiệm",
-        position: 0,
-        questions: [],
-      },
-    ]);
+    setSections(
+      initialTest?.sections?.map((s: any) => ({
+        ...s,
+        questions: s.questions?.map((q: any) => ({ ...q })) || [],
+      })) || [
+        {
+          id: "temp-section-1",
+          name: "Phần 1: Trắc nghiệm",
+          position: 0,
+          questions: [],
+        },
+      ],
+    );
     resetDirty();
   }, [initialTest]);
 
   const [isParseDialogOpen, setIsParseDialogOpen] = useState(false);
-  const [tempParsedQuestions, setTempParsedQuestions] = useState<ParsedQuestion[]>([]);
+  const [tempParsedQuestions, setTempParsedQuestions] = useState<
+    ParsedQuestion[]
+  >([]);
   const [parseWarning, setParseWarning] = useState("");
 
   const [sections, setSections] = useState<any[]>(
@@ -191,12 +221,18 @@ export default function UnifiedTestBuilder({
     setParseWarning("");
     setTempParsedQuestions([]);
     try {
-      const res = await axios.put<{ publicUrl: string }>(
-        `/api/upload/proxy?fileName=${encodeURIComponent(file.name)}`,
-        file,
-        { headers: { "Content-Type": file.type } },
-      );
-      setPdfUrl(res.data.publicUrl);
+      const presignRes = await fetch("/api/upload/presigned", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, fileType: file.type, fileSize: file.size }),
+      });
+      if (!presignRes.ok) throw new Error("Không tạo được link upload");
+      const presignData = await presignRes.json();
+
+      await axios.put(presignData.uploadUrl, file, {
+        headers: { "Content-Type": file.type },
+      });
+      setPdfUrl(presignData.fileUrl);
       markDirty();
       toast.success("Tải file PDF thành công!");
 
@@ -235,7 +271,9 @@ export default function UnifiedTestBuilder({
     }
   };
 
-  const handleExplanationPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExplanationPdfUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.type !== "application/pdf") {
@@ -245,12 +283,18 @@ export default function UnifiedTestBuilder({
 
     setIsUploadingExplanation(true);
     try {
-      const res = await axios.put<{ publicUrl: string }>(
-        `/api/upload/proxy?fileName=explanation_${encodeURIComponent(file.name)}`,
-        file,
-        { headers: { "Content-Type": file.type } },
-      );
-      setExplanation(res.data.publicUrl);
+      const presignRes = await fetch("/api/upload/presigned", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: `explanation_${file.name}`, fileType: file.type, fileSize: file.size }),
+      });
+      if (!presignRes.ok) throw new Error("Không tạo được link upload");
+      const presignData = await presignRes.json();
+
+      await axios.put(presignData.uploadUrl, file, {
+        headers: { "Content-Type": file.type },
+      });
+      setExplanation(presignData.fileUrl);
       markDirty();
       toast.success("Tải file lời giải PDF thành công!");
     } catch {
@@ -260,7 +304,10 @@ export default function UnifiedTestBuilder({
     }
   };
 
-  const handleAddQuestion = (sIdx: number, type: string = "MULTIPLE_CHOICE") => {
+  const handleAddQuestion = (
+    sIdx: number,
+    type: string = "MULTIPLE_CHOICE",
+  ) => {
     markDirty();
     setSections((prev) => {
       const ns = [...prev];
@@ -317,10 +364,17 @@ export default function UnifiedTestBuilder({
 
   const handleAddSolutionVideo = () => {
     markDirty();
-    setSolutionVideos([...solutionVideos, { title: `Phần ${solutionVideos.length + 1}`, url: "" }]);
+    setSolutionVideos([
+      ...solutionVideos,
+      { title: `Phần ${solutionVideos.length + 1}`, url: "" },
+    ]);
   };
 
-  const handleUpdateSolutionVideo = (index: number, field: "title" | "url", value: string) => {
+  const handleUpdateSolutionVideo = (
+    index: number,
+    field: "title" | "url",
+    value: string,
+  ) => {
     markDirty();
     const newVideos = [...solutionVideos];
     newVideos[index] = { ...newVideos[index], [field]: value };
@@ -339,10 +393,10 @@ export default function UnifiedTestBuilder({
 
     // Process videos to have default titles if empty
     const processedVideos = solutionVideos
-      .filter(v => v.url.trim() !== "") // Remove empty URLs
+      .filter((v) => v.url.trim() !== "") // Remove empty URLs
       .map((v, idx) => ({
         title: v.title.trim() || `Video lời giải phần ${idx + 1}`,
-        url: v.url.trim()
+        url: v.url.trim(),
       }));
 
     startTransition(async () => {
@@ -372,7 +426,10 @@ export default function UnifiedTestBuilder({
     });
   };
 
-  const handleFastEntry = (answers: string[], type: "MULTIPLE_CHOICE" | "TRUE_FALSE" = "MULTIPLE_CHOICE") => {
+  const handleFastEntry = (
+    answers: string[],
+    type: "MULTIPLE_CHOICE" | "TRUE_FALSE" = "MULTIPLE_CHOICE",
+  ) => {
     markDirty();
     const batchId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const newQuestions = answers.map((ans, idx) => ({
@@ -390,12 +447,13 @@ export default function UnifiedTestBuilder({
     setSections((prev) => {
       const ns = [...prev];
       if (ns.length === 0) return prev;
-      
-      const targetIdx = fastEntrySectionIdx !== null ? fastEntrySectionIdx : ns.length - 1;
+
+      const targetIdx =
+        fastEntrySectionIdx !== null ? fastEntrySectionIdx : ns.length - 1;
       if (targetIdx >= 0 && targetIdx < ns.length) {
         ns[targetIdx] = {
           ...ns[targetIdx],
-          questions: [...ns[targetIdx].questions, ...newQuestions]
+          questions: [...ns[targetIdx].questions, ...newQuestions],
         };
       }
       return ns;
@@ -542,7 +600,10 @@ export default function UnifiedTestBuilder({
                   <Switch
                     id="showAnswers"
                     checked={showAnswers}
-                    onCheckedChange={(v) => { setShowAnswers(v); markDirty(); }}
+                    onCheckedChange={(v) => {
+                      setShowAnswers(v);
+                      markDirty();
+                    }}
                   />
                   <Label
                     htmlFor="showAnswers"
@@ -581,23 +642,38 @@ export default function UnifiedTestBuilder({
                       <Plus className="w-3.5 h-3.5 mr-1.5" /> Thêm video
                     </Button>
                   </div>
-                  
+
                   <div className="space-y-3">
                     {solutionVideos.map((video, idx) => (
-                      <div key={idx} className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300">
+                      <div
+                        key={idx}
+                        className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300"
+                      >
                         <div className="flex-1 space-y-1">
-                           <Input
-                             value={video.title}
-                             onChange={(e) => handleUpdateSolutionVideo(idx, "title", e.target.value)}
-                             placeholder="Tiêu đề (VD: Phần 1 - Đại số)"
-                             className="h-9 rounded-xl font-bold text-slate-700 bg-slate-50/50"
-                           />
-                           <Input
-                             value={video.url}
-                             onChange={(e) => handleUpdateSolutionVideo(idx, "url", e.target.value)}
-                             placeholder="Dán link Youtube tại đây..."
-                             className="h-9 rounded-xl text-sm"
-                           />
+                          <Input
+                            value={video.title}
+                            onChange={(e) =>
+                              handleUpdateSolutionVideo(
+                                idx,
+                                "title",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Tiêu đề (VD: Phần 1 - Đại số)"
+                            className="h-9 rounded-xl font-bold text-slate-700 bg-slate-50/50"
+                          />
+                          <Input
+                            value={video.url}
+                            onChange={(e) =>
+                              handleUpdateSolutionVideo(
+                                idx,
+                                "url",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Dán link Youtube tại đây..."
+                            className="h-9 rounded-xl text-sm"
+                          />
                         </div>
                         {solutionVideos.length > 1 && (
                           <Button
@@ -623,11 +699,16 @@ export default function UnifiedTestBuilder({
                       <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 mx-auto">
                         <Upload className="w-6 h-6 text-slate-300" />
                       </div>
-                      <p className="text-sm text-slate-500 mb-6">Tải lên file PDF chứa lời giải chi tiết cho toàn bộ đề thi.</p>
+                      <p className="text-sm text-slate-500 mb-6">
+                        Tải lên file PDF chứa lời giải chi tiết cho toàn bộ đề
+                        thi.
+                      </p>
                       <label className="cursor-pointer">
                         <div className="inline-flex px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 items-center gap-2 text-sm">
                           <Upload className="w-4 h-4" />
-                          {isUploadingExplanation ? "Đang tải..." : "Chọn file PDF"}
+                          {isUploadingExplanation
+                            ? "Đang tải..."
+                            : "Chọn file PDF"}
                         </div>
                         <input
                           type="file"
@@ -647,15 +728,20 @@ export default function UnifiedTestBuilder({
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-emerald-900 truncate">
-                              {explanation.split('/').pop()}
+                              {explanation.split("/").pop()}
                             </p>
-                            <p className="text-[10px] font-bold text-emerald-600 uppercase">File PDF đã tải lên</p>
+                            <p className="text-[10px] font-bold text-emerald-600 uppercase">
+                              File PDF đã tải lên
+                            </p>
                           </div>
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => { setExplanation(""); markDirty(); }}
+                          onClick={() => {
+                            setExplanation("");
+                            markDirty();
+                          }}
                           className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl shrink-0"
                         >
                           <X className="w-5 h-5" />
@@ -676,7 +762,10 @@ export default function UnifiedTestBuilder({
                   </Label>
                   <Input
                     value={testName}
-                    onChange={(e) => { setTestName(e.target.value); markDirty(); }}
+                    onChange={(e) => {
+                      setTestName(e.target.value);
+                      markDirty();
+                    }}
                     placeholder="Nhập tên bài kiểm tra (VD: Bài 1, Kiểm tra 15 phút...)"
                     className="h-10 rounded-xl font-bold text-slate-700 bg-slate-50/30 focus-visible:bg-white transition-all"
                   />
@@ -691,7 +780,9 @@ export default function UnifiedTestBuilder({
                         </div>
                         <Input
                           value={section.name}
-                          onChange={(e) => handleMarkDirtySectionName(sIdx, e.target.value)}
+                          onChange={(e) =>
+                            handleMarkDirtySectionName(sIdx, e.target.value)
+                          }
                           className="font-black text-slate-900 uppercase tracking-tight border-none p-0 h-auto focus-visible:ring-0 shadow-none w-[200px] bg-transparent"
                         />
                       </div>
@@ -734,21 +825,40 @@ export default function UnifiedTestBuilder({
                               <div className="flex gap-2 items-center">
                                 <div className="flex gap-1">
                                   {["A", "B", "C", "D"].map((opt) => {
-                                    const opts = (q.correctAnswer || "").split(/[,|]/).map((s: string) => s.trim());
+                                    const opts = (q.correctAnswer || "")
+                                      .split(/[,|]/)
+                                      .map((s: string) => s.trim());
                                     const isSelected = opts.includes(opt);
                                     return (
                                       <button
                                         key={opt}
                                         onClick={() => {
-                                          let currentOpts = (q.correctAnswer || "").split(',').map((s: string) => s.trim()).filter(Boolean);
-                                          if ((q.correctAnswer || "").includes('|')) currentOpts = [];
+                                          let currentOpts = (
+                                            q.correctAnswer || ""
+                                          )
+                                            .split(",")
+                                            .map((s: string) => s.trim())
+                                            .filter(Boolean);
+                                          if (
+                                            (q.correctAnswer || "").includes(
+                                              "|",
+                                            )
+                                          )
+                                            currentOpts = [];
                                           if (currentOpts.includes(opt)) {
-                                            currentOpts = currentOpts.filter((o: string) => o !== opt);
+                                            currentOpts = currentOpts.filter(
+                                              (o: string) => o !== opt,
+                                            );
                                           } else {
                                             currentOpts.push(opt);
                                             currentOpts.sort();
                                           }
-                                          handleUpdateQuestion(sIdx, qIdx, "correctAnswer", currentOpts.join(','));
+                                          handleUpdateQuestion(
+                                            sIdx,
+                                            qIdx,
+                                            "correctAnswer",
+                                            currentOpts.join(","),
+                                          );
                                         }}
                                         className={cn(
                                           "w-8 h-8 rounded-lg border text-[11px] font-black transition-all",
@@ -764,7 +874,14 @@ export default function UnifiedTestBuilder({
                                 </div>
                                 <Input
                                   value={q.correctAnswer || ""}
-                                  onChange={(e) => handleUpdateQuestion(sIdx, qIdx, "correctAnswer", e.target.value.toUpperCase())}
+                                  onChange={(e) =>
+                                    handleUpdateQuestion(
+                                      sIdx,
+                                      qIdx,
+                                      "correctAnswer",
+                                      e.target.value.toUpperCase(),
+                                    )
+                                  }
                                   placeholder="Hoặc nhập (VD: A|B)"
                                   className="h-8 text-xs font-bold w-[130px] rounded-lg bg-white"
                                 />
@@ -778,7 +895,12 @@ export default function UnifiedTestBuilder({
                                   <button
                                     key={opt.value}
                                     onClick={() =>
-                                      handleUpdateQuestion(sIdx, qIdx, "correctAnswer", opt.value)
+                                      handleUpdateQuestion(
+                                        sIdx,
+                                        qIdx,
+                                        "correctAnswer",
+                                        opt.value,
+                                      )
                                     }
                                     className={cn(
                                       "px-3 h-8 rounded-lg border text-[11px] font-black transition-all",
@@ -795,7 +917,12 @@ export default function UnifiedTestBuilder({
                               <Input
                                 value={q.correctAnswer}
                                 onChange={(e) =>
-                                  handleUpdateQuestion(sIdx, qIdx, "correctAnswer", e.target.value)
+                                  handleUpdateQuestion(
+                                    sIdx,
+                                    qIdx,
+                                    "correctAnswer",
+                                    e.target.value,
+                                  )
                                 }
                                 placeholder="Đáp án..."
                                 className="h-9 rounded-lg border-slate-200 text-sm font-bold max-w-[120px]"
@@ -808,7 +935,12 @@ export default function UnifiedTestBuilder({
                                   type="number"
                                   value={q.points}
                                   onChange={(e) =>
-                                    handleUpdateQuestion(sIdx, qIdx, "points", parseFloat(e.target.value))
+                                    handleUpdateQuestion(
+                                      sIdx,
+                                      qIdx,
+                                      "points",
+                                      parseFloat(e.target.value),
+                                    )
                                   }
                                   className="w-16 h-8 text-[11px] font-black pl-5 rounded-lg border-slate-200"
                                 />
@@ -834,20 +966,26 @@ export default function UnifiedTestBuilder({
                             <Input
                               value={q.category || ""}
                               onChange={(e) =>
-                                handleUpdateQuestion(sIdx, qIdx, "category", e.target.value)
+                                handleUpdateQuestion(
+                                  sIdx,
+                                  qIdx,
+                                  "category",
+                                  e.target.value,
+                                )
                               }
                               placeholder="VD: Hàm số bậc 3..."
                               className="h-8 text-[11px] rounded-lg"
                             />
                           </div>
-
                         </div>
                       ))}
                     </div>
 
                     <div className="pt-2 flex gap-2">
                       <Button
-                        onClick={() => handleAddQuestion(sIdx, "MULTIPLE_CHOICE")}
+                        onClick={() =>
+                          handleAddQuestion(sIdx, "MULTIPLE_CHOICE")
+                        }
                         size="sm"
                         variant="outline"
                         className="rounded-lg border-dashed border-slate-300 text-slate-500 gap-1.5 font-bold"
@@ -928,7 +1066,9 @@ export default function UnifiedTestBuilder({
             {parseWarning && (
               <div className="mb-6 flex items-start gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-200 text-sm text-amber-800">
                 <FileWarning className="w-5 h-5 shrink-0 mt-0.5" />
-                <span className="font-medium leading-relaxed">{parseWarning}</span>
+                <span className="font-medium leading-relaxed">
+                  {parseWarning}
+                </span>
               </div>
             )}
 
@@ -943,7 +1083,9 @@ export default function UnifiedTestBuilder({
                   <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <FileWarning className="w-8 h-8 text-slate-300" />
                   </div>
-                  <p className="text-slate-500 font-bold">Không tìm thấy câu hỏi nào theo đúng định dạng.</p>
+                  <p className="text-slate-500 font-bold">
+                    Không tìm thấy câu hỏi nào theo đúng định dạng.
+                  </p>
                 </div>
               )
             )}

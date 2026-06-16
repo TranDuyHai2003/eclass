@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import { commitTempFile } from "@/lib/b2";
 
 // =============================================
 // TEACHER ACTIONS
@@ -87,6 +88,17 @@ export async function upsertTest(
     finalTitle = `Bài ${testCount + 1}`;
   }
 
+  // Commit any temp files to permanent storage
+  data.pdfUrl = await commitTempFile(data.pdfUrl) || data.pdfUrl;
+  if (data.explanation) data.explanation = await commitTempFile(data.explanation) || data.explanation;
+  if (data.videoUrl) data.videoUrl = await commitTempFile(data.videoUrl) || data.videoUrl;
+  if (data.audioUrl) data.audioUrl = await commitTempFile(data.audioUrl) || data.audioUrl;
+  if (data.solutionVideos && Array.isArray(data.solutionVideos)) {
+    for (const v of data.solutionVideos) {
+      if (v.url) v.url = await commitTempFile(v.url) || v.url;
+    }
+  }
+
   const test = await prisma.test.upsert({
     where: { lessonId },
     update: {
@@ -127,6 +139,17 @@ export async function upsertCourseTest(
 
   const existingTest = await prisma.test.findUnique({ where: { courseId }, select: { title: true } });
   const title = existingTest?.title || "Bài kiểm tra cuối khóa";
+
+  // Commit any temp files
+  data.pdfUrl = await commitTempFile(data.pdfUrl) || data.pdfUrl;
+  if (data.explanation) data.explanation = await commitTempFile(data.explanation) || data.explanation;
+  if (data.videoUrl) data.videoUrl = await commitTempFile(data.videoUrl) || data.videoUrl;
+  if (data.audioUrl) data.audioUrl = await commitTempFile(data.audioUrl) || data.audioUrl;
+  if (data.solutionVideos && Array.isArray(data.solutionVideos)) {
+    for (const v of data.solutionVideos) {
+      if (v.url) v.url = await commitTempFile(v.url) || v.url;
+    }
+  }
 
   const test = await prisma.test.upsert({
     where: { courseId },
@@ -237,6 +260,12 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
       // Update or Create questions
       for (const [qIndex, q] of newQuestions.entries()) {
         const isTempQuestion = !q.id || q.id.startsWith('temp-') || q.id.startsWith('parsed-');
+        
+        // Commit any temp files attached to the question
+        const committedExplanation = await commitTempFile(q.explanation) || q.explanation;
+        const committedVideoUrl = await commitTempFile(q.videoUrl) || q.videoUrl;
+        const committedAudioUrl = await commitTempFile(q.audioUrl) || q.audioUrl;
+
         const questionData: any = {
           sectionId,
           position: Number.isFinite(q.position) ? q.position : qIndex,
@@ -244,9 +273,9 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
           type: normalizeType(q.type),
           correctAnswer: normalizeAnswer(q.correctAnswer),
           points: Number.isFinite(q.points) ? q.points : 1.0,
-          explanation: q.explanation,
-          videoUrl: q.videoUrl,
-          audioUrl: q.audioUrl,
+          explanation: committedExplanation,
+          videoUrl: committedVideoUrl,
+          audioUrl: committedAudioUrl,
           needsManualGrading: q.needsManualGrading || false,
         };
 
@@ -540,9 +569,12 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
   let rawTotalScore = 0;
   const answersData: any[] = [];
   
-  studentAnswers.forEach(ans => {
+  for (const ans of studentAnswers) {
     const q = questionMap.get(ans.questionId);
-    if (!q) return; // Skip answers for questions that don't exist in this test
+    if (!q) continue; // Skip answers for questions that don't exist in this test
+
+    // Commit temp file if the answer is an uploaded file URL
+    ans.answerProvided = await commitTempFile(ans.answerProvided) || ans.answerProvided;
 
     let isCorrect: boolean | null = false;
     let pointsAwarded = 0;
@@ -572,7 +604,7 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
       isCorrect,
       pointsAwarded
     });
-  });
+  }
 
   // Guard: empty submission or no answers matched
   if (studentAnswers.length === 0) {

@@ -3,7 +3,17 @@
 import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
-import { ArrowLeft, Send, Flag, Upload, X, Image as ImageIcon, FileText, Loader2, ExternalLink } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  Flag,
+  Upload,
+  X,
+  Image as ImageIcon,
+  FileText,
+  Loader2,
+  ExternalLink,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTestAttempt, getTestDraft } from "@/actions/test";
 import { Button } from "@/components/ui/button";
@@ -42,13 +52,17 @@ export default function TestTakerClient({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [isUploading, setIsUploading] = useState<Record<string, boolean>>({});
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
+    {},
+  );
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const answersRef = useRef(answers);
   // Keep ref in sync
-  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
 
   const isSubmittingRef = useRef(false);
 
@@ -64,88 +78,106 @@ export default function TestTakerClient({
         answerProvided: currentAnswers[qId],
       }));
     if (answersArray.length === 0) return;
-    axios.post("/api/tests/draft", { attemptId: currentAttemptId, answersArray }).catch((e) =>
-      console.error("[Auto-save] Sync failed:", e)
-    );
+    axios
+      .post("/api/tests/draft", { attemptId: currentAttemptId, answersArray })
+      .catch((e) => console.error("[Auto-save] Sync failed:", e));
   }, [isPending]);
 
   const attemptIdRef = useRef(attemptId);
-  useEffect(() => { attemptIdRef.current = attemptId; }, [attemptId]);
-  
+  useEffect(() => {
+    attemptIdRef.current = attemptId;
+  }, [attemptId]);
+
   // Load initial attempt + reconcile server + localStorage
   useEffect(() => {
-    startTestAttempt(test.id).then(async (res) => {
-      if (!res.success || !res.attempt) {
-        toast.error("Không thể bắt đầu làm bài");
-        setLoadingInitial(false);
-        return;
-      }
+    startTestAttempt(test.id)
+      .then(async (res) => {
+        if (!res.success || !res.attempt) {
+          toast.error("Không thể bắt đầu làm bài");
+          setLoadingInitial(false);
+          return;
+        }
 
-      if (res.attempt.completedAt) {
-        const path = resultsPath
-          ? `${resultsPath}/${res.attempt.id}`
-          : `/watch/${lesson.id}/results/${res.attempt.id}`;
-        router.replace(path);
-        return;
-      }
+        if (res.attempt.completedAt) {
+          const path = resultsPath
+            ? `${resultsPath}/${res.attempt.id}`
+            : `/watch/${lesson.id}/results/${res.attempt.id}`;
+          router.replace(path);
+          return;
+        }
 
-      // Load server draft + localStorage FIRST before setting attemptId
-      // (to prevent auto-save effect from overwriting localStorage with empty answers)
-      const serverAnswers: Record<string, string> = {};
-      try {
-        const draftRes = await getTestDraft(res.attempt.id);
-        if (draftRes.success) {
-          for (const a of draftRes.answers) {
-            if (a.answerProvided) serverAnswers[a.questionId] = a.answerProvided;
+        // Load server draft + localStorage FIRST before setting attemptId
+        // (to prevent auto-save effect from overwriting localStorage with empty answers)
+        const serverAnswers: Record<string, string> = {};
+        try {
+          const draftRes = await getTestDraft(res.attempt.id);
+          if (draftRes.success) {
+            for (const a of draftRes.answers) {
+              if (a.answerProvided)
+                serverAnswers[a.questionId] = a.answerProvided;
+            }
+          }
+        } catch (e) {
+          console.error("[Reconciliation] Failed to fetch server draft:", e);
+        }
+
+        // Load localStorage draft
+        let localAnswers: Record<string, string> = {};
+        try {
+          const localRaw = localStorage.getItem(`draft_${res.attempt.id}`);
+          if (localRaw) localAnswers = JSON.parse(localRaw);
+        } catch (e) {
+          console.warn("[localStorage] draft_ getItem failed");
+        }
+
+        // Load flagged questions from localStorage
+        try {
+          const flagsRaw = localStorage.getItem(`flags_${res.attempt.id}`);
+          if (flagsRaw) setFlags(JSON.parse(flagsRaw));
+        } catch (e) {
+          console.warn("[localStorage] flags_ getItem failed");
+        }
+
+        // Reconciliation: local wins (more recent if user was working)
+        const merged = { ...serverAnswers, ...localAnswers };
+        setAnswers(merged);
+
+        // Set attemptId AFTER answers are restored (so auto-save doesn't write empty)
+        setAttemptId(res.attempt.id);
+        const rawDate = String(res.attempt.startedAt);
+        const parsedDate = new Date(
+          !rawDate.endsWith("Z") && !rawDate.includes("+")
+            ? rawDate + "Z"
+            : rawDate,
+        );
+        setStartedAt(isNaN(parsedDate.getTime()) ? null : parsedDate);
+
+        // If local is newer, push to server immediately
+        if (
+          Object.keys(localAnswers).length > Object.keys(serverAnswers).length
+        ) {
+          const mergedArray = Object.keys(merged)
+            .filter((k) => merged[k] !== "")
+            .map((qId) => ({ questionId: qId, answerProvided: merged[qId] }));
+          if (mergedArray.length > 0) {
+            axios
+              .post("/api/tests/draft", {
+                attemptId: res.attempt.id,
+                answersArray: mergedArray,
+              })
+              .catch((e) =>
+                console.error("[Reconciliation] Push to server failed:", e),
+              );
           }
         }
-      } catch (e) {
-        console.error("[Reconciliation] Failed to fetch server draft:", e);
-      }
 
-      // Load localStorage draft
-      let localAnswers: Record<string, string> = {};
-      try {
-        const localRaw = localStorage.getItem(`draft_${res.attempt.id}`);
-        if (localRaw) localAnswers = JSON.parse(localRaw);
-      } catch (e) { console.warn("[localStorage] draft_ getItem failed"); }
-
-      // Load flagged questions from localStorage
-      try {
-        const flagsRaw = localStorage.getItem(`flags_${res.attempt.id}`);
-        if (flagsRaw) setFlags(JSON.parse(flagsRaw));
-      } catch (e) { console.warn("[localStorage] flags_ getItem failed"); }
-
-      // Reconciliation: local wins (more recent if user was working)
-      const merged = { ...serverAnswers, ...localAnswers };
-      setAnswers(merged);
-
-      // Set attemptId AFTER answers are restored (so auto-save doesn't write empty)
-      setAttemptId(res.attempt.id);
-      const rawDate = String(res.attempt.startedAt);
-      const parsedDate = new Date(
-        !rawDate.endsWith("Z") && !rawDate.includes("+") ? rawDate + "Z" : rawDate
-      );
-      setStartedAt(isNaN(parsedDate.getTime()) ? null : parsedDate);
-
-      // If local is newer, push to server immediately
-      if (Object.keys(localAnswers).length > Object.keys(serverAnswers).length) {
-        const mergedArray = Object.keys(merged)
-          .filter((k) => merged[k] !== "")
-          .map((qId) => ({ questionId: qId, answerProvided: merged[qId] }));
-        if (mergedArray.length > 0) {
-          axios.post("/api/tests/draft", { attemptId: res.attempt.id, answersArray: mergedArray }).catch((e) =>
-            console.error("[Reconciliation] Push to server failed:", e)
-          );
-        }
-      }
-
-      setLoadingInitial(false);
-    }).catch((e) => {
-      console.error("[Init] startTestAttempt failed:", e);
-      toast.error("Không thể tải bài thi. Vui lòng tải lại trang.");
-      setLoadingInitial(false);
-    });
+        setLoadingInitial(false);
+      })
+      .catch((e) => {
+        console.error("[Init] startTestAttempt failed:", e);
+        toast.error("Không thể tải bài thi. Vui lòng tải lại trang.");
+        setLoadingInitial(false);
+      });
   }, [test.id, lesson.id, resultsPath, router]);
 
   // Auto-save to localStorage immediately + debounce sync to server
@@ -156,7 +188,9 @@ export default function TestTakerClient({
     try {
       localStorage.setItem(`draft_${attemptId}`, JSON.stringify(answers));
       localStorage.setItem(`flags_${attemptId}`, JSON.stringify(flags));
-    } catch (e) { console.warn("[localStorage] setItem failed"); }
+    } catch (e) {
+      console.warn("[localStorage] setItem failed");
+    }
 
     // Debounce server sync (2s after last change)
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -181,9 +215,14 @@ export default function TestTakerClient({
     if (!attemptId) return;
     const handleBeforeUnload = () => {
       try {
-        localStorage.setItem(`draft_${attemptId}`, JSON.stringify(answersRef.current));
+        localStorage.setItem(
+          `draft_${attemptId}`,
+          JSON.stringify(answersRef.current),
+        );
         localStorage.setItem(`flags_${attemptId}`, JSON.stringify(flags));
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        /* ignore */
+      }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
@@ -216,7 +255,10 @@ export default function TestTakerClient({
           answerProvided: answers[qId],
         }));
 
-        const { data: res } = await axios.post("/api/tests/submit", { attemptId, answersArray });
+        const { data: res } = await axios.post("/api/tests/submit", {
+          attemptId,
+          answersArray,
+        });
         if (res.success) {
           if (!res.alreadySubmitted) {
             toast.success("Nộp bài thành công!");
@@ -224,7 +266,9 @@ export default function TestTakerClient({
           try {
             localStorage.removeItem(`draft_${attemptId}`);
             localStorage.removeItem(`flags_${attemptId}`);
-          } catch (e) { console.warn("[localStorage] removeItem failed"); }
+          } catch (e) {
+            console.warn("[localStorage] removeItem failed");
+          }
           const path = resultsPath
             ? `${resultsPath}/${attemptId}`
             : `/watch/${lesson.id}/results/${attemptId}`;
@@ -259,45 +303,62 @@ export default function TestTakerClient({
   };
 
   const handleToggleFlag = (qId: string) => {
-    setFlags(prev => ({ ...prev, [qId]: !prev[qId] }));
+    setFlags((prev) => ({ ...prev, [qId]: !prev[qId] }));
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, qId: string) => {
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    qId: string,
+  ) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     const file = files[0];
     if (file.size > 50 * 1024 * 1024) {
-      toast.error(`Tệp "${file.name}" vượt quá 50MB. Vui lòng chọn tệp nhỏ hơn.`);
+      toast.error(
+        `Tệp "${file.name}" vượt quá 50MB. Vui lòng chọn tệp nhỏ hơn.`,
+      );
       return;
     }
 
-    setIsUploading(prev => ({ ...prev, [qId]: true }));
-    setUploadProgress(prev => ({ ...prev, [qId]: 0 }));
+    setIsUploading((prev) => ({ ...prev, [qId]: true }));
+    setUploadProgress((prev) => ({ ...prev, [qId]: 0 }));
     try {
-      const res = await axios.put<{ publicUrl: string }>(
-        `/api/upload/proxy?fileName=essay_${qId}_${Date.now()}_${encodeURIComponent(file.name)}`,
-        file,
-        {
-          headers: { "Content-Type": file.type || "application/octet-stream" },
-          onUploadProgress: (e) => {
-            const total = e.total;
-            if (total) {
-              setUploadProgress(prev => ({ ...prev, [qId]: Math.round((e.loaded / total) * 100) }));
-            }
-          },
-        }
-      );
-      
-      handleSelectAnswer(qId, res.data.publicUrl);
+      const presignRes = await fetch("/api/upload/presigned", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: `essay_${qId}_${Date.now()}_${file.name}`,
+          fileType: file.type || "application/octet-stream",
+          fileSize: file.size,
+        }),
+      });
+      if (!presignRes.ok) throw new Error("Không tạo được link upload");
+      const presignData = await presignRes.json();
+
+      await axios.put(presignData.uploadUrl, file, {
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        onUploadProgress: (e) => {
+          const total = e.total;
+          if (total) {
+            setUploadProgress((prev) => ({
+              ...prev,
+              [qId]: Math.round((e.loaded / total) * 100),
+            }));
+          }
+        },
+      });
+
+      handleSelectAnswer(qId, presignData.fileUrl);
       toast.success("Tải tệp lên thành công");
     } catch (error: any) {
-      const message = error?.response?.data || error?.message || "Lỗi tải tệp lên";
+      const message =
+        error?.response?.data || error?.message || "Lỗi tải tệp lên";
       console.error("[Essay Upload Error]", error);
       toast.error(`Lỗi tải tệp lên: ${message}`);
     } finally {
-      setIsUploading(prev => ({ ...prev, [qId]: false }));
-      setUploadProgress(prev => ({ ...prev, [qId]: 0 }));
+      setIsUploading((prev) => ({ ...prev, [qId]: false }));
+      setUploadProgress((prev) => ({ ...prev, [qId]: 0 }));
     }
   };
 
@@ -313,26 +374,29 @@ export default function TestTakerClient({
     );
   }
 
- return (
+  return (
     // 1. Fix root: Chỉ dùng overflow-hidden để khóa scroll tổng, ép scroll ở từng panel
-        <div className="flex h-dvh flex-col bg-[#E2EEFF] overflow-hidden relative z-[60] w-full max-w-full">
+    <div className="flex h-dvh flex-col bg-[#E2EEFF] overflow-hidden relative z-[60] w-full max-w-full">
       {/* Hide Global Header on Test Page */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         header { display: none !important; }
-      `}} />
+      `,
+        }}
+      />
 
       {/* 2. Thêm min-h-0 vào Main Split để flex flex-1 nhận diện đúng giới hạn chiều cao */}
       <div className="flex flex-col md:flex-row flex-1 relative min-h-0 w-full max-w-full">
-        
         {/* Left/Top: PDF */}
         {/* 3. Dùng flex-[6] trên mobile và flex-1 trên PC, thêm min-h-0 và overflow-y-auto */}
         <div className="flex-[6] md:flex-1 min-h-0 w-full border-b md:border-b-0 md:border-r relative bg-[#E2EEFF] overflow-y-auto custom-scrollbar">
           {test.pdfUrl ? (
             <div className="min-h-full w-full">
-              <PDFViewer 
-                url={test.pdfUrl} 
-                noScroll 
-                flat 
+              <PDFViewer
+                url={test.pdfUrl}
+                noScroll
+                flat
                 renderLeft={
                   <div className="flex items-center gap-2 md:gap-4 min-w-0">
                     <Button
@@ -344,8 +408,12 @@ export default function TestTakerClient({
                       <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 text-slate-600" />
                     </Button>
                     <div className="min-w-0">
-                      <h1 className="font-black text-slate-900 leading-none truncate text-[11px] md:text-sm uppercase tracking-tight">{lesson.title}</h1>
-                      <p className="hidden sm:block text-[9px] text-slate-400 mt-0.5 truncate font-bold uppercase tracking-widest">{course.title}</p>
+                      <h1 className="font-black text-slate-900 leading-none truncate text-[11px] md:text-sm uppercase tracking-tight">
+                        {lesson.title}
+                      </h1>
+                      <p className="hidden sm:block text-[9px] text-slate-400 mt-0.5 truncate font-bold uppercase tracking-widest">
+                        {course.title}
+                      </p>
                     </div>
                   </div>
                 }
@@ -361,13 +429,16 @@ export default function TestTakerClient({
         {/* Right/Bottom: Bubble Sheet */}
         {/* 4. Dùng flex-[4] trên mobile để chiếm 4 phần, bỏ h-auto, THÊM min-h-0 */}
         <div className="flex-[4] md:flex-none md:w-[350px] xl:w-[400px] min-h-0 w-full shrink-0 bg-white flex flex-col z-20 shadow-[-4px_0_12px_rgba(0,0,0,0.02)]">
-          
           <div className="h-14 md:h-16 border-b border-slate-200 bg-white flex items-center justify-between px-3 md:px-4 font-black text-slate-800 shadow-sm shrink-0">
             <div className="flex flex-col min-w-0">
-               <span className="uppercase tracking-widest text-[8px] md:text-[10px] text-slate-400">PHIẾU TRẢ LỜI</span>
-               <span className="text-xs md:text-sm font-black text-blue-600 uppercase tracking-wider">Đang làm bài</span>
+              <span className="uppercase tracking-widest text-[8px] md:text-[10px] text-slate-400">
+                PHIẾU TRẢ LỜI
+              </span>
+              <span className="text-xs md:text-sm font-black text-blue-600 uppercase tracking-wider">
+                Đang làm bài
+              </span>
             </div>
-            
+
             <Button
               onClick={handleSubmit}
               disabled={isPending}
@@ -393,10 +464,14 @@ export default function TestTakerClient({
                     const isFlagged = flags[q.id] || false;
                     const qNumber = qIdx + 1;
                     const rawType = q?.type ?? "MULTIPLE_CHOICE";
-                    const normalizedType = typeof rawType === "string"
-                      ? rawType.trim().toUpperCase()
-                      : "MULTIPLE_CHOICE";
-                    const isChoice = normalizedType === "MULTIPLE_CHOICE" || normalizedType === "MCQ" || normalizedType === "MULTIPLE_CHOICE_SINGLE";
+                    const normalizedType =
+                      typeof rawType === "string"
+                        ? rawType.trim().toUpperCase()
+                        : "MULTIPLE_CHOICE";
+                    const isChoice =
+                      normalizedType === "MULTIPLE_CHOICE" ||
+                      normalizedType === "MCQ" ||
+                      normalizedType === "MULTIPLE_CHOICE_SINGLE";
                     const isTrueFalse = normalizedType === "TRUE_FALSE";
                     const isShort = normalizedType === "SHORT_ANSWER";
                     const isEssay = normalizedType === "ESSAY";
@@ -406,19 +481,28 @@ export default function TestTakerClient({
                         key={q.id}
                         className={cn(
                           "flex items-center gap-2 p-2.5 border rounded-xl transition-all",
-                          isFlagged ? "bg-orange-50/50 border-orange-200" : "bg-gray-50/50 hover:bg-white border-slate-100"
+                          isFlagged
+                            ? "bg-orange-50/50 border-orange-200"
+                            : "bg-gray-50/50 hover:bg-white border-slate-100",
                         )}
                       >
                         {/* Giữ nguyên phần render UI câu hỏi bên trong block này */}
                         <div className="flex items-center gap-2 shrink-0 min-w-[65px]">
-                          <button 
+                          <button
                             onClick={() => handleToggleFlag(q.id)}
                             className={cn(
                               "p-1.5 rounded-lg transition-all",
-                              isFlagged ? "text-orange-500 bg-orange-100 shadow-sm" : "text-slate-300 hover:text-slate-400 hover:bg-slate-100"
+                              isFlagged
+                                ? "text-orange-500 bg-orange-100 shadow-sm"
+                                : "text-slate-300 hover:text-slate-400 hover:bg-slate-100",
                             )}
                           >
-                            <Flag className={cn("w-3 h-3", isFlagged && "fill-current")} />
+                            <Flag
+                              className={cn(
+                                "w-3 h-3",
+                                isFlagged && "fill-current",
+                              )}
+                            />
                           </button>
                           <div className="text-[12px] font-black text-slate-700">
                             C.{qNumber}
@@ -431,12 +515,12 @@ export default function TestTakerClient({
                               {["A", "B", "C", "D"].map((opt) => (
                                 <button
                                   key={opt}
-                                   onClick={() => handleToggleAnswer(q.id, opt)}
+                                  onClick={() => handleToggleAnswer(q.id, opt)}
                                   className={cn(
                                     "w-8 h-8 rounded-lg border text-xs font-black transition-all",
                                     (val ? val.split(",") : []).includes(opt)
                                       ? "bg-blue-600 text-white border-blue-600 shadow-md scale-105"
-                                      : "bg-white text-slate-500 border-slate-200 hover:border-blue-400 hover:bg-blue-50/30"
+                                      : "bg-white text-slate-500 border-slate-200 hover:border-blue-400 hover:bg-blue-50/30",
                                   )}
                                 >
                                   {opt}
@@ -453,12 +537,14 @@ export default function TestTakerClient({
                               ].map((opt) => (
                                 <button
                                   key={opt.value}
-                                  onClick={() => handleSelectAnswer(q.id, opt.value)}
+                                  onClick={() =>
+                                    handleSelectAnswer(q.id, opt.value)
+                                  }
                                   className={cn(
                                     "px-4 h-8 rounded-lg border text-xs font-black transition-all",
                                     val === opt.value
                                       ? "bg-blue-600 text-white border-blue-600 shadow-md scale-105"
-                                      : "bg-white text-slate-500 border-slate-200 hover:border-blue-400 hover:bg-blue-50/30"
+                                      : "bg-white text-slate-500 border-slate-200 hover:border-blue-400 hover:bg-blue-50/30",
                                   )}
                                 >
                                   {opt.label}
@@ -481,64 +567,86 @@ export default function TestTakerClient({
                           {isEssay && (
                             <div className="py-2 space-y-2">
                               <label className="flex items-center gap-2 cursor-pointer group">
-                                   <div className={cn(
-                                     "h-10 flex-1 border-2 border-dashed border-blue-200 rounded-xl flex items-center justify-center gap-2 bg-blue-50/30 group-hover:bg-blue-50 group-hover:border-blue-400 transition-all",
-                                     isUploading[q.id] && "opacity-50 cursor-not-allowed"
-                                   )}>
-                                      {isUploading[q.id] ? (
-                                        <>
-                                          <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
-                                          <div className="flex items-center gap-1.5">
-                                            <div className="w-20 h-2 bg-blue-100 rounded-full overflow-hidden">
-                                              <div
-                                                className="h-full bg-blue-600 rounded-full transition-all duration-300"
-                                                style={{ width: `${uploadProgress[q.id] || 0}%` }}
-                                              />
-                                            </div>
-                                            <span className="text-[10px] font-black text-blue-600 tabular-nums">
-                                              {uploadProgress[q.id] || 0}%
-                                            </span>
-                                          </div>
-                                        </>
-                                      ) : (
-                                         <Upload className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors" />
-                                      )}
-                                      <span className="text-xs font-black text-slate-500 group-hover:text-blue-700 uppercase tracking-tight">
-                                         {isUploading[q.id] ? "Đang tải..." : "Nộp bài tự luận"}
-                                      </span>
-                                   </div>
-                                  <input 
-                                    type="file" 
-                                    className="hidden" 
-                                    accept="image/*,application/pdf" 
-                                    onChange={(e) => handleFileUpload(e, q.id)}
-                                    disabled={isUploading[q.id]}
-                                  />
-                               </label>
+                                <div
+                                  className={cn(
+                                    "h-10 flex-1 border-2 border-dashed border-blue-200 rounded-xl flex items-center justify-center gap-2 bg-blue-50/30 group-hover:bg-blue-50 group-hover:border-blue-400 transition-all",
+                                    isUploading[q.id] &&
+                                      "opacity-50 cursor-not-allowed",
+                                  )}
+                                >
+                                  {isUploading[q.id] ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
+                                      <div className="flex items-center gap-1.5">
+                                        <div className="w-20 h-2 bg-blue-100 rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                                            style={{
+                                              width: `${uploadProgress[q.id] || 0}%`,
+                                            }}
+                                          />
+                                        </div>
+                                        <span className="text-[10px] font-black text-blue-600 tabular-nums">
+                                          {uploadProgress[q.id] || 0}%
+                                        </span>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <Upload className="w-4 h-4 text-blue-400 group-hover:text-blue-600 transition-colors" />
+                                  )}
+                                  <span className="text-xs font-black text-slate-500 group-hover:text-blue-700 uppercase tracking-tight">
+                                    {isUploading[q.id]
+                                      ? "Đang tải..."
+                                      : "Nộp bài tự luận"}
+                                  </span>
+                                </div>
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  accept="image/*,application/pdf"
+                                  onChange={(e) => handleFileUpload(e, q.id)}
+                                  disabled={isUploading[q.id]}
+                                />
+                              </label>
 
-                               {val && (
-                                  <div className="flex items-center gap-2 p-2.5 bg-blue-50/50 border border-blue-100 rounded-xl group animate-in fade-in slide-in-from-top-1">
-                                     <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm border border-slate-100">
-                                        {val.match(/\.(jpg|jpeg|png|gif)$/i) ? <ImageIcon className="w-5 h-5 text-blue-500" /> : <FileText className="w-5 h-5 text-blue-500" />}
-                                     </div>
-                                     <div className="flex-1 min-w-0">
-                                        <p className="text-[10px] font-black text-slate-700 uppercase tracking-tight">Đã tải lên</p>
-                                        {val.startsWith("http://") || val.startsWith("https://") || val.startsWith("blob:") ? (
-                                           <a href={val} target="_blank" className="text-[10px] font-black text-blue-600 uppercase hover:underline flex items-center gap-1">
-                                              Xem bài làm <ExternalLink className="w-2.5 h-2.5" />
-                                           </a>
-                                        ) : (
-                                           <span className="text-[10px] font-black text-slate-600 uppercase">Đã tải lên</span>
-                                        )}
-                                     </div>
-                                     <button 
-                                       onClick={() => removeFileUpload(q.id)}
-                                       className="p-1.5 rounded-lg bg-blue-50 text-blue-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-100"
-                                     >
-                                        <X className="w-4 h-4" />
-                                     </button>
+                              {val && (
+                                <div className="flex items-center gap-2 p-2.5 bg-blue-50/50 border border-blue-100 rounded-xl group animate-in fade-in slide-in-from-top-1">
+                                  <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm border border-slate-100">
+                                    {val.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                                      <ImageIcon className="w-5 h-5 text-blue-500" />
+                                    ) : (
+                                      <FileText className="w-5 h-5 text-blue-500" />
+                                    )}
                                   </div>
-                               )}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-black text-slate-700 uppercase tracking-tight">
+                                      Đã tải lên
+                                    </p>
+                                    {val.startsWith("http://") ||
+                                    val.startsWith("https://") ||
+                                    val.startsWith("blob:") ? (
+                                      <a
+                                        href={val}
+                                        target="_blank"
+                                        className="text-[10px] font-black text-blue-600 uppercase hover:underline flex items-center gap-1"
+                                      >
+                                        Xem bài làm{" "}
+                                        <ExternalLink className="w-2.5 h-2.5" />
+                                      </a>
+                                    ) : (
+                                      <span className="text-[10px] font-black text-slate-600 uppercase">
+                                        Đã tải lên
+                                      </span>
+                                    )}
+                                  </div>
+                                  <button
+                                    onClick={() => removeFileUpload(q.id)}
+                                    className="p-1.5 rounded-lg bg-blue-50 text-blue-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-100"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
 
