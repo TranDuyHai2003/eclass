@@ -321,8 +321,8 @@ export default function CourseSidebar({
                   const isLocked = !isEnrolled && !lesson.isFree;
                   const isExpanded = !!expandedLessons[lesson.id];
                   
-                  const isTutorialActive = searchParams.get("v") === "homework" && isActive;
-                  const isMainVideoActive = isActive && !searchParams.get("v");
+                  const isTutorialActive = searchParams?.get("v") === "homework" && isActive;
+                  const isMainVideoActive = isActive && !searchParams?.get("v");
 
                   const hasExtras =
                     (lesson.attachments && lesson.attachments.length > 0) ||

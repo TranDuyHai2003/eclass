@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { commitTempFile } from "@/lib/b2";
 
 function parseBoolean(value: unknown, fallback: boolean) {
   if (typeof value === "boolean") return value;
@@ -69,12 +70,33 @@ export async function POST(req: NextRequest) {
       : null;
   const dueDate = body.dueDate ? new Date(body.dueDate) : null;
 
+  const explanation = typeof body.explanation === "string" ? body.explanation.trim() : undefined;
+  const videoUrl = typeof body.videoUrl === "string" ? body.videoUrl.trim() : undefined;
+  const audioUrl = typeof body.audioUrl === "string" ? body.audioUrl.trim() : undefined;
+  const solutionVideos = body.solutionVideos;
+
   if (!title) {
     return new NextResponse("Missing title", { status: 400 });
   }
 
   if (!pdfUrl) {
     return new NextResponse("Missing pdfUrl", { status: 400 });
+  }
+
+  const finalPdfUrl = await commitTempFile(pdfUrl) || pdfUrl;
+  const finalExplanation = await commitTempFile(explanation) || undefined;
+  const finalVideoUrl = await commitTempFile(videoUrl) || undefined;
+  const finalAudioUrl = await commitTempFile(audioUrl) || undefined;
+
+  let finalSolutionVideos = undefined;
+  if (solutionVideos && Array.isArray(solutionVideos)) {
+    finalSolutionVideos = [];
+    for (const v of solutionVideos) {
+      if (v.url) {
+        v.url = await commitTempFile(v.url) || v.url;
+      }
+      finalSolutionVideos.push(v);
+    }
   }
 
   if (!Number.isFinite(duration) || duration <= 0) {
@@ -101,11 +123,15 @@ export async function POST(req: NextRequest) {
       description,
       passScore,
       accessCode,
-      pdfUrl,
+      pdfUrl: finalPdfUrl,
       duration,
       showAnswers: showResultAfterSubmit,
       userId: session.user.id,
       dueDate,
+      explanation: finalExplanation,
+      videoUrl: finalVideoUrl,
+      audioUrl: finalAudioUrl,
+      ...(finalSolutionVideos !== undefined && { solutionVideos: finalSolutionVideos }),
       ...(questionsData && questionsData.length > 0
         ? {
             sections: {

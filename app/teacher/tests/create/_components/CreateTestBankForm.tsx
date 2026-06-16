@@ -45,7 +45,7 @@ export default function CreateTestBankForm() {
       const presignRes = await fetch("/api/upload/presigned", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: file.name, fileType: file.type }),
+        body: JSON.stringify({ fileName: file.name, fileType: file.type, fileSize: file.size }),
       });
 
       if (!presignRes.ok) {

@@ -55,7 +55,7 @@ export function LeftSidebar({ user }: { user: any }) {
       <nav className="flex-1 px-4 space-y-1">
         <div className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Menu chính</div>
         {menuItems.map((item) => {
-          const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+          const isActive = item.href === '/' ? pathname === '/' : (pathname?.startsWith(item.href) ?? false);
           return (
             <Link
               key={item.label}

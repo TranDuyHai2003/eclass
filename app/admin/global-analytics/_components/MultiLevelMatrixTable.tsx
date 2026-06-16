@@ -179,7 +179,7 @@ export function MultiLevelMatrixTable({
             </DropdownMenu>
 
             <AnalyticsExportButton
-              apiUrl={`/api/admin/export-matrix?${searchParams.toString()}`}
+              apiUrl={`/api/admin/export-matrix?${searchParams?.toString() || ""}`}
               filename="Master_Gradebook.xlsx"
               variant="premium"
               className="rounded-xl h-10 text-[9px] font-black uppercase tracking-widest gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200 text-white px-4 border-none transition-all"

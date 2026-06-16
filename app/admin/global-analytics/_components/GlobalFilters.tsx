@@ -20,19 +20,19 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
-  const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
-  const [studentType, setStudentType] = useState(searchParams.get("studentType") || "all");
-  const [level, setLevel] = useState(searchParams.get("level") || "all");
-  const [search, setSearch] = useState(searchParams.get("search") || "");
-  const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "score_desc");
+  const [startDate, setStartDate] = useState(searchParams?.get("startDate") || "");
+  const [endDate, setEndDate] = useState(searchParams?.get("endDate") || "");
+  const [studentType, setStudentType] = useState(searchParams?.get("studentType") || "all");
+  const [level, setLevel] = useState(searchParams?.get("level") || "all");
+  const [search, setSearch] = useState(searchParams?.get("search") || "");
+  const [sortBy, setSortBy] = useState(searchParams?.get("sortBy") || "score_desc");
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>(
-    searchParams.get("courseIds")?.split(",").filter(Boolean) || []
+    searchParams?.get("courseIds")?.split(",").filter(Boolean) || []
   );
 
   // Instant apply logic
   const applyFilters = useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() || "");
     
     if (startDate) params.set("startDate", startDate); else params.delete("startDate");
     if (endDate) params.set("endDate", endDate); else params.delete("endDate");
@@ -43,7 +43,7 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
     if (selectedCourseIds.length > 0) params.set("courseIds", selectedCourseIds.join(",")); else params.delete("courseIds");
 
     const newUrl = `?${params.toString()}`;
-    if (newUrl !== `?${searchParams.toString()}`) {
+    if (newUrl !== `?${searchParams?.toString() || ""}`) {
       startTransition(() => {
         router.push(newUrl, { scroll: false });
       });

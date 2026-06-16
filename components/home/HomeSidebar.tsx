@@ -110,7 +110,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
     return links.map((item) => {
       const isActive = item.exact
         ? pathname === item.href
-        : item.href !== "/" && pathname.startsWith(item.href);
+        : item.href !== "/" && (pathname?.startsWith(item.href) ?? false);
       const isDiscord = item.label === "Discord";
 
       return (

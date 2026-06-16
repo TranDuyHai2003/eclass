@@ -11,7 +11,7 @@ interface MobileSearchBarProps {
 export function MobileSearchBar({ onSearch }: MobileSearchBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get("query") || "");
+  const [query, setQuery] = useState(searchParams?.get("query") || "");
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

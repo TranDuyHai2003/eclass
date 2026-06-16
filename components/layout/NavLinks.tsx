@@ -40,7 +40,7 @@ export function NavLinks({ role, vertical, onClick }: NavLinksProps) {
       {links.map(link => {
         const isActive = link.href === "/" 
           ? pathname === "/" 
-          : pathname.startsWith(link.href)
+          : (pathname?.startsWith(link.href) ?? false)
 
         const Icon = link.icon;
 

@@ -90,7 +90,7 @@ export function StudentSidebar({ user }: { user: any }) {
       <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden p-2">
         <nav className="flex flex-col gap-1">
           {menuItems.map((item) => {
-             const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+             const isActive = item.href === '/' ? pathname === '/' : (pathname?.startsWith(item.href) ?? false);
              return (
               <SidebarItem
                 key={item.href}
