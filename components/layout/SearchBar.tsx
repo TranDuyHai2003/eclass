@@ -23,7 +23,7 @@ export function SearchBar() {
   const isAdminOrTeacher =
     session?.user?.role === "ADMIN" || session?.user?.role === "TEACHER";
   const userLevel = (session?.user as any)?.level;
-  const [query, setQuery] = useState(searchParams.get("query") || "");
+  const [query, setQuery] = useState(searchParams?.get("query") || "");
   const [results, setResults] = useState<CourseResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
