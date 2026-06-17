@@ -16,7 +16,16 @@ import {
   Eye,
   BarChart3,
   FileText,
+  GripVertical,
 } from "lucide-react";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -360,6 +369,99 @@ export default function UnifiedTestBuilder({
       ns[sIdx] = targetSection;
       return ns;
     });
+  };
+
+  const handleChangeQuestionType = (sIdx: number, qIdx: number, newType: string) => {
+    markDirty();
+    setSections((prev) => {
+      const ns = [...prev];
+      const targetSection = { ...ns[sIdx] };
+      const targetQuestions = [...targetSection.questions];
+      const currentQ = targetQuestions[qIdx];
+      
+      let newCorrectAnswer = "";
+      if (newType === "MULTIPLE_CHOICE") {
+        const validOpts = ["A", "B", "C", "D"];
+        const currentOpts = (currentQ.correctAnswer || "").split(",").map((s: string) => s.trim());
+        if (currentOpts.length > 0 && currentOpts.every((opt: string) => validOpts.includes(opt))) {
+          newCorrectAnswer = currentQ.correctAnswer;
+        }
+      } else if (newType === "TRUE_FALSE") {
+        if (currentQ.correctAnswer === "T" || currentQ.correctAnswer === "F") {
+          newCorrectAnswer = currentQ.correctAnswer;
+        } else {
+          newCorrectAnswer = "T";
+        }
+      } else {
+        newCorrectAnswer = currentQ.correctAnswer;
+      }
+
+      targetQuestions[qIdx] = { ...currentQ, type: newType, correctAnswer: newCorrectAnswer };
+      targetSection.questions = targetQuestions;
+      ns[sIdx] = targetSection;
+      return ns;
+    });
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    const { source, destination } = result;
+
+    if (source.droppableId === destination.droppableId) {
+      const sIdxMatch = source.droppableId.match(/droppable-section-(\d+)/);
+      if (!sIdxMatch) return;
+      const sIdx = parseInt(sIdxMatch[1]);
+      if (isNaN(sIdx)) return;
+      if (source.index === destination.index) return;
+
+      markDirty();
+      setSections((prev) => {
+        const ns = [...prev];
+        const targetSection = { ...ns[sIdx] };
+        const targetQuestions = Array.from(targetSection.questions);
+        const [removed] = targetQuestions.splice(source.index, 1);
+        targetQuestions.splice(destination.index, 0, removed);
+        
+        targetQuestions.forEach((q: any, idx: number) => {
+          q.position = idx;
+        });
+
+        targetSection.questions = targetQuestions;
+        ns[sIdx] = targetSection;
+        return ns;
+      });
+    } else {
+      const sourceMatch = source.droppableId.match(/droppable-section-(\d+)/);
+      const destMatch = destination.droppableId.match(/droppable-section-(\d+)/);
+      if (!sourceMatch || !destMatch) return;
+      const sourceSIdx = parseInt(sourceMatch[1]);
+      const destSIdx = parseInt(destMatch[1]);
+      
+      if (isNaN(sourceSIdx) || isNaN(destSIdx)) return;
+
+      markDirty();
+      setSections((prev) => {
+        const ns = [...prev];
+        const sourceSection = { ...ns[sourceSIdx] };
+        const destSection = { ...ns[destSIdx] };
+        
+        const sourceQuestions = Array.from(sourceSection.questions);
+        const destQuestions = Array.from(destSection.questions);
+        
+        const [removed] = sourceQuestions.splice(source.index, 1);
+        destQuestions.splice(destination.index, 0, removed);
+        
+        sourceQuestions.forEach((q: any, idx: number) => q.position = idx);
+        destQuestions.forEach((q: any, idx: number) => q.position = idx);
+        
+        sourceSection.questions = sourceQuestions;
+        destSection.questions = destQuestions;
+        
+        ns[sourceSIdx] = sourceSection;
+        ns[destSIdx] = destSection;
+        return ns;
+      });
+    }
   };
 
   const handleAddSolutionVideo = () => {
@@ -771,6 +873,7 @@ export default function UnifiedTestBuilder({
                   />
                 </div>
 
+                <DragDropContext onDragEnd={handleDragEnd}>
                 {sections.map((section, sIdx) => (
                   <div key={section.id || sIdx} className="space-y-4">
                     <div className="flex items-center justify-between group/sec">
@@ -810,18 +913,33 @@ export default function UnifiedTestBuilder({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4">
-                      {section.questions.map((q: any, qIdx: number) => (
+                    <Droppable droppableId={`droppable-section-${sIdx}`}>
+                      {(provided) => (
                         <div
-                          key={q.id || qIdx}
-                          className="flex flex-col gap-3 p-4 bg-slate-50/50 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 group/q"
+                          className="grid grid-cols-1 gap-4"
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 text-center text-[10px] font-black text-slate-400">
-                              #{qIdx + 1}
-                            </div>
+                          {section.questions.map((q: any, qIdx: number) => (
+                            <Draggable key={q.id || `temp-q-${sIdx}-${qIdx}`} draggableId={q.id?.toString() || `temp-q-${sIdx}-${qIdx}`} index={qIdx}>
+                              {(provided) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  className="flex flex-col gap-3 p-4 bg-slate-50/50 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 group/q relative"
+                                >
+                                  <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                                    <div
+                                      {...provided.dragHandleProps}
+                                      className="text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing"
+                                    >
+                                      <GripVertical className="w-5 h-5" />
+                                    </div>
+                                    <div className="w-6 text-center text-[10px] font-black text-slate-400 shrink-0">
+                                      #{qIdx + 1}
+                                    </div>
 
-                            {q.type === "MULTIPLE_CHOICE" ? (
+                                    {q.type === "MULTIPLE_CHOICE" ? (
                               <div className="flex gap-2 items-center">
                                 <div className="flex gap-1">
                                   {["A", "B", "C", "D"].map((opt) => {
@@ -959,27 +1077,52 @@ export default function UnifiedTestBuilder({
                             </div>
                           </div>
 
-                          <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase text-slate-400">
-                              Phạm vi kiến thức (Dạng bài)
-                            </Label>
-                            <Input
-                              value={q.category || ""}
-                              onChange={(e) =>
-                                handleUpdateQuestion(
-                                  sIdx,
-                                  qIdx,
-                                  "category",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="VD: Hàm số bậc 3..."
-                              className="h-8 text-[11px] rounded-lg"
-                            />
+                          <div className="flex items-center gap-3 w-full">
+                            <div className="space-y-1 flex-1">
+                              <Label className="text-[10px] font-black uppercase text-slate-400">
+                                Phạm vi kiến thức (Dạng bài)
+                              </Label>
+                              <Input
+                                value={q.category || ""}
+                                onChange={(e) =>
+                                  handleUpdateQuestion(
+                                    sIdx,
+                                    qIdx,
+                                    "category",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="VD: Hàm số bậc 3..."
+                                className="h-8 text-[11px] rounded-lg"
+                              />
+                            </div>
+                            <div className="space-y-1 w-[140px] shrink-0">
+                              <Label className="text-[10px] font-black uppercase text-slate-400">
+                                Loại câu hỏi
+                              </Label>
+                              <Select
+                                value={q.type}
+                                onValueChange={(val) => handleChangeQuestionType(sIdx, qIdx, val)}
+                              >
+                                <SelectTrigger className="h-8 w-full text-[11px] font-bold bg-white border-slate-200">
+                                  <SelectValue placeholder="Loại câu hỏi" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="MULTIPLE_CHOICE" className="text-[11px] font-bold">Trắc nghiệm</SelectItem>
+                                  <SelectItem value="TRUE_FALSE" className="text-[11px] font-bold">Đúng/Sai</SelectItem>
+                                  <SelectItem value="SHORT_ANSWER" className="text-[11px] font-bold">Điền khuyết</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
 
                     <div className="pt-2 flex gap-2">
                       <Button
@@ -1011,6 +1154,7 @@ export default function UnifiedTestBuilder({
                     </div>
                   </div>
                 ))}
+                </DragDropContext>
 
                 <Button
                   variant="ghost"
