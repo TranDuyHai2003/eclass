@@ -11,7 +11,8 @@ export const b2Client = new S3Client({
 });
 
 export const B2_BUCKET_NAME = process.env.B2_BUCKET_NAME || "dummy_bucket";
-export const CDN_DOMAIN = process.env.NEXT_PUBLIC_VIDEO_DOMAIN || "";
+export const CDN_DOMAIN =
+  process.env.NEXT_PUBLIC_VIDEO_DOMAIN || "https://cdn.teacherduc.me";
 
 export function validateB2Config(): string | null {
   if (!process.env.B2_KEY_ID || process.env.B2_KEY_ID.startsWith("dummy")) {
@@ -20,7 +21,10 @@ export function validateB2Config(): string | null {
   if (!process.env.B2_APP_KEY || process.env.B2_APP_KEY.startsWith("dummy")) {
     return "B2_APP_KEY chưa được cấu hình";
   }
-  if (!process.env.B2_BUCKET_NAME || process.env.B2_BUCKET_NAME.startsWith("dummy")) {
+  if (
+    !process.env.B2_BUCKET_NAME ||
+    process.env.B2_BUCKET_NAME.startsWith("dummy")
+  ) {
     return "B2_BUCKET_NAME chưa được cấu hình";
   }
   return null;
@@ -41,14 +45,16 @@ export function sanitizeFileName(fileName: string): string {
   const parts = fileName.split(".");
   const ext = parts.length > 1 ? parts.pop() : "";
   const name = parts.join(".");
-  
+
   let safeName = slugify(name);
   if (!safeName) safeName = "file";
-  
+
   return ext ? `${safeName}.${ext}` : safeName;
 }
 
-export async function commitTempFile(url: string | null | undefined): Promise<string | null> {
+export async function commitTempFile(
+  url: string | null | undefined,
+): Promise<string | null> {
   if (!url || typeof url !== "string") return url || null;
   if (!url.includes("/temp/")) return url;
 
@@ -62,6 +68,7 @@ export async function commitTempFile(url: string | null | undefined): Promise<st
     const sourceKey = pathname.substring(tempIndex);
     const destinationKey = sourceKey.replace("temp/", "");
 
+    // Thực hiện sao chép file từ thư mục tạm sang thư mục chính thức trên B2
     const command = new CopyObjectCommand({
       Bucket: B2_BUCKET_NAME,
       CopySource: encodeURI(`${B2_BUCKET_NAME}/${sourceKey}`),
@@ -70,7 +77,14 @@ export async function commitTempFile(url: string | null | undefined): Promise<st
 
     await b2Client.send(command);
 
-    return url.replace("/temp/", "/");
+    // Chuẩn hóa CDN Domain (xử lý bỏ dấu gạch chéo thừa ở cuối nếu có)
+    const cleanCdnBase = CDN_DOMAIN.endsWith("/")
+      ? CDN_DOMAIN.slice(0, -1)
+      : CDN_DOMAIN;
+
+    // Trả về định dạng URL Cloudflare CDN siêu ngắn gọn để lưu vào Database
+    // Kết quả dạng: https://cdn.teacherduc.me/documents/abc.pdf
+    return `${cleanCdnBase}/${destinationKey}`;
   } catch (error) {
     console.error("[B2] Failed to commit temp file:", error);
     return url;
