@@ -50,15 +50,14 @@ async function autoCleanupOldHomework() {
     "🚀 Bắt đầu tiến trình dọn dẹp bài tập cũ để giải phóng dung lượng...",
   );
 
-  // ⏱️ Thiết lập hạn xử lý cuốn chiếu: 7 ngày kể từ lúc chấm xong
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 21);
 
   try {
     // 1. Tìm các bài nộp đã quá 7 ngày VÀ đã được chấm xong (Tránh đụng vào bài PENDING)
     const oldSubmissions = await prisma.homeworkSubmission.findMany({
       where: {
-        updatedAt: { lt: oneWeekAgo },
+        updatedAt: { lt: cutoffDate },
         status: { in: ["SATISFACTORY", "UNSATISFACTORY"] },
       },
     });
