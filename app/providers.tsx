@@ -2,6 +2,7 @@
 
 import { SessionProvider } from "next-auth/react";
 import { GlobalDiscordModal } from "@/components/modals/GlobalDiscordModal";
+import "@/app/polyfills";
 import { polyfillURLParse } from "@/lib/utils";
 
 polyfillURLParse();
