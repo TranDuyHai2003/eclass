@@ -5,9 +5,10 @@ export const compressImage = async (file: File): Promise<File> => {
   if (file.type === "image/svg+xml" || file.type === "image/gif") return file;
 
   const options = {
-    maxSizeMB: 0.5,
-    maxWidthOrHeight: 1920,
-    useWebWorker: false,
+    maxSizeMB: 0.5,           // Ép dung lượng tối đa về ~500KB
+    maxWidthOrHeight: 1600,   // Giữ độ phân giải đủ lớn để zoom không vỡ chữ
+    useWebWorker: true,       // Chạy ngầm để không làm đơ giật giao diện
+    initialQuality: 0.8       // Giữ chất lượng ở mức 80%
   };
 
   try {

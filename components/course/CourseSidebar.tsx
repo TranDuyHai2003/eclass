@@ -110,7 +110,7 @@ export default function CourseSidebar({
   });
 
   const [activeHomeworkLessonId, setActiveHomeworkLessonId] = useState<string | null>(null);
-  const [inlineAttachments, setInlineAttachments] = useState<{ name: string; url: string }[]>([]);
+  const [inlineAttachments, setInlineAttachments] = useState<{ name: string; url: string; size?: number }[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -127,7 +127,7 @@ export default function CourseSidebar({
     file: File,
     index: number,
     total: number,
-  ): Promise<{ name: string; url: string } | null> => {
+  ): Promise<{ name: string; url: string; size?: number } | null> => {
     try {
       const compressed = await compressImage(file);
       const safeFileName = `homework_${Date.now()}_${Math.random().toString(36).substring(2, 8)}_${encodeURIComponent(compressed.name)}`;
@@ -148,7 +148,7 @@ export default function CourseSidebar({
       if (!res.data?.publicUrl) {
         throw new Error("Server không trả về URL hợp lệ");
       }
-      return { name: file.name, url: res.data.publicUrl };
+      return { name: file.name, url: res.data.publicUrl, size: compressed.size };
     } catch (error) {
       console.error(`[Upload Error] File ${file.name}:`, error);
       const axiosError = error as { response?: { data?: { message?: string } }; message?: string };

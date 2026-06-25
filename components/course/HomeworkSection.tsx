@@ -15,7 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import axios from "axios";
-import { submitHomework } from "@/actions/homework";
+import { submitHomework, deleteDraftFile } from "@/actions/homework";
+import { compressImage } from "@/lib/compressImage";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
@@ -30,9 +31,10 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [attachments, setAttachments] = useState<{ name: string, url: string }[]>(
+  const [attachments, setAttachments] = useState<{ name: string, url: string, size?: number }[]>(
     initialSubmission?.attachments || []
   );
+  const [draftUrls, setDraftUrls] = useState<string[]>([]);
   const [submission, setSubmission] = useState(initialSubmission);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,22 +43,26 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
 
     setIsUploading(true);
     try {
-      const newAttachments = [...attachments];
       for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (file.size > MAX_FILE_SIZE) {
-          toast.error(`Tệp "${file.name}" vượt quá 50MB. Vui lòng chọn tệp nhỏ hơn.`);
+        const originalFile = files[i];
+        if (originalFile.size > MAX_FILE_SIZE) {
+          toast.error(`Tệp "${originalFile.name}" vượt quá 50MB. Vui lòng chọn tệp nhỏ hơn.`);
           continue;
         }
+        
+        const file = await compressImage(originalFile);
         const fileBuffer = await file.arrayBuffer();
+        
         const res = await axios.put<{ publicUrl: string }>(
           `/api/upload/proxy?fileName=homework_${Date.now()}_${encodeURIComponent(file.name)}`,
           fileBuffer,
           { headers: { "Content-Type": file.type || "application/octet-stream" } }
         );
-        newAttachments.push({ name: file.name, url: res.data.publicUrl });
+        
+        const newAttachment = { name: file.name, url: res.data.publicUrl, size: file.size };
+        setAttachments(prev => [...prev, newAttachment]);
+        setDraftUrls(prev => [...prev, res.data.publicUrl]);
       }
-      setAttachments(newAttachments);
       toast.success("Tải tệp lên thành công");
     } catch (error: any) {
       const message = error?.response?.data || error?.message || "Lỗi tải tệp lên";
@@ -64,11 +70,22 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
       toast.error(`Lỗi tải tệp lên: ${message}`);
     } finally {
       setIsUploading(false);
+      e.target.value = "";
     }
   };
 
-  const removeAttachment = (index: number) => {
+  const removeAttachment = async (index: number) => {
+    const fileToRemove = attachments[index];
     setAttachments(prev => prev.filter((_, i) => i !== index));
+    
+    if (fileToRemove.url && draftUrls.includes(fileToRemove.url)) {
+      try {
+        await deleteDraftFile(fileToRemove.url);
+        setDraftUrls(prev => prev.filter(url => url !== fileToRemove.url));
+      } catch (e) {
+        console.error("Lỗi xóa tệp nháp B2", e);
+      }
+    }
   };
 
   const handleSubmit = async () => {
@@ -82,6 +99,7 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
       const res = await submitHomework(lessonId, attachments);
       if (res.success) {
         setSubmission(res.submission);
+        setDraftUrls([]);
         toast.success("Nộp bài tập thành công!");
         router.refresh();
       }
@@ -169,7 +187,15 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
                     </p>
                     {attachments.length > 0 && (
                        <button 
-                          onClick={() => setAttachments([])}
+                          onClick={() => {
+                            attachments.forEach(file => {
+                              if (file.url && draftUrls.includes(file.url)) {
+                                deleteDraftFile(file.url).catch(console.error);
+                              }
+                            });
+                            setDraftUrls([]);
+                            setAttachments([]);
+                          }}
                           className="text-[9px] font-black text-rose-500 uppercase hover:underline"
                        >
                           Xóa tất cả tệp nháp

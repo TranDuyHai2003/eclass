@@ -38,10 +38,36 @@ function extractS3Key(fileUrl: string): string | null {
 // 2. CÁC SERVER ACTIONS
 // ----------------------------------------------------------------------
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // Đặt giới hạn cứng là 50MB
+
+export async function deleteDraftFile(url: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const s3Key = extractS3Key(url);
+  if (!s3Key) return { success: false };
+
+  try {
+    await b2Client.send(new DeleteObjectCommand({ Bucket: B2_BUCKET_NAME, Key: s3Key }));
+    console.log(`[B2 Cleanup] Đã xóa file nháp: ${s3Key}`);
+    return { success: true };
+  } catch (err) {
+    console.error(`[B2 Cleanup Lỗi] Không thể xóa file nháp: ${s3Key}`, err);
+    return { success: false };
+  }
+}
+
 export async function submitHomework(
   lessonId: string,
-  attachments: { name: string; url: string }[],
+  attachments: { name: string; url: string; size?: number }[],
 ) {
+  // Rà soát lại toàn bộ file trước khi lưu
+  for (const file of attachments) {
+    if (file.size && file.size > MAX_FILE_SIZE) {
+      throw new Error("File quá lớn! Vui lòng chụp lại với chất lượng vừa phải hoặc dùng ảnh nén.");
+    }
+  }
+
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
@@ -67,6 +93,11 @@ export async function submitHomework(
     const oldAttachments = existing.attachments as any as { url: string }[];
     for (const file of oldAttachments) {
       if (!file.url) continue;
+      
+      // CHÚ Ý: Không xóa nếu người dùng quyết định giữ lại file này trong bài nộp mới
+      const isRetained = attachments.some(newFile => newFile.url === file.url);
+      if (isRetained) continue;
+
       const s3Key = extractS3Key(file.url);
       if (!s3Key) continue;
 
@@ -74,7 +105,7 @@ export async function submitHomework(
         await b2Client.send(
           new DeleteObjectCommand({ Bucket: B2_BUCKET_NAME, Key: s3Key }),
         );
-        console.log(`[B2 Cleanup] Đã xóa rác mồ côi do nộp đè: ${s3Key}`);
+        console.log(`[B2 Cleanup] Đã xóa rác mồ côi do nộp đè (file bị loại bỏ): ${s3Key}`);
       } catch (err) {
         console.error(`[B2 Cleanup Lỗi] Không thể xóa file cũ: ${s3Key}`, err);
       }
@@ -89,7 +120,7 @@ export async function submitHomework(
       },
     },
     update: {
-      attachments: attachments as any,
+      attachments: { set: attachments as any },
       status: "PENDING", // Reset to pending if re-submitted
       feedback: null, // Clear old feedback on resubmit
     },
@@ -153,6 +184,10 @@ export async function deleteHomeworkSubmission(submissionId: string) {
   const submissionToDelete = await prisma.homeworkSubmission.findUnique({
     where: { id: submissionId },
   });
+
+  if (!submissionToDelete) {
+    return { success: true };
+  }
 
   if (
     submissionToDelete &&
