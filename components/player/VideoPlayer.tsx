@@ -104,16 +104,21 @@ export default function VideoPlayer({
   }, [isIOS, isMounted]);
 
   const thumbnailSrc = useMemo(() => {
-    if (poster) return poster;
     if (youtubeId) return `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
+    if (poster) return poster;
     return '';
   }, [poster, youtubeId]);
 
   const [thumbnailSrcFinal, setThumbnailSrcFinal] = useState(thumbnailSrc);
+  const [hasStarted, setHasStarted] = useState(autoPlay || false);
 
   useEffect(() => {
     setThumbnailSrcFinal(thumbnailSrc);
   }, [thumbnailSrc]);
+
+  useEffect(() => {
+    setHasStarted(autoPlay || false);
+  }, [src, autoPlay]);
 
   if (!isMounted) return <div className="aspect-video w-full bg-slate-900 rounded-xl animate-pulse" />;
 
@@ -136,17 +141,47 @@ export default function VideoPlayer({
         paddingBottom: 'env(safe-area-inset-bottom)',
       } : {}}
     >
-      {thumbnailSrcFinal && !isFakeFullscreen && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={thumbnailSrcFinal}
-          alt={title}
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-          onError={() => {
-            if (poster || !youtubeId) return;
-            setThumbnailSrcFinal(`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`);
+      {!hasStarted && (
+        <div 
+          className="absolute inset-0 z-40 bg-black flex flex-col justify-center items-center cursor-pointer group"
+          onClick={() => {
+            setHasStarted(true);
+            if (playerRef.current) {
+              playerRef.current.play();
+            }
           }}
-        />
+        >
+          {thumbnailSrcFinal && (
+            <img
+              src={thumbnailSrcFinal}
+              alt={title}
+              className="absolute inset-0 w-full h-full object-contain"
+              onError={() => {
+                if (poster || !youtubeId) return;
+                setThumbnailSrcFinal(`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`);
+              }}
+            />
+          )}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+             {youtubeId ? (
+               <svg 
+                 style={{ width: '68px', height: '48px', color: '#FF0000' }}
+                 className="drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] group-hover:scale-105 transition-transform duration-200" 
+                 viewBox="0 0 68 48" 
+                 fill="currentColor"
+               >
+                  <path d="M66.52,7.74c-0.78-2.93-2.49-5.41-5.42-6.19C55.79,.13,34,0,34,0S12.21,.13,6.9,1.55 C3.97,2.33,2.27,4.81,1.48,7.74C0.06,13.05,0,24,0,24s0.06,10.95,1.48,16.26c0.78,2.93,2.49,5.41,5.42,6.19 C12.21,47.87,34,48,34,48s21.79-0.13,27.1-1.55c2.93-0.78,4.64-3.26,5.42-6.19C67.94,34.95,68,24,68,24S67.94,13.05,66.52,7.74z"></path>
+                  <path fill="white" d="M27,36l18-12L27,12V36z"></path>
+               </svg>
+             ) : (
+               <div className="w-16 h-16 bg-black/50 border border-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-black/70 transition-colors">
+                 <svg className="w-8 h-8 text-white translate-x-0.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                 </svg>
+               </div>
+             )}
+          </div>
+        </div>
       )}
 
       <MediaPlayer
