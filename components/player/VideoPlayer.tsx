@@ -161,7 +161,6 @@ export default function VideoPlayer({
         <div
           className="absolute inset-0 z-40 bg-black flex flex-col justify-center items-center cursor-pointer group"
           onClick={() => {
-            setHasStarted(true);
             if (playerRef.current) {
               playerRef.current.play();
             }
@@ -216,6 +215,7 @@ export default function VideoPlayer({
         playsInline
         autoPlay={autoPlay}
         muted={muted}
+        onPlay={() => setHasStarted(true)}
         // Bắt buộc Vidstack không được phình to hơn container
         style={
           isFakeFullscreen
