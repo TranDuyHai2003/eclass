@@ -206,3 +206,10 @@ h6 {
 .vds-play-button {
   display: none !important;
 }
+/* Loading spinner */
+.vds-buffering-indicator,
+.vds-loading-indicator,
+.vds-spinner,
+[data-media-loading-indicator] {
+  display: none !important;
+}
