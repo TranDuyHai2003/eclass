@@ -108,6 +108,22 @@ export default function RootLayout({
     <html lang="vi">
       <head>
         <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof Promise.withResolvers === 'undefined') {
+                Promise.withResolvers = function () {
+                  var resolve, reject;
+                  var promise = new Promise(function (res, rej) {
+                    resolve = res;
+                    reject = rej;
+                  });
+                  return { promise: promise, resolve: resolve, reject: reject };
+                };
+              }
+            `,
+          }}
+        />
+        <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
