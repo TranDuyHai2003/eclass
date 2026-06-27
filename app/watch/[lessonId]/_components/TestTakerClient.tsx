@@ -18,6 +18,16 @@ import { useRouter } from "next/navigation";
 import { startTestAttempt, getTestDraft } from "@/actions/test";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import axios from "axios";
 
@@ -46,7 +56,9 @@ export default function TestTakerClient({
   const router = useRouter();
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<Date | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
+  const [submitStats, setSubmitStats] = useState({ answeredCount: 0, totalQuestions: 0 });
   const [loadingInitial, setLoadingInitial] = useState(true);
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -69,7 +81,7 @@ export default function TestTakerClient({
   // Sync answers to server (debounced)
   const syncToServer = useCallback(() => {
     const currentAttemptId = attemptIdRef.current;
-    if (!currentAttemptId || isPending || isSubmittingRef.current) return;
+    if (!currentAttemptId || isSubmitting || isSubmittingRef.current) return;
     const currentAnswers = answersRef.current;
     const answersArray = Object.keys(currentAnswers)
       .filter((k) => currentAnswers[k] !== "")
@@ -81,7 +93,7 @@ export default function TestTakerClient({
     axios
       .post("/api/tests/draft", { attemptId: currentAttemptId, answersArray })
       .catch((e) => console.error("[Auto-save] Sync failed:", e));
-  }, [isPending]);
+  }, [isSubmitting]);
 
   const attemptIdRef = useRef(attemptId);
   useEffect(() => {
@@ -228,8 +240,18 @@ export default function TestTakerClient({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [attemptId, flags]);
 
-  const handleSubmit = useCallback(() => {
-    if (!attemptId || isPending || isSubmittingRef.current) return;
+  const handleInitiateSubmit = useCallback(() => {
+    const isUploadingAny = Object.values(isUploading).some(Boolean);
+    if (isUploadingAny) {
+      toast.warning("Đang tải lên tệp đính kèm. Vui lòng chờ hoàn tất trước khi nộp bài.");
+      return;
+    }
+    
+    if (!attemptId) {
+      toast.error("Không tìm thấy thông tin bài thi. Vui lòng tải lại trang.");
+      return;
+    }
+    if (isSubmitting || isSubmittingRef.current) return;
 
     let totalQuestions = 0;
     test.sections.forEach((s: any) => (totalQuestions += s.questions.length));
@@ -238,51 +260,55 @@ export default function TestTakerClient({
     ).length;
 
     if (answeredCount < totalQuestions) {
-      if (
-        !confirm(
-          `Bạn mới làm ${answeredCount}/${totalQuestions} câu. Bạn có chắc chắn muốn nộp bài?`,
-        )
-      ) {
-        return;
-      }
+      setSubmitStats({ answeredCount, totalQuestions });
+      setShowConfirmSubmit(true);
+      return;
     }
 
-    isSubmittingRef.current = true;
-    startTransition(async () => {
-      try {
-        const answersArray = Object.keys(answers).map((qId) => ({
-          questionId: qId,
-          answerProvided: answers[qId],
-        }));
+    executeSubmit();
+  }, [attemptId, answers, test, isSubmitting]);
 
-        const { data: res } = await axios.post("/api/tests/submit", {
-          attemptId,
-          answersArray,
-        });
-        if (res.success) {
-          if (!res.alreadySubmitted) {
-            toast.success("Nộp bài thành công!");
-          }
-          try {
-            localStorage.removeItem(`draft_${attemptId}`);
-            localStorage.removeItem(`flags_${attemptId}`);
-          } catch (e) {
-            console.warn("[localStorage] removeItem failed");
-          }
-          const path = resultsPath
-            ? `${resultsPath}/${attemptId}`
-            : `/watch/${lesson.id}/results/${attemptId}`;
-          router.push(path);
-        } else {
-          throw new Error((res as any).error || "Lỗi nộp bài");
+  const executeSubmit = async () => {
+    if (!attemptId || isSubmittingRef.current) return;
+    
+    setShowConfirmSubmit(false);
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+    
+    try {
+      const answersArray = Object.keys(answers).map((qId) => ({
+        questionId: qId,
+        answerProvided: answers[qId],
+      }));
+
+      const { data: res } = await axios.post("/api/tests/submit", {
+        attemptId,
+        answersArray,
+      });
+      if (res.success) {
+        if (!res.alreadySubmitted) {
+          toast.success("Nộp bài thành công!");
         }
-      } catch (e: any) {
-        toast.error(e.message || "Không thể nộp bài");
-      } finally {
-        isSubmittingRef.current = false;
+        try {
+          localStorage.removeItem(`draft_${attemptId}`);
+          localStorage.removeItem(`flags_${attemptId}`);
+        } catch (e) {
+          console.warn("[localStorage] removeItem failed");
+        }
+        const path = resultsPath
+          ? `${resultsPath}/${attemptId}`
+          : `/watch/${lesson.id}/results/${attemptId}`;
+        router.push(path);
+      } else {
+        throw new Error((res as any).error || "Lỗi nộp bài");
       }
-    });
-  }, [attemptId, answers, test, lesson, resultsPath, router, isPending]);
+    } catch (e: any) {
+      toast.error(e.message || "Không thể nộp bài");
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSelectAnswer = (qId: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [qId]: value }));
@@ -290,15 +316,12 @@ export default function TestTakerClient({
 
   const handleToggleAnswer = (qId: string, value: string) => {
     setAnswers((prev) => {
-      const current = prev[qId] || "";
-      const currentArray = current ? current.split(",") : [];
-      if (currentArray.includes(value)) {
-        const newArray = currentArray.filter((v) => v !== value);
-        return { ...prev, [qId]: newArray.join(",") };
-      } else {
-        const newArray = [...currentArray, value].sort();
-        return { ...prev, [qId]: newArray.join(",") };
+      // Single choice toggle: if clicking the already selected answer, clear it.
+      // Otherwise, select the new answer (replacing any previous selection).
+      if (prev[qId] === value) {
+        return { ...prev, [qId]: "" };
       }
+      return { ...prev, [qId]: value };
     });
   };
 
@@ -440,12 +463,12 @@ export default function TestTakerClient({
             </div>
 
             <Button
-              onClick={handleSubmit}
-              disabled={isPending}
-              className="gap-1.5 md:gap-2 bg-blue-600 hover:bg-blue-700 h-9 md:h-11 text-xs md:text-sm px-4 md:px-6 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-blue-500/20"
+              onClick={handleInitiateSubmit}
+              disabled={isSubmitting || Object.values(isUploading).some(Boolean)}
+              className="gap-1.5 md:gap-2 bg-blue-600 hover:bg-blue-700 h-9 md:h-11 text-xs md:text-sm px-4 md:px-6 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 select-none touch-manipulation"
             >
               <Send className="h-3.5 md:h-4 w-3.5 md:h-4" />
-              <span>{isPending ? "..." : "Nộp bài"}</span>
+              <span>{isSubmitting ? "..." : "Nộp bài"}</span>
             </Button>
           </div>
 
@@ -517,8 +540,8 @@ export default function TestTakerClient({
                                   key={opt}
                                   onClick={() => handleToggleAnswer(q.id, opt)}
                                   className={cn(
-                                    "w-8 h-8 rounded-lg border text-xs font-black transition-all",
-                                    (val ? val.split(",") : []).includes(opt)
+                                    "w-8 h-8 rounded-lg border text-xs font-black transition-all select-none touch-manipulation",
+                                    val === opt
                                       ? "bg-blue-600 text-white border-blue-600 shadow-md scale-105"
                                       : "bg-white text-slate-500 border-slate-200 hover:border-blue-400 hover:bg-blue-50/30",
                                   )}
@@ -541,7 +564,7 @@ export default function TestTakerClient({
                                     handleSelectAnswer(q.id, opt.value)
                                   }
                                   className={cn(
-                                    "px-4 h-8 rounded-lg border text-xs font-black transition-all",
+                                    "px-4 h-8 rounded-lg border text-xs font-black transition-all select-none touch-manipulation",
                                     val === opt.value
                                       ? "bg-blue-600 text-white border-blue-600 shadow-md scale-105"
                                       : "bg-white text-slate-500 border-slate-200 hover:border-blue-400 hover:bg-blue-50/30",
@@ -665,6 +688,22 @@ export default function TestTakerClient({
           </div>
         </div>
       </div>
+      <AlertDialog open={showConfirmSubmit} onOpenChange={setShowConfirmSubmit}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Chưa hoàn thành tất cả câu hỏi</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn mới làm {submitStats.answeredCount}/{submitStats.totalQuestions} câu. Bạn có chắc chắn muốn nộp bài?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={executeSubmit} disabled={isSubmitting}>
+              {isSubmitting ? "Đang nộp..." : "Nộp bài"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

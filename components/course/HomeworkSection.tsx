@@ -250,7 +250,7 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
                     <Button 
                       onClick={handleSubmit}
                       disabled={isSubmitting || isUploading || attachments.length === 0}
-                      className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 font-black uppercase text-xs tracking-widest flex items-center gap-2 group"
+                      className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 font-black uppercase text-xs tracking-widest flex items-center gap-2 group select-none touch-manipulation"
                     >
                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
                        Nộp bài
