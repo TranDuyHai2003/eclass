@@ -61,7 +61,7 @@ export default function TestTakerClient({
   const [submitStats, setSubmitStats] = useState({ answeredCount: 0, totalQuestions: 0 });
   const [loadingInitial, setLoadingInitial] = useState(true);
 
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, any>>({});
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [isUploading, setIsUploading] = useState<Record<string, boolean>>({});
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
@@ -87,7 +87,7 @@ export default function TestTakerClient({
       .filter((k) => currentAnswers[k] !== "")
       .map((qId) => ({
         questionId: qId,
-        answerProvided: currentAnswers[qId],
+        answerProvided: typeof currentAnswers[qId] === 'object' ? JSON.stringify(currentAnswers[qId]) : currentAnswers[qId],
       }));
     if (answersArray.length === 0) return;
     axios
@@ -125,8 +125,14 @@ export default function TestTakerClient({
           const draftRes = await getTestDraft(res.attempt.id);
           if (draftRes.success) {
             for (const a of draftRes.answers) {
-              if (a.answerProvided)
-                serverAnswers[a.questionId] = a.answerProvided;
+              if (a.answerProvided) {
+                try {
+                  const parsed = JSON.parse(a.answerProvided);
+                  serverAnswers[a.questionId] = typeof parsed === 'object' && parsed !== null ? parsed : a.answerProvided;
+                } catch (e) {
+                  serverAnswers[a.questionId] = a.answerProvided;
+                }
+              }
             }
           }
         } catch (e) {
@@ -170,7 +176,7 @@ export default function TestTakerClient({
         ) {
           const mergedArray = Object.keys(merged)
             .filter((k) => merged[k] !== "")
-            .map((qId) => ({ questionId: qId, answerProvided: merged[qId] }));
+            .map((qId) => ({ questionId: qId, answerProvided: typeof merged[qId] === 'object' ? JSON.stringify(merged[qId]) : merged[qId] }));
           if (mergedArray.length > 0) {
             axios
               .post("/api/tests/draft", {
@@ -276,10 +282,21 @@ export default function TestTakerClient({
     setIsSubmitting(true);
     
     try {
-      const answersArray = Object.keys(answers).map((qId) => ({
-        questionId: qId,
-        answerProvided: answers[qId],
-      }));
+      const answersArray = Object.keys(answers).map((qId) => {
+        const q = test.sections.flatMap((s: any) => s.questions).find((q: any) => q.id === qId);
+        if (q?.type === 'MULTIPLE_CHOICE_GROUP') {
+          const valObj = (answers[qId] as Record<string, string>) || {};
+          const subAnswers = Object.keys(valObj).map(subId => ({
+            subQuestionId: subId,
+            answerProvided: valObj[subId]
+          }));
+          return { questionId: qId, answerProvided: "", subAnswers };
+        }
+        return {
+          questionId: qId,
+          answerProvided: answers[qId],
+        };
+      });
 
       const { data: res } = await axios.post("/api/tests/submit", {
         attemptId,
@@ -322,6 +339,23 @@ export default function TestTakerClient({
         return { ...prev, [qId]: "" };
       }
       return { ...prev, [qId]: value };
+    });
+  };
+
+  const handleSelectSubAnswer = (qId: string, subQId: string, value: string) => {
+    setAnswers((prev) => {
+      const current = prev[qId] || {};
+      return { ...prev, [qId]: { ...current, [subQId]: value } };
+    });
+  };
+
+  const handleToggleSubAnswer = (qId: string, subQId: string, value: string) => {
+    setAnswers((prev) => {
+      const current = prev[qId] || {};
+      if (current[subQId] === value) {
+         return { ...prev, [qId]: { ...current, [subQId]: "" } };
+      }
+      return { ...prev, [qId]: { ...current, [subQId]: value } };
     });
   };
 
@@ -620,7 +654,7 @@ export default function TestTakerClient({
                                   <span className="text-xs font-black text-slate-500 group-hover:text-blue-700 uppercase tracking-tight">
                                     {isUploading[q.id]
                                       ? "Đang tải..."
-                                      : "Nộp bài tự luận"}
+                                      : "Tải tệp lên"}
                                   </span>
                                 </div>
                                 <input
@@ -635,10 +669,10 @@ export default function TestTakerClient({
                               {val && (
                                 <div className="flex items-center gap-2 p-2.5 bg-blue-50/50 border border-blue-100 rounded-xl group animate-in fade-in slide-in-from-top-1">
                                   <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shadow-sm border border-slate-100">
-                                    {val.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                                      <ImageIcon className="w-5 h-5 text-blue-500" />
+                                    {val.match(/\\.(jpg|jpeg|png|gif)$/i) ? (
+                                      <span className="w-5 h-5 text-blue-500 font-bold text-[10px] flex items-center justify-center">IMG</span>
                                     ) : (
-                                      <FileText className="w-5 h-5 text-blue-500" />
+                                      <span className="w-5 h-5 text-blue-500 font-bold text-[10px] flex items-center justify-center">FILE</span>
                                     )}
                                   </div>
                                   <div className="flex-1 min-w-0">
@@ -654,7 +688,6 @@ export default function TestTakerClient({
                                         className="text-[10px] font-black text-blue-600 uppercase hover:underline flex items-center gap-1"
                                       >
                                         Xem bài làm{" "}
-                                        <ExternalLink className="w-2.5 h-2.5" />
                                       </a>
                                     ) : (
                                       <span className="text-[10px] font-black text-slate-600 uppercase">
@@ -673,7 +706,46 @@ export default function TestTakerClient({
                             </div>
                           )}
 
-                          {!isChoice && !isShort && !isEssay && (
+                          {normalizedType === "MULTIPLE_CHOICE_GROUP" && (
+                            <div className="flex flex-col gap-2 w-full mt-2">
+                              {(q.subQuestions || []).map((sq: any, sqIdx: number) => {
+                                const subVal = val ? val[sq.id] : "";
+                                const sqIsChoice = sq.type === "MULTIPLE_CHOICE";
+                                const sqIsTrueFalse = sq.type === "TRUE_FALSE";
+                                const sqIsShort = sq.type === "SHORT_ANSWER";
+
+                                return (
+                                  <div key={sq.id} className="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-200">
+                                    <span className="text-xs font-bold text-slate-400 w-5 shrink-0 text-center">{sqIdx + 1}.</span>
+                                    <div className="flex-1"></div>
+                                    <div className="shrink-0 flex items-center justify-end min-w-[120px]">
+                                      <div className="flex gap-1.5">
+                                        {[
+                                          { label: "Đúng", value: "T" },
+                                          { label: "Sai", value: "F" },
+                                        ].map((opt) => (
+                                          <button
+                                            key={opt.value}
+                                            onClick={() => handleSelectSubAnswer(q.id, sq.id, opt.value)}
+                                            className={cn(
+                                              "w-10 h-8 rounded-lg border text-[10px] font-black transition-all",
+                                              subVal === opt.value
+                                                ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                                                : "bg-white text-slate-500 hover:border-blue-400 hover:bg-blue-50/30"
+                                            )}
+                                          >
+                                            {opt.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {!isChoice && !isShort && !isEssay && normalizedType !== "MULTIPLE_CHOICE_GROUP" && (
                             <div className="text-xs text-slate-500 font-bold py-2">
                               Không xác định loại câu hỏi
                             </div>

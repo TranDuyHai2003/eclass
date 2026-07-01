@@ -174,7 +174,7 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
     if (typeof raw !== "string") return "MULTIPLE_CHOICE";
     const type = raw.trim().toUpperCase();
     if (type === "MCQ" || type === "MULTIPLE_CHOICE_SINGLE") return "MULTIPLE_CHOICE";
-    if (type === "TRUE_FALSE" || type === "SHORT_ANSWER" || type === "ESSAY" || type === "MULTIPLE_CHOICE") return type;
+    if (type === "TRUE_FALSE" || type === "SHORT_ANSWER" || type === "ESSAY" || type === "MULTIPLE_CHOICE" || type === "MULTIPLE_CHOICE_GROUP") return type;
     return "MULTIPLE_CHOICE";
   };
 
@@ -281,12 +281,43 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
 
         if (isTempQuestion || !existingQuestionIds.includes(q.id)) {
           await tx.question.create({
-            data: questionData
+            data: {
+              ...questionData,
+              subQuestions: q.type === 'MULTIPLE_CHOICE_GROUP' && Array.isArray(q.subQuestions) ? {
+                create: q.subQuestions.map((sq: any, sqIdx: number) => ({
+                  content: sq.content || `Ý ${sqIdx + 1}`,
+                  type: 'TRUE_FALSE',
+                  correctAnswer: normalizeAnswer(sq.correctAnswer) || "T",
+                  position: sqIdx
+                }))
+              } : undefined
+            }
           });
         } else {
           await tx.question.update({
             where: { id: q.id },
-            data: questionData
+            data: {
+              ...questionData,
+              subQuestions: q.type === 'MULTIPLE_CHOICE_GROUP' && Array.isArray(q.subQuestions) ? {
+                deleteMany: {
+                  id: { notIn: q.subQuestions.map((s: any) => s.id).filter((id: any) => id && !id.startsWith('temp-') && !id.startsWith('parsed-')) }
+                },
+                upsert: q.subQuestions.map((sq: any, sqIdx: number) => ({
+                  where: { id: (sq.id && !sq.id.startsWith('temp-') && !sq.id.startsWith('parsed-')) ? sq.id : 'fake-non-existent-id' },
+                  update: {
+                    content: sq.content || `Ý ${sqIdx + 1}`,
+                    correctAnswer: normalizeAnswer(sq.correctAnswer) || "T",
+                    position: sqIdx
+                  },
+                  create: {
+                    content: sq.content || `Ý ${sqIdx + 1}`,
+                    type: 'TRUE_FALSE',
+                    correctAnswer: normalizeAnswer(sq.correctAnswer) || "T",
+                    position: sqIdx
+                  }
+                }))
+              } : undefined
+            }
           });
         }
       }
@@ -531,7 +562,46 @@ function checkAnswerMatch(provided: string | null | undefined, expected: string 
   return expectedOptions.includes(providedNorm);
 }
 
-export async function submitTestAttempt(attemptId: string, studentAnswers: { questionId: string, answerProvided: string }[]) {
+function parseMathValue(val: string): string {
+  val = val.trim().replace(/,/g, '.');
+  if (val.includes('/')) {
+    const parts = val.split('/');
+    if (parts.length === 2) {
+      const num = parseFloat(parts[0]);
+      const den = parseFloat(parts[1]);
+      if (!isNaN(num) && !isNaN(den) && den !== 0) {
+        return parseFloat((num / den).toFixed(6)).toString();
+      }
+    }
+  }
+  // Normalize decimals: "0.50" -> "0.5", ".5" -> "0.5"
+  if (/^-?\\d*\\.?\\d+$/.test(val)) {
+     const parsed = parseFloat(val);
+     if (!isNaN(parsed)) return parsed.toString();
+  }
+  return val;
+}
+
+function checkSubQuestionCorrect(
+  studentAns: string | undefined | null, 
+  correctAns: string, 
+  type: string
+): boolean {
+  if (!studentAns) return false;
+
+  if (type === 'SHORT_ANSWER') {
+    const studentVal = parseMathValue(studentAns.toLowerCase());
+    const correctVal = parseMathValue(correctAns.toLowerCase());
+    return studentVal === correctVal;
+  }
+
+  return studentAns.trim().toLowerCase() === correctAns.trim().toLowerCase();
+}
+
+export async function submitTestAttempt(
+  attemptId: string, 
+  studentAnswers: { questionId: string, answerProvided: string, subAnswers?: { subQuestionId: string, answerProvided: string }[] }[]
+) {
   const session = await auth();
   if (!session || !session.user.id) {
     return { success: false, error: "Unauthorized" };
@@ -539,7 +609,7 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
 
   const attempt = await prisma.studentAttempt.findUnique({
     where: { id: attemptId },
-    include: { test: { include: { sections: { include: { questions: true } } } } }
+    include: { test: { include: { sections: { include: { questions: { include: { subQuestions: true } } } } } } }
   });
 
   if (!attempt || attempt.userId !== session.user.id) {
@@ -574,23 +644,56 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
     if (!q) continue; // Skip answers for questions that don't exist in this test
 
     // Commit temp file if the answer is an uploaded file URL
-    ans.answerProvided = await commitTempFile(ans.answerProvided) || ans.answerProvided;
+    if (ans.answerProvided) {
+      ans.answerProvided = await commitTempFile(ans.answerProvided) || ans.answerProvided;
+    }
 
     let isCorrect: boolean | null = false;
     let pointsAwarded = 0;
+    const subAnswersData: any[] = [];
 
-    if (q.type === 'MULTIPLE_CHOICE') {
-      isCorrect = checkAnswerMatch(ans.answerProvided, q.correctAnswer, q.type);
-    } else if (q.type === 'TRUE_FALSE') {
-      isCorrect = checkAnswerMatch(ans.answerProvided, q.correctAnswer, q.type);
-    } else if (q.type === 'SHORT_ANSWER') {
+    if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_FALSE' || q.type === 'SHORT_ANSWER') {
       isCorrect = checkAnswerMatch(ans.answerProvided, q.correctAnswer, q.type);
     } else if (q.type === 'ESSAY') {
       isCorrect = null;
+    } else if (q.type === 'MULTIPLE_CHOICE_GROUP') {
+      const subAnsInput = ans.subAnswers || [];
+      const subQuestions = q.subQuestions || [];
+      let wrongCount = 0;
+
+      subQuestions.forEach((subQ: any) => {
+        const studentAnsObj = subAnsInput.find((a: any) => a.subQuestionId === subQ.id);
+        const studentValue = studentAnsObj ? studentAnsObj.answerProvided : null;
+        const isCorrectSub = checkSubQuestionCorrect(studentValue, subQ.correctAnswer, subQ.type);
+        
+        if (!isCorrectSub) {
+          wrongCount++;
+        }
+
+        subAnswersData.push({
+          subQuestionId: subQ.id,
+          answerProvided: studentValue,
+          isCorrect: isCorrectSub
+        });
+      });
+
+      const pointsMap: Record<number, number> = {
+        0: 1.0,
+        1: 0.5,
+        2: 0.25,
+        3: 0.1,
+        4: 0
+      };
+
+      const ratio = pointsMap[wrongCount] ?? 0;
+      isCorrect = wrongCount === 0; 
+      pointsAwarded = q.points * ratio;
     }
 
-    if (isCorrect === true) {
-      pointsAwarded = q.points;
+    if (q.type !== 'MULTIPLE_CHOICE_GROUP') {
+      if (isCorrect === true) {
+        pointsAwarded = q.points;
+      }
     }
 
     if (pointsAwarded > 0) {
@@ -602,7 +705,8 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
       questionId: ans.questionId,
       answerProvided: ans.answerProvided,
       isCorrect,
-      pointsAwarded
+      pointsAwarded,
+      subAnswersData
     });
   }
 
@@ -634,9 +738,20 @@ export async function submitTestAttempt(attemptId: string, studentAnswers: { que
       where: { attemptId }
     });
 
-    await tx.studentAnswer.createMany({
-      data: answersData
-    });
+    for (const ansData of answersData) {
+      await tx.studentAnswer.create({
+        data: {
+          attemptId: ansData.attemptId,
+          questionId: ansData.questionId,
+          answerProvided: ansData.answerProvided,
+          isCorrect: ansData.isCorrect,
+          pointsAwarded: ansData.pointsAwarded,
+          subAnswers: ansData.subAnswersData && ansData.subAnswersData.length > 0 ? {
+            create: ansData.subAnswersData
+          } : undefined
+        }
+      });
+    }
 
     await tx.studentAttempt.update({
       where: { id: attemptId },

@@ -11,6 +11,7 @@ export default async function TestTakerWrapper({ lessonId, course, lesson }: { l
       sections: {
         include: {
           questions: {
+            include: { subQuestions: true },
             orderBy: { position: "asc" }
           }
         },

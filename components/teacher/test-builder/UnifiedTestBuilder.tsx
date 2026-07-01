@@ -185,7 +185,18 @@ export default function UnifiedTestBuilder({
     setSections(
       initialTest?.sections?.map((s: any) => ({
         ...s,
-        questions: s.questions?.map((q: any) => ({ ...q })) || [],
+        questions: s.questions?.map((q: any) => {
+          let sqs = q.subQuestions || [];
+          if (q.type === 'MULTIPLE_CHOICE_GROUP' && (!sqs || sqs.length === 0)) {
+            sqs = Array(4).fill(0).map((_, i) => ({
+              id: `temp-sq-${Date.now()}-${Math.random()}-${i}`,
+              content: `Ý ${i + 1}`,
+              type: "TRUE_FALSE",
+              correctAnswer: "T"
+            }));
+          }
+          return { ...q, subQuestions: sqs };
+        }) || [],
       })) || [
         {
           id: "temp-section-1",
@@ -207,7 +218,18 @@ export default function UnifiedTestBuilder({
   const [sections, setSections] = useState<any[]>(
     initialTest?.sections?.map((s: any) => ({
       ...s,
-      questions: s.questions?.map((q: any) => ({ ...q })) || [],
+      questions: s.questions?.map((q: any) => {
+        let sqs = q.subQuestions || [];
+        if (q.type === 'MULTIPLE_CHOICE_GROUP' && (!sqs || sqs.length === 0)) {
+          sqs = Array(4).fill(0).map((_, i) => ({
+            id: `temp-sq-${Date.now()}-${Math.random()}-${i}`,
+            content: `Ý ${i + 1}`,
+            type: "TRUE_FALSE",
+            correctAnswer: "T"
+          }));
+        }
+        return { ...q, subQuestions: sqs };
+      }) || [],
     })) || [
       {
         id: "temp-section-1",
@@ -321,6 +343,17 @@ export default function UnifiedTestBuilder({
     setSections((prev) => {
       const ns = [...prev];
       const targetSection = { ...ns[sIdx] };
+      
+      let initialSubQuestions: any[] = [];
+      if (type === "MULTIPLE_CHOICE_GROUP") {
+        initialSubQuestions = Array(4).fill(0).map((_, i) => ({
+          id: `temp-sq-${Date.now()}-${i}`,
+          content: `Ý ${i + 1}`,
+          type: "TRUE_FALSE",
+          correctAnswer: "T"
+        }));
+      }
+
       targetSection.questions = [
         ...targetSection.questions,
         {
@@ -333,6 +366,7 @@ export default function UnifiedTestBuilder({
           videoUrl: "",
           audioUrl: "",
           needsManualGrading: false,
+          subQuestions: initialSubQuestions
         },
       ];
       ns[sIdx] = targetSection;
@@ -352,6 +386,31 @@ export default function UnifiedTestBuilder({
       const targetSection = { ...ns[sIdx] };
       const targetQuestions = [...targetSection.questions];
       targetQuestions[qIdx] = { ...targetQuestions[qIdx], [field]: value };
+      targetSection.questions = targetQuestions;
+      ns[sIdx] = targetSection;
+      return ns;
+    });
+  };
+
+  const handleUpdateSubQuestion = (
+    sIdx: number,
+    qIdx: number,
+    subQIdx: number,
+    field: string,
+    value: any,
+  ) => {
+    markDirty();
+    setSections((prev) => {
+      const ns = [...prev];
+      const targetSection = { ...ns[sIdx] };
+      const targetQuestions = [...targetSection.questions];
+      const currentQ = { ...targetQuestions[qIdx] };
+      const subQuestions = [...(currentQ.subQuestions || [])];
+      
+      subQuestions[subQIdx] = { ...subQuestions[subQIdx], [field]: value };
+      currentQ.subQuestions = subQuestions;
+      targetQuestions[qIdx] = currentQ;
+      
       targetSection.questions = targetQuestions;
       ns[sIdx] = targetSection;
       return ns;
@@ -396,7 +455,17 @@ export default function UnifiedTestBuilder({
         newCorrectAnswer = currentQ.correctAnswer;
       }
 
-      targetQuestions[qIdx] = { ...currentQ, type: newType, correctAnswer: newCorrectAnswer };
+      let subQuestions = currentQ.subQuestions || [];
+      if (newType === "MULTIPLE_CHOICE_GROUP" && subQuestions.length === 0) {
+        subQuestions = Array(4).fill(0).map((_, i) => ({
+          id: `temp-sq-${Date.now()}-${i}`,
+          content: `Ý ${i + 1}`,
+          type: "TRUE_FALSE",
+          correctAnswer: "T"
+        }));
+      }
+
+      targetQuestions[qIdx] = { ...currentQ, type: newType, correctAnswer: newCorrectAnswer, subQuestions };
       targetSection.questions = targetQuestions;
       ns[sIdx] = targetSection;
       return ns;
@@ -939,7 +1008,26 @@ export default function UnifiedTestBuilder({
                                       #{qIdx + 1}
                                     </div>
 
-                                    {q.type === "MULTIPLE_CHOICE" ? (
+                                    {q.type === "MULTIPLE_CHOICE_GROUP" ? (
+                                      <div className="w-full flex flex-col gap-2">
+                                        {(q.subQuestions || []).map((sq: any, sqIdx: number) => (
+                                          <div key={sq.id || sqIdx} className="flex flex-wrap sm:flex-nowrap items-center gap-2 border border-slate-200 p-2 rounded-lg bg-slate-50/50">
+                                            <span className="text-xs font-bold w-5 shrink-0 text-center">{sqIdx + 1}.</span>
+                                            <div className="flex gap-1 shrink-0 ml-auto">
+                                              {[{ label: "Đúng", value: "T" }, { label: "Sai", value: "F" }].map(opt => (
+                                                <button
+                                                  key={opt.value}
+                                                  onClick={() => handleUpdateSubQuestion(sIdx, qIdx, sqIdx, "correctAnswer", opt.value)}
+                                                  className={cn("w-12 h-8 rounded text-[11px] font-bold border transition-all", sq.correctAnswer === opt.value ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-500 hover:bg-slate-100")}
+                                                >
+                                                  {opt.label}
+                                                </button>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : q.type === "MULTIPLE_CHOICE" ? (
                               <div className="flex gap-2 items-center">
                                 <div className="flex gap-1">
                                   {["A", "B", "C", "D"].map((opt) => {
@@ -1111,6 +1199,7 @@ export default function UnifiedTestBuilder({
                                   <SelectItem value="MULTIPLE_CHOICE" className="text-[11px] font-bold">Trắc nghiệm</SelectItem>
                                   <SelectItem value="TRUE_FALSE" className="text-[11px] font-bold">Đúng/Sai</SelectItem>
                                   <SelectItem value="SHORT_ANSWER" className="text-[11px] font-bold">Điền khuyết</SelectItem>
+                                  <SelectItem value="MULTIPLE_CHOICE_GROUP" className="text-[11px] font-bold">Nhóm 4 ý</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -1124,7 +1213,7 @@ export default function UnifiedTestBuilder({
                       )}
                     </Droppable>
 
-                    <div className="pt-2 flex gap-2">
+                    <div className="pt-2 flex gap-2 flex-wrap">
                       <Button
                         onClick={() =>
                           handleAddQuestion(sIdx, "MULTIPLE_CHOICE")
@@ -1150,6 +1239,14 @@ export default function UnifiedTestBuilder({
                         className="rounded-lg border-dashed border-slate-300 text-slate-500 gap-1.5 font-bold"
                       >
                         <Plus className="w-3.5 h-3.5" /> Thêm Điền khuyết
+                      </Button>
+                      <Button
+                        onClick={() => handleAddQuestion(sIdx, "MULTIPLE_CHOICE_GROUP")}
+                        size="sm"
+                        variant="outline"
+                        className="rounded-lg border-dashed border-slate-300 text-slate-500 gap-1.5 font-bold"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Thêm Nhóm 4 ý
                       </Button>
                     </div>
                   </div>
