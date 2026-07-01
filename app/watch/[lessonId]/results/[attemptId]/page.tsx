@@ -233,10 +233,10 @@ export default async function TestResultPage({
                                 #{qIdx + 1}
                               </div>
 
-                              <div className="flex-1 flex items-center gap-4 md:gap-8">
+                              <div className="flex-1 flex flex-wrap items-center gap-4 md:gap-8">
                                 <div className="space-y-0.5">
                                   <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                                    {q.type === "ESSAY" ? "Hình thức" : "Đáp án của bạn"}
+                                    {q.type === "ESSAY" ? "Hình thức" : q.type === "MULTIPLE_CHOICE_GROUP" ? "Loại câu hỏi" : "Đáp án của bạn"}
                                   </p>
                                   <p
                                     className={cn(
@@ -252,13 +252,15 @@ export default async function TestResultPage({
                                           <ExternalLink className="w-3 h-3" />
                                         </a>
                                       ) : "Làm ra giấy"
+                                    ) : q.type === "MULTIPLE_CHOICE_GROUP" ? (
+                                      "Đúng/Sai (4 ý)"
                                     ) : (q.type as any) === "TRUE_FALSE" ? (
                                       studentAns?.answerProvided ? studentAns.answerProvided.split(',').map(v => v.trim() === "T" ? "Đúng" : v.trim() === "F" ? "Sai" : v).join(", ") : "Bỏ trống"
                                     ) : (studentAns?.answerProvided || "Bỏ trống")}
                                   </p>
                                 </div>
 
-                                {isCorrect === false && q.type !== "ESSAY" && (
+                                {isCorrect === false && q.type !== "ESSAY" && q.type !== "MULTIPLE_CHOICE_GROUP" && (
                                   <div className="space-y-0.5">
                                     <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
                                       Đáp án đúng
@@ -282,6 +284,37 @@ export default async function TestResultPage({
                                 )}
                               </div>
                             </div>
+
+                            {q.type === "MULTIPLE_CHOICE_GROUP" && (
+                              <div className="mt-3 flex flex-col gap-2 pl-8 md:pl-12">
+                                {q.subQuestions?.map((sq: any, sqIdx: number) => {
+                                  const subAns = studentAns?.subAnswers?.find((a: any) => a.subQuestionId === sq.id);
+                                  const subIsCorrect = subAns?.isCorrect;
+                                  return (
+                                    <div key={sq.id} className="flex flex-wrap sm:flex-nowrap items-center justify-between p-3 rounded-xl bg-white border border-slate-100 shadow-sm gap-2">
+                                      <div className="flex items-center gap-3">
+                                        <span className="text-[10px] md:text-xs font-black text-slate-400 w-8 text-center shrink-0">Ý {sqIdx + 1}</span>
+                                        <span className="text-xs md:text-sm font-bold text-slate-700">
+                                          {subAns?.answerProvided ? (subAns.answerProvided === "T" ? "Đúng" : "Sai") : "Bỏ trống"}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-4 ml-auto">
+                                        {subIsCorrect === false && (
+                                          <div className="text-[10px] md:text-xs font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-md">
+                                            Đáp án: {sq.correctAnswer === "T" ? "Đúng" : "Sai"}
+                                          </div>
+                                        )}
+                                        {subIsCorrect === true ? (
+                                          <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-emerald-500 shrink-0" />
+                                        ) : (
+                                          <XCircle className="w-4 h-4 md:w-5 md:h-5 text-blue-500 shrink-0" />
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
 
                             {/* Teacher Grading UI */}
                             {isTeacher && q.type === "ESSAY" && studentAns && (

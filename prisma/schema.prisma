@@ -309,6 +309,7 @@ model Question {
   subCategory        String?
   section            TestSection     @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   studentAnswers     StudentAnswer[]
+  subQuestions       SubQuestion[]
 
   @@index([sectionId])
 }
@@ -338,8 +339,39 @@ model StudentAnswer {
   feedback       String?
   attempt        StudentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   question       Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  subAnswers     StudentSubAnswer[]
 
   @@unique([attemptId, questionId])
+}
+
+model SubQuestion {
+  id            String          @id @default(cuid())
+  questionId    String
+  content       String?
+  correctAnswer String
+  type          SubQuestionType @default(TRUE_FALSE)
+  position      Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  question      Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  studentSubAnswers StudentSubAnswer[]
+
+  @@index([questionId])
+}
+
+model StudentSubAnswer {
+  id              String        @id @default(cuid())
+  studentAnswerId String
+  subQuestionId   String
+  answerProvided  String?
+  isCorrect       Boolean?
+
+  studentAnswer   StudentAnswer @relation(fields: [studentAnswerId], references: [id], onDelete: Cascade)
+  subQuestion     SubQuestion   @relation(fields: [subQuestionId], references: [id], onDelete: Cascade)
+
+  @@unique([studentAnswerId, subQuestionId])
+  @@index([studentAnswerId])
 }
 
 enum Role {
@@ -370,6 +402,13 @@ enum QuestionType {
   SHORT_ANSWER
   ESSAY
   TRUE_FALSE
+  MULTIPLE_CHOICE_GROUP
+}
+
+enum SubQuestionType {
+  TRUE_FALSE
+  MULTIPLE_CHOICE
+  SHORT_ANSWER
 }
 
 enum HomeworkStatus {

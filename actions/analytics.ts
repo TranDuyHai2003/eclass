@@ -605,7 +605,8 @@ export async function getAttemptStatistics(attemptId: string) {
         include: {
             answers: {
                 include: {
-                    question: true
+                    question: true,
+                    subAnswers: true
                 }
             },
             test: {
@@ -613,6 +614,7 @@ export async function getAttemptStatistics(attemptId: string) {
                     sections: {
                         include: {
                             questions: {
+                                include: { subQuestions: true },
                                 orderBy: { position: 'asc' }
                             }
                         },
