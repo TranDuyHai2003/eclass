@@ -14,14 +14,17 @@ import {
   LayoutGrid,
   Link2,
   CalendarClock,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { SortSelect } from "@/components/ui/SortSelect";
 import { DeleteTestButton } from "./_components/DeleteTestButton";
 
-export default async function TeacherTestsPage() {
+export default async function TeacherTestsPage({ searchParams }: { searchParams: Promise<{ sort?: "desc" | "asc" | "default"; q?: string }> }) {
   const session = await auth();
 
   if (
@@ -33,12 +36,22 @@ export default async function TeacherTestsPage() {
 
   const isAdminOrTeacher =
     session.user.role === "ADMIN" || session.user.role === "TEACHER";
+  
+  const params = await searchParams;
+  const sortOrder = params.sort === "asc" ? "asc" : (params.sort === "desc" ? "desc" : "default");
+  const searchQuery = params.q || "";
 
   const testBankRecords = await prisma.test.findMany({
     where: {
       lessonId: null,
       courseId: null,
       userId: isAdminOrTeacher ? undefined : session.user.id,
+      ...(searchQuery ? {
+        OR: [
+          { title: { contains: searchQuery, mode: "insensitive" } },
+          { subject: { contains: searchQuery, mode: "insensitive" } }
+        ]
+      } : {})
     },
     include: {
       sections: {
@@ -47,7 +60,7 @@ export default async function TeacherTestsPage() {
         },
       },
     },
-    orderBy: { updatedAt: "desc" },
+    orderBy: sortOrder === "default" ? { createdAt: "desc" } : { updatedAt: sortOrder },
   });
 
   const testBank = testBankRecords.map((test) => {
@@ -71,7 +84,25 @@ export default async function TeacherTestsPage() {
 
   // Fetch courses and their tests (mapping area)
   const courses = await prisma.course.findMany({
-    where: isAdminOrTeacher ? {} : { userId: session.user.id },
+    where: {
+      ...(isAdminOrTeacher ? {} : { userId: session.user.id }),
+      ...(searchQuery ? {
+        OR: [
+          { title: { contains: searchQuery, mode: "insensitive" } },
+          {
+            chapters: {
+              some: {
+                lessons: {
+                  some: {
+                    title: { contains: searchQuery, mode: "insensitive" }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      } : {})
+    },
     include: {
       finalTest: {
         include: {
@@ -81,7 +112,10 @@ export default async function TeacherTestsPage() {
       chapters: {
         include: {
           lessons: {
-            where: { test: { isNot: null } },
+            where: {
+              test: { isNot: null },
+              ...(searchQuery ? { title: { contains: searchQuery, mode: "insensitive" } } : {})
+            },
             include: {
               test: {
                 include: {
@@ -95,7 +129,7 @@ export default async function TeacherTestsPage() {
         },
       },
     },
-    orderBy: { updatedAt: "desc" },
+    orderBy: sortOrder === "default" ? { createdAt: "desc" } : { updatedAt: sortOrder },
   });
 
   return (
@@ -113,7 +147,18 @@ export default async function TeacherTestsPage() {
             một nơi.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <form className="relative" method="GET">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-4" />
+            <Input 
+              name="q"
+              defaultValue={searchQuery}
+              className="pl-9 h-12 rounded-2xl border-slate-200 w-full sm:w-64"
+              placeholder="Tìm kiếm đề thi..."
+            />
+            {params.sort && <input type="hidden" name="sort" value={params.sort} />}
+          </form>
+          <SortSelect />
           <Button
             asChild
             className="rounded-2xl h-12 px-6 font-black bg-slate-900 hover:bg-black"
@@ -333,6 +378,12 @@ export default async function TeacherTestsPage() {
             const allTests = finalTest
               ? [finalTest, ...lessonTests]
               : lessonTests;
+
+            if (sortOrder === "desc") {
+              allTests.sort((a, b) => new Date(b.test!.updatedAt).getTime() - new Date(a.test!.updatedAt).getTime());
+            } else if (sortOrder === "asc") {
+              allTests.sort((a, b) => new Date(a.test!.updatedAt).getTime() - new Date(b.test!.updatedAt).getTime());
+            }
 
             if (allTests.length === 0) return null;
 

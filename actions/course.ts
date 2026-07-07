@@ -11,7 +11,7 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 // COURSE ACTIONS
 // =============================================
 
-export async function getDashboardData() {
+export async function getDashboardData(sort: "desc" | "asc" | "default" = "default") {
   const session = await auth();
   const userId = session?.user?.id;
   const isAdminOrTeacher =
@@ -36,7 +36,7 @@ export async function getDashboardData() {
       },
       category: true,
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: sort === "default" ? { createdAt: "desc" } : { updatedAt: sort },
   });
 
   if (!userId) {
@@ -134,8 +134,9 @@ export async function getCourses(options?: {
   isPublished?: boolean;
   userId?: string;
   level?: "BASIC" | "ADVANCED";
+  sort?: "desc" | "asc" | "default";
 }) {
-  const { search, isPublished, userId, level } = options || {};
+  const { search, isPublished, userId, level, sort = "default" } = options || {};
 
   const courses = await prisma.course.findMany({
     where: {
@@ -168,7 +169,7 @@ export async function getCourses(options?: {
         },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: sort === "default" ? { createdAt: "desc" } : { updatedAt: sort },
   });
   return courses;
 }

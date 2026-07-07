@@ -30,6 +30,7 @@ export default async function TestBuilderPage({
           sections: {
             include: {
               questions: {
+                include: { subQuestions: { orderBy: { position: "asc" } } },
                 orderBy: { position: "asc" },
               },
             },

@@ -589,7 +589,7 @@ export default function UnifiedTestBuilder({
         if (resMatrix.success) {
           resetDirty();
           toast.success("Đã lưu ma trận đáp án & lời giải");
-          router.refresh();
+          window.location.reload();
         }
       } catch (e: any) {
         toast.error(e.message || "Lỗi khi lưu");
@@ -743,6 +743,7 @@ export default function UnifiedTestBuilder({
           <div className="h-12 px-6 border-b flex items-center justify-between bg-slate-50/50 shrink-0 gap-3">
             <div className="flex gap-4 h-full">
               <button
+                type="button"
                 onClick={() => setActiveTab("matrix")}
                 className={cn(
                   "text-[10px] font-black uppercase tracking-widest border-b-2 transition-all h-full",
@@ -754,6 +755,7 @@ export default function UnifiedTestBuilder({
                 Ma trận đáp án
               </button>
               <button
+                type="button"
                 onClick={() => setActiveTab("explanation")}
                 className={cn(
                   "text-[10px] font-black uppercase tracking-widest border-b-2 transition-all h-full",
@@ -1016,6 +1018,7 @@ export default function UnifiedTestBuilder({
                                             <div className="flex gap-1 shrink-0 ml-auto">
                                               {[{ label: "Đúng", value: "T" }, { label: "Sai", value: "F" }].map(opt => (
                                                 <button
+                                                  type="button"
                                                   key={opt.value}
                                                   onClick={() => handleUpdateSubQuestion(sIdx, qIdx, sqIdx, "correctAnswer", opt.value)}
                                                   className={cn("w-12 h-8 rounded text-[11px] font-bold border transition-all", sq.correctAnswer === opt.value ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white text-slate-500 hover:bg-slate-100")}
@@ -1037,6 +1040,7 @@ export default function UnifiedTestBuilder({
                                     const isSelected = opts.includes(opt);
                                     return (
                                       <button
+                                        type="button"
                                         key={opt}
                                         onClick={() => {
                                           let currentOpts = (
@@ -1099,6 +1103,7 @@ export default function UnifiedTestBuilder({
                                   { label: "Sai", value: "F" },
                                 ].map((opt) => (
                                   <button
+                                    type="button"
                                     key={opt.value}
                                     onClick={() =>
                                       handleUpdateQuestion(
@@ -1139,21 +1144,21 @@ export default function UnifiedTestBuilder({
                               <div className="relative">
                                 <Input
                                   type="number"
+                                  step="0.25"
+                                  min="0"
                                   value={q.points}
                                   onChange={(e) =>
                                     handleUpdateQuestion(
                                       sIdx,
                                       qIdx,
                                       "points",
-                                      parseFloat(e.target.value),
+                                      parseFloat(e.target.value) || 0,
                                     )
                                   }
-                                  className="w-16 h-8 text-[11px] font-black pl-5 rounded-lg border-slate-200"
+                                  className="w-20 h-8 text-[11px] font-black px-2 rounded-lg border-slate-200"
                                 />
-                                <span className="absolute left-1.5 top-1.5 text-[9px] font-black text-slate-400">
-                                  P
-                                </span>
                               </div>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:inline-block">Điểm</span>
                               <Button
                                 onClick={() => handleRemoveQuestion(sIdx, qIdx)}
                                 size="icon"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import CourseCard from "@/components/course/CourseCard";
@@ -9,6 +10,8 @@ import { HomeSidebar } from "../HomeSidebar";
 import { HomeCarousel } from "./HomeCarousel";
 import { RightSidebar } from "./RightSidebar";
 import { HomePromo } from "../HomePromo";
+
+import { SortSelect } from "@/components/ui/SortSelect";
 
 export function Dashboard({
   user,
@@ -21,13 +24,19 @@ export function Dashboard({
   lastLesson: any;
   stats: any;
 }) {
+  const searchParams = useSearchParams();
+  const currentSort = searchParams?.get("sort") || "default";
+
   const displayCourses = useMemo(() => {
+    if (currentSort !== "default") {
+      return courses; // Respect server-side sort completely when filtering by date
+    }
     return [...courses].sort((a, b) => {
       if (a.isEnrolled && !b.isEnrolled) return -1;
       if (!a.isEnrolled && b.isEnrolled) return 1;
       return 0;
     });
-  }, [courses]);
+  }, [courses, currentSort]);
 
   return (
     <div className="page-shell min-h-screen bg-[#EBF3FF]">
@@ -60,6 +69,7 @@ export function Dashboard({
                       Chọn mục tiêu của bạn và bắt đầu ngay
                     </p>
                   </div>
+                  <SortSelect />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">

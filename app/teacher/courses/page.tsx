@@ -5,6 +5,7 @@ import Link from "next/link"
 import CreateCourseButton from "@/components/teacher/CreateCourseButton"
 import AnalyticsButton from "@/components/teacher/AnalyticsButton"
 import { ChevronRight } from "lucide-react"
+import { SortSelect } from "@/components/ui/SortSelect"
 
 type TeacherCourse = {
     id: string
@@ -15,12 +16,18 @@ type TeacherCourse = {
     }[]
 }
 
-export default async function TeacherCoursesPage() {
+export default async function TeacherCoursesPage({ searchParams }: { searchParams: Promise<{ sort?: "desc" | "asc" | "default" }> }) {
     const session = await auth();
     if (!session?.user?.id) return redirect("/login");
 
     const isAdminOrTeacher = session.user.role === "ADMIN" || session.user.role === "TEACHER";
-    const courses = (await getCourses(isAdminOrTeacher ? {} : { userId: session.user.id })) as unknown as TeacherCourse[]
+    
+    const params = await searchParams;
+    const sortOrder = params.sort === "asc" ? "asc" : (params.sort === "desc" ? "desc" : "default");
+    const courses = (await getCourses({
+      ...(isAdminOrTeacher ? {} : { userId: session.user.id }),
+      sort: sortOrder
+    })) as unknown as TeacherCourse[]
 
     return (
         <div className="space-y-10">
@@ -30,7 +37,10 @@ export default async function TeacherCoursesPage() {
                     <h1 className="text-3xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter">Khóa học của tôi</h1>
                     <p className="text-slate-500 font-medium">Quản lý nội dung bài giảng và lộ trình học tập của bạn.</p>
                 </div>
-                <CreateCourseButton />
+                <div className="flex items-center gap-3">
+                    <SortSelect />
+                    <CreateCourseButton />
+                </div>
             </div>
 
             {/* Course Grid */}
@@ -47,13 +57,14 @@ export default async function TeacherCoursesPage() {
                         </div>
                     ) : (
                         courses.map((course) => (
-                            <Link 
+                            <div 
                                 key={course.id} 
-                                href={`/teacher/courses/${course.id}`}
                                 className="group bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-blue-500/5 transition-all duration-500 flex flex-col h-full relative"
                             >
+                                <Link href={`/teacher/courses/${course.id}`} className="absolute inset-0 z-0" aria-label={`Xem chi tiết khóa học ${course.title}`} />
+                                
                                 {/* Thumbnail */}
-                                <div className="aspect-[16/10] relative bg-slate-50 overflow-hidden shrink-0">
+                                <div className="aspect-[16/10] relative bg-slate-50 overflow-hidden shrink-0 pointer-events-none">
                                     {course.thumbnail ? (
                                         <img 
                                             src={course.thumbnail} 
@@ -68,7 +79,7 @@ export default async function TeacherCoursesPage() {
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </div>
 
-                                <div className="p-6 flex-1 flex flex-col space-y-4">
+                                <div className="p-6 flex-1 flex flex-col space-y-4 pointer-events-none">
                                     <h3 className="font-black text-slate-900 text-lg leading-tight group-hover:text-blue-600 transition-colors line-clamp-2 uppercase tracking-tight">
                                         {course.title}
                                     </h3>
@@ -90,7 +101,7 @@ export default async function TeacherCoursesPage() {
                                             </div>
                                         </div>
                                         
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 pointer-events-auto relative z-10">
                                             <AnalyticsButton href={`/teacher/courses/${course.id}/analytics`} />
                                             <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center group-hover:bg-blue-600 transition-colors shadow-lg">
                                                 <ChevronRight className="w-4 h-4" />
@@ -98,7 +109,7 @@ export default async function TeacherCoursesPage() {
                                         </div>
                                     </div>
                                 </div>
-                            </Link>
+                            </div>
                         ))
                     )}
                 </div>

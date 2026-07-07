@@ -15,7 +15,10 @@ export async function getTestByLessonId(lessonId: string) {
     include: {
       sections: {
         include: {
-          questions: { orderBy: { position: "asc" } }
+          questions: { 
+            include: { subQuestions: { orderBy: { position: "asc" } } },
+            orderBy: { position: "asc" } 
+          }
         },
         orderBy: { position: "asc" }
       }
@@ -29,7 +32,10 @@ export async function getTestByCourseId(courseId: string) {
     include: {
       sections: {
         include: {
-          questions: { orderBy: { position: "asc" } }
+          questions: { 
+            include: { subQuestions: { orderBy: { position: "asc" } } },
+            orderBy: { position: "asc" } 
+          }
         },
         orderBy: { position: "asc" }
       }
@@ -341,7 +347,7 @@ async function reCalculateAllAttempts(testId: string) {
       include: {
         sections: {
           include: {
-            questions: true
+            questions: { include: { subQuestions: true } }
           }
         }
       }
@@ -351,7 +357,7 @@ async function reCalculateAllAttempts(testId: string) {
 
     const attempts = await tx.studentAttempt.findMany({
       where: { testId, completedAt: { not: null } },
-      include: { answers: true }
+      include: { answers: { include: { subAnswers: true } } }
     });
 
     if (attempts.length === 0) return;
@@ -374,7 +380,7 @@ async function reCalculateAllAttempts(testId: string) {
         const q = questionMap.get(ans.questionId);
         if (!q) continue;
 
-        let isCorrect = false;
+        let isCorrect: boolean | null = false;
         let pointsAwarded = 0;
 
         if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_FALSE') {
@@ -390,13 +396,48 @@ async function reCalculateAllAttempts(testId: string) {
           }
           isCorrect = ans.isCorrect;
           pointsAwarded = ans.pointsAwarded;
+        } else if (q.type === 'MULTIPLE_CHOICE_GROUP') {
+          const subAnsInput = ans.subAnswers || [];
+          const subQuestions = q.subQuestions || [];
+          let wrongCount = 0;
+
+          subQuestions.forEach((subQ: any) => {
+            const studentAnsObj = subAnsInput.find((a: any) => a.subQuestionId === subQ.id);
+            const studentValue = studentAnsObj ? studentAnsObj.answerProvided : null;
+            const isCorrectSub = checkSubQuestionCorrect(studentValue, subQ.correctAnswer, subQ.type);
+            
+            if (!isCorrectSub) {
+              wrongCount++;
+            }
+
+            if (studentAnsObj && studentAnsObj.isCorrect !== isCorrectSub) {
+              updates.push(tx.studentSubAnswer.update({
+                where: { id: studentAnsObj.id },
+                data: { isCorrect: isCorrectSub }
+              }));
+            }
+          });
+
+          const pointsMap: Record<number, number> = {
+            0: 1.0,
+            1: 0.5,
+            2: 0.25,
+            3: 0.1,
+            4: 0
+          };
+
+          const ratio = pointsMap[wrongCount] ?? 0;
+          isCorrect = wrongCount === 0; 
+          pointsAwarded = q.points * ratio;
         }
 
-        if (q.type !== 'ESSAY' && isCorrect) {
+        if (q.type !== 'ESSAY' && q.type !== 'MULTIPLE_CHOICE_GROUP' && isCorrect === true) {
           pointsAwarded = q.points;
         }
 
-        rawTotalScore += pointsAwarded;
+        if (pointsAwarded > 0) {
+          rawTotalScore += pointsAwarded;
+        }
 
         // Only update if something changed to save DB calls
         if (ans.isCorrect !== isCorrect || ans.pointsAwarded !== pointsAwarded) {
@@ -559,7 +600,10 @@ function checkAnswerMatch(provided: string | null | undefined, expected: string 
   }
 
   // SHORT_ANSWER
-  return expectedOptions.includes(providedNorm);
+  const providedMath = parseMathValue(providedNorm);
+  return expectedOptions.some(opt => {
+    return opt === providedNorm || parseMathValue(opt) === providedMath;
+  });
 }
 
 function parseMathValue(val: string): string {
@@ -634,6 +678,16 @@ export async function submitTestAttempt(
   // Check due date
   if (attempt.test.dueDate && new Date() > new Date(attempt.test.dueDate)) {
     return { success: false, error: "Hạn nộp bài đã kết thúc." };
+  }
+
+  // Anti-Cheat: Validate time spent
+  const now = new Date();
+  const startTime = new Date(attempt.startedAt);
+  const durationMs = attempt.test.duration * 60 * 1000;
+  const bufferMs = 10 * 60 * 1000; // 10 minutes grace period
+
+  if (now.getTime() - startTime.getTime() > durationMs + bufferMs) {
+    return { success: false, error: "Đã quá thời gian làm bài tối đa. Bài làm không được ghi nhận." };
   }
 
   let rawTotalScore = 0;
