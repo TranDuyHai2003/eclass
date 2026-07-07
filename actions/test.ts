@@ -1172,8 +1172,55 @@ export async function getTestDraft(attemptId: string) {
     select: {
       questionId: true,
       answerProvided: true,
+      subAnswers: {
+        select: {
+          subQuestionId: true,
+          answerProvided: true,
+        }
+      }
     },
   });
 
   return { success: true, answers };
+}
+
+export async function reopenTestAttempt(attemptId: string) {
+  const session = await auth();
+  if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
+    throw new Error("Unauthorized");
+  }
+
+  const attempt = await prisma.studentAttempt.findUnique({
+    where: { id: attemptId },
+    include: { test: true }
+  });
+
+  if (!attempt) {
+    throw new Error("Attempt not found");
+  }
+
+  await prisma.studentAttempt.update({
+    where: { id: attemptId },
+    data: {
+      completedAt: null,
+      score: null,
+    },
+  });
+
+  // Revalidate paths so UI updates instantly
+  revalidatePath(`/watch/${attempt.test.lessonId}`);
+  if (attempt.test.courseId) {
+    revalidatePath(`/teacher/courses/${attempt.test.courseId}/analytics`);
+  } else {
+    // If it's a chapter lesson test, find courseId via chapter
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: attempt.test.lessonId! },
+      include: { chapter: true }
+    });
+    if (lesson?.chapter?.courseId) {
+      revalidatePath(`/teacher/courses/${lesson.chapter.courseId}/analytics`);
+    }
+  }
+
+  return { success: true };
 }

@@ -32,6 +32,7 @@ import { ReuploadForm } from "./_components/ReuploadForm";
 import { getAttemptStatistics } from "@/actions/analytics";
 import { ResultAnalytics } from "./_components/ResultAnalytics";
 import { RecommendationList } from "./_components/RecommendationList";
+import { ReopenAttemptButton } from "./_components/ReopenAttemptButton";
 
 export default async function TestResultPage({
   params,
@@ -111,6 +112,11 @@ export default async function TestResultPage({
             </p>
           </div>
         </div>
+        {isTeacher && attempt.completedAt && (
+          <div className="flex items-center gap-2">
+            <ReopenAttemptButton attemptId={attempt.id} />
+          </div>
+        )}
       </header>
 
       {/* Main Split Body */}
