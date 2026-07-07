@@ -123,9 +123,26 @@ export default function TestTakerClient({
         const serverAnswers: Record<string, string> = {};
         try {
           const draftRes = await getTestDraft(res.attempt.id);
-          if (draftRes.success) {
+          if (draftRes.success && draftRes.answers) {
             for (const a of draftRes.answers) {
-              if (a.answerProvided) {
+              if (a.subAnswers && a.subAnswers.length > 0) {
+                let parsedFromDraft = null;
+                if (a.answerProvided && a.answerProvided.startsWith("{")) {
+                  try {
+                    parsedFromDraft = JSON.parse(a.answerProvided);
+                  } catch (e) {}
+                }
+                
+                if (parsedFromDraft && typeof parsedFromDraft === 'object') {
+                  serverAnswers[a.questionId] = parsedFromDraft;
+                } else {
+                  const subObj: Record<string, string> = {};
+                  a.subAnswers.forEach((sub: any) => {
+                    subObj[sub.subQuestionId] = sub.answerProvided;
+                  });
+                  serverAnswers[a.questionId] = subObj as any;
+                }
+              } else if (a.answerProvided) {
                 try {
                   const parsed = JSON.parse(a.answerProvided);
                   serverAnswers[a.questionId] = typeof parsed === 'object' && parsed !== null ? parsed : a.answerProvided;

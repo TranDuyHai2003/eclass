@@ -36,7 +36,7 @@ import { Input } from "@/components/ui/input";
 import { filterStudents, PerformanceFilter } from "@/lib/analytics-utils";
 import { AnalyticsExportButton } from "@/components/analytics/AnalyticsExportButton";
 
-import { deleteStudentAttempt } from "@/actions/test";
+import { deleteStudentAttempt, reopenTestAttempt } from "@/actions/test";
 import { toast } from "sonner";
 import { 
   ConfirmModal 
@@ -52,6 +52,23 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<PerformanceFilter>("all");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isReopening, setIsReopening] = useState<string | null>(null);
+
+  const onReopenAttempt = async (attemptId: string) => {
+    try {
+      setIsReopening(attemptId);
+      const res = await reopenTestAttempt(attemptId);
+      if (res.success) {
+        toast.success("Mở lại bài thi thành công. Học sinh có thể vào sửa bài.");
+      } else {
+        throw new Error("Lỗi khi mở lại bài");
+      }
+    } catch (error) {
+      toast.error("Không thể mở lại bài thi");
+    } finally {
+      setIsReopening(null);
+    }
+  };
 
   const onDeleteAttempt = async (attemptId: string) => {
     try {
@@ -249,10 +266,11 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
 
                         {/* Quick Action - Delete (only if completed and has attemptId) */}
                         {status.status === "COMPLETED" && status.attemptId && (
+                            <>
                             <ConfirmModal
                                 onConfirm={() => onDeleteAttempt(status.attemptId)}
                                 title="Xóa bài nộp?"
-                                description={`Xóa bài nộp này? Học sinh ${student.studentName} sẽ có thể làm lại bài.`}
+                                description={`Xóa bài nộp này? Học sinh ${student.studentName} sẽ có thể làm lại bài từ đầu.`}
                             >
                                 <button
                                     className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover/score:opacity-100 transition-opacity z-10"
@@ -262,6 +280,21 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
                                     <X className="w-3 h-3 stroke-[3]" />
                                 </button>
                             </ConfirmModal>
+
+                            <ConfirmModal
+                                onConfirm={() => onReopenAttempt(status.attemptId)}
+                                title="Cho phép sửa bài?"
+                                description={`Mở lại bài nộp này? Học sinh ${student.studentName} sẽ có thể sửa lại các đáp án đã chọn.`}
+                            >
+                                <button
+                                    className="absolute -top-1 right-5 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover/score:opacity-100 transition-opacity z-10"
+                                    disabled={isReopening === status.attemptId}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
+                                </button>
+                            </ConfirmModal>
+                            </>
                         )}
                       </div>
                     </TableCell>

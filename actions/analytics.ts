@@ -491,7 +491,7 @@ export async function getGlobalTestAnalytics(filters: {
     const coursesSchema = Array.from(coursesSchemaMap.values());
     // 4. Process student data
     let results = students.map(student => {
-        const studentAttemptsRaw = student.attempts;
+        const studentAttemptsRaw = student.attempts.filter(a => a.completedAt !== null);
         
         // Group by testId and keep only the best attempt for each test
         const bestAttemptsMap = new Map<string, any>();
