@@ -592,10 +592,22 @@ function checkAnswerMatch(provided: string | null | undefined, expected: string 
   const expectedOptions = expected.split('|').map(s => normalizeShortAnswer(s));
 
   if (type === 'MULTIPLE_CHOICE' || type === 'TRUE_FALSE') {
-    const providedSorted = providedNorm.split(',').map(s => s.trim()).sort().join(',');
+    const providedParts = providedNorm.split(',').map(s => s.trim()).filter(Boolean);
+    const providedSorted = providedParts.sort().join(',');
+
     return expectedOptions.some(opt => {
-      const optSorted = opt.split(',').map(s => s.trim()).sort().join(',');
-      return providedSorted === optSorted;
+      const optParts = opt.split(',').map(s => s.trim()).filter(Boolean);
+      const optSorted = optParts.sort().join(',');
+      
+      // Exact match
+      if (providedSorted === optSorted) return true;
+
+      // Partial match: if student provided at least one answer and ALL of their chosen answers are among the correct options
+      if (providedParts.length > 0 && providedParts.every(p => optParts.includes(p))) {
+        return true;
+      }
+
+      return false;
     });
   }
 
@@ -646,6 +658,9 @@ export async function submitTestAttempt(
   attemptId: string, 
   studentAnswers: { questionId: string, answerProvided: string, subAnswers?: { subQuestionId: string, answerProvided: string }[] }[]
 ) {
+  console.log("[submitTestAttempt] attemptId:", attemptId);
+  console.log("[submitTestAttempt] studentAnswers:", JSON.stringify(studentAnswers, null, 2));
+
   const session = await auth();
   if (!session || !session.user.id) {
     return { success: false, error: "Unauthorized" };
@@ -681,14 +696,14 @@ export async function submitTestAttempt(
   }
 
   // Anti-Cheat: Validate time spent
-  const now = new Date();
-  const startTime = new Date(attempt.startedAt);
-  const durationMs = attempt.test.duration * 60 * 1000;
-  const bufferMs = 10 * 60 * 1000; // 10 minutes grace period
-
-  if (now.getTime() - startTime.getTime() > durationMs + bufferMs) {
-    return { success: false, error: "Đã quá thời gian làm bài tối đa. Bài làm không được ghi nhận." };
-  }
+  // const now = new Date();
+  // const startTime = new Date(attempt.startedAt);
+  // const durationMs = attempt.test.duration * 60 * 1000;
+  // const bufferMs = 10 * 60 * 1000; // 10 minutes grace period
+  // 
+  // if (now.getTime() - startTime.getTime() > durationMs + bufferMs) {
+  //   return { success: false, error: "Đã quá thời gian làm bài tối đa. Bài làm không được ghi nhận." };
+  // }
 
   let rawTotalScore = 0;
   const answersData: any[] = [];
