@@ -205,7 +205,7 @@ export default function TestResultClient({ attempt, isTeacher = false }: { attem
                                 </p>
                               </div>
 
-                              {isCorrect === false && q.type !== "ESSAY" && (
+                              {q.type !== "ESSAY" && q.type !== "MULTIPLE_CHOICE_GROUP" && (
                                 <div className="space-y-0.5">
                                   <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
                                     Đáp án đúng

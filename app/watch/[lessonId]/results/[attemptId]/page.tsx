@@ -260,7 +260,7 @@ export default async function TestResultPage({
                                   </p>
                                 </div>
 
-                                {isCorrect === false && q.type !== "ESSAY" && q.type !== "MULTIPLE_CHOICE_GROUP" && (
+                                {q.type !== "ESSAY" && q.type !== "MULTIPLE_CHOICE_GROUP" && (
                                   <div className="space-y-0.5">
                                     <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
                                       Đáp án đúng
@@ -299,11 +299,9 @@ export default async function TestResultPage({
                                         </span>
                                       </div>
                                       <div className="flex items-center gap-4 ml-auto">
-                                        {subIsCorrect === false && (
-                                          <div className="text-[10px] md:text-xs font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-md">
-                                            Đáp án: {sq.correctAnswer === "T" ? "Đúng" : "Sai"}
-                                          </div>
-                                        )}
+                                        <div className="text-[10px] md:text-xs font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-md">
+                                          Đáp án: {sq.correctAnswer === "T" ? "Đúng" : "Sai"}
+                                        </div>
                                         {subIsCorrect === true ? (
                                           <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-emerald-500 shrink-0" />
                                         ) : (
