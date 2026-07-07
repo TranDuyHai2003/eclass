@@ -99,7 +99,7 @@ export default async function StudentAnalyticsPage({
                          "text-xl font-black",
                          item.score >= 8 ? "text-emerald-600" : item.score >= 5 ? "text-blue-600" : "text-orange-600"
                        )}>
-                         {item.score}đ
+                         {Number(item.score).toFixed(2)}đ
                        </span>
                      ) : (
                        <span className="text-xl font-black text-slate-300">--</span>

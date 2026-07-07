@@ -21,7 +21,7 @@ export default async function CourseFinalTestPage({
       finalTest: {
         include: {
           sections: {
-            include: { questions: { orderBy: { position: "asc" } } },
+            include: { questions: { include: { subQuestions: { orderBy: { position: "asc" } } }, orderBy: { position: "asc" } } },
             orderBy: { position: "asc" },
           },
         },

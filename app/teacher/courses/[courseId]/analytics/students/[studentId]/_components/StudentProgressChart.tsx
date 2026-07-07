@@ -40,7 +40,7 @@ export const StudentProgressChart = ({ data }: StudentProgressChartProps) => {
           contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
           labelStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', color: '#64748b', marginBottom: '4px' }}
           itemStyle={{ fontSize: '14px', fontWeight: 900, color: '#4f46e5' }}
-          formatter={(value: any) => [`${value} điểm`, 'Kết quả']}
+          formatter={(value: any) => [`${typeof value === 'number' ? value.toFixed(2) : value} điểm`, 'Kết quả']}
         />
         <Line 
           type="monotone" 

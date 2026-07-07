@@ -78,7 +78,7 @@ export function FastEntryModal({ open, onOpenChange, sections, onApply }: FastEn
             <Label>Điểm mặc định cho mỗi câu</Label>
             <Input
               type="number"
-              step="0.1"
+              step="0.25"
               value={points}
               onChange={(e) => setPoints(Number(e.target.value))}
             />

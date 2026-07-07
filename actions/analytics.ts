@@ -289,7 +289,7 @@ export async function getStudentCourseProgress(courseId: string, studentId: stri
                     testId: lesson.test.id,
                     lessonId: lesson.id,
                     title: lesson.title,
-                    score: bestAttempt ? bestAttempt.score : null,
+                    score: bestAttempt ? (bestAttempt.score !== null ? Math.round(bestAttempt.score * 100) / 100 : null) : null,
                     completedAt: bestAttempt ? bestAttempt.completedAt : null,
                     attemptId: bestAttempt ? bestAttempt.id : null,
                     status: bestAttempt ? "COMPLETED" : "MISSED"
@@ -304,7 +304,7 @@ export async function getStudentCourseProgress(courseId: string, studentId: stri
             testId: course.finalTest.id,
             lessonId: null,
             title: "Bài kiểm tra cuối khóa",
-            score: bestAttempt ? bestAttempt.score : null,
+            score: bestAttempt ? (bestAttempt.score !== null ? Math.round(bestAttempt.score * 100) / 100 : null) : null,
             completedAt: bestAttempt ? bestAttempt.completedAt : null,
             attemptId: bestAttempt ? bestAttempt.id : null,
             status: bestAttempt ? "COMPLETED" : "MISSED"
