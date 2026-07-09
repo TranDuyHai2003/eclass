@@ -264,6 +264,7 @@ model Test {
   pdfUrl         String
   duration       Int
   showAnswers    Boolean          @default(false)
+  type           TestType         @default(HOMEWORK)
   explanation    String?
   videoUrl       String?
   audioUrl       String?
@@ -426,4 +427,9 @@ enum NotificationType {
 enum Level {
   BASIC
   ADVANCED
+}
+
+enum TestType {
+  HOMEWORK
+  EXAM
 }

@@ -27,6 +27,7 @@ export default function CourseTestBuilderClient({
           pdfUrl: data.pdfUrl,
           duration: data.duration,
           showAnswers: data.showAnswers,
+          type: data.type,
           explanation: data.explanation,
           solutionVideos: data.solutionVideos,
           videoUrl: data.solutionVideos?.[0]?.url || "",

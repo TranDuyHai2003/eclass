@@ -61,6 +61,7 @@ export interface UnifiedSaveData {
   pdfUrl: string;
   duration: number;
   showAnswers: boolean;
+  type: "HOMEWORK" | "EXAM";
   explanation: string;
   solutionVideos: { title: string; url: string }[];
   audioUrl: string;
@@ -109,6 +110,9 @@ export default function UnifiedTestBuilder({
   );
   const [showAnswers, setShowAnswers] = useState(
     initialTest?.showAnswers ?? true,
+  );
+  const [testType, setTestType] = useState<"HOMEWORK" | "EXAM">(
+    initialTest?.type || "HOMEWORK",
   );
   const [explanation, setExplanation] = useState(
     initialTest?.explanation || "",
@@ -577,6 +581,7 @@ export default function UnifiedTestBuilder({
           pdfUrl,
           duration,
           showAnswers,
+          type: testType,
           explanation,
           solutionVideos: processedVideos,
           audioUrl,
@@ -740,13 +745,14 @@ export default function UnifiedTestBuilder({
         </div>
 
         <div className="w-1/2 flex flex-col bg-white overflow-hidden">
-          <div className="h-12 px-6 border-b flex items-center justify-between bg-slate-50/50 shrink-0 gap-3">
-            <div className="flex gap-4 h-full">
+          <div className="flex flex-col bg-slate-50/50 border-b shrink-0">
+            {/* Hàng 1: Tabs */}
+            <div className="h-12 px-4 md:px-6 border-b flex gap-4 md:gap-6 overflow-x-auto no-scrollbar">
               <button
                 type="button"
                 onClick={() => setActiveTab("matrix")}
                 className={cn(
-                  "text-[10px] font-black uppercase tracking-widest border-b-2 transition-all h-full",
+                  "text-[10px] sm:text-xs font-black uppercase tracking-widest border-b-2 transition-all h-full whitespace-nowrap shrink-0",
                   activeTab === "matrix"
                     ? "border-blue-600 text-blue-600"
                     : "border-transparent text-slate-400 hover:text-slate-600",
@@ -758,7 +764,7 @@ export default function UnifiedTestBuilder({
                 type="button"
                 onClick={() => setActiveTab("explanation")}
                 className={cn(
-                  "text-[10px] font-black uppercase tracking-widest border-b-2 transition-all h-full",
+                  "text-[10px] sm:text-xs font-black uppercase tracking-widest border-b-2 transition-all h-full whitespace-nowrap shrink-0",
                   activeTab === "explanation"
                     ? "border-blue-600 text-blue-600"
                     : "border-transparent text-slate-400 hover:text-slate-600",
@@ -767,30 +773,48 @@ export default function UnifiedTestBuilder({
                 Lời giải toàn bài
               </button>
             </div>
-            <div className="flex gap-2 items-center">
-              {activeTab === "matrix" && (
-                <div className="flex items-center gap-2 mr-4 border-r pr-4">
-                  <Switch
-                    id="showAnswers"
-                    checked={showAnswers}
-                    onCheckedChange={(v) => {
-                      setShowAnswers(v);
-                      markDirty();
-                    }}
-                  />
-                  <Label
-                    htmlFor="showAnswers"
-                    className="text-[9px] font-black uppercase text-slate-500 cursor-pointer"
-                  >
-                    Hiện đáp án
-                  </Label>
-                </div>
-              )}
+            
+            {/* Hàng 2: Controls */}
+            <div className="h-12 px-4 md:px-6 flex items-center justify-between overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-3 shrink-0">
+                <Select value={testType} onValueChange={(v: "HOMEWORK" | "EXAM") => { setTestType(v); markDirty(); }}>
+                  <SelectTrigger className="h-8 w-[110px] rounded-xl text-[10px] font-black uppercase tracking-wide border-slate-200 bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HOMEWORK">BTVN</SelectItem>
+                    <SelectItem value="EXAM">Kiểm tra</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {activeTab === "matrix" && (
+                  <>
+                    <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="showAnswers"
+                        checked={showAnswers}
+                        onCheckedChange={(v) => {
+                          setShowAnswers(v);
+                          markDirty();
+                        }}
+                      />
+                      <Label
+                        htmlFor="showAnswers"
+                        className="text-[10px] font-black uppercase text-slate-500 cursor-pointer whitespace-nowrap"
+                      >
+                        Hiện đáp án
+                      </Label>
+                    </div>
+                  </>
+                )}
+              </div>
+              
               <Button
                 onClick={handleSave}
                 disabled={isPending || isUploading}
                 size="sm"
-                className="h-8 rounded-lg gap-1.5 font-black bg-yellow-500 hover:bg-yellow-600 shadow-sm shadow-yellow-100"
+                className="h-8 rounded-xl px-4 gap-1.5 font-black bg-yellow-500 hover:bg-yellow-600 shadow-sm shadow-yellow-100 shrink-0 ml-4"
               >
                 <Save className="w-3.5 h-3.5" />
                 {isPending ? "..." : "Lưu"}

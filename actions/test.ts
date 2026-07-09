@@ -59,6 +59,7 @@ export async function upsertTest(
     pdfUrl: string;
     duration: number;
     showAnswers: boolean;
+    type?: "HOMEWORK" | "EXAM";
     explanation?: string;
     videoUrl?: string;
     solutionVideos?: any;
@@ -129,6 +130,7 @@ export async function upsertCourseTest(
     pdfUrl: string;
     duration: number;
     showAnswers: boolean;
+    type?: "HOMEWORK" | "EXAM";
     explanation?: string;
     videoUrl?: string;
     solutionVideos?: any;

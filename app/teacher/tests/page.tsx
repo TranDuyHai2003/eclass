@@ -18,10 +18,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { SortSelect } from "@/components/ui/SortSelect";
+import TestTypeSwitcherClient from "./_components/TestTypeSwitcherClient";
 import { DeleteTestButton } from "./_components/DeleteTestButton";
 
 export default async function TeacherTestsPage({ searchParams }: { searchParams: Promise<{ sort?: "desc" | "asc" | "default"; q?: string }> }) {
@@ -445,12 +446,18 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
                               <h3 className="font-black text-slate-900 group-hover:text-blue-600 transition-colors">
                                 {t.title}
                               </h3>
-                              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">
-                                {t.type === "FINAL"
-                                  ? "Đề thi tổng kết"
-                                  : "Đề thi bài học"}{" "}
-                                • {t.test?.duration} phút
-                              </p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                  {t.type === "FINAL"
+                                    ? "Đề thi tổng kết"
+                                    : "Đề thi bài học"}{" "}
+                                  • {t.test?.duration} phút
+                                </p>
+                                <TestTypeSwitcherClient 
+                                  testId={t.test!.id} 
+                                  initialType={t.test!.type as "HOMEWORK" | "EXAM"} 
+                                />
+                              </div>
                             </div>
                           </div>
 

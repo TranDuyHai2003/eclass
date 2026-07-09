@@ -62,6 +62,7 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
   const [passScore, setPassScore] = useState("5.0");
   const [pdfUrl, setPdfUrl] = useState("");
   const [dueDate, setDueDate] = useState<string>("");
+  const [testType, setTestType] = useState<"HOMEWORK" | "EXAM">("HOMEWORK");
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
 
@@ -130,6 +131,7 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
         if (test?.dueDate) {
           setDueDate(new Date(test.dueDate).toISOString().slice(0, 16));
         }
+        setTestType(test?.type || "HOMEWORK");
 
         if (Array.isArray(test?.sections) && test.sections.length > 0) {
           const flatQuestions = test.sections
@@ -204,6 +206,7 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
           duration: Number(duration),
           passScore: passScore ? Number(passScore) : null,
           dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+          type: testType,
         }),
       });
       resetDirty();
@@ -236,12 +239,13 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
     pdfUrl,
     duration: Number(duration),
     showAnswers: testData?.showAnswers ?? true,
+    type: testType,
     explanation: testData?.explanation || "",
     videoUrl: testData?.videoUrl || "",
     audioUrl: testData?.audioUrl || "",
     dueDate: dueDate ? new Date(dueDate) : null,
     sections: testData?.sections || [],
-  }), [testId, pdfUrl, duration, dueDate, testData]);
+  }), [testId, pdfUrl, duration, dueDate, testData, testType]);
 
   const handleContentSave = useCallback(async (data: UnifiedSaveData) => {
     const res = await fetch(`/api/tests/${testId}`, {
@@ -251,6 +255,7 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
         pdfUrl: data.pdfUrl,
         duration: data.duration,
         showAnswers: data.showAnswers,
+        type: data.type,
         explanation: data.explanation || "",
         videoUrl: (data as any).videoUrl || "",
         audioUrl: data.audioUrl || "",
@@ -375,6 +380,20 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
                 type="number"
                 step="0.1"
               />
+            </div>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label className="font-bold">Loại bài</Label>
+              <Select value={testType} onValueChange={(v: "HOMEWORK" | "EXAM") => { setTestType(v); markDirty(); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn loại bài" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="HOMEWORK">Bài tập về nhà (BTVN)</SelectItem>
+                  <SelectItem value="EXAM">Bài kiểm tra</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="space-y-2">
