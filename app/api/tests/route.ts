@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
       : null;
   const dueDate = body.dueDate ? new Date(body.dueDate) : null;
 
+  const type = body.type === "EXAM" ? "EXAM" : "HOMEWORK";
   const explanation = typeof body.explanation === "string" ? body.explanation.trim() : undefined;
   const videoUrl = typeof body.videoUrl === "string" ? body.videoUrl.trim() : undefined;
   const audioUrl = typeof body.audioUrl === "string" ? body.audioUrl.trim() : undefined;
@@ -128,6 +129,7 @@ export async function POST(req: NextRequest) {
       showAnswers: showResultAfterSubmit,
       userId: session.user.id,
       dueDate,
+      type,
       explanation: finalExplanation,
       videoUrl: finalVideoUrl,
       audioUrl: finalAudioUrl,

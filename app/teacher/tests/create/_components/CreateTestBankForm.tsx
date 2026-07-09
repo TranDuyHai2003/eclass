@@ -26,6 +26,7 @@ export default function CreateTestBankForm() {
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [duration, setDuration] = useState("90");
+  const [testType, setTestType] = useState<"HOMEWORK" | "EXAM">("HOMEWORK");
   const [questionCount, setQuestionCount] = useState("");
   const [passScore, setPassScore] = useState("5.0");
   const [description, setDescription] = useState("");
@@ -139,6 +140,7 @@ export default function CreateTestBankForm() {
           passScore: passScore ? Number(passScore) : null,
           description,
           pdfUrl,
+          type: testType,
           settings: { showResultAfterSubmit: true, password: "" },
           questions: questionsPayload,
         }),
@@ -219,7 +221,19 @@ export default function CreateTestBankForm() {
               </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-4">
+              <div className="space-y-2">
+                <Label className="font-bold">Loại đề</Label>
+                <Select value={testType} onValueChange={(v: "HOMEWORK" | "EXAM") => setTestType(v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn loại" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HOMEWORK">Bài tập</SelectItem>
+                    <SelectItem value="EXAM">Đề thi</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label className="font-bold">Thời gian làm bài</Label>
                 <Select value={duration} onValueChange={setDuration}>

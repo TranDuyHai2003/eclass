@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { nanoid } from "nanoid";
-import { b2Client, B2_BUCKET_NAME, CDN_DOMAIN, sanitizeFileName, validateB2Config } from "@/lib/b2";
+import {
+  b2Client,
+  B2_BUCKET_NAME,
+  CDN_DOMAIN,
+  sanitizeFileName,
+  validateB2Config,
+} from "@/lib/b2";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 export async function PUT(req: NextRequest) {
@@ -14,7 +20,9 @@ export async function PUT(req: NextRequest) {
     const configError = validateB2Config();
     if (configError) {
       console.error("[Proxy Upload] B2 config error:", configError);
-      return new NextResponse(`Upload chưa được cấu hình: ${configError}`, { status: 500 });
+      return new NextResponse(`Upload chưa được cấu hình: ${configError}`, {
+        status: 500,
+      });
     }
 
     const { searchParams } = new URL(req.url);
@@ -25,19 +33,28 @@ export async function PUT(req: NextRequest) {
 
     const sanitizedName = sanitizeFileName(fileName);
     const uniqueFileName = `${nanoid()}-${sanitizedName}`;
-    
+
     // Phân loại folder dựa trên đuôi file
     const extension = fileName.split(".").pop()?.toLowerCase();
-    const folder = ["pdf", "doc", "docx", "xls", "xlsx", "txt"].includes(extension || "") 
-      ? "documents" 
+    const folder = ["pdf", "doc", "docx", "xls", "xlsx", "txt"].includes(
+      extension || "",
+    )
+      ? "documents"
       : "images";
-    
+
     const key = `${folder}/${uniqueFileName}`;
-    
+
     // Validate Content-Type BEFORE reading body
-    const contentType = req.headers.get("content-type") || "application/octet-stream";
-    if (!contentType.startsWith("image/") && contentType !== "application/pdf" && contentType !== "application/octet-stream") {
-      return new NextResponse("Chỉ chấp nhận file ảnh hoặc PDF.", { status: 415 });
+    const contentType =
+      req.headers.get("content-type") || "application/octet-stream";
+    if (
+      !contentType.startsWith("image/") &&
+      contentType !== "application/pdf" &&
+      contentType !== "application/octet-stream"
+    ) {
+      return new NextResponse("Chỉ chấp nhận file ảnh hoặc PDF.", {
+        status: 415,
+      });
     }
 
     // Get body as a buffer/Uint8Array for S3 client
@@ -58,7 +75,7 @@ export async function PUT(req: NextRequest) {
         Body: buffer,
         ContentType: contentType,
         CacheControl: "public, max-age=31536000",
-      })
+      }),
     );
 
     const publicUrl = `${CDN_DOMAIN}/${key}`;
@@ -68,6 +85,8 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ publicUrl });
   } catch (error: any) {
     console.error("[Proxy Upload] S3 Error:", error);
-    return new NextResponse(error.message || "Internal Server Error", { status: 500 });
+    return new NextResponse(error.message || "Internal Server Error", {
+      status: 500,
+    });
   }
 }

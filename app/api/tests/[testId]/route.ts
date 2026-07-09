@@ -67,6 +67,7 @@ export async function GET(
       pdfUrl: test.pdfUrl,
       duration: test.duration,
       showAnswers: test.showAnswers,
+      type: test.type,
       lessonId: test.lessonId,
       courseId: test.courseId,
       sections: test.sections,
@@ -116,6 +117,7 @@ export async function PATCH(
   const showAnswers =
     typeof body.showAnswers === "boolean" ? body.showAnswers : undefined;
   const dueDate = body.dueDate ? new Date(body.dueDate) : undefined;
+  const type = body.type === "EXAM" ? "EXAM" : body.type === "HOMEWORK" ? "HOMEWORK" : undefined;
 
   const explanation = typeof body.explanation === "string" ? body.explanation.trim() : undefined;
   const videoUrl = typeof body.videoUrl === "string" ? body.videoUrl.trim() : undefined;
@@ -160,6 +162,7 @@ export async function PATCH(
       accessCode,
       showAnswers,
       dueDate,
+      type,
       explanation: finalExplanation,
       videoUrl: finalVideoUrl,
       audioUrl: finalAudioUrl,
