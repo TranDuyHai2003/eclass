@@ -54,13 +54,17 @@ function getProxyUrl(url: string) {
 }
 
 export default function PDFViewer({
-  url,
+  url: originalUrl,
   className,
   hideToolbar = false,
   noScroll = false,
   flat = false,
   renderLeft,
 }: PDFViewerProps) {
+  // Backblaze B2 sẽ trả về lỗi 400 (Bad character in percent-encoded string: 44) 
+  // nếu URL có chứa dấu phẩy chưa được encode.
+  const url = originalUrl.replace(/,/g, '%2C');
+
   const [numPages, setNumPages] = useState<number>(0);
   const [rotation, setRotation] = useState<number>(0);
   const [containerWidth, setContainerWidth] = useState<number>(0);
