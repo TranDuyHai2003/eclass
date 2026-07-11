@@ -19,14 +19,29 @@ interface LeaderboardTableProps {
   data: any[];
 }
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 export const LeaderboardTable = ({ data }: LeaderboardTableProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<PerformanceFilter>("all");
+  const [sortOrder, setSortOrder] = useState<"default" | "high" | "low">("default");
 
-  const filteredData = filterStudents(data, {
+  let filteredData = filterStudents(data, {
     searchQuery,
     performanceFilter: statusFilter
   });
+
+  if (sortOrder === "high") {
+    filteredData = [...filteredData].sort((a, b) => (b.averageScore || 0) - (a.averageScore || 0));
+  } else if (sortOrder === "low") {
+    filteredData = [...filteredData].sort((a, b) => (a.averageScore || 0) - (b.averageScore || 0));
+  }
 
   return (
     <div className="space-y-4">
@@ -55,14 +70,27 @@ export const LeaderboardTable = ({ data }: LeaderboardTableProps) => {
           ))}
         </div>
 
-        <div className="relative w-full md:w-[260px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <Input
-            placeholder="Tìm học sinh..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-10 rounded-xl border-slate-200 text-xs font-bold"
-          />
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <div className="relative w-full md:w-[200px] lg:w-[260px]">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input
+              placeholder="Tìm học sinh..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 rounded-xl border-slate-200 text-xs font-bold"
+            />
+          </div>
+
+          <Select value={sortOrder} onValueChange={(v: any) => setSortOrder(v)}>
+            <SelectTrigger className="w-full sm:w-[140px] h-10 rounded-xl border-slate-200 text-xs font-bold bg-white">
+              <SelectValue placeholder="Sắp xếp" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="default" className="font-bold text-xs">A-Z (Mặc định)</SelectItem>
+              <SelectItem value="high" className="font-bold text-xs">Điểm cao - thấp</SelectItem>
+              <SelectItem value="low" className="font-bold text-xs">Điểm thấp - cao</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

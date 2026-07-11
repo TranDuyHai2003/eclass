@@ -33,6 +33,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { deleteStudentAttempt } from "@/actions/test";
 import { toast } from "sonner";
 import { GlobalFilters } from "./GlobalFilters";
+import { OfflineExportModal } from "./OfflineExportModal";
 import { Separator } from "@/components/ui/separator";
 
 export function MultiLevelMatrixTable({
@@ -184,6 +185,8 @@ export function MultiLevelMatrixTable({
               variant="premium"
               className="rounded-xl h-10 text-[9px] font-black uppercase tracking-widest gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200 text-white px-4 border-none transition-all"
             />
+            
+            <OfflineExportModal />
           </div>
         </GlobalFilters>
       </div>
@@ -192,7 +195,7 @@ export function MultiLevelMatrixTable({
       <div className="bg-white rounded-[28px] border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
         <div 
           ref={parentRef} 
-          className="flex-1 overflow-auto custom-scrollbar relative cursor-grab active:cursor-grabbing select-none"
+          className="flex-1 overflow-auto pb-2 custom-scrollbar relative cursor-grab active:cursor-grabbing select-none"
           onMouseDown={handleMouseDown}
         >
           <table className="text-left border-collapse" style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
@@ -487,7 +490,7 @@ function ScoreCell({ score }: { score: number | null | undefined }) {
         score >= 8 ? "text-emerald-600" : score < 5 ? "text-red-500" : "text-blue-600"
       )}
     >
-      {score.toFixed(1)}
+      {score.toFixed(2)}
     </span>
   );
 }

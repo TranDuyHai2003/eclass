@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { StudentType, Level } from "@prisma/client"
+import { compareVietnameseName } from "@/lib/utils"
 
 export async function getAnalytics() {
     const session = await auth()
@@ -209,8 +210,8 @@ export async function getCourseProgressMatrix(courseId: string, month: number, y
         };
     });
 
-    // Sort by total score for leaderboard
-    matrix.sort((a, b) => b.totalScore - a.totalScore);
+    // Sort by student name for leaderboard
+    matrix.sort((a, b) => compareVietnameseName(a.studentName, b.studentName));
     console.log(`[MATRIX] Matrix generation complete`);
 
     const allAverageScores = matrix.map(s => s.averageScore).filter(s => s > 0);
@@ -565,6 +566,8 @@ export async function getGlobalTestAnalytics(filters: {
         results.sort((a, b) => b.stats.averageScore - a.stats.averageScore);
     } else if (sortBy === "score_asc") {
         results.sort((a, b) => a.stats.averageScore - b.stats.averageScore);
+    } else {
+        results.sort((a, b) => compareVietnameseName(a.name, b.name));
     }
 
     // Calculate additional statistics for summary

@@ -156,7 +156,7 @@ export default function UnifiedTestBuilder({
   const [fastEntrySectionIdx, setFastEntrySectionIdx] = useState<number | null>(
     null,
   );
-  const [activeTab, setActiveTab] = useState<"matrix" | "explanation">(
+  const [activeTab, setActiveTab] = useState<"matrix" | "explanation" | "settings">(
     "matrix",
   );
   const [isDeleting, setIsDeleting] = useState(false);
@@ -772,6 +772,18 @@ export default function UnifiedTestBuilder({
               >
                 Lời giải toàn bài
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("settings")}
+                className={cn(
+                  "text-[10px] sm:text-xs font-black uppercase tracking-widest border-b-2 transition-all h-full whitespace-nowrap shrink-0",
+                  activeTab === "settings"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-slate-400 hover:text-slate-600",
+                )}
+              >
+                Cài đặt chung
+              </button>
             </div>
             
             {/* Hàng 2: Controls */}
@@ -823,7 +835,52 @@ export default function UnifiedTestBuilder({
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-            {activeTab === "explanation" ? (
+            {activeTab === "settings" ? (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Tên bài kiểm tra</Label>
+                  <Input 
+                    value={testName} 
+                    onChange={(e) => { setTestName(e.target.value); markDirty(); }}
+                    placeholder="VD: Đề thi thử giữa kỳ 1"
+                    className="font-bold rounded-xl bg-slate-50 border-slate-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Thời gian làm bài (phút)</Label>
+                  <Input 
+                    type="number"
+                    value={duration} 
+                    onChange={(e) => { setDuration(Number(e.target.value)); markDirty(); }}
+                    className="font-bold rounded-xl bg-slate-50 border-slate-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Hạn chót nộp bài (Due Date)</Label>
+                  <Input 
+                    key={dueDate}
+                    type="datetime-local"
+                    defaultValue={dueDate} 
+                    onBlur={(e) => { 
+                      if (e.target.value !== dueDate) {
+                        setDueDate(e.target.value); 
+                        markDirty(); 
+                      }
+                    }}
+                    className="font-bold rounded-xl bg-slate-50 border-slate-200"
+                  />
+                  <p className="text-[10px] font-medium text-slate-400">Bỏ trống nếu không giới hạn thời gian nộp.</p>
+                </div>
+                {initialTest?.createdAt && (
+                  <div className="space-y-2">
+                    <Label className="font-bold text-slate-700">Ngày tạo</Label>
+                    <div className="h-10 px-3 py-2 flex items-center rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-500">
+                      {new Intl.DateTimeFormat("vi-VN", { dateStyle: "long", timeStyle: "short" }).format(new Date(initialTest.createdAt))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : activeTab === "explanation" ? (
               <div className="space-y-8">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">

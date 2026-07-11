@@ -53,6 +53,7 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
   const [statusFilter, setStatusFilter] = useState<PerformanceFilter>("all");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isReopening, setIsReopening] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<"default" | "high" | "low">("default");
 
   const onReopenAttempt = async (attemptId: string) => {
     try {
@@ -86,10 +87,16 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
     }
   };
 
-  const filteredMatrix = filterStudents(matrix, { 
+  let filteredMatrix = filterStudents(matrix, { 
     searchQuery, 
     performanceFilter: statusFilter,
   });
+
+  if (sortOrder === "high") {
+    filteredMatrix = [...filteredMatrix].sort((a, b) => (b.averageScore || 0) - (a.averageScore || 0));
+  } else if (sortOrder === "low") {
+    filteredMatrix = [...filteredMatrix].sort((a, b) => (a.averageScore || 0) - (b.averageScore || 0));
+  }
 
   return (
     <div className="space-y-4">
@@ -119,7 +126,7 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-          <div className="relative w-full md:w-[260px]">
+          <div className="relative w-full md:w-[200px] lg:w-[260px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <Input
               placeholder="Tìm học sinh..."
@@ -128,6 +135,17 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
               className="pl-9 h-10 rounded-xl border-slate-200 text-xs font-bold"
             />
           </div>
+
+          <Select value={sortOrder} onValueChange={(v: any) => setSortOrder(v)}>
+            <SelectTrigger className="w-full sm:w-[140px] h-10 rounded-xl border-slate-200 text-xs font-bold bg-white">
+              <SelectValue placeholder="Sắp xếp" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="default" className="font-bold text-xs">A-Z (Mặc định)</SelectItem>
+              <SelectItem value="high" className="font-bold text-xs">Điểm cao - thấp</SelectItem>
+              <SelectItem value="low" className="font-bold text-xs">Điểm thấp - cao</SelectItem>
+            </SelectContent>
+          </Select>
 
           <AnalyticsExportButton 
             data={{ tests, matrix: filteredMatrix }}
@@ -140,7 +158,7 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
       </div>
 
       <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto custom-scrollbar">
+        <div className="overflow-x-auto custom-scrollbar pb-2">
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow>

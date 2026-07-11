@@ -144,11 +144,15 @@ export async function GET(request: NextRequest) {
         if (colNumber > 3) {
            const val = cell.value;
            if (typeof val === 'number') {
+              cell.numFmt = '0.00'; // Force 2 decimal places
               if (val >= 8) {
                  cell.font = { color: { argb: 'FF10B981' }, bold: true }; // emerald-500
               } else if (val < 5) {
                  cell.font = { color: { argb: 'FFEF4444' }, bold: true }; // red-500
               }
+           } else if (typeof val === 'string' && !isNaN(Number(val))) {
+              // Handle string representations of numbers like "8.50"
+              cell.numFmt = '0.00';
            }
         }
       });
