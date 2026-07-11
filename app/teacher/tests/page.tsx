@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { SortSelect } from "@/components/ui/SortSelect";
 import TestTypeSwitcherClient from "./_components/TestTypeSwitcherClient";
+import DueDateUpdaterClient from "./_components/DueDateUpdaterClient";
 import { DeleteTestButton } from "./_components/DeleteTestButton";
 
 export default async function TeacherTestsPage({ searchParams }: { searchParams: Promise<{ sort?: "desc" | "asc" | "default"; q?: string }> }) {
@@ -457,6 +458,13 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
                                   testId={t.test!.id} 
                                   initialType={t.test!.type as "HOMEWORK" | "EXAM"} 
                                 />
+                                <DueDateUpdaterClient
+                                  testId={t.test!.id}
+                                  initialDueDate={t.test!.dueDate ? t.test!.dueDate.toISOString() : null}
+                                />
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                  Tạo: {new Intl.DateTimeFormat("vi-VN", { dateStyle: 'short', timeStyle: 'short' }).format(new Date(t.test!.createdAt))}
+                                </p>
                               </div>
                             </div>
                           </div>

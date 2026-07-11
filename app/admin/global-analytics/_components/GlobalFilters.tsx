@@ -25,7 +25,7 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
   const [studentType, setStudentType] = useState(searchParams?.get("studentType") || "all");
   const [level, setLevel] = useState(searchParams?.get("level") || "all");
   const [search, setSearch] = useState(searchParams?.get("search") || "");
-  const [sortBy, setSortBy] = useState(searchParams?.get("sortBy") || "score_desc");
+  const [sortBy, setSortBy] = useState(searchParams?.get("sortBy") || "default");
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>(
     searchParams?.get("courseIds")?.split(",").filter(Boolean) || []
   );
@@ -146,6 +146,7 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
         {/* Sorting Tabs */}
         <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 h-10 overflow-hidden">
            {[
+             { id: "default", label: "A-Z", icon: Users },
              { id: "score_desc", label: "Cao ↓", icon: SortDesc },
              { id: "score_asc", label: "Thấp ↑", icon: SortAsc },
            ].map((opt) => (

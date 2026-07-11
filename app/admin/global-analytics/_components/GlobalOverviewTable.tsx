@@ -154,7 +154,7 @@ export function GlobalOverviewTable({ data }: GlobalOverviewTableProps) {
       </div>
 
       <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto pb-2">
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow>
