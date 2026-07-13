@@ -4,12 +4,8 @@ import { MessageSquareText, Timer, Sparkles } from "lucide-react";
 import { useCountdown } from "@/hooks/use-countdown";
 import { cn } from "@/lib/utils";
 
-interface HomePromoProps {
-  targetDate?: Date | null;
-}
-
-export function HomePromo({ targetDate }: HomePromoProps) {
-  const finalDate = targetDate || new Date("2027-06-11T08:00:00");
+export function HomePromo() {
+  const finalDate = new Date("2027-06-11T08:00:00");
   const { days, hours, minutes, seconds, isFinished } = useCountdown(finalDate);
 
   const Unit = ({

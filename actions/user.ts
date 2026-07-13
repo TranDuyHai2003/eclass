@@ -12,7 +12,8 @@ export async function getUsers() {
     }
 
     const users = await prisma.user.findMany({
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
+        include: { studyClass: true }
     })
 
     return users
@@ -113,6 +114,25 @@ export async function updateUserLevel(userId: string, newLevel: Level) {
     console.error(error)
     return { success: false, error: "Internal Server Error" }
   }
+}
+
+export async function updateUserClass(userId: string, classId: string | null) {
+    const session = await auth();
+    if (!session || session.user.role !== "ADMIN") {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    try {
+        await prisma.user.update({
+            where: { id: userId },
+            data: { classId }
+        });
+        revalidatePath("/admin/users");
+        return { success: true };
+    } catch (error) {
+        console.error(error);
+        return { success: false, error: "Internal Server Error" };
+    }
 }
 
 export async function deleteUser(userId: string) {

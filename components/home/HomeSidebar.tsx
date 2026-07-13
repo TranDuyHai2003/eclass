@@ -15,6 +15,7 @@ import {
   PlaySquare,
   ClipboardList,
   TrendingUp,
+  School,
   LogIn,
   MessageSquare,
   Facebook,
@@ -81,6 +82,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
       icon: TrendingUp,
     },
     { href: "/admin/users", label: "Quản lý Người dùng", icon: Users },
+    { href: "/admin/classes", label: "Quản lý Lớp học", icon: School },
     { href: "/admin/finance", label: "Quản lý Ghi danh", icon: CreditCard },
     { href: "/admin/settings", label: "Cấu hình hệ thống", icon: Settings },
   ];
