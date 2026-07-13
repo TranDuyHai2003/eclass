@@ -25,12 +25,8 @@ export function ModernDashboard({
   stats: any;
 }) {
   const soonestExamDate = useMemo(() => {
-    const dates = courses
-      .map((c) => c.examDate)
-      .filter((d): d is Date => !!d)
-      .sort((a, b) => a.getTime() - b.getTime());
-    return dates[0] || new Date("2026-06-11T08:00:00");
-  }, [courses]);
+    return new Date("2027-06-11T08:00:00");
+  }, []);
 
   const { days, hours, minutes } = useCountdown(soonestExamDate);
 

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import axios from "axios";
 import Cropper from "react-easy-crop";
 import { Pencil, Upload, ImageIcon, Trash, Trophy } from "lucide-react";
 import Link from "next/link";
+import { getClasses } from "@/actions/class";
 
 import { CourseWithRelations } from "./types";
 import { Input } from "@/components/ui/input";
@@ -82,6 +83,7 @@ interface CourseUpdateData {
   thumbnail?: string;
   examDate?: Date | null;
   level?: "BASIC" | "ADVANCED";
+  classId?: string | null;
 }
 
 interface CourseHeaderProps {
@@ -100,9 +102,11 @@ export const CourseHeader = ({
   // --- States quản lý dữ liệu ---
   const [title, setTitle] = useState(course.title || "");
   const [description, setDescription] = useState(course.description || "");
-  const [examDate, setExamDate] = useState(
-    course.examDate ? new Date(course.examDate).toISOString().slice(0, 16) : "",
-  );
+  const [classes, setClasses] = useState<any[]>([]);
+
+  useEffect(() => {
+    getClasses().then(setClasses);
+  }, []);
 
   // --- States quản lý UI ---
   const [isDeleting, setIsDeleting] = useState(false);
@@ -153,6 +157,10 @@ export const CourseHeader = ({
     onUpdate({ level: value as "BASIC" | "ADVANCED" });
   };
 
+  const handleClassChange = (value: string) => {
+    onUpdate({ classId: value === "NONE" ? null : value });
+  };
+
   // --- HANDLERS: Sửa mô tả/cấu trúc ---
   const handleDescriptionBlur = () => {
     if (description !== course.description) {
@@ -162,12 +170,6 @@ export const CourseHeader = ({
 
   const handleStructureChange = (value: string) => {
     onUpdate({ isStructured: value === "hierarchical" });
-  };
-
-  const handleExamDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setExamDate(value);
-    onUpdate({ examDate: value ? new Date(value) : null });
   };
 
   // --- HANDLERS: Upload & Crop ảnh ---
@@ -246,8 +248,8 @@ export const CourseHeader = ({
       </div>
 
       {/* --- Row 1: Title & Structure --- */}
-      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-        <div className="space-y-1 flex-1 w-full">
+      <div className="flex flex-col gap-4">
+        <div className="space-y-1 w-full">
           <Label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
             Tên khóa học
           </Label>
@@ -283,44 +285,48 @@ export const CourseHeader = ({
           )}
         </div>
 
-        <Select
-          value={course.isStructured ? "hierarchical" : "flat"}
-          onValueChange={handleStructureChange}
-          disabled={isLoading}
-        >
-          <SelectTrigger className="w-full md:w-[200px] bg-gray-50">
-            <SelectValue placeholder="Cấu trúc" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="hierarchical">📂 Phân cấp (Chương)</SelectItem>
-            <SelectItem value="flat">📄 Danh sách bài</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={course.isStructured ? "hierarchical" : "flat"}
+            onValueChange={handleStructureChange}
+            disabled={isLoading}
+          >
+            <SelectTrigger className="w-full md:w-[200px] bg-gray-50">
+              <SelectValue placeholder="Cấu trúc" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="hierarchical">📂 Phân cấp (Chương)</SelectItem>
+              <SelectItem value="flat">📄 Danh sách bài</SelectItem>
+            </SelectContent>
+          </Select>
 
-        <Select
-          value={course.level}
-          onValueChange={handleLevelChange}
-          disabled={isLoading}
-        >
-          <SelectTrigger className="w-full md:w-[180px] bg-gray-50">
-            <SelectValue placeholder="Cấp độ" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="BASIC">📘 Cơ bản</SelectItem>
-            <SelectItem value="ADVANCED">📗 Nâng cao</SelectItem>
-          </SelectContent>
-        </Select>
+          <Select
+            value={course.level}
+            onValueChange={handleLevelChange}
+            disabled={isLoading}
+          >
+            <SelectTrigger className="w-full md:w-[150px] bg-gray-50">
+              <SelectValue placeholder="Cấp độ" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="BASIC">📘 Cơ bản</SelectItem>
+              <SelectItem value="ADVANCED">📗 Nâng cao</SelectItem>
+            </SelectContent>
+          </Select>
 
-        <div className="flex flex-col gap-1 w-full md:w-[220px]">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-            Ngày thi mục tiêu
-          </Label>
-          <Input
-            type="datetime-local"
-            value={examDate}
-            onChange={handleExamDateChange}
-            className="bg-gray-50 border-gray-100 focus:ring-blue-500 h-9 text-xs font-bold"
-          />
+          <Select
+            value={course.classId || "NONE"}
+            onValueChange={handleClassChange}
+            disabled={isLoading}
+          >
+            <SelectTrigger className="w-full md:w-[150px] bg-gray-50">
+              <SelectValue placeholder="Lớp học (Tùy chọn)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="NONE">🏫 Tất cả lớp</SelectItem>
+              {classes.map(c => <SelectItem key={c.id} value={c.id}>🏫 {c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

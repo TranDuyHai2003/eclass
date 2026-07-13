@@ -4,6 +4,8 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import CreateCourseButton from "@/components/teacher/CreateCourseButton"
 import AnalyticsButton from "@/components/teacher/AnalyticsButton"
+import { CourseClassSelector } from "@/components/teacher/CourseClassSelector"
+import { getClasses } from "@/actions/class"
 import { ChevronRight } from "lucide-react"
 import { SortSelect } from "@/components/ui/SortSelect"
 
@@ -11,6 +13,7 @@ type TeacherCourse = {
     id: string
     title: string
     thumbnail: string | null
+    classId: string | null
     chapters?: {
         lessons?: unknown[]
     }[]
@@ -28,6 +31,8 @@ export default async function TeacherCoursesPage({ searchParams }: { searchParam
       ...(isAdminOrTeacher ? {} : { userId: session.user.id }),
       sort: sortOrder
     })) as unknown as TeacherCourse[]
+    
+    const classes = await getClasses();
 
     return (
         <div className="space-y-10">
@@ -85,7 +90,7 @@ export default async function TeacherCoursesPage({ searchParams }: { searchParam
                                     </h3>
                                     
                                     <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
                                             <div className="flex flex-col">
                                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Cấu trúc</span>
                                                 <div className="flex items-center gap-3 mt-1.5">
@@ -97,6 +102,15 @@ export default async function TeacherCoursesPage({ searchParams }: { searchParam
                                                         <span className="w-1 h-1 bg-blue-600 rounded-full" />
                                                         {course.chapters?.reduce((acc, ch) => acc + (ch.lessons?.length ?? 0), 0) ?? 0} Bài
                                                     </span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="h-6 w-px bg-slate-200" />
+                                            
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Lớp học</span>
+                                                <div className="pointer-events-auto relative z-10">
+                                                    <CourseClassSelector courseId={course.id} currentClassId={course.classId} classes={classes} />
                                                 </div>
                                             </div>
                                         </div>

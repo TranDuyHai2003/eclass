@@ -6,6 +6,22 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { s3Client } from "@/lib/s3";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { Prisma, User } from "@prisma/client";
+
+function buildCourseVisibilityWhere(user: User | null): Prisma.CourseWhereInput {
+  if (!user || user.role === 'ADMIN' || user.role === 'TEACHER') return {};
+
+  if (!user.classId) {
+    return { classId: null, level: user.level };
+  }
+
+  return {
+    OR: [
+      { classId: user.classId },
+      { classId: null, level: user.level }
+    ]
+  };
+}
 
 // =============================================
 // COURSE ACTIONS
@@ -16,12 +32,12 @@ export async function getDashboardData(sort: "desc" | "asc" | "default" = "defau
   const userId = session?.user?.id;
   const isAdminOrTeacher =
     session?.user?.role === "ADMIN" || session?.user?.role === "TEACHER";
-  const userLevel = session?.user && (session.user as any).level;
+  const user = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
 
   // 1. Fetch courses (filter by level for students only, admin/teacher sees all)
   const allCourses = await prisma.course.findMany({
     where: {
-      ...(!isAdminOrTeacher && userLevel ? { level: userLevel } : {}),
+      ...buildCourseVisibilityWhere(user as unknown as User),
     },
     include: {
       chapters: {
@@ -137,12 +153,13 @@ export async function getCourses(options?: {
   sort?: "desc" | "asc" | "default";
 }) {
   const { search, isPublished, userId, level, sort = "default" } = options || {};
+  const dbUser = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
 
   const courses = await prisma.course.findMany({
     where: {
+      ...buildCourseVisibilityWhere(dbUser as unknown as User),
       ...(isPublished !== undefined ? { isPublished } : {}),
       ...(userId ? { userId } : {}),
-      ...(level ? { level } : {}),
       ...(search
         ? {
             OR: [
@@ -295,6 +312,7 @@ export async function updateCourse(
     isStructured?: boolean;
     examDate?: Date | null;
     level?: "BASIC" | "ADVANCED";
+    classId?: string | null;
   },
 ) {
   const session = await auth();
@@ -304,6 +322,11 @@ export async function updateCourse(
     (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")
   )
     throw new Error("Unauthorized");
+
+  if (data.classId) {
+    const cls = await prisma.studyClass.findUnique({ where: { id: data.classId } });
+    if (!cls) return { success: false, error: "Lớp học không tồn tại hoặc đã bị xóa." };
+  }
 
   // Validation for publishing
   if (data.isPublished) {
