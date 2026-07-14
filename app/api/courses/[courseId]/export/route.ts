@@ -13,9 +13,11 @@ export async function GET(
   }
 
   const { courseId } = await params;
+  const searchParams = req.nextUrl.searchParams;
+  const classId = searchParams.get("classId") || "all";
 
   try {
-    const { tests, matrix } = await getCourseProgressMatrix(courseId, 0, 0);
+    const { tests, matrix } = await getCourseProgressMatrix(courseId, 0, 0, undefined, classId);
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Thống kê khóa học');

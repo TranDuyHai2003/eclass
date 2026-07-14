@@ -10,7 +10,7 @@ export default async function CourseAnalyticsPage({
   searchParams,
 }: {
   params: Promise<{ courseId: string }>;
-  searchParams: Promise<{ month?: string; year?: string }>;
+  searchParams: Promise<{ month?: string; year?: string; classId?: string }>;
 }) {
   const session = await auth();
   if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
@@ -18,7 +18,7 @@ export default async function CourseAnalyticsPage({
   }
 
   const { courseId } = await params;
-  const { month: sMonth, year: sYear } = await searchParams;
+  const { month: sMonth, year: sYear, classId = "all" } = await searchParams;
 
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
@@ -26,14 +26,20 @@ export default async function CourseAnalyticsPage({
   const month = parseInt(sMonth || String(currentMonth));
   const year = parseInt(sYear || String(currentYear));
 
-  const course = await prisma.course.findUnique({
-    where: { id: courseId },
-    select: { title: true }
-  });
+  const [course, classes] = await Promise.all([
+    prisma.course.findUnique({
+      where: { id: courseId },
+      select: { title: true }
+    }),
+    prisma.studyClass.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' }
+    })
+  ]);
 
   if (!course) return notFound();
 
-  const data = await getCourseProgressMatrix(courseId, month, year);
+  const data = await getCourseProgressMatrix(courseId, month, year, undefined, classId);
 
   return (
     <div className="p-6 space-y-8">
@@ -42,6 +48,8 @@ export default async function CourseAnalyticsPage({
         courseId={courseId}
         month={month} 
         year={year} 
+        classes={classes}
+        classId={classId}
       />
 
       <div className="space-y-4">

@@ -13,7 +13,7 @@ type TeacherCourse = {
     id: string
     title: string
     thumbnail: string | null
-    classId: string | null
+    classes?: { id: string; name: string }[]
     chapters?: {
         lessons?: unknown[]
     }[]
@@ -110,7 +110,7 @@ export default async function TeacherCoursesPage({ searchParams }: { searchParam
                                             <div className="flex flex-col">
                                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Lớp học</span>
                                                 <div className="pointer-events-auto relative z-10">
-                                                    <CourseClassSelector courseId={course.id} currentClassId={course.classId} classes={classes} />
+                                                    <CourseClassSelector courseId={course.id} currentClassIds={course.classes?.map((c: any) => c.id)} classes={classes} />
                                                 </div>
                                             </div>
                                         </div>

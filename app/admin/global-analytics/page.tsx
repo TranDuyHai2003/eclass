@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import {
   getGlobalTestAnalytics,
@@ -20,6 +21,7 @@ export default async function GlobalAnalyticsPage({
     startDate?: string;
     endDate?: string;
     courseIds?: string;
+    classIds?: string;
     studentType?: string;
     level?: string;
     search?: string;
@@ -38,21 +40,27 @@ export default async function GlobalAnalyticsPage({
     startDate, 
     endDate, 
     courseIds: courseIdsRaw, 
+    classIds: classIdsRaw,
     studentType: studentTypeRaw,
     level: levelRaw,
     search,
     sortBy
   } = await searchParams;
   const courseIds = courseIdsRaw ? courseIdsRaw.split(",").filter(Boolean) : [];
+  const classIds = classIdsRaw ? classIdsRaw.split(",").filter(Boolean) : [];
   const studentType = (studentTypeRaw === "ONLINE" || studentTypeRaw === "OFFLINE") ? studentTypeRaw as StudentType : undefined;
   const level = (levelRaw === "BASIC" || levelRaw === "ADVANCED") ? levelRaw as Level : undefined;
 
-  const allCourses = await getAnalyticsCourses();
+  const [allCourses, allClasses] = await Promise.all([
+    getAnalyticsCourses(classIds),
+    prisma.studyClass.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } })
+  ]);
 
   const globalData = await getGlobalTestAnalytics({
     startDate,
     endDate,
     courseIds,
+    classIds,
     studentType,
     level,
     search,
@@ -110,6 +118,7 @@ export default async function GlobalAnalyticsPage({
               students={globalData.students} 
               coursesSchema={globalData.coursesSchema} 
               allCourses={allCourses}
+              allClasses={allClasses}
             />
           </div>
         ) : (

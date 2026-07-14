@@ -14,12 +14,18 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -83,7 +89,7 @@ interface CourseUpdateData {
   thumbnail?: string;
   examDate?: Date | null;
   level?: "BASIC" | "ADVANCED";
-  classId?: string | null;
+  classIds?: string[];
 }
 
 interface CourseHeaderProps {
@@ -157,9 +163,6 @@ export const CourseHeader = ({
     onUpdate({ level: value as "BASIC" | "ADVANCED" });
   };
 
-  const handleClassChange = (value: string) => {
-    onUpdate({ classId: value === "NONE" ? null : value });
-  };
 
   // --- HANDLERS: Sửa mô tả/cấu trúc ---
   const handleDescriptionBlur = () => {
@@ -314,19 +317,51 @@ export const CourseHeader = ({
             </SelectContent>
           </Select>
 
-          <Select
-            value={course.classId || "NONE"}
-            onValueChange={handleClassChange}
-            disabled={isLoading}
-          >
-            <SelectTrigger className="w-full md:w-[150px] bg-gray-50">
-              <SelectValue placeholder="Lớp học (Tùy chọn)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="NONE">🏫 Tất cả lớp</SelectItem>
-              {classes.map(c => <SelectItem key={c.id} value={c.id}>🏫 {c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <div className="w-full md:w-[200px]">
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button 
+                        disabled={isLoading}
+                        variant="outline"
+                        className="w-full justify-between bg-gray-50 text-gray-700 hover:bg-gray-100"
+                    >
+                        {course.classes && course.classes.length > 0 ? `${course.classes.length} lớp` : "🏫 Chọn lớp"}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-0 rounded-2xl shadow-2xl border-slate-100" align="start">
+                    <div className="p-2 space-y-1 max-h-60 overflow-y-auto custom-scrollbar">
+                        <div 
+                            className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
+                            onClick={() => onUpdate({ classIds: [] })}
+                        >
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-900">Bỏ chọn tất cả</span>
+                        </div>
+                        <div className="h-px bg-slate-100 my-1" />
+                        {classes.map((cls) => {
+                            const isSelected = course.classes?.some((c: any) => c.id === cls.id);
+                            return (
+                              <div 
+                                  key={cls.id}
+                                  className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
+                                  onClick={() => {
+                                      const currentIds = course.classes?.map((c: any) => c.id) || [];
+                                      const newIds = isSelected
+                                          ? currentIds.filter((id: string) => id !== cls.id)
+                                          : [...currentIds, cls.id];
+                                      onUpdate({ classIds: newIds });
+                                  }}
+                              >
+                                  <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 truncate pr-3">{cls.name}</span>
+                                  <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-indigo-600 border-indigo-600 shadow-sm" : "border-slate-200"}`}>
+                                      {isSelected && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                                  </div>
+                              </div>
+                            );
+                        })}
+                    </div>
+                </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </div>
 
