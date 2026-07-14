@@ -98,22 +98,23 @@ export async function getAnalytics() {
     };
 }
 
-export async function getCourseProgressMatrix(courseId: string, month: number, year: number, studentType?: StudentType) {
+export async function getCourseProgressMatrix(courseId: string, month: number, year: number, studentType?: StudentType, classId?: string) {
     const session = await auth();
     if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
         throw new Error("Unauthorized");
     }
 
-    console.log(`[MATRIX] Fetching progress for course: ${courseId}, month: ${month}/${year}, type: ${studentType}`);
+    console.log(`[MATRIX] Fetching progress for course: ${courseId}, month: ${month}/${year}, type: ${studentType}, classId: ${classId}`);
 
     // 1. Get all approved students (universal access model)
     const allStudents = await prisma.user.findMany({
         where: { 
             role: "STUDENT",
             isApproved: true,
-            studentType: studentType ? studentType : undefined
+            studentType: studentType ? studentType : undefined,
+            ...(classId && classId !== 'all' ? { classId } : {})
         },
-        select: { id: true, name: true, email: true, studentType: true }
+        select: { id: true, name: true, email: true, studentType: true, studyClass: { select: { name: true } } }
     });
     
     // 2. Get all tests in this course
@@ -319,13 +320,18 @@ export async function getStudentCourseProgress(courseId: string, studentId: stri
     };
 }
 
-export async function getAnalyticsCourses() {
+export async function getAnalyticsCourses(classIds?: string[]) {
     const session = await auth();
     if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
         throw new Error("Unauthorized");
     }
 
     return await prisma.course.findMany({
+        where: classIds && classIds.length > 0 ? {
+            classes: {
+                some: { id: { in: classIds } }
+            }
+        } : undefined,
         select: { id: true, title: true },
         orderBy: { title: 'asc' }
     });
@@ -335,6 +341,7 @@ export async function getGlobalTestAnalytics(filters: {
     startDate?: string;
     endDate?: string;
     courseIds?: string[];
+    classIds?: string[];
     studentType?: StudentType;
     level?: Level;
     search?: string;
@@ -345,9 +352,30 @@ export async function getGlobalTestAnalytics(filters: {
         throw new Error("Unauthorized");
     }
 
-    const { startDate, endDate, courseIds, studentType, level, search, sortBy } = filters;
+    const { startDate, endDate, courseIds, classIds, studentType, level, search, sortBy } = filters;
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
+
+    let effectiveCourseIds: string[] | undefined = courseIds;
+
+    // If classes are selected, we only want tests from courses that are taught in those classes.
+    if (classIds && classIds.length > 0) {
+        const coursesInClasses = await prisma.course.findMany({
+            where: {
+                classes: { some: { id: { in: classIds } } },
+                ...(courseIds && courseIds.length > 0 ? { id: { in: courseIds } } : {})
+            },
+            select: { id: true }
+        });
+        
+        // If they select classes but no courses in those classes exist (or intersect with courseIds), we force it to an empty array
+        // which will result in no tests being fetched. This is exactly the desired behavior.
+        // We use a dummy ID if empty to ensure Prisma IN clause fails gracefully, or we just pass the empty array. Prisma handles empty IN array by returning nothing.
+        effectiveCourseIds = coursesInClasses.map(c => c.id);
+        if (effectiveCourseIds.length === 0) {
+            effectiveCourseIds = ["_NO_MATCH_"];
+        }
+    }
 
     // 1. Get all approved students (universal access model) with optional search
     const students = await prisma.user.findMany({
@@ -356,6 +384,7 @@ export async function getGlobalTestAnalytics(filters: {
             isApproved: true,
             studentType: studentType ? studentType : undefined,
             level: level ? level : undefined,
+            ...(classIds && classIds.length > 0 ? { classId: { in: classIds } } : {}),
             OR: search ? [
                 { name: { contains: search, mode: 'insensitive' } },
                 { email: { contains: search, mode: 'insensitive' } }
@@ -376,11 +405,11 @@ export async function getGlobalTestAnalytics(filters: {
                             lte: end
                         } : {})
                     },
-                    test: courseIds && courseIds.length > 0
+                    test: effectiveCourseIds && effectiveCourseIds.length > 0
                         ? {
                             OR: [
-                                { courseId: { in: courseIds } },
-                                { lesson: { chapter: { courseId: { in: courseIds } } } }
+                                { courseId: { in: effectiveCourseIds } },
+                                { lesson: { chapter: { courseId: { in: effectiveCourseIds } } } }
                             ]
                         }
                         : undefined
@@ -420,11 +449,11 @@ export async function getGlobalTestAnalytics(filters: {
 
     // 2. Get all tests in the selected courses to calculate "Total Assigned"
     const allTests = await prisma.test.findMany({
-        where: (courseIds && courseIds.length > 0)
+        where: (effectiveCourseIds && effectiveCourseIds.length > 0)
             ? {
                 OR: [
-                    { courseId: { in: courseIds } },
-                    { lesson: { chapter: { courseId: { in: courseIds } } } }
+                    { courseId: { in: effectiveCourseIds } },
+                    { lesson: { chapter: { courseId: { in: effectiveCourseIds } } } }
                 ]
             }
             : {

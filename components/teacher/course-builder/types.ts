@@ -1,4 +1,4 @@
-import { Course, Chapter, Lesson, Attachment } from "@prisma/client";
+import { Course, Chapter, Lesson, Attachment, StudyClass } from "@prisma/client";
 
 export type CourseWithRelations = Course & {
   examDate?: Date | null;
@@ -8,4 +8,5 @@ export type CourseWithRelations = Course & {
     })[];
   })[];
   attachments: Attachment[];
+  classes: StudyClass[];
 };

@@ -15,6 +15,8 @@ interface AnalyticsHeaderProps {
   courseId: string;
   month: number;
   year: number;
+  classes?: { id: string; name: string }[];
+  classId?: string;
 }
 
 export const AnalyticsHeader = ({
@@ -22,14 +24,16 @@ export const AnalyticsHeader = ({
   courseId,
   month,
   year,
+  classes = [],
+  classId = "all",
 }: AnalyticsHeaderProps) => {
   const router = useRouter();
 
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
-  const onFilterChange = (newMonth: string, newYear: string) => {
-    router.push(`/teacher/courses/${courseId}/analytics?month=${newMonth}&year=${newYear}`);
+  const onFilterChange = (newMonth: string, newYear: string, newClassId: string) => {
+    router.push(`/teacher/courses/${courseId}/analytics?month=${newMonth}&year=${newYear}&classId=${newClassId}`);
   };
 
   return (
@@ -47,10 +51,27 @@ export const AnalyticsHeader = ({
       </div>
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 relative">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {classes.length > 0 && (
+            <Select 
+              value={classId} 
+              onValueChange={(val) => onFilterChange(String(month), String(year), val)}
+            >
+              <SelectTrigger className="flex-1 sm:w-[140px] rounded-xl border-slate-100 font-bold bg-slate-50/50 hover:bg-white transition-colors">
+                <SelectValue placeholder="Chọn lớp" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all">Tất cả lớp</SelectItem>
+                {classes.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           <Select 
             value={String(month)} 
-            onValueChange={(val) => onFilterChange(val, String(year))}
+            onValueChange={(val) => onFilterChange(val, String(year), classId)}
           >
             <SelectTrigger className="flex-1 sm:w-[120px] rounded-xl border-slate-100 font-bold bg-slate-50/50 hover:bg-white transition-colors">
               <SelectValue placeholder="Tháng" />
@@ -64,7 +85,7 @@ export const AnalyticsHeader = ({
 
           <Select 
             value={String(year)} 
-            onValueChange={(val) => onFilterChange(String(month), val)}
+            onValueChange={(val) => onFilterChange(String(month), val, classId)}
           >
             <SelectTrigger className="flex-1 sm:w-[120px] rounded-xl border-slate-100 font-bold bg-slate-50/50 hover:bg-white transition-colors">
               <SelectValue placeholder="Năm" />

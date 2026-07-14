@@ -53,10 +53,16 @@ export function CourseBuilder({ course: initialCourse }: CourseBuilderProps) {
   // ==============================
   // COURSE HANDLERS
   // ==============================
-  const handleUpdateCourse = async (data: Partial<Course>) => {
+  const handleUpdateCourse = async (data: Partial<Course> & { classIds?: string[] }) => {
     // 1. Optimistic Update: Cập nhật giao diện ngay lập tức
     // Sử dụng 'as any' để tránh lỗi type deep merge tạm thời
-    setCourse((prev) => ({ ...prev, ...data }) as any);
+    setCourse((prev) => {
+        const next = { ...prev, ...data } as any;
+        if (data.classIds !== undefined) {
+            next.classes = data.classIds.map(id => ({ id }));
+        }
+        return next;
+    });
 
     // 2. Chuẩn bị payload: Chuyển đổi 'null' từ DB thành 'undefined' để khớp với Server Action
     const payload = {
@@ -68,6 +74,8 @@ export function CourseBuilder({ course: initialCourse }: CourseBuilderProps) {
       isPublished: data.isPublished,
       isStructured: data.isStructured,
       level: data.level,
+      // @ts-ignore - classIds is passed from CourseHeader
+      classIds: data.classIds,
     };
 
     startTransition(async () => {

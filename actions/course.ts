@@ -12,13 +12,13 @@ function buildCourseVisibilityWhere(user: User | null): Prisma.CourseWhereInput 
   if (!user || user.role === 'ADMIN' || user.role === 'TEACHER') return {};
 
   if (!user.classId) {
-    return { classId: null, level: user.level };
+    return {};
   }
 
   return {
     OR: [
-      { classId: user.classId },
-      { classId: null, level: user.level }
+      { classes: { some: { id: user.classId } } },
+      { classes: { none: {} }, level: user.level }
     ]
   };
 }
@@ -185,6 +185,12 @@ export async function getCourses(options?: {
           image: true,
         },
       },
+      classes: {
+        select: {
+          id: true,
+          name: true,
+        }
+      }
     },
     orderBy: sort === "default" ? { createdAt: "desc" } : { updatedAt: sort },
   });
@@ -206,6 +212,7 @@ export async function getCourseById(courseId: string) {
       },
       attachments: true,
       category: true,
+      classes: true,
     },
   });
   return course;
@@ -312,7 +319,7 @@ export async function updateCourse(
     isStructured?: boolean;
     examDate?: Date | null;
     level?: "BASIC" | "ADVANCED";
-    classId?: string | null;
+    classIds?: string[];
   },
 ) {
   const session = await auth();
@@ -323,9 +330,9 @@ export async function updateCourse(
   )
     throw new Error("Unauthorized");
 
-  if (data.classId) {
-    const cls = await prisma.studyClass.findUnique({ where: { id: data.classId } });
-    if (!cls) return { success: false, error: "Lớp học không tồn tại hoặc đã bị xóa." };
+  if (data.classIds) {
+    const classes = await prisma.studyClass.findMany({ where: { id: { in: data.classIds } } });
+    if (classes.length !== data.classIds.length) return { success: false, error: "Một số lớp học không tồn tại hoặc đã bị xóa." };
   }
 
   // Validation for publishing
@@ -424,12 +431,24 @@ export async function updateCourse(
     }
   }
 
+  const { classIds, ...restData } = data;
+  const updateData: any = { ...restData };
+  if (classIds) {
+    updateData.classes = { set: classIds.map(id => ({ id })) };
+  }
+
+  console.log(`[UPDATE COURSE] courseId: ${courseId}, updateData:`, JSON.stringify(updateData));
+
+  const fs = require('fs');
+  fs.appendFileSync('updateCourse.log', JSON.stringify({ time: new Date().toISOString(), courseId, data, updateData }) + '\n');
+
   await prisma.course.update({
     where: { id: courseId },
-    data,
+    data: updateData,
   });
+  revalidatePath(`/teacher/courses`);
   revalidatePath(`/teacher/courses/${courseId}`);
-  return { success: true };
+  return { success: true, debug: updateData };
 }
 
 export async function deleteCourse(courseId: string) {

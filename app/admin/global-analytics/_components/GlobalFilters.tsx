@@ -12,10 +12,11 @@ import { cn } from "@/lib/utils";
 
 interface GlobalFiltersProps {
   courses: { id: string; title: string }[];
+  classes?: { id: string; name: string }[];
   children?: ReactNode;
 }
 
-export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
+export function GlobalFilters({ courses, classes = [], children }: GlobalFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -29,6 +30,9 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>(
     searchParams?.get("courseIds")?.split(",").filter(Boolean) || []
   );
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>(
+    searchParams?.get("classIds")?.split(",").filter(Boolean) || []
+  );
 
   // Instant apply logic
   const applyFilters = useCallback(() => {
@@ -41,6 +45,7 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
     if (search) params.set("search", search); else params.delete("search");
     if (sortBy) params.set("sortBy", sortBy); else params.delete("sortBy");
     if (selectedCourseIds.length > 0) params.set("courseIds", selectedCourseIds.join(",")); else params.delete("courseIds");
+    if (selectedClassIds.length > 0) params.set("classIds", selectedClassIds.join(",")); else params.delete("classIds");
 
     const newUrl = `?${params.toString()}`;
     if (newUrl !== `?${searchParams?.toString() || ""}`) {
@@ -48,12 +53,12 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
         router.push(newUrl, { scroll: false });
       });
     }
-  },     [startDate, endDate, studentType, level, search, sortBy, selectedCourseIds, router, searchParams]);
+  },     [startDate, endDate, studentType, level, search, sortBy, selectedCourseIds, selectedClassIds, router, searchParams]);
 
   // Effect to apply filters instantly when basic toggles change
   useEffect(() => {
     applyFilters();
-  }, [studentType, level, sortBy, selectedCourseIds, startDate, endDate, applyFilters]);
+  }, [studentType, level, sortBy, selectedCourseIds, selectedClassIds, startDate, endDate, applyFilters]);
 
   // Debounced search effect
   useEffect(() => {
@@ -69,6 +74,12 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
     );
   };
 
+  const toggleClass = (id: string) => {
+    setSelectedClassIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
   const clearFilters = () => {
     setStartDate("");
     setEndDate("");
@@ -77,6 +88,7 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
     setSearch("");
     setSortBy("score_desc");
     setSelectedCourseIds([]);
+    setSelectedClassIds([]);
     router.push("?");
   };
 
@@ -166,7 +178,7 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
            ))}
         </div>
 
-        {/* Course & Date Popovers */}
+        {/* Course, Class & Date Popovers */}
         <div className="flex items-center gap-1.5">
             <Popover>
               <PopoverTrigger asChild>
@@ -207,6 +219,52 @@ export function GlobalFilters({ courses, children }: GlobalFiltersProps) {
                         selectedCourseIds.includes(course.id) ? "bg-blue-600 border-blue-600 shadow-sm" : "border-slate-200"
                       )}>
                         {selectedCourseIds.includes(course.id) && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="rounded-xl border-slate-200 h-10 px-3 gap-2 bg-white hover:bg-slate-50 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  <Users className="w-3.5 h-3.5 text-slate-400" />
+                  Lớp học
+                  {selectedClassIds.length > 0 && (
+                    <div className="bg-emerald-600 text-white rounded-md h-4 px-1 min-w-[16px] flex items-center justify-center text-[8px] font-bold">
+                      {selectedClassIds.length}
+                    </div>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-0 rounded-2xl shadow-2xl border-slate-100" align="end">
+                <div className="p-3 space-y-1.5 max-h-80 overflow-y-auto custom-scrollbar">
+                  <div 
+                    className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
+                    onClick={() => setSelectedClassIds([])}
+                  >
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-900">Chọn tất cả</span>
+                    <div className={cn(
+                      "w-4 h-4 rounded border flex items-center justify-center",
+                      selectedClassIds.length === 0 ? "bg-emerald-600 border-emerald-600 shadow-sm" : "border-slate-200"
+                    )}>
+                      {selectedClassIds.length === 0 && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                    </div>
+                  </div>
+                  <Separator className="my-1.5" />
+                  {classes.map((cls) => (
+                    <div 
+                      key={cls.id}
+                      className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
+                      onClick={() => toggleClass(cls.id)}
+                    >
+                      <span className="text-[10px] font-bold text-slate-500 group-hover:text-slate-900 truncate pr-3">{cls.name}</span>
+                      <div className={cn(
+                        "w-4 h-4 rounded border flex items-center justify-center",
+                        selectedClassIds.includes(cls.id) ? "bg-emerald-600 border-emerald-600 shadow-sm" : "border-slate-200"
+                      )}>
+                        {selectedClassIds.includes(cls.id) && <Check className="w-3 h-3 text-white stroke-[3]" />}
                       </div>
                     </div>
                   ))}

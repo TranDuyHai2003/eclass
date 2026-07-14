@@ -1,0 +1,10 @@
+{"time":"2026-07-14T09:12:41.823Z","courseId":"cmr8yk8xx3pqama01skgi74ls","data":{"classIds":["cmrj3lh6z00028p9si91v9mub"]},"updateData":{"classes":{"set":[{"id":"cmrj3lh6z00028p9si91v9mub"}]}}}
+{"time":"2026-07-14T09:12:45.818Z","courseId":"cmpwrx8mq002ipd1a2ghuwn0d","data":{"classIds":["cmristfuf00008pz0kr57m8l4"]},"updateData":{"classes":{"set":[{"id":"cmristfuf00008pz0kr57m8l4"}]}}}
+{"time":"2026-07-14T09:12:49.704Z","courseId":"cmp0xcuvd003wqw0iizeloqga","data":{"classIds":["cmristfuf00008pz0kr57m8l4"]},"updateData":{"classes":{"set":[{"id":"cmristfuf00008pz0kr57m8l4"}]}}}
+{"time":"2026-07-14T09:12:50.141Z","courseId":"cmp0xcuvd003wqw0iizeloqga","data":{"classIds":["cmristfuf00008pz0kr57m8l4","cmrj3lh5300018p9sdvwx5r60"]},"updateData":{"classes":{"set":[{"id":"cmristfuf00008pz0kr57m8l4"},{"id":"cmrj3lh5300018p9sdvwx5r60"}]}}}
+{"time":"2026-07-14T09:47:44.051Z","courseId":"cmr8yk8xx3pqama01skgi74ls","data":{"classIds":["cmrj3lh6z00028p9si91v9mub"]},"updateData":{"classes":{"set":[{"id":"cmrj3lh6z00028p9si91v9mub"}]}}}
+{"time":"2026-07-14T09:47:45.459Z","courseId":"cmpwrx8mq002ipd1a2ghuwn0d","data":{"classIds":["cmristfuf00008pz0kr57m8l4"]},"updateData":{"classes":{"set":[{"id":"cmristfuf00008pz0kr57m8l4"}]}}}
+{"time":"2026-07-14T09:47:47.852Z","courseId":"cmp0qyg1a003iqw0i33q1bs2d","data":{"classIds":["cmrj3lh6z00028p9si91v9mub","cmrj3lh5300018p9sdvwx5r60"]},"updateData":{"classes":{"set":[{"id":"cmrj3lh6z00028p9si91v9mub"},{"id":"cmrj3lh5300018p9sdvwx5r60"}]}}}
+{"time":"2026-07-14T09:47:49.040Z","courseId":"cmp0qyg1a003iqw0i33q1bs2d","data":{"classIds":["cmrj3lh5300018p9sdvwx5r60"]},"updateData":{"classes":{"set":[{"id":"cmrj3lh5300018p9sdvwx5r60"}]}}}
+{"time":"2026-07-14T09:47:51.526Z","courseId":"cmp0xcuvd003wqw0iizeloqga","data":{"classIds":["cmristfuf00008pz0kr57m8l4"]},"updateData":{"classes":{"set":[{"id":"cmristfuf00008pz0kr57m8l4"}]}}}
+{"time":"2026-07-14T09:47:51.891Z","courseId":"cmp0xcuvd003wqw0iizeloqga","data":{"classIds":["cmristfuf00008pz0kr57m8l4","cmrj3lh5300018p9sdvwx5r60"]},"updateData":{"classes":{"set":[{"id":"cmristfuf00008pz0kr57m8l4"},{"id":"cmrj3lh5300018p9sdvwx5r60"}]}}}

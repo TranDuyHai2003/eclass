@@ -16,9 +16,10 @@ export async function GET(
   const searchParams = req.nextUrl.searchParams;
   const month = parseInt(searchParams.get("month") || "0");
   const year = parseInt(searchParams.get("year") || "0");
+  const classId = searchParams.get("classId") || "all";
 
   try {
-    const data = await getCourseProgressMatrix(courseId, month, year);
+    const data = await getCourseProgressMatrix(courseId, month, year, undefined, classId);
 
     const workbook = new ExcelJS.Workbook();
 
