@@ -94,7 +94,25 @@ export default function UserManagementPage() {
     try {
       const [data, classData] = await Promise.all([getUsers(), getClasses()]);
       setClasses(classData);
-      setUsers(data);
+      const sortedData = data.sort((a, b) => {
+        // Hàm làm sạch tên: loại bỏ (CB), <NC> hoặc bất kỳ nội dung nào trong ngoặc đơn/ngoặc nhọn
+        const cleanName = (name: string) => name.replace(/\(.*?\)|<.*?>/g, '').trim();
+        
+        const nameA = a.name || "";
+        const nameB = b.name || "";
+        const cleanA = cleanName(nameA);
+        const cleanB = cleanName(nameB);
+        
+        const partsA = cleanA.split(/\s+/);
+        const partsB = cleanB.split(/\s+/);
+        const firstNameA = partsA.length > 0 ? partsA[partsA.length - 1] : "";
+        const firstNameB = partsB.length > 0 ? partsB[partsB.length - 1] : "";
+        
+        const compare = firstNameA.localeCompare(firstNameB, 'vi');
+        if (compare !== 0) return compare;
+        return cleanA.localeCompare(cleanB, 'vi');
+      });
+      setUsers(sortedData);
     } catch (error) {
       toast.error("Không thể tải danh sách người dùng");
     } finally {
@@ -337,6 +355,7 @@ export default function UserManagementPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12 text-center">STT</TableHead>
                 <TableHead>Thông tin</TableHead>
                 <TableHead className="hidden sm:table-cell">Email</TableHead>
                 <TableHead className="hidden sm:table-cell">Vai trò</TableHead>
@@ -352,8 +371,11 @@ export default function UserManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
+              {filteredUsers.map((user, index) => (
                 <TableRow key={user.id}>
+                  <TableCell className="text-center font-bold text-slate-500">
+                    {index + 1}
+                  </TableCell>
                   <TableCell>
                     <div className="font-bold text-slate-900">
                       {user.name || "Chưa đặt tên"}
