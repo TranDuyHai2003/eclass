@@ -25,7 +25,7 @@ export default async function CoursesPage({
   const isAdminOrTeacher =
     session?.user?.role === "ADMIN" || session?.user?.role === "TEACHER";
   const userLevel = session?.user && (session.user as any).level;
-  const courses = await getCourses({ search: query, level: isAdminOrTeacher ? undefined : (userLevel || undefined) });
+  const courses = await getCourses({ search: query });
 
   return (
     <div className="page-shell min-h-screen bg-[#EBF3FF]">
