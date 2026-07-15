@@ -153,13 +153,17 @@ export async function getCourses(options?: {
   sort?: "desc" | "asc" | "default";
 }) {
   const { search, isPublished, userId, level, sort = "default" } = options || {};
-  const dbUser = userId ? await prisma.user.findUnique({ where: { id: userId } }) : null;
+  
+  const session = await auth();
+  const viewerId = session?.user?.id;
+  const viewerUser = viewerId ? await prisma.user.findUnique({ where: { id: viewerId } }) : null;
 
   const courses = await prisma.course.findMany({
     where: {
-      ...buildCourseVisibilityWhere(dbUser as unknown as User),
+      ...buildCourseVisibilityWhere(viewerUser as unknown as User),
       ...(isPublished !== undefined ? { isPublished } : {}),
       ...(userId ? { userId } : {}),
+      ...(level ? { level } : {}),
       ...(search
         ? {
             OR: [
