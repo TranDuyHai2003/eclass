@@ -1,12 +1,12 @@
 import { S3Client, CopyObjectCommand } from "@aws-sdk/client-s3";
 
 export const b2Client = new S3Client({
-  endpoint: `https://s3.${process.env.B2_REGION || "us-east-004"}.backblazeb2.com`,
+  endpoint: `https://s3.${process.env.B2_REGION || "us-east-005"}.backblazeb2.com`,
   credentials: {
     accessKeyId: process.env.B2_KEY_ID || "dummy_key",
     secretAccessKey: process.env.B2_APP_KEY || "dummy_secret",
   },
-  region: process.env.B2_REGION || "us-east-004",
+  region: process.env.B2_REGION || "us-east-005",
   forcePathStyle: true,
 });
 
@@ -52,41 +52,92 @@ export function sanitizeFileName(fileName: string): string {
   return ext ? `${safeName}.${ext}` : safeName;
 }
 
+export function normalizeCdnUrl(url: string | null | undefined): string | null {
+  if (!url || typeof url !== "string") return url || null;
+  const cleanCdnBase = CDN_DOMAIN.endsWith("/")
+    ? CDN_DOMAIN.slice(0, -1)
+    : CDN_DOMAIN;
+
+  let pathname = url;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    // If not a valid full URL, treat as path
+  }
+
+  // Remove legacy /file/<bucket>/ prefix if present
+  pathname = pathname.replace(/^\/file\/[^\/]+\//, "/");
+  // Remove /temp/ from path if present
+  pathname = pathname.replace("/temp/", "/");
+
+  // Ensure path starts with /
+  if (!pathname.startsWith("/")) pathname = "/" + pathname;
+
+  return `${cleanCdnBase}${pathname}`;
+}
+
 export async function commitTempFile(
   url: string | null | undefined,
 ): Promise<string | null> {
   if (!url || typeof url !== "string") return url || null;
-  if (!url.includes("/temp/")) return url;
+
+  // Clean URL first to strip legacy /file/<bucket>/
+  const normalized = normalizeCdnUrl(url) || url;
+
+  if (!url.includes("/temp/")) {
+    return normalized;
+  }
 
   try {
     const parsedUrl = new URL(url);
-    const pathname = parsedUrl.pathname;
+    let pathname = parsedUrl.pathname;
+
+    // Strip legacy /file/<bucket-name>/ prefix if present
+    pathname = pathname.replace(/^\/file\/[^\/]+\//, "/");
 
     const tempIndex = pathname.indexOf("temp/");
-    if (tempIndex === -1) return url;
+    if (tempIndex === -1) {
+      return normalized;
+    }
 
     const sourceKey = pathname.substring(tempIndex);
     const destinationKey = sourceKey.replace("temp/", "");
 
-    // Thực hiện sao chép file từ thư mục tạm sang thư mục chính thức trên B2
-    const command = new CopyObjectCommand({
-      Bucket: B2_BUCKET_NAME,
-      CopySource: encodeURI(`${B2_BUCKET_NAME}/${sourceKey}`),
-      Key: destinationKey,
-    });
-
-    await b2Client.send(command);
-
-    // Chuẩn hóa CDN Domain (xử lý bỏ dấu gạch chéo thừa ở cuối nếu có)
     const cleanCdnBase = CDN_DOMAIN.endsWith("/")
       ? CDN_DOMAIN.slice(0, -1)
       : CDN_DOMAIN;
+    const finalUrl = `${cleanCdnBase}/${destinationKey}`;
 
-    // Trả về định dạng URL Cloudflare CDN siêu ngắn gọn để lưu vào Database
-    // Kết quả dạng: https://cdn.teacherduc.me/documents/abc.pdf
-    return `${cleanCdnBase}/${destinationKey}`;
+    const rawSourceKey = decodeURIComponent(sourceKey);
+    const rawDestinationKey = decodeURIComponent(destinationKey);
+
+    try {
+      // Attempt 1: Copy using raw decoded keys
+      await b2Client.send(
+        new CopyObjectCommand({
+          Bucket: B2_BUCKET_NAME,
+          CopySource: encodeURI(`${B2_BUCKET_NAME}/${rawSourceKey}`),
+          Key: rawDestinationKey,
+        }),
+      );
+    } catch (err1) {
+      try {
+        // Attempt 2: Copy using original keys
+        await b2Client.send(
+          new CopyObjectCommand({
+            Bucket: B2_BUCKET_NAME,
+            CopySource: encodeURI(`${B2_BUCKET_NAME}/${sourceKey}`),
+            Key: destinationKey,
+          }),
+        );
+      } catch (err2) {
+        console.warn("[B2] Copy temp file attempt warning:", err1, err2);
+      }
+    }
+
+    return finalUrl;
   } catch (error) {
     console.error("[B2] Failed to commit temp file:", error);
-    return url;
+    return normalized;
   }
 }

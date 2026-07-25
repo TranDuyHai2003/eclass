@@ -107,7 +107,7 @@ export async function PATCH(
     typeof body.description === "string" ? body.description.trim() : undefined;
   const pdfUrl =
     typeof body.pdfUrl === "string" ? body.pdfUrl.trim() : undefined;
-  const finalPdfUrl = await commitTempFile(pdfUrl) || undefined;
+  const finalPdfUrl = (await commitTempFile(pdfUrl)) || undefined;
   const duration =
     body.duration !== undefined ? Number(body.duration) : undefined;
   const passScore =
@@ -117,23 +117,31 @@ export async function PATCH(
   const showAnswers =
     typeof body.showAnswers === "boolean" ? body.showAnswers : undefined;
   const dueDate = body.dueDate ? new Date(body.dueDate) : undefined;
-  const type = body.type === "EXAM" ? "EXAM" : body.type === "HOMEWORK" ? "HOMEWORK" : undefined;
+  const type =
+    body.type === "EXAM"
+      ? "EXAM"
+      : body.type === "HOMEWORK"
+        ? "HOMEWORK"
+        : undefined;
 
-  const explanation = typeof body.explanation === "string" ? body.explanation.trim() : undefined;
-  const videoUrl = typeof body.videoUrl === "string" ? body.videoUrl.trim() : undefined;
-  const audioUrl = typeof body.audioUrl === "string" ? body.audioUrl.trim() : undefined;
+  const explanation =
+    typeof body.explanation === "string" ? body.explanation.trim() : undefined;
+  const videoUrl =
+    typeof body.videoUrl === "string" ? body.videoUrl.trim() : undefined;
+  const audioUrl =
+    typeof body.audioUrl === "string" ? body.audioUrl.trim() : undefined;
   const solutionVideos = body.solutionVideos;
 
-  const finalExplanation = await commitTempFile(explanation) || undefined;
-  const finalVideoUrl = await commitTempFile(videoUrl) || undefined;
-  const finalAudioUrl = await commitTempFile(audioUrl) || undefined;
+  const finalExplanation = (await commitTempFile(explanation)) || undefined;
+  const finalVideoUrl = (await commitTempFile(videoUrl)) || undefined;
+  const finalAudioUrl = (await commitTempFile(audioUrl)) || undefined;
 
   let finalSolutionVideos = undefined;
   if (solutionVideos && Array.isArray(solutionVideos)) {
     finalSolutionVideos = [];
     for (const v of solutionVideos) {
       if (v.url) {
-        v.url = await commitTempFile(v.url) || v.url;
+        v.url = (await commitTempFile(v.url)) || v.url;
       }
       finalSolutionVideos.push(v);
     }
@@ -166,7 +174,9 @@ export async function PATCH(
       explanation: finalExplanation,
       videoUrl: finalVideoUrl,
       audioUrl: finalAudioUrl,
-      ...(finalSolutionVideos !== undefined && { solutionVideos: finalSolutionVideos }),
+      ...(finalSolutionVideos !== undefined && {
+        solutionVideos: finalSolutionVideos,
+      }),
     },
   });
 
