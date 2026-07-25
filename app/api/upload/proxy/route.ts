@@ -42,7 +42,8 @@ export async function PUT(req: NextRequest) {
       ? "documents"
       : "images";
 
-    const key = `${folder}/${uniqueFileName}`;
+    const isEssay = fileName.startsWith("essay_") || searchParams.get("isTemp") === "true";
+    const key = isEssay ? `temp/${folder}/${uniqueFileName}` : `${folder}/${uniqueFileName}`;
 
     // Validate Content-Type BEFORE reading body
     const contentType =

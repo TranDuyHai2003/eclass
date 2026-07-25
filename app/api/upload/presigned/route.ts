@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { fileName, fileType, fileSize } = await req.json();
+    const { fileName, fileType, fileSize, isTemp } = await req.json();
 
     if (!fileName || !fileType || !fileSize) {
       return new NextResponse("Missing file metadata", { status: 400 });
@@ -34,7 +34,12 @@ export async function POST(req: NextRequest) {
       ? "documents" 
       : "images";
       
-    const key = `temp/${folder}/${uniqueFileName}`;
+    // Chỉ có phần nộp bài tự luận của học sinh (bắt đầu bằng "essay_" hoặc isTemp = true) mới lưu vào /temp/
+    // Các file PDF đề thi, lời giải, tài liệu sẽ lưu thẳng vào documents/
+    const isEssaySubmission = fileName.startsWith("essay_") || isTemp === true;
+    const key = isEssaySubmission
+      ? `temp/${folder}/${uniqueFileName}`
+      : `${folder}/${uniqueFileName}`;
 
     const command = new PutObjectCommand({
       Bucket: B2_BUCKET_NAME,
