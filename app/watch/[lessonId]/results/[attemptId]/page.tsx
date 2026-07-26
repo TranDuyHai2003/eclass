@@ -116,7 +116,7 @@ export default async function TestResultPage({
           </Button>
           <div className="min-w-0">
             <h2 className="font-black text-slate-900 truncate max-w-[300px]">
-              Kết quả: {test.pdfUrl.split("/").pop()}
+              Kết quả: {test.pdfUrl ? test.pdfUrl.split("/").pop() : (test.title || "Bài kiểm tra")}
             </h2>
             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
               Lượt làm bài ngày{" "}
