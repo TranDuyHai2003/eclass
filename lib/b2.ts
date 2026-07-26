@@ -111,8 +111,12 @@ export async function commitTempFile(
   }
 
   try {
-    const parsedUrl = new URL(url);
-    let pathname = parsedUrl.pathname;
+    let pathname = url;
+    try {
+      pathname = new URL(url).pathname;
+    } catch {
+      // url is already a relative path
+    }
 
     // Strip legacy /file/<bucket-name>/ prefix if present
     pathname = pathname.replace(/^\/file\/[^\/]+\//, "/");
