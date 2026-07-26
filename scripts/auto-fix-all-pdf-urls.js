@@ -35,11 +35,22 @@ async function autoFixAllPdfUrls() {
 
   console.log(`📦 Found ${b2Files.length} clean ASCII PDF files in documents/ on B2.\n`);
 
-  const cleanCdnBase = CDN_DOMAIN.endsWith("/") ? CDN_DOMAIN.slice(0, -1) : CDN_DOMAIN;
-  const b2Prefix = `${cleanCdnBase}/file/${REAL_BUCKET}`;
+  const baseDomain = CDN_DOMAIN.replace(/\/file\/.*$/, "").replace(/\/$/, "");
+  const b2Prefix = `${baseDomain}/file/${REAL_BUCKET}`;
 
   const tests = await prisma.test.findMany();
   let updatedCount = 0;
+
+  function cleanUrl(url) {
+    if (!url || typeof url !== "string") return url;
+    let path = url;
+    try { path = new URL(url).pathname; } catch {}
+    path = path.replace("/temp/", "/");
+    path = path.replace("dummy_bucket", REAL_BUCKET);
+    path = path.replace(/(\/file\/[^\/]+)+/g, "");
+    if (!path.startsWith("/")) path = "/" + path;
+    return `${baseDomain}/file/${REAL_BUCKET}${path}`;
+  }
 
   for (const t of tests) {
     let pdfUrl = t.pdfUrl;
@@ -48,14 +59,32 @@ async function autoFixAllPdfUrls() {
 
     const matchedPdfKey = findBestMatchingB2File(t.title, pdfUrl, b2Files, false);
     if (matchedPdfKey) {
-      pdfUrl = `${b2Prefix}/${matchedPdfKey}`;
-      modified = true;
+      const newPdfUrl = `${b2Prefix}/${matchedPdfKey}`;
+      if (newPdfUrl !== pdfUrl) {
+        pdfUrl = newPdfUrl;
+        modified = true;
+      }
+    } else if (pdfUrl) {
+      const cleaned = cleanUrl(pdfUrl);
+      if (cleaned !== pdfUrl) {
+        pdfUrl = cleaned;
+        modified = true;
+      }
     }
 
     const matchedExpKey = findBestMatchingB2File(t.title, explanation, b2Files, true);
     if (matchedExpKey) {
-      explanation = `${b2Prefix}/${matchedExpKey}`;
-      modified = true;
+      const newExpUrl = `${b2Prefix}/${matchedExpKey}`;
+      if (newExpUrl !== explanation) {
+        explanation = newExpUrl;
+        modified = true;
+      }
+    } else if (explanation) {
+      const cleaned = cleanUrl(explanation);
+      if (cleaned !== explanation) {
+        explanation = cleaned;
+        modified = true;
+      }
     }
 
     if (modified) {
@@ -75,8 +104,16 @@ async function autoFixAllPdfUrls() {
 
 function findBestMatchingB2File(title, currentUrl, b2Files, isExplanation) {
   const cleanTitle = (title || "").toLowerCase();
-  const codeMatch = cleanTitle.match(/\b1\.\d+\b/);
-  const code = codeMatch ? codeMatch[0] : null;
+  let codeMatch = cleanTitle.match(/\b1\.\d+\b/);
+
+  if (!codeMatch && currentUrl) {
+    try {
+      const decodeUrl = decodeURIComponent(currentUrl);
+      codeMatch = decodeUrl.match(/\b1\.\d+\b/) || decodeUrl.match(/\b1-\d+\b/);
+    } catch {}
+  }
+
+  const code = codeMatch ? codeMatch[0].replace("-", ".") : null;
 
   for (const file of b2Files) {
     const key = file.Key;
