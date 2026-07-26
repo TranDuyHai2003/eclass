@@ -10,6 +10,13 @@
  */
 export function normalizeAnswer(answer: string | null | undefined): string {
   if (!answer) return "";
+  if (answer.startsWith("http://") || answer.startsWith("https://")) {
+    try {
+      answer = decodeURIComponent(new URL(answer).pathname.split("/").pop() || answer);
+    } catch {
+      answer = decodeURIComponent(answer.split("/").pop() || answer);
+    }
+  }
   return answer.trim().toLowerCase();
 }
 

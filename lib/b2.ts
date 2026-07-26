@@ -54,6 +54,12 @@ export function sanitizeFileName(fileName: string): string {
 
 export function normalizeCdnUrl(url: string | null | undefined): string | null {
   if (!url || typeof url !== "string") return url || null;
+
+  // Don't treat simple answer strings like "A", "B", "T", "F", etc. as relative URL paths
+  if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("/")) {
+    return url;
+  }
+
   const cleanCdnBase = CDN_DOMAIN.endsWith("/")
     ? CDN_DOMAIN.slice(0, -1)
     : CDN_DOMAIN;
@@ -80,6 +86,10 @@ export async function commitTempFile(
   url: string | null | undefined,
 ): Promise<string | null> {
   if (!url || typeof url !== "string") return url || null;
+
+  if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("/")) {
+    return url;
+  }
 
   // Clean URL first to strip legacy /file/<bucket>/
   const normalized = normalizeCdnUrl(url) || url;

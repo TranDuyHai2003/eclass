@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -34,6 +34,18 @@ import { ResultAnalytics } from "./_components/ResultAnalytics";
 import { RecommendationList } from "./_components/RecommendationList";
 import { ReopenAttemptButton } from "./_components/ReopenAttemptButton";
 
+function cleanStudentAnswer(ans: string | undefined | null) {
+  if (!ans) return "";
+  if (ans.startsWith("http://") || ans.startsWith("https://")) {
+    try {
+      return decodeURIComponent(new URL(ans).pathname.split("/").pop() || ans);
+    } catch {
+      return decodeURIComponent(ans.split("/").pop() || ans);
+    }
+  }
+  return ans;
+}
+
 export default async function TestResultPage({
   params,
 }: {
@@ -58,7 +70,7 @@ export default async function TestResultPage({
 
   const test = attempt.test;
   let solutionVideos = (test.solutionVideos as any[]) || [];
-  
+
   // If no solutionVideos array, but test.videoUrl exists, use it
   if (solutionVideos.length === 0 && test.videoUrl) {
     solutionVideos = [{ title: "Video chữa bài", url: test.videoUrl }];
@@ -67,7 +79,7 @@ export default async function TestResultPage({
   // Fetch the main lesson (lecture) video
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
-    select: { videoUrl: true, title: true }
+    select: { videoUrl: true, title: true },
   });
 
   // 2. Map answers for quick lookup
@@ -92,7 +104,7 @@ export default async function TestResultPage({
   const minutes = Math.floor(durationInSeconds / 60);
   const seconds = durationInSeconds % 60;
 
- return (
+  return (
     <div className="h-[100dvh] flex flex-col bg-[#E2EEFF] overflow-hidden">
       {/* Result Header */}
       <header className="h-16 px-6 border-b flex items-center justify-between shrink-0 bg-white z-[60] shadow-sm">
@@ -131,9 +143,11 @@ export default async function TestResultPage({
           <div className="min-h-12 py-2 px-6 border-b flex flex-wrap items-center justify-between gap-4 bg-slate-50/50 shrink-0">
             <div className="flex gap-4 text-[10px] md:text-sm font-black uppercase tracking-widest">
               <span className="text-emerald-600">Đúng: {correctCount}</span>
-              <span className="text-blue-500">Sai: {totalQuestions - correctCount}</span>
+              <span className="text-blue-500">
+                Sai: {totalQuestions - correctCount}
+              </span>
             </div>
-            
+
             {/* Score block */}
             <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
               <Trophy className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />
@@ -190,7 +204,8 @@ export default async function TestResultPage({
 
                     <div className="space-y-4">
                       <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <FileText className="w-3 h-3" /> Tài liệu lời giải chi tiết
+                        <FileText className="w-3 h-3" /> Tài liệu lời giải chi
+                        tiết
                       </div>
                       <div className="h-[500px] border border-blue-100 rounded-2xl overflow-hidden bg-slate-100 shadow-inner">
                         <LazyLoadWrapper placeholderHeight="500px">
@@ -221,7 +236,8 @@ export default async function TestResultPage({
                       {section.questions.map((q, qIdx: number) => {
                         const studentAns = answerMap.get(q.id);
                         const isCorrect = studentAns?.isCorrect;
-                        const isPending = q.type === "ESSAY" && isCorrect === null;
+                        const isPending =
+                          q.type === "ESSAY" && isCorrect === null;
 
                         return (
                           <div key={q.id} className="space-y-3">
@@ -242,40 +258,95 @@ export default async function TestResultPage({
                               <div className="flex-1 flex flex-wrap items-center gap-4 md:gap-8">
                                 <div className="space-y-0.5">
                                   <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                                    {q.type === "ESSAY" ? "Hình thức" : q.type === "MULTIPLE_CHOICE_GROUP" ? "Loại câu hỏi" : "Đáp án của bạn"}
+                                    {q.type === "ESSAY"
+                                      ? "Hình thức"
+                                      : q.type === "MULTIPLE_CHOICE_GROUP"
+                                        ? "Loại câu hỏi"
+                                        : "Đáp án của bạn"}
                                   </p>
                                   <p
                                     className={cn(
                                       "font-black text-base md:text-lg",
-                                      isCorrect === true ? "text-emerald-600" : isPending ? "text-blue-600" : "text-blue-600",
+                                      isCorrect === true
+                                        ? "text-emerald-600"
+                                        : isPending
+                                          ? "text-blue-600"
+                                          : "text-blue-600",
                                     )}
                                   >
                                     {q.type === "ESSAY" ? (
                                       studentAns?.answerProvided ? (
-                                        <a href={studentAns.answerProvided} target="_blank" className="flex items-center gap-2 text-blue-600 hover:underline">
+                                        <a
+                                          href={studentAns.answerProvided}
+                                          target="_blank"
+                                          className="flex items-center gap-2 text-blue-600 hover:underline"
+                                        >
                                           <ImageIcon className="w-4 h-4" />
                                           <span>Xem bài làm</span>
                                           <ExternalLink className="w-3 h-3" />
                                         </a>
-                                      ) : "Làm ra giấy"
+                                      ) : (
+                                        "Làm ra giấy"
+                                      )
                                     ) : q.type === "MULTIPLE_CHOICE_GROUP" ? (
                                       "Đúng/Sai (4 ý)"
-                                    ) : (q.type as any) === "TRUE_FALSE" ? (
-                                      studentAns?.answerProvided ? studentAns.answerProvided.split(',').map(v => v.trim() === "T" ? "Đúng" : v.trim() === "F" ? "Sai" : v).join(", ") : "Bỏ trống"
-                                    ) : (studentAns?.answerProvided || "Bỏ trống")}
+                                    ) : (
+                                      (() => {
+                                        const cleaned = cleanStudentAnswer(
+                                          studentAns?.answerProvided,
+                                        );
+                                        if ((q.type as any) === "TRUE_FALSE") {
+                                          return cleaned
+                                            ? cleaned
+                                                .split(",")
+                                                .map((v) =>
+                                                  v.trim() === "T"
+                                                    ? "Đúng"
+                                                    : v.trim() === "F"
+                                                      ? "Sai"
+                                                      : v,
+                                                )
+                                                .join(", ")
+                                            : "Bỏ trống";
+                                        }
+                                        return cleaned || "Bỏ trống";
+                                      })()
+                                    )}
                                   </p>
                                 </div>
 
-                                {q.type !== "ESSAY" && q.type !== "MULTIPLE_CHOICE_GROUP" && (
-                                  <div className="space-y-0.5">
-                                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                                      Đáp án đúng
-                                    </p>
-                                    <p className="font-black text-base md:text-lg text-emerald-600">
-                                      {(q.type as any) === "TRUE_FALSE" ? (q.correctAnswer ? q.correctAnswer.split(/[,|]/).map(v => v.trim() === "T" ? "Đúng" : v.trim() === "F" ? "Sai" : v).join(q.correctAnswer.includes("|") ? " hoặc " : ", ") : "") : (q.correctAnswer?.includes("|") ? q.correctAnswer.split("|").join(" hoặc ") : q.correctAnswer)}
-                                    </p>
-                                  </div>
-                                )}
+                                {q.type !== "ESSAY" &&
+                                  q.type !== "MULTIPLE_CHOICE_GROUP" && (
+                                    <div className="space-y-0.5">
+                                      <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                                        Đáp án đúng
+                                      </p>
+                                      <p className="font-black text-base md:text-lg text-emerald-600">
+                                        {(q.type as any) === "TRUE_FALSE"
+                                          ? q.correctAnswer
+                                            ? q.correctAnswer
+                                                .split(/[,|]/)
+                                                .map((v) =>
+                                                  v.trim() === "T"
+                                                    ? "Đúng"
+                                                    : v.trim() === "F"
+                                                      ? "Sai"
+                                                      : v,
+                                                )
+                                                .join(
+                                                  q.correctAnswer.includes("|")
+                                                    ? " hoặc "
+                                                    : ", ",
+                                                )
+                                            : ""
+                                          : q.correctAnswer?.includes("|")
+                                            ? q.correctAnswer
+                                                .split("|")
+                                                .join(" hoặc ")
+                                            : q.correctAnswer}
+                                      </p>
+                                    </div>
+                                  )}
                               </div>
 
                               <div className="shrink-0">
@@ -283,7 +354,7 @@ export default async function TestResultPage({
                                   <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
                                 ) : isPending ? (
                                   <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-blue-100 flex items-center justify-center">
-                                     <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600" />
+                                    <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600" />
                                   </div>
                                 ) : (
                                   <XCircle className="w-5 h-5 md:w-6 md:h-6 text-blue-500" />
@@ -293,36 +364,59 @@ export default async function TestResultPage({
 
                             {q.type === "MULTIPLE_CHOICE_GROUP" && (
                               <div className="mt-3 flex flex-col gap-2 pl-8 md:pl-12">
-                                {q.subQuestions?.map((sq: any, sqIdx: number) => {
-                                  const subAns = studentAns?.subAnswers?.find((a: any) => a.subQuestionId === sq.id);
-                                  const subIsCorrect = subAns?.isCorrect;
-                                  return (
-                                    <div key={sq.id} className="flex flex-wrap sm:flex-nowrap items-center justify-between p-3 rounded-xl bg-white border border-slate-100 shadow-sm gap-2">
-                                      <div className="flex items-center gap-3">
-                                        <span className="text-[10px] md:text-xs font-black text-slate-400 w-8 text-center shrink-0">Ý {sqIdx + 1}</span>
-                                        <span className="text-xs md:text-sm font-bold text-slate-700">
-                                          {subAns?.answerProvided ? (subAns.answerProvided === "T" ? "Đúng" : "Sai") : "Bỏ trống"}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-4 ml-auto">
-                                        <div className="text-[10px] md:text-xs font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-md">
-                                          Đáp án: {sq.correctAnswer === "T" ? "Đúng" : "Sai"}
+                                {q.subQuestions?.map(
+                                  (sq: any, sqIdx: number) => {
+                                    const subAns = studentAns?.subAnswers?.find(
+                                      (a: any) => a.subQuestionId === sq.id,
+                                    );
+                                    const subIsCorrect = subAns?.isCorrect;
+                                    return (
+                                      <div
+                                        key={sq.id}
+                                        className="flex flex-wrap sm:flex-nowrap items-center justify-between p-3 rounded-xl bg-white border border-slate-100 shadow-sm gap-2"
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <span className="text-[10px] md:text-xs font-black text-slate-400 w-8 text-center shrink-0">
+                                            Ý {sqIdx + 1}
+                                          </span>
+                                          <span className="text-xs md:text-sm font-bold text-slate-700">
+                                            {(() => {
+                                              const subVal = cleanStudentAnswer(
+                                                subAns?.answerProvided,
+                                              );
+                                              return subVal
+                                                ? subVal === "T"
+                                                  ? "Đúng"
+                                                  : subVal === "F"
+                                                    ? "Sai"
+                                                    : subVal
+                                                : "Bỏ trống";
+                                            })()}
+                                          </span>
                                         </div>
-                                        {subIsCorrect === true ? (
-                                          <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-emerald-500 shrink-0" />
-                                        ) : (
-                                          <XCircle className="w-4 h-4 md:w-5 md:h-5 text-blue-500 shrink-0" />
-                                        )}
+                                        <div className="flex items-center gap-4 ml-auto">
+                                          <div className="text-[10px] md:text-xs font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-md">
+                                            Đáp án:{" "}
+                                            {sq.correctAnswer === "T"
+                                              ? "Đúng"
+                                              : "Sai"}
+                                          </div>
+                                          {subIsCorrect === true ? (
+                                            <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-emerald-500 shrink-0" />
+                                          ) : (
+                                            <XCircle className="w-4 h-4 md:w-5 md:h-5 text-blue-500 shrink-0" />
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
-                                  );
-                                })}
+                                    );
+                                  },
+                                )}
                               </div>
                             )}
 
                             {/* Teacher Grading UI */}
                             {isTeacher && q.type === "ESSAY" && studentAns && (
-                              <GradeEssay 
+                              <GradeEssay
                                 answerId={studentAns.id}
                                 initialPoints={studentAns.pointsAwarded}
                                 maxPoints={q.points}
@@ -380,7 +474,9 @@ export default async function TestResultPage({
                                           Câu hỏi tự luận:
                                         </p>
                                       )}
-                                      <p className="whitespace-pre-wrap">{q.explanation}</p>
+                                      <p className="whitespace-pre-wrap">
+                                        {q.explanation}
+                                      </p>
                                     </div>
                                   </div>
                                 )}
@@ -400,8 +496,8 @@ export default async function TestResultPage({
                   Đã nộp bài thành công!
                 </h2>
                 <p className="text-slate-500 max-w-[320px] font-medium leading-relaxed">
-                  Giảng viên đã cài đặt ẩn đáp án chi tiết. Vui lòng liên hệ giảng
-                  viên hoặc chờ thông báo để xem kết quả.
+                  Giảng viên đã cài đặt ẩn đáp án chi tiết. Vui lòng liên hệ
+                  giảng viên hoặc chờ thông báo để xem kết quả.
                 </p>
                 <Button
                   className="mt-8 rounded-2xl px-8 h-12 font-black bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100"
@@ -413,37 +509,44 @@ export default async function TestResultPage({
             )}
 
             {/* Student essay feedback - always visible regardless of showAnswers */}
-            {!isTeacher && test.sections.map((section) =>
-              section.questions
-                .filter((q: any) => q.type === "ESSAY")
-                .map((q: any) => {
-                  const studentAns = answerMap.get(q.id);
-                  if (!studentAns) return null;
-                  const hasFeedback = !!studentAns.feedback;
-                  const isRejected = studentAns.isCorrect === false;
-                  if (!hasFeedback && !isRejected) return null;
-                  return (
-                    <div key={q.id} className="border-t border-slate-100 pt-4 mt-4 space-y-3">
-                      {hasFeedback && (
-                        <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl flex gap-3">
-                          <MessageSquareText className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-[10px] font-black uppercase text-orange-600 tracking-wider mb-1">
-                              Góp ý của giảng viên
-                            </p>
-                            <p className="text-sm text-slate-700 whitespace-pre-wrap">
-                              {studentAns.feedback}
-                            </p>
+            {!isTeacher &&
+              test.sections.map((section) =>
+                section.questions
+                  .filter((q: any) => q.type === "ESSAY")
+                  .map((q: any) => {
+                    const studentAns = answerMap.get(q.id);
+                    if (!studentAns) return null;
+                    const hasFeedback = !!studentAns.feedback;
+                    const isRejected = studentAns.isCorrect === false;
+                    if (!hasFeedback && !isRejected) return null;
+                    return (
+                      <div
+                        key={q.id}
+                        className="border-t border-slate-100 pt-4 mt-4 space-y-3"
+                      >
+                        {hasFeedback && (
+                          <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl flex gap-3">
+                            <MessageSquareText className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-[10px] font-black uppercase text-orange-600 tracking-wider mb-1">
+                                Góp ý của giảng viên
+                              </p>
+                              <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                                {studentAns.feedback}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      {isRejected && (
-                        <ReuploadForm attemptId={attemptId} questionId={q.id} />
-                      )}
-                    </div>
-                  );
-                })
-            )}
+                        )}
+                        {isRejected && (
+                          <ReuploadForm
+                            attemptId={attemptId}
+                            questionId={q.id}
+                          />
+                        )}
+                      </div>
+                    );
+                  }),
+              )}
           </div>
         </div>
       </div>
