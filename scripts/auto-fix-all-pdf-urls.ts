@@ -1,5 +1,6 @@
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { b2Client, B2_BUCKET_NAME, CDN_DOMAIN } from "@/lib/b2";
+import { b2Client, B2_BUCKET_NAME, CDN_DOMAIN } from "../lib/b2";
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";
 
 const prisma = new PrismaClient();
