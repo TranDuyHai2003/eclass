@@ -81,9 +81,6 @@ export function MultiLevelMatrixTable({
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     // Only drag on left click
     if (e.button !== 0) return;
-    
-    // Pointer capture for smoother events
-    e.currentTarget.setPointerCapture(e.pointerId);
 
     isDragging.current = true;
     isClick.current = true;
