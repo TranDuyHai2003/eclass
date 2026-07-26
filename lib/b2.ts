@@ -63,9 +63,7 @@ export function normalizeCdnUrl(url: string | null | undefined): string | null {
     return url;
   }
 
-  const cleanCdnBase = CDN_DOMAIN.endsWith("/")
-    ? CDN_DOMAIN.slice(0, -1)
-    : CDN_DOMAIN;
+  const baseDomain = CDN_DOMAIN.replace(/\/file\/.*$/, "").replace(/\/$/, "");
 
   let pathname = url;
   try {
@@ -79,16 +77,12 @@ export function normalizeCdnUrl(url: string | null | undefined): string | null {
   // Replace dummy_bucket with real bucket name if present
   pathname = pathname.replace("dummy_bucket", B2_BUCKET_NAME);
 
-  // Ensure /file/<bucket>/ prefix is present for Backblaze B2 native URLs
-  const bucketPrefix = `/file/${B2_BUCKET_NAME}`;
-  if (!pathname.startsWith(bucketPrefix)) {
-    // Strip legacy /file/<otherbucket>/ if present
-    pathname = pathname.replace(/^\/file\/[^\/]+\//, "/");
-    if (!pathname.startsWith("/")) pathname = "/" + pathname;
-    pathname = `${bucketPrefix}${pathname}`;
-  }
+  // Collapse all /file/<bucket> prefix occurrences
+  pathname = pathname.replace(/(\/file\/[^\/]+)+/g, "");
 
-  return `${cleanCdnBase}${pathname}`;
+  if (!pathname.startsWith("/")) pathname = "/" + pathname;
+
+  return `${baseDomain}/file/${B2_BUCKET_NAME}${pathname}`;
 }
 
 export async function commitTempFile(
