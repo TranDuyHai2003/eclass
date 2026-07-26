@@ -71,13 +71,17 @@ export function normalizeCdnUrl(url: string | null | undefined): string | null {
     // If not a valid full URL, treat as path
   }
 
-  // Remove legacy /file/<bucket>/ prefix if present
-  pathname = pathname.replace(/^\/file\/[^\/]+\//, "/");
   // Remove /temp/ from path if present
   pathname = pathname.replace("/temp/", "/");
 
-  // Ensure path starts with /
-  if (!pathname.startsWith("/")) pathname = "/" + pathname;
+  // Ensure /file/<bucket>/ prefix is present for Backblaze B2 native URLs
+  const bucketPrefix = `/file/${B2_BUCKET_NAME}`;
+  if (!pathname.startsWith(bucketPrefix)) {
+    // Strip legacy /file/<otherbucket>/ if present
+    pathname = pathname.replace(/^\/file\/[^\/]+\//, "/");
+    if (!pathname.startsWith("/")) pathname = "/" + pathname;
+    pathname = `${bucketPrefix}${pathname}`;
+  }
 
   return `${cleanCdnBase}${pathname}`;
 }
