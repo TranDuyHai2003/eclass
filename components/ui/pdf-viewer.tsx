@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn, polyfillURLParse } from "@/lib/utils";
+import { normalizeCdnUrl } from "@/lib/b2";
 
 polyfillURLParse();
 
@@ -54,16 +55,17 @@ function getProxyUrl(url: string) {
 }
 
 export default function PDFViewer({
-  url: originalUrl,
+  url: rawUrl,
   className,
   hideToolbar = false,
   noScroll = false,
   flat = false,
   renderLeft,
 }: PDFViewerProps) {
+  const normalized = normalizeCdnUrl(rawUrl) || rawUrl || "";
   // Backblaze B2 sẽ trả về lỗi 400 (Bad character in percent-encoded string: 44)
   // nếu URL có chứa dấu phẩy chưa được encode.
-  const url = originalUrl.replace(/,/g, "%2C");
+  const url = normalized.replace(/,/g, "%2C");
 
   const [numPages, setNumPages] = useState<number>(0);
   const [rotation, setRotation] = useState<number>(0);
