@@ -1088,10 +1088,14 @@ export async function resubmitEssayAnswer(
   if (answer.attempt.userId !== session.user.id) throw new Error("Unauthorized");
   if (answer.question.type !== "ESSAY") throw new Error("Not an essay question");
 
+  const finalAnswerProvided = (answerProvided && (answerProvided.startsWith("http://") || answerProvided.startsWith("https://")))
+    ? (await commitTempFile(answerProvided) || answerProvided)
+    : answerProvided;
+
   await prisma.studentAnswer.update({
     where: { attemptId_questionId: { attemptId, questionId } },
     data: {
-      answerProvided,
+      answerProvided: finalAnswerProvided,
       isCorrect: null,
       pointsAwarded: 0,
       feedback: null,
