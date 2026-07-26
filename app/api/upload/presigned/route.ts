@@ -34,9 +34,9 @@ export async function POST(req: NextRequest) {
       ? "documents" 
       : "images";
       
-    // Chỉ có phần nộp bài tự luận của học sinh (bắt đầu bằng "essay_" hoặc isTemp = true) mới lưu vào /temp/
-    // Các file PDF đề thi, lời giải, tài liệu sẽ lưu thẳng vào documents/
-    const isEssaySubmission = fileName.startsWith("essay_") || isTemp === true;
+    // Tất cả các file tài liệu (PDF, doc...) luôn lưu trực tiếp vào documents/
+    // Chỉ hình ảnh tạm/nộp bài tự luận dạng ảnh mới lưu vào temp/
+    const isEssaySubmission = fileName.startsWith("essay_") || (isTemp === true && folder !== "documents");
     const key = isEssaySubmission
       ? `temp/${folder}/${uniqueFileName}`
       : `${folder}/${uniqueFileName}`;
@@ -52,9 +52,12 @@ export async function POST(req: NextRequest) {
     // 15 minutes is secure while providing ample time for a 50MB upload on slow connections
     const presignedUrl = await getSignedUrl(b2Client, command, { expiresIn: 900 });
 
+    const cleanCdnBase = CDN_DOMAIN.endsWith("/") ? CDN_DOMAIN.slice(0, -1) : CDN_DOMAIN;
+    const fullFileUrl = `${cleanCdnBase}/file/${B2_BUCKET_NAME}/${key}`;
+
     return NextResponse.json({
       uploadUrl: presignedUrl,
-      fileUrl: `${CDN_DOMAIN}/${key}`,
+      fileUrl: fullFileUrl,
       fileName: uniqueFileName,
     });
   } catch (error) {

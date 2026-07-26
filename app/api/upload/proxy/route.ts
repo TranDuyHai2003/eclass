@@ -42,7 +42,7 @@ export async function PUT(req: NextRequest) {
       ? "documents"
       : "images";
 
-    const isEssay = fileName.startsWith("essay_") || searchParams.get("isTemp") === "true";
+    const isEssay = fileName.startsWith("essay_") || (searchParams.get("isTemp") === "true" && folder !== "documents");
     const key = isEssay ? `temp/${folder}/${uniqueFileName}` : `${folder}/${uniqueFileName}`;
 
     // Validate Content-Type BEFORE reading body
@@ -79,7 +79,8 @@ export async function PUT(req: NextRequest) {
       }),
     );
 
-    const publicUrl = `${CDN_DOMAIN}/${key}`;
+    const cleanCdnBase = CDN_DOMAIN.endsWith("/") ? CDN_DOMAIN.slice(0, -1) : CDN_DOMAIN;
+    const publicUrl = `${cleanCdnBase}/file/${B2_BUCKET_NAME}/${key}`;
 
     console.log(`[Proxy Upload] B2 Success: ${publicUrl}`);
 
