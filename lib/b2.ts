@@ -10,7 +10,10 @@ export const b2Client = new S3Client({
   forcePathStyle: true,
 });
 
-export const B2_BUCKET_NAME = process.env.B2_BUCKET_NAME || "dummy_bucket";
+export const B2_BUCKET_NAME =
+  process.env.B2_BUCKET_NAME && !process.env.B2_BUCKET_NAME.includes("dummy")
+    ? process.env.B2_BUCKET_NAME
+    : "teacherduc-video-storage";
 export const CDN_DOMAIN =
   process.env.NEXT_PUBLIC_VIDEO_DOMAIN || "https://cdn.teacherduc.me";
 
@@ -73,6 +76,8 @@ export function normalizeCdnUrl(url: string | null | undefined): string | null {
 
   // Remove /temp/ from path if present
   pathname = pathname.replace("/temp/", "/");
+  // Replace dummy_bucket with real bucket name if present
+  pathname = pathname.replace("dummy_bucket", B2_BUCKET_NAME);
 
   // Ensure /file/<bucket>/ prefix is present for Backblaze B2 native URLs
   const bucketPrefix = `/file/${B2_BUCKET_NAME}`;
