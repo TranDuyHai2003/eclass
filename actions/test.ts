@@ -611,14 +611,7 @@ function checkAnswerMatch(provided: string | null | undefined, expected: string 
       const optSorted = optParts.sort().join(',');
       
       // Exact match
-      if (providedSorted === optSorted) return true;
-
-      // Partial match: if student provided at least one answer and ALL of their chosen answers are among the correct options
-      if (providedParts.length > 0 && providedParts.every(p => optParts.includes(p))) {
-        return true;
-      }
-
-      return false;
+      return providedSorted === optSorted;
     });
   }
 
@@ -1038,7 +1031,10 @@ export async function gradeStudentAnswer(
       where: { attemptId: answer.attemptId },
     });
 
-    const rawTotalScore = allAnswers.reduce((acc, curr) => acc + curr.pointsAwarded, 0);
+    const rawTotalScore = allAnswers.reduce((acc, curr) => {
+      const pts = curr.id === answerId ? points : curr.pointsAwarded;
+      return acc + pts;
+    }, 0);
     
     // Calculate max points possible
     let maxPointsPossible = 0;
