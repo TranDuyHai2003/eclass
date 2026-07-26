@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { b2Client, B2_BUCKET_NAME, CDN_DOMAIN, sanitizeFileName } from "@/lib/b2";
+import { b2Client, B2_BUCKET_NAME, CDN_DOMAIN, sanitizeFileName, normalizeCdnUrl } from "@/lib/b2";
 import { nanoid } from "nanoid";
 
 export async function POST(req: NextRequest) {
@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
     }
 
     const fileExtension = fileName.split(".").pop()?.toLowerCase() || "";
-    const sanitizedOriginalName = sanitizeFileName(fileName.replace(`.${fileExtension}`, ""));
-    const uniqueFileName = `${nanoid()}-${sanitizedOriginalName}.${fileExtension}`;
+    const sanitizedFileName = sanitizeFileName(fileName);
+    const uniqueFileName = `${nanoid()}-${sanitizedFileName}`;
     
     // Phân loại folder dựa trên đuôi file
     const folder = ["pdf", "doc", "docx", "xls", "xlsx", "txt"].includes(fileExtension) 
@@ -52,8 +52,7 @@ export async function POST(req: NextRequest) {
     // 15 minutes is secure while providing ample time for a 50MB upload on slow connections
     const presignedUrl = await getSignedUrl(b2Client, command, { expiresIn: 900 });
 
-    const cleanCdnBase = CDN_DOMAIN.endsWith("/") ? CDN_DOMAIN.slice(0, -1) : CDN_DOMAIN;
-    const fullFileUrl = `${cleanCdnBase}/file/${B2_BUCKET_NAME}/${key}`;
+    const fullFileUrl = normalizeCdnUrl(`https://cdn.teacherduc.me/${key}`) || "";
 
     return NextResponse.json({
       uploadUrl: presignedUrl,

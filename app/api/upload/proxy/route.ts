@@ -6,6 +6,7 @@ import {
   B2_BUCKET_NAME,
   CDN_DOMAIN,
   sanitizeFileName,
+  normalizeCdnUrl,
   validateB2Config,
 } from "@/lib/b2";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
@@ -79,8 +80,7 @@ export async function PUT(req: NextRequest) {
       }),
     );
 
-    const cleanCdnBase = CDN_DOMAIN.endsWith("/") ? CDN_DOMAIN.slice(0, -1) : CDN_DOMAIN;
-    const publicUrl = `${cleanCdnBase}/file/${B2_BUCKET_NAME}/${key}`;
+    const publicUrl = normalizeCdnUrl(`https://cdn.teacherduc.me/${key}`);
 
     console.log(`[Proxy Upload] B2 Success: ${publicUrl}`);
 
