@@ -590,6 +590,15 @@ function checkAnswerMatch(provided: string | null | undefined, expected: string 
   if (!expected) return false;
   if (!provided) return false;
 
+  // Clean provided answer if it was corrupted with a CDN URL prefix
+  if (type !== 'ESSAY' && (provided.startsWith("http://") || provided.startsWith("https://"))) {
+    try {
+      provided = decodeURIComponent(new URL(provided).pathname.split("/").pop() || provided);
+    } catch {
+      provided = decodeURIComponent(provided.split("/").pop() || provided);
+    }
+  }
+
   const providedNorm = normalizeShortAnswer(provided);
   const expectedOptions = expected.split('|').map(s => normalizeShortAnswer(s));
 
@@ -646,6 +655,14 @@ function checkSubQuestionCorrect(
   type: string
 ): boolean {
   if (!studentAns) return false;
+
+  if (studentAns.startsWith("http://") || studentAns.startsWith("https://")) {
+    try {
+      studentAns = decodeURIComponent(new URL(studentAns).pathname.split("/").pop() || studentAns);
+    } catch {
+      studentAns = decodeURIComponent(studentAns.split("/").pop() || studentAns);
+    }
+  }
 
   if (type === 'SHORT_ANSWER') {
     const studentVal = parseMathValue(studentAns.toLowerCase());
@@ -714,8 +731,8 @@ export async function submitTestAttempt(
     const q = questionMap.get(ans.questionId);
     if (!q) continue; // Skip answers for questions that don't exist in this test
 
-    // Commit temp file if the answer is an uploaded file URL
-    if (ans.answerProvided) {
+    // Commit temp file if the answer is an uploaded file URL for ESSAY
+    if (q.type === 'ESSAY' && ans.answerProvided && (ans.answerProvided.startsWith("http://") || ans.answerProvided.startsWith("https://"))) {
       ans.answerProvided = await commitTempFile(ans.answerProvided) || ans.answerProvided;
     }
 
