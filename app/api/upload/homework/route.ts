@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { b2Client, B2_BUCKET_NAME, CDN_DOMAIN, sanitizeFileName } from "@/lib/b2";
+import { b2Client, B2_BUCKET_NAME, normalizeCdnUrl, sanitizeFileName } from "@/lib/b2";
 import { nanoid } from "nanoid";
 
 export async function POST(req: NextRequest) {
@@ -17,9 +17,8 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Missing fileName or fileType", { status: 400 });
     }
 
-    const fileExtension = fileName.split(".").pop();
-    const sanitizedOriginalName = sanitizeFileName(fileName.replace(`.${fileExtension}`, ""));
-    const uniqueFileName = `${nanoid()}-${sanitizedOriginalName}.${fileExtension}`;
+    const sanitizedName = sanitizeFileName(fileName);
+    const uniqueFileName = `${nanoid()}-${sanitizedName}`;
     const key = `homework/${uniqueFileName}`;
 
     const command = new PutObjectCommand({
@@ -34,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       uploadUrl: presignedUrl,
-      publicUrl: `${CDN_DOMAIN}/${key}`,
+      publicUrl: normalizeCdnUrl(`https://cdn.teacherduc.me/${key}`),
     });
   } catch (error) {
     console.error("Homework presigned error:", error);

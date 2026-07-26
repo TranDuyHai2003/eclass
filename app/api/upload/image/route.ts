@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { b2Client, B2_BUCKET_NAME, CDN_DOMAIN, sanitizeFileName } from "@/lib/b2";
+import { b2Client, B2_BUCKET_NAME, normalizeCdnUrl, sanitizeFileName } from "@/lib/b2";
 import { nanoid } from "nanoid";
 
 export async function POST(req: NextRequest) {
@@ -26,9 +26,8 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const fileExtension = file.name.split(".").pop();
-    const sanitizedOriginalName = sanitizeFileName(file.name.replace(`.${fileExtension}`, ""));
-    const uniqueFileName = `${nanoid()}-${sanitizedOriginalName}.${fileExtension}`;
+    const sanitizedFileName = sanitizeFileName(file.name);
+    const uniqueFileName = `${nanoid()}-${sanitizedFileName}`;
     const key = `images/${uniqueFileName}`;
 
     const command = new PutObjectCommand({
@@ -42,7 +41,7 @@ export async function POST(req: NextRequest) {
     await b2Client.send(command);
 
     return NextResponse.json({
-      url: `${CDN_DOMAIN}/${key}`,
+      url: normalizeCdnUrl(`https://cdn.teacherduc.me/${key}`),
       fileName: uniqueFileName,
     });
   } catch (error) {

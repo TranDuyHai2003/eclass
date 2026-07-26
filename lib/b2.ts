@@ -34,6 +34,7 @@ export function validateB2Config(): string | null {
 }
 
 export function slugify(str: string): string {
+  if (!str) return "";
   return str
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // remove accents
@@ -45,8 +46,13 @@ export function slugify(str: string): string {
 }
 
 export function sanitizeFileName(fileName: string): string {
+  if (!fileName || typeof fileName !== "string") return "file";
+
   const parts = fileName.split(".");
-  const ext = parts.length > 1 ? parts.pop() : "";
+  let ext = "";
+  if (parts.length > 1) {
+    ext = (parts.pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
   const name = parts.join(".");
 
   let safeName = slugify(name);
@@ -72,8 +78,11 @@ export function normalizeCdnUrl(url: string | null | undefined): string | null {
     // If not a valid full URL, treat as path
   }
 
-  // Remove /temp/ from path if present
-  pathname = pathname.replace("/temp/", "/");
+  // Remove /temp/ from documents/ path if present
+  if (pathname.includes("/documents/")) {
+    pathname = pathname.replace("/temp/", "/");
+  }
+  
   // Replace dummy_bucket with real bucket name if present
   pathname = pathname.replace("dummy_bucket", B2_BUCKET_NAME);
 
@@ -116,11 +125,6 @@ export async function commitTempFile(
     const sourceKey = pathname.substring(tempIndex);
     const destinationKey = sourceKey.replace("temp/", "");
 
-    const cleanCdnBase = CDN_DOMAIN.endsWith("/")
-      ? CDN_DOMAIN.slice(0, -1)
-      : CDN_DOMAIN;
-    const finalUrl = `${cleanCdnBase}/${destinationKey}`;
-
     const rawSourceKey = decodeURIComponent(sourceKey);
     const rawDestinationKey = decodeURIComponent(destinationKey);
 
@@ -148,7 +152,7 @@ export async function commitTempFile(
       }
     }
 
-    return finalUrl;
+    return normalizeCdnUrl(destinationKey);
   } catch (error) {
     console.error("[B2] Failed to commit temp file:", error);
     return normalized;
