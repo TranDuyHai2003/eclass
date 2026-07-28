@@ -148,15 +148,8 @@ export async function GET(req: NextRequest) {
         return isClassAssigned || isAttemptedByClassStudent;
       }
 
-      // If course is NOT explicitly assigned to any class:
-      if (isAttemptedByClassStudent) return true;
-
-      // Fallback based on Level matching if no student attempted yet
-      const tLevel = t.course?.level || t.lesson?.chapter?.course?.level || "BASIC";
-      if ((className === "12A" || className === "ADVANCED") && tLevel === "ADVANCED") return true;
-      if ((className === "12B" || className === "BASIC") && tLevel === "BASIC") return true;
-
-      return false;
+      // If course is NOT explicitly assigned to any class, include ONLY if a student of this class has attempted it
+      return isAttemptedByClassStudent;
     };
 
     // 3. Create Excel Workbook
