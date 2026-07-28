@@ -491,10 +491,6 @@ export async function startTestAttempt(testId: string) {
     throw new Error("Test not found");
   }
 
-  if (test.dueDate && new Date() > new Date(test.dueDate)) {
-    throw new Error("Hạn nộp bài đã kết thúc.");
-  }
-
   // Check if there is already an uncompleted attempt
   const existingAttempt = await prisma.studentAttempt.findFirst({
     where: {
@@ -702,10 +698,7 @@ export async function submitTestAttempt(
     });
   });
 
-  // Check due date
-  if (attempt.test.dueDate && new Date() > new Date(attempt.test.dueDate)) {
-    return { success: false, error: "Hạn nộp bài đã kết thúc." };
-  }
+  // Due date is used for filtering & reporting only (not blocking submission)
 
   // Anti-Cheat: Validate time spent
   // const now = new Date();

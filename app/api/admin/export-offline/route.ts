@@ -36,16 +36,12 @@ export async function GET(req: NextRequest) {
     );
 
     // 1. Fetch Students
-    const studentQuery: any = {
-      studentType: "OFFLINE",
-    };
-    if (level && level !== "ALL") {
-      studentQuery.level = level;
-    }
-
     const students = await prisma.user.findMany({
-      where: studentQuery,
+      where: {
+        studentType: "OFFLINE",
+      },
       include: {
+        studyClass: true,
         attempts: {
           where: {
             test: {
@@ -66,6 +62,45 @@ export async function GET(req: NextRequest) {
 
     students.sort((a, b) => compareVietnameseName(a.name, b.name));
 
+    // Helper: Determine student class name
+    const getStudentClassName = (s: any) => {
+      if (s.studyClass?.name) return s.studyClass.name;
+      if (s.level === "ADVANCED") return "12A";
+      if (s.level === "BASIC") return "12B";
+      return "Chưa xếp lớp";
+    };
+
+    // Group students by class
+    const classStudentsMap = new Map<string, typeof students>();
+    for (const s of students) {
+      const cName = getStudentClassName(s);
+      if (!classStudentsMap.has(cName)) {
+        classStudentsMap.set(cName, []);
+      }
+      classStudentsMap.get(cName)!.push(s);
+    }
+
+    // Determine classes to render
+    let classesToRender = Array.from(classStudentsMap.keys()).sort((a, b) =>
+      a.localeCompare(b, "vi", { numeric: true })
+    );
+
+    if (level && level !== "ALL") {
+      classesToRender = classesToRender.filter((cName) => {
+        if (cName === level) return true;
+        if (level === "ADVANCED" && (cName === "12A" || cName === "ADVANCED")) return true;
+        if (level === "BASIC" && (cName === "12B" || cName === "BASIC")) return true;
+        const stus = classStudentsMap.get(cName) || [];
+        return stus.some(
+          (s) =>
+            s.classId === level ||
+            s.studyClass?.id === level ||
+            s.studyClass?.name === level ||
+            s.level === level
+        );
+      });
+    }
+
     // 2. Pre-process and Group Tests by Date
     const testsInPeriod = await prisma.test.findMany({
       where: {
@@ -81,15 +116,43 @@ export async function GET(req: NextRequest) {
         type: true,
         lesson: {
           select: {
-            chapter: { select: { course: { select: { level: true } } } },
+            chapter: {
+              select: {
+                course: {
+                  select: {
+                    level: true,
+                    classes: { select: { id: true, name: true } }
+                  }
+                }
+              }
+            }
           },
         },
-        course: { select: { level: true } },
+        course: {
+          select: {
+            level: true,
+            classes: { select: { id: true, name: true } }
+          }
+        },
       },
     });
 
-    const getTestLevel = (t: any) =>
-      t.course?.level || t.lesson?.chapter?.course?.level || "BASIC";
+    const isTestForClass = (t: any, className: string, levelStudents: any[]) => {
+      const courseClasses = t.course?.classes || t.lesson?.chapter?.course?.classes || [];
+      if (courseClasses.some((c: any) => c.name === className || c.id === className)) {
+        return true;
+      }
+      const tLevel = t.course?.level || t.lesson?.chapter?.course?.level || "BASIC";
+      if ((className === "12A" || className === "ADVANCED") && tLevel === "ADVANCED") return true;
+      if ((className === "12B" || className === "BASIC") && tLevel === "BASIC") return true;
+
+      for (const s of levelStudents) {
+        if (s.attempts.some((a: any) => a.test.id === t.id)) return true;
+      }
+
+      if (courseClasses.length === 0) return true;
+      return false;
+    };
 
     // 3. Create Excel Workbook
     const workbook = new ExcelJS.Workbook();
@@ -116,9 +179,6 @@ export async function GET(req: NextRequest) {
       },
     };
 
-    // Prepare levels to render
-    const levelsToRender = level === "ALL" ? ["ADVANCED", "BASIC"] : [level];
-
     // Helper to style merged cells
     const styleMergedCell = (sheet: ExcelJS.Worksheet, r1: number, c1: number, r2: number, c2: number, styleObj: any, fillObj: any) => {
       sheet.mergeCells(r1, c1, r2, c2);
@@ -133,16 +193,9 @@ export async function GET(req: NextRequest) {
     };
 
     if (debug) {
-      const debugLevels = levelsToRender.map((currentLevel) => {
-        const levelStudents = students.filter((s) => s.level === currentLevel);
-        const relevantTests = testsInPeriod.filter((t) => {
-          const tLevel = getTestLevel(t);
-          if (tLevel === currentLevel) return true;
-          for (const s of levelStudents) {
-            if (s.attempts.some((a) => a.test.id === t.id)) return true;
-          }
-          return false;
-        });
+      const debugLevels = classesToRender.map((currentClassName) => {
+        const levelStudents = classStudentsMap.get(currentClassName) || [];
+        const relevantTests = testsInPeriod.filter((t) => isTestForClass(t, currentClassName, levelStudents));
 
         const testGroups = new Map<
           string,
@@ -176,7 +229,7 @@ export async function GET(req: NextRequest) {
         }
 
         return {
-          currentLevel,
+          currentClassName,
           levelStudents: levelStudents.length,
           relevantTests: relevantTests.length,
           dateKeys: Array.from(testGroups.keys()).sort(),
@@ -205,19 +258,12 @@ export async function GET(req: NextRequest) {
 
     let currentRowIndex = 1;
 
-    for (const currentLevel of levelsToRender) {
-      const levelStudents = students.filter((s) => s.level === currentLevel);
+    for (const currentClassName of classesToRender) {
+      const levelStudents = classStudentsMap.get(currentClassName) || [];
       if (levelStudents.length === 0 && level === "ALL") continue; // Skip if empty and we are exporting ALL
 
-            // Find tests relevant to this level (either assigned to this level OR attempted by students in this level)
-      const relevantTests = testsInPeriod.filter((t) => {
-        const tLevel = getTestLevel(t);
-        if (tLevel === currentLevel) return true;
-        for (const s of levelStudents) {
-          if (s.attempts.some((a) => a.test.id === t.id)) return true;
-        }
-        return false;
-      });
+      // Find tests relevant to this class
+      const relevantTests = testsInPeriod.filter((t) => isTestForClass(t, currentClassName, levelStudents));
 
       const weekGroups = new Map<
         string,
@@ -271,12 +317,12 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const levelName = currentLevel === "BASIC" ? "Lớp Cơ bản - 12B" : "Lớp Nâng cao - 12A";
+      const levelName = currentClassName.startsWith("Lớp") ? currentClassName : `Lớp ${currentClassName}`;
       const sortedWeekKeys = Array.from(weekGroups.keys()).sort();
 
       if (debug) {
         console.log("[EXPORT_OFFLINE_DEBUG]", {
-          currentLevel,
+          currentClassName,
           levelStudents: levelStudents.length,
           relevantTests: relevantTests.length,
           weekKeys: sortedWeekKeys.length,
