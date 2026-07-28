@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Download, FileSpreadsheet, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { getClasses } from "@/actions/class";
 
 export function OfflineExportModal() {
   const [open, setOpen] = useState(false);
@@ -28,6 +29,13 @@ export function OfflineExportModal() {
   const [endDate, setEndDate] = useState("");
   const [level, setLevel] = useState("ALL");
   const [isExporting, setIsExporting] = useState(false);
+  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    getClasses()
+      .then((data) => setClasses(data))
+      .catch((err) => console.error("Error loading classes for export modal:", err));
+  }, []);
 
   const handleExport = async () => {
     if (!startDate || !endDate) {
@@ -128,8 +136,17 @@ export function OfflineExportModal() {
               </SelectTrigger>
               <SelectContent className="rounded-xl">
                 <SelectItem value="ALL" className="font-bold">Tất cả lớp Offline</SelectItem>
-                <SelectItem value="ADVANCED" className="font-bold">Lớp Nâng cao (12A)</SelectItem>
-                <SelectItem value="BASIC" className="font-bold">Lớp Cơ bản (12B)</SelectItem>
+                {classes.map((c) => (
+                  <SelectItem key={c.id} value={c.name} className="font-bold">
+                    Lớp {c.name}
+                  </SelectItem>
+                ))}
+                {classes.length === 0 && (
+                  <>
+                    <SelectItem value="ADVANCED" className="font-bold">Lớp Nâng cao (12A)</SelectItem>
+                    <SelectItem value="BASIC" className="font-bold">Lớp Cơ bản (12B)</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>
