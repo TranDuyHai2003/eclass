@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import ExcelJS from "exceljs";
-import { format, getWeekOfMonth } from "date-fns";
+import { getWeekOfMonth } from "date-fns";
 import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 import { compareVietnameseName } from "@/lib/utils";
 
@@ -344,7 +344,7 @@ export async function GET(req: NextRequest) {
       currentRowIndex++;
 
       const subTitleCell = styleMergedCell(sheet, currentRowIndex, 1, currentRowIndex, maxColMerge, headerStyle, { type: "pattern", pattern: "solid", fgColor: { argb: "FF9BC2E6" } });
-      subTitleCell.value = `Từ ${format(startDate, "dd/MM/yyyy")} đến ${format(endDate, "dd/MM/yyyy")}`;
+      subTitleCell.value = `Từ ${formatInTimeZone(startDate, TIMEZONE, "dd/MM/yyyy")} đến ${formatInTimeZone(endDate, TIMEZONE, "dd/MM/yyyy")}`;
       subTitleCell.font = { name: "Arial", size: 10, bold: true, color: { argb: "FF000000" } };
       subTitleCell.alignment = { horizontal: "center", vertical: "middle" };
       currentRowIndex++;
@@ -502,7 +502,7 @@ export async function GET(req: NextRequest) {
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="Offline_Report_${format(new Date(), "yyyyMMdd")}.xlsx"`,
+        "Content-Disposition": `attachment; filename="Offline_Report_${formatInTimeZone(new Date(), TIMEZONE, "yyyyMMdd")}.xlsx"`,
       },
     });
   } catch (error) {
