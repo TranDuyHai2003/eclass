@@ -139,18 +139,23 @@ export async function GET(req: NextRequest) {
 
     const isTestForClass = (t: any, className: string, levelStudents: any[]) => {
       const courseClasses = t.course?.classes || t.lesson?.chapter?.course?.classes || [];
-      if (courseClasses.some((c: any) => c.name === className || c.id === className)) {
-        return true;
+      const hasExplicitClass = courseClasses.length > 0;
+      const isClassAssigned = courseClasses.some((c: any) => c.name === className || c.id === className);
+      const isAttemptedByClassStudent = levelStudents.some((s) => s.attempts.some((a: any) => a.test.id === t.id));
+
+      if (hasExplicitClass) {
+        // If course is explicitly assigned to specific classes, only include if this class is in courseClasses OR if a student attempted it
+        return isClassAssigned || isAttemptedByClassStudent;
       }
+
+      // If course is NOT explicitly assigned to any class:
+      if (isAttemptedByClassStudent) return true;
+
+      // Fallback based on Level matching if no student attempted yet
       const tLevel = t.course?.level || t.lesson?.chapter?.course?.level || "BASIC";
       if ((className === "12A" || className === "ADVANCED") && tLevel === "ADVANCED") return true;
       if ((className === "12B" || className === "BASIC") && tLevel === "BASIC") return true;
 
-      for (const s of levelStudents) {
-        if (s.attempts.some((a: any) => a.test.id === t.id)) return true;
-      }
-
-      if (courseClasses.length === 0) return true;
       return false;
     };
 
