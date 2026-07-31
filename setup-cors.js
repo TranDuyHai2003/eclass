@@ -15,7 +15,11 @@ const setupCors = async () => {
     CORSConfiguration: {
       CORSRules: [
         {
-          AllowedOrigins: ["http://localhost:3000", "https://teacherduc.me"],
+          AllowedOrigins: [
+            "http://localhost:3000",
+            "https://teacherduc.me",
+            "https://eclass-vps-d9532daae9a0.herokuapp.com", // Thêm domain Heroku vào đây
+          ],
           AllowedMethods: ["GET", "PUT", "POST", "HEAD"],
           AllowedHeaders: ["*"],
           ExposeHeaders: ["ETag"],
@@ -27,7 +31,9 @@ const setupCors = async () => {
 
   try {
     const data = await s3Client.send(new PutBucketCorsCommand(params));
-    console.log("✅ Cập nhật CORS thành công! Bạn có thể upload file ngay bây giờ.");
+    console.log(
+      "✅ Cập nhật CORS thành công! Bạn có thể upload file ngay bây giờ.",
+    );
   } catch (err) {
     console.error("❌ Lỗi cấu hình CORS:", err);
   }
