@@ -50,4 +50,5 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0" 
 
 # 🔥 [ĐÃ SỬA]: Chạy thẳng lệnh `prisma db push` vì máy đã có sẵn
-CMD ["sh", "-c", "prisma db push && node server.js"]
+# 🔥 [CẬP NHẬT HEROKU]: Nối cờ SSL vào Database URL và dùng migrate deploy an toàn cho data
+CMD ["sh", "-c", "export DATABASE_URL=\"$DATABASE_URL?sslmode=require\" && prisma migrate deploy && node server.js"]
