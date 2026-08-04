@@ -4,52 +4,52 @@ import { MessageSquareText, Timer, Sparkles } from "lucide-react";
 import { useCountdown } from "@/hooks/use-countdown";
 import { cn } from "@/lib/utils";
 
+const Unit = ({
+  value,
+  label,
+  primary = false,
+}: {
+  value: number;
+  label: string;
+  primary?: boolean;
+}) => (
+  <div className="flex flex-col items-center">
+    <div
+      className={cn(
+        "relative flex items-center justify-center bg-white rounded-2xl shadow-xl transition-transform hover:scale-105",
+        primary
+          ? "w-16 h-16 sm:w-20 sm:h-20 border-4 border-[#FEE715]"
+          : "w-14 h-14 sm:w-16 sm:h-16 border-2 border-white/20 bg-white/10 backdrop-blur-md text-white",
+      )}
+    >
+      <span
+        className={cn(
+          "text-2xl sm:text-4xl font-black tabular-nums italic",
+          primary ? "text-[#2563EB]" : "text-white",
+        )}
+      >
+        {value.toString().padStart(2, "0")}
+      </span>
+      {primary && (
+        <div className="absolute -top-2 -right-2 bg-blue-600 text-[8px] font-black text-white px-1.5 py-0.5 rounded-full animate-bounce">
+          HOT
+        </div>
+      )}
+    </div>
+    <span
+      className={cn(
+        "text-[9px] sm:text-[10px] font-black uppercase tracking-widest mt-2",
+        primary ? "text-[#FEE715]" : "text-white/60",
+      )}
+    >
+      {label}
+    </span>
+  </div>
+);
+
 export function HomePromo() {
   const finalDate = new Date("2027-06-11T08:00:00");
   const { days, hours, minutes, seconds, isFinished } = useCountdown(finalDate);
-
-  const Unit = ({
-    value,
-    label,
-    primary = false,
-  }: {
-    value: number;
-    label: string;
-    primary?: boolean;
-  }) => (
-    <div className="flex flex-col items-center">
-      <div
-        className={cn(
-          "relative flex items-center justify-center bg-white rounded-2xl shadow-xl transition-transform hover:scale-105",
-          primary
-            ? "w-16 h-16 sm:w-20 sm:h-20 border-4 border-[#FEE715]"
-            : "w-14 h-14 sm:w-16 sm:h-16 border-2 border-white/20 bg-white/10 backdrop-blur-md text-white",
-        )}
-      >
-        <span
-          className={cn(
-            "text-2xl sm:text-4xl font-black tabular-nums italic",
-            primary ? "text-[#2563EB]" : "text-white",
-          )}
-        >
-          {value.toString().padStart(2, "0")}
-        </span>
-        {primary && (
-          <div className="absolute -top-2 -right-2 bg-blue-600 text-[8px] font-black text-white px-1.5 py-0.5 rounded-full animate-bounce">
-            HOT
-          </div>
-        )}
-      </div>
-      <span
-        className={cn(
-          "text-[9px] sm:text-[10px] font-black uppercase tracking-widest mt-2",
-          primary ? "text-[#FEE715]" : "text-white/60",
-        )}
-      >
-        {label}
-      </span>
-    </div>
-  );
 
   return (
     <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-2xl group transition-all hover:shadow-blue-500/20">

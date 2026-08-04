@@ -181,41 +181,83 @@ export default function TestResultClient({ attempt, isTeacher = false }: { attem
                               "flex items-center gap-3 md:gap-4 p-4 rounded-[20px] border transition-all",
                               isCorrect === true
                                 ? "bg-emerald-50/50 border-emerald-100"
-                                : isPending
-                                  ? "bg-blue-50/50 border-blue-100"
-                                  : "bg-blue-50/50 border-blue-100",
+                                : (ansRecord?.pointsAwarded || 0) > 0 && q.type === "MULTIPLE_CHOICE_GROUP"
+                                  ? "bg-amber-50/50 border-amber-100"
+                                  : isPending
+                                    ? "bg-blue-50/50 border-blue-100"
+                                    : "bg-blue-50/50 border-blue-100",
                             )}
                           >
                             <div className="w-6 md:w-8 text-center text-xs font-black text-slate-400">
                               #{qIdx + 1}
                             </div>
 
-                            <div className="flex-1 flex items-center gap-4 md:gap-8">
-                              <div className="space-y-0.5">
-                                <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                                  {q.type === "ESSAY" ? "Hình thức" : "Đáp án của bạn"}
-                                </p>
-                                <p
-                                  className={cn(
-                                    "font-black text-base md:text-lg",
-                                    isCorrect === true
-                                      ? "text-emerald-600"
-                                      : isPending
-                                        ? "text-blue-600"
-                                        : "text-blue-600",
-                                  )}
-                                >
-                                   {q.type === "ESSAY" ? (
-                                     ansRecord?.answerProvided ? (
-                                       <a href={ansRecord.answerProvided} target="_blank" className="flex items-center gap-2 text-blue-600 hover:underline">
-                                         <ImageIcon className="w-4 h-4" />
-                                         <span>Xem bài làm</span>
-                                         <ExternalLink className="w-3 h-3" />
-                                       </a>
-                                     ) : "Làm ra giấy"
-                                   ) : (cleanStudentAnswer(ansRecord?.answerProvided) || "Bỏ trống")}
-                                </p>
-                              </div>
+                            <div className="flex-1 flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8">
+                              {q.type !== "MULTIPLE_CHOICE_GROUP" && (
+                                <div className="space-y-0.5">
+                                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                                    {q.type === "ESSAY" ? "Hình thức" : "Đáp án của bạn"}
+                                  </p>
+                                  <p
+                                    className={cn(
+                                      "font-black text-base md:text-lg",
+                                      isCorrect === true
+                                        ? "text-emerald-600"
+                                        : isPending
+                                          ? "text-blue-600"
+                                          : "text-blue-600",
+                                    )}
+                                  >
+                                    {q.type === "ESSAY" ? (
+                                      ansRecord?.answerProvided ? (
+                                        <a href={ansRecord.answerProvided} target="_blank" className="flex items-center gap-2 text-blue-600 hover:underline">
+                                          <ImageIcon className="w-4 h-4" />
+                                          <span>Xem bài làm</span>
+                                          <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                      ) : "Làm ra giấy"
+                                    ) : (cleanStudentAnswer(ansRecord?.answerProvided) || "Bỏ trống")}
+                                  </p>
+                                </div>
+                              )}
+
+                              {q.type === "MULTIPLE_CHOICE_GROUP" && (
+                                <div className="w-full flex flex-col gap-2 my-2">
+                                  {(q.subQuestions || []).map((sq: any, sqIdx: number) => {
+                                    const subAns = (ansRecord?.subAnswers || []).find((sa: any) => sa.subQuestionId === sq.id);
+                                    const subIsCorrect = subAns?.isCorrect;
+                                    const rawVal = subAns?.answerProvided;
+                                    const studentDisplay = rawVal === "T" ? "Đúng" : rawVal === "F" ? "Sai" : "Trống";
+                                    const correctDisplay = sq.correctAnswer === "T" ? "Đúng" : sq.correctAnswer === "F" ? "Sai" : sq.correctAnswer;
+                                    return (
+                                      <div key={sq.id} className="flex items-center gap-3 bg-white p-2 md:p-3 rounded-xl border border-slate-100 shadow-sm">
+                                        <span className="text-[10px] font-black text-slate-400 w-4">{sqIdx + 1}.</span>
+                                        <div className="flex-1 min-w-0 grid grid-cols-2 gap-2">
+                                          <div className="flex flex-col">
+                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Của bạn</span>
+                                            <span className={cn("text-xs font-black", subIsCorrect ? "text-emerald-600" : "text-rose-500")}>
+                                              {studentDisplay}
+                                            </span>
+                                          </div>
+                                          <div className="flex flex-col">
+                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Đáp án</span>
+                                            <span className="text-xs font-black text-emerald-600">
+                                              {correctDisplay}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <div className="shrink-0">
+                                          {subIsCorrect ? (
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                          ) : (
+                                            <XCircle className="w-4 h-4 text-rose-400" />
+                                          )}
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
 
                               {q.type !== "ESSAY" && q.type !== "MULTIPLE_CHOICE_GROUP" && (
                                 <div className="space-y-0.5">
@@ -229,9 +271,14 @@ export default function TestResultClient({ attempt, isTeacher = false }: { attem
                               )}
                             </div>
 
-                            <div className="shrink-0">
+                            <div className="shrink-0 flex flex-col items-center">
                               {isCorrect === true ? (
                                 <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
+                              ) : (ansRecord?.pointsAwarded || 0) > 0 && q.type === "MULTIPLE_CHOICE_GROUP" ? (
+                                <div className="flex flex-col items-center">
+                                  <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-amber-500" />
+                                  <span className="text-[10px] font-bold text-amber-600 mt-1">Một phần</span>
+                                </div>
                               ) : isPending ? (
                                 <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-blue-100 flex items-center justify-center">
                                    <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600" />

@@ -9,6 +9,17 @@ interface CountdownTimerProps {
   title?: string;
 }
 
+const Unit = ({ value, label }: { value: number; label: string }) => (
+  <div className="flex flex-col items-center flex-1">
+    <div className="relative w-full aspect-square flex items-center justify-center bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-inner group-hover:border-white/40 transition-colors">
+      <span className="text-xl md:text-2xl font-black tabular-nums drop-shadow-md">
+        {value.toString().padStart(2, "0")}
+      </span>
+    </div>
+    <span className="text-[9px] font-black uppercase tracking-tighter opacity-70 mt-1.5">{label}</span>
+  </div>
+);
+
 export function CountdownTimer({ 
   targetDate, 
   title = "Đếm ngược ngày thi" 
@@ -67,16 +78,6 @@ export function CountdownTimer({
     );
   }
 
-  const Unit = ({ value, label }: { value: number; label: string }) => (
-    <div className="flex flex-col items-center flex-1">
-      <div className="relative w-full aspect-square flex items-center justify-center bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-inner group-hover:border-white/40 transition-colors">
-        <span className="text-xl md:text-2xl font-black tabular-nums drop-shadow-md">
-          {value.toString().padStart(2, "0")}
-        </span>
-      </div>
-      <span className="text-[9px] font-black uppercase tracking-tighter opacity-70 mt-1.5">{label}</span>
-    </div>
-  );
 
   return (
     <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-3xl p-5 md:p-6 text-white shadow-xl relative overflow-hidden group transition-all hover:shadow-indigo-500/20 active:scale-[0.98]">
