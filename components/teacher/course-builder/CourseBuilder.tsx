@@ -74,7 +74,6 @@ export function CourseBuilder({ course: initialCourse }: CourseBuilderProps) {
       isPublished: data.isPublished,
       isStructured: data.isStructured,
       level: data.level,
-      // @ts-ignore - classIds is passed from CourseHeader
       classIds: data.classIds,
     };
 

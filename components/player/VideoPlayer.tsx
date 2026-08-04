@@ -92,18 +92,14 @@ export default function VideoPlayer({
       setIsFakeFullscreen(false);
     };
 
-    // @ts-ignore - Vidstack events
     player.addEventListener("fullscreen-request", handleFullscreenRequest);
-    // @ts-ignore - Vidstack events
     player.addEventListener(
       "fullscreen-exit-request",
       handleFullscreenExitRequest,
     );
 
     return () => {
-      // @ts-ignore
       player.removeEventListener("fullscreen-request", handleFullscreenRequest);
-      // @ts-ignore
       player.removeEventListener(
         "fullscreen-exit-request",
         handleFullscreenExitRequest,

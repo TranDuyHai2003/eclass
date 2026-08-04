@@ -423,7 +423,7 @@ export function LessonEditModal({
           <TabsContent value="homework-video" className="flex-1 p-6 overflow-y-auto space-y-6">
             <div className="space-y-4 animate-in fade-in duration-500">
               <Label className="text-lg font-black uppercase tracking-tight">Video hướng dẫn thực chiến</Label>
-              <p className="text-sm text-slate-500">Video này sẽ xuất hiện ở phần "Thực chiến bài tập về nhà" của bài học.</p>
+              <p className="text-sm text-slate-500">Video này sẽ xuất hiện ở phần &quot;Thực chiến bài tập về nhà&quot; của bài học.</p>
 
               {homeworkVideoUrl ? (
                 <div className="border rounded-xl overflow-hidden bg-black relative shadow-2xl group">

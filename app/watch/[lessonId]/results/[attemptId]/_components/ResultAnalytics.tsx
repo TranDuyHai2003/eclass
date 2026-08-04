@@ -59,10 +59,12 @@ export const ResultAnalytics = ({ data }: ResultAnalyticsProps) => {
               </Pie>
               <Tooltip 
                 contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                formatter={(value: any, name: any, props: any) => [
-                   <span className="font-bold text-slate-900">{value}/{props.payload.total} câu</span>, 
-                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{name}</span>
-                ]}
+                formatter={(value: any, name: any, props: any) => (
+                  <>
+                     <span className="font-bold text-slate-900">{value}/{props.payload.total} câu</span>
+                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">{name}</span>
+                  </>
+                )}
               />
               <Legend 
                 verticalAlign="bottom" 

@@ -120,6 +120,9 @@ export async function upsertTest(
   });
 
   revalidatePath(`/teacher/courses/${lesson?.chapter.courseId}`);
+  revalidatePath(`/watch/${lessonId}`);
+  revalidatePath(`/watch/${lessonId}/quiz`);
+  
   return { success: true, test };
 }
 
@@ -170,6 +173,9 @@ export async function upsertCourseTest(
   });
 
   revalidatePath(`/teacher/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}/tests`);
+  revalidatePath(`/courses/${courseId}`);
+  
   return { success: true, test };
 }
 
@@ -334,6 +340,15 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
 
   // 4. Re-calculate scores for all existing attempts if keys changed
   await reCalculateAllAttempts(testId);
+
+  // 5. Invalidate caches so students see the latest questions immediately
+  if (test.lessonId) {
+    revalidatePath(`/watch/${test.lessonId}`);
+    revalidatePath(`/watch/${test.lessonId}/quiz`);
+  }
+  if (test.courseId) {
+    revalidatePath(`/courses/${test.courseId}`);
+  }
 
   return { success: true };
 }
@@ -657,6 +672,16 @@ function checkSubQuestionCorrect(
     const studentVal = parseMathValue(studentAns.toLowerCase());
     const correctVal = parseMathValue(correctAns.toLowerCase());
     return studentVal === correctVal;
+  }
+
+  if (type === 'TRUE_FALSE') {
+    const normalizeTF = (val: string) => {
+      const lower = val.trim().toLowerCase();
+      if (['t', 'true', '1', 'đúng', 'd'].includes(lower)) return 't';
+      if (['f', 'false', '0', 'sai', 's'].includes(lower)) return 'f';
+      return lower;
+    };
+    return normalizeTF(studentAns) === normalizeTF(correctAns);
   }
 
   return studentAns.trim().toLowerCase() === correctAns.trim().toLowerCase();

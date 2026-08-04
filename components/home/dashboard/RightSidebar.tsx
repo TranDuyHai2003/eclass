@@ -43,8 +43,8 @@ export function RightSidebar() {
         {/* Banner Top Brand */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <span className="text-[12px] font-black text-blue-600 tracking-tighter">LA'B</span>
-            <span className="text-[6px] font-black text-slate-400 uppercase tracking-widest">HỆ THỐNG LA'B</span>
+            <span className="text-[12px] font-black text-blue-600 tracking-tighter">LA&apos;B</span>
+            <span className="text-[6px] font-black text-slate-400 uppercase tracking-widest">HỆ THỐNG LA&apos;B</span>
           </div>
           <Sparkles className="w-4 h-4 text-blue-500 fill-current animate-pulse" />
         </div>

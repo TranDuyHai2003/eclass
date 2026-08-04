@@ -153,7 +153,7 @@ export function HomeworkSection({ lessonId, initialSubmission }: HomeworkSection
                  </div>
                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Nhận xét từ giáo viên:</p>
               </div>
-              <p className="text-sm font-medium text-slate-600 leading-relaxed italic ml-8">"{submission.feedback}"</p>
+              <p className="text-sm font-medium text-slate-600 leading-relaxed italic ml-8">&quot;{submission.feedback}&quot;</p>
            </div>
         )}
 

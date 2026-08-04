@@ -15,7 +15,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { startTestAttempt, getTestDraft } from "@/actions/test";
+import { startTestAttempt, getTestDraft, saveTestDraft, submitTestAttempt } from "@/actions/test";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -90,8 +90,7 @@ export default function TestTakerClient({
         answerProvided: typeof currentAnswers[qId] === 'object' ? JSON.stringify(currentAnswers[qId]) : currentAnswers[qId],
       }));
     if (answersArray.length === 0) return;
-    axios
-      .post("/api/tests/draft", { attemptId: currentAttemptId, answersArray })
+    saveTestDraft(currentAttemptId, answersArray)
       .catch((e) => console.error("[Auto-save] Sync failed:", e));
   }, [isSubmitting]);
 
@@ -195,11 +194,7 @@ export default function TestTakerClient({
             .filter((k) => merged[k] !== "")
             .map((qId) => ({ questionId: qId, answerProvided: typeof merged[qId] === 'object' ? JSON.stringify(merged[qId]) : merged[qId] }));
           if (mergedArray.length > 0) {
-            axios
-              .post("/api/tests/draft", {
-                attemptId: res.attempt.id,
-                answersArray: mergedArray,
-              })
+            saveTestDraft(res.attempt.id, mergedArray)
               .catch((e) =>
                 console.error("[Reconciliation] Push to server failed:", e),
               );
@@ -315,10 +310,7 @@ export default function TestTakerClient({
         };
       });
 
-      const { data: res } = await axios.post("/api/tests/submit", {
-        attemptId,
-        answersArray,
-      });
+      const res = await submitTestAttempt(attemptId, answersArray);
       if (res.success) {
         if (!res.alreadySubmitted) {
           toast.success("Nộp bài thành công!");
