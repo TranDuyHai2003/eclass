@@ -1,7 +1,7 @@
-"use server";
-
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { DEFAULT_RANKING_CONFIG, RankStatus } from "@/lib/ranking-config";
+import { calculateRankingScore } from "@/lib/ranking-calculator";
 
 export interface RankingUser {
   id: string;
@@ -11,12 +11,17 @@ export interface RankingUser {
   score: number;
   avgScore: number;
   rankingScore: number;
+  academicScore?: number;
+  completionBonus?: number;
+  activityBonus?: number;
+  rankStatus?: RankStatus;
   latestTestScore?: number;
   completedTests: number; // Unique tests completed
   isEligible: boolean;
   rankChange: number | null;
   lastSubmitAt: Date | null;
   isCurrentUser: boolean;
+  streak?: number;
 }
 
 export interface PersonalRankingContext {
@@ -69,7 +74,7 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     throw new Error("User not found");
   }
 
-  const MIN_REQUIRED_TESTS = 5;
+  const MIN_REQUIRED_TESTS = DEFAULT_RANKING_CONFIG.minRequiredTests;
   const targetClassId = options.studyClassId || user.classId;
   const currentWeekCode = getWeekCode(new Date(), 0);
   const previousWeekCode = getWeekCode(new Date(), -1);
@@ -141,7 +146,7 @@ export async function getRankingData(options: GetRankingOptions = {}) {
   const availableTests = Math.max(totalPublishedTests, 28);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  // Calculate metrics per student using the updated formula
+  // Calculate metrics per student using the updated formula module
   const studentMetrics = studentsInClass.map((student) => {
     const validAttempts = student.attempts || [];
 
@@ -172,23 +177,24 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     });
 
     const avgScore = completedTests > 0 ? parseFloat((totalScoreSum / completedTests).toFixed(1)) : 0;
-    
-    // Formula Phase 2:
-    // 75% Academic (avgScore * 10)
-    // 15% Completion Score (completedTests / availableTests * 100)
-    // 10% Recent Activity (completedLast30Days / availableLast30Days * 100)
     const availableLast30Days = Math.max(10, Math.ceil(availableTests * 0.35));
-    const academicScore = avgScore * 10;
-    const completionRate = Math.min(completedTests / availableTests, 1.0);
-    const completionScore = completionRate * 100;
-    const recentActivityScore = Math.min(completedLast30Days / availableLast30Days, 1.0) * 100;
 
-    const rankingScore = parseFloat(
-      ((academicScore * 0.75) + (completionScore * 0.15) + (recentActivityScore * 0.10)).toFixed(2)
+    // Calculate ranking score breakdown using modular functions
+    const breakdown = calculateRankingScore(
+      avgScore,
+      completedTests,
+      availableTests,
+      completedLast30Days,
+      availableLast30Days,
+      DEFAULT_RANKING_CONFIG
     );
 
     const isEligible = completedTests >= MIN_REQUIRED_TESTS;
     const latestScore = validAttempts[0]?.score ?? (completedTests > 0 ? avgScore : 0);
+    const completionRate = Math.min(completedTests / availableTests, 1.0);
+
+    // Dynamic streak calculation per student for tie-breaker
+    const streak = completedLast30Days > 0 ? Math.min(30, completedLast30Days * 2) : 0;
 
     return {
       id: student.id,
@@ -197,8 +203,12 @@ export async function getRankingData(options: GetRankingOptions = {}) {
       completedTests,
       score: avgScore,
       avgScore,
-      rankingScore,
+      rankingScore: breakdown.totalScore,
+      academicScore: breakdown.academicScore,
+      completionBonus: breakdown.completionBonus,
+      activityBonus: breakdown.activityBonus,
       completionRate,
+      streak,
       latestTestScore: parseFloat((latestScore || 0).toFixed(1)),
       lastSubmitAt: latestSubmit,
       isEligible,
@@ -209,12 +219,11 @@ export async function getRankingData(options: GetRankingOptions = {}) {
   const eligibleStudents = studentMetrics.filter((s) => s.isEligible);
   const ineligibleStudents = studentMetrics.filter((s) => !s.isEligible);
 
-  // Tie-breaker rules:
+  // Tie-breaker rules (Academic Integrity Focused):
   // 1. rankingScore DESC
   // 2. avgScore DESC
-  // 3. completionRate DESC
-  // 4. completedTests DESC
-  // 5. lastSubmitAt DESC (recent activity prioritized!)
+  // 3. completedTests DESC
+  // 4. streak DESC
   eligibleStudents.sort((a, b) => {
     if (b.rankingScore !== a.rankingScore) {
       return b.rankingScore - a.rankingScore;
@@ -222,16 +231,10 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     if (b.avgScore !== a.avgScore) {
       return b.avgScore - a.avgScore;
     }
-    if (b.completionRate !== a.completionRate) {
-      return b.completionRate - a.completionRate;
-    }
     if (b.completedTests !== a.completedTests) {
       return b.completedTests - a.completedTests;
     }
-    if (a.lastSubmitAt && b.lastSubmitAt) {
-      return new Date(b.lastSubmitAt).getTime() - new Date(a.lastSubmitAt).getTime();
-    }
-    return 0;
+    return (b.streak || 0) - (a.streak || 0);
   });
 
   const rankedEligible: RankingUser[] = eligibleStudents.map((student, index) => {
@@ -239,18 +242,34 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     const prevRank = prevRankMap.get(student.id);
     const rankChange = prevRank ? prevRank - currentRank : null;
 
+    let rankStatus = RankStatus.SAME;
+    if (prevRank === undefined || prevRank === null) {
+      rankStatus = RankStatus.NEW;
+    } else if (currentRank < prevRank) {
+      rankStatus = RankStatus.UP;
+    } else if (currentRank > prevRank) {
+      rankStatus = RankStatus.DOWN;
+    }
+
     return {
       ...student,
       rank: currentRank,
-      rankChange
+      rankChange,
+      rankStatus
     };
   });
 
-  const rankedIneligible: RankingUser[] = ineligibleStudents.map((student) => ({
-    ...student,
-    rank: null,
-    rankChange: null
-  }));
+  const rankedIneligible: RankingUser[] = ineligibleStudents.map((student) => {
+    const prevRank = prevRankMap.get(student.id);
+    const rankStatus = (prevRank !== undefined && prevRank !== null) ? RankStatus.EXIT : RankStatus.SAME;
+
+    return {
+      ...student,
+      rank: null,
+      rankChange: null,
+      rankStatus
+    };
+  });
 
   const fullLeaderboard = [...rankedEligible, ...rankedIneligible];
   const currentUserRanked = fullLeaderboard.find((s) => s.id === currentUserId) || null;
