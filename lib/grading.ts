@@ -44,8 +44,19 @@ export function calculateScore(
     let pointsAwarded = 0;
     
     if (q) {
-      if (q.type === 'MULTIPLE_CHOICE') {
-        isCorrect = ans.answerProvided.toUpperCase() === q.correctAnswer?.toUpperCase();
+      if (q.type === 'MULTIPLE_CHOICE' || q.type === 'TRUE_FALSE') {
+        const providedNorm = normalizeAnswer(ans.answerProvided);
+        const expectedOptions = (q.correctAnswer || "").split('|').map((s: string) => normalizeAnswer(s));
+        const providedParts = providedNorm.split(',').map((s: string) => s.trim()).filter(Boolean);
+        const providedSorted = [...providedParts].sort().join(',');
+
+        isCorrect = expectedOptions.some((opt: string) => {
+          const optParts = opt.split(',').map((s: string) => s.trim()).filter(Boolean);
+          const optSorted = [...optParts].sort().join(',');
+          if (providedSorted === optSorted) return true;
+          if (providedParts.length > 0 && providedParts.every((p: string) => optParts.includes(p))) return true;
+          return false;
+        });
       } else if (q.type === 'SHORT_ANSWER') {
         isCorrect = compareAnswers(ans.answerProvided, q.correctAnswer);
       } else if (q.type === 'ESSAY') {
