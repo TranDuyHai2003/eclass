@@ -22,6 +22,7 @@ import {
   MessageCircle,
   Youtube,
   FileText,
+  Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
@@ -55,6 +56,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
       ? [{ icon: HomeIcon, label: "Trang chủ", href: "/", exact: true }]
       : [{ icon: LogIn, label: "Đăng nhập", href: "/login" }]),
     { icon: BookOpen, label: "Khóa Học", href: "/courses" },
+    { icon: Trophy, label: "Bảng xếp hạng", href: "/ranking" },
     {
       icon: DiscordIcon,
       label: "Discord",
