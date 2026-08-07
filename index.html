@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bảng Tiến Bộ - Lớp 10A1 | eClass Platform</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- FontAwesome Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        letter-spacing: -0.015em;
+        background:
+          radial-gradient(
+            circle at 10% 15%,
+            rgba(219, 234, 254, 0.7) 0%,
+            transparent 35%
+          ),
+          radial-gradient(
+            circle at 90% 10%,
+            rgba(191, 219, 254, 0.5) 0%,
+            transparent 30%
+          ),
+          radial-gradient(
+            circle at 50% 85%,
+            rgba(238, 242, 255, 0.6) 0%,
+            transparent 45%
+          ),
+          linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+        background-attachment: fixed;
+      }
+
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f0f7ff;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #bae6fd;
+        border-radius: 999px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #0284c7;
+      }
+
+      .glass-card {
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.9);
+      }
+
+      @keyframes slideUpFade {
+        from {
+          opacity: 0;
+          transform: translateY(14px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes progressGrow {
+        from {
+          width: 0%;
+        }
+      }
+
+      .animate-slide-up {
+        animation: slideUpFade 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .animate-progress {
+        animation: progressGrow 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+    </style>
+  </head>
+  <body
+    class="text-slate-800 min-h-screen py-6 px-4 sm:px-8 relative overflow-x-hidden antialiased"
+  >
+    <!-- Background Pattern -->
+    <div
+      class="fixed inset-0 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.03] pointer-events-none -z-10"
+    ></div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="space-y-6 w-full max-w-4xl mx-auto pb-28">
+      <!-- 1. HEADER LỚP HỌC TINH GỌN & BỘ LỌC THỜI GIAN -->
+      <header
+        class="glass-card p-5 sm:p-6 rounded-3xl shadow-xl shadow-blue-900/5 animate-slide-up space-y-4"
+      >
+        <div
+          class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4"
+        >
+          <div class="flex items-center gap-3.5">
+            <div
+              class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-base shadow-md shadow-blue-500/20"
+            >
+              10A1
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span
+                  class="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-extrabold text-[10px] uppercase tracking-wider border border-blue-100"
+                >
+                  Lớp 10A1 • 32 Học sinh
+                </span>
+                <span
+                  class="text-xs text-amber-700 font-bold bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200/80"
+                >
+                  <i class="fa-solid fa-clock text-amber-500"></i> Còn 12 ngày
+                  (Tháng 8)
+                </span>
+              </div>
+              <h1
+                class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight mt-0.5"
+              >
+                Bảng Tiến Bộ Lớp 10A1
+              </h1>
+            </div>
+          </div>
+
+          <!-- BỘ LỌC THỜI GIAN -->
+          <div
+            class="flex items-center bg-slate-100 p-1 rounded-2xl text-xs font-bold shrink-0 self-start md:self-auto"
+          >
+            <button
+              class="px-3 py-1.5 rounded-xl text-slate-500 hover:text-slate-800 transition"
+            >
+              Tuần này
+            </button>
+            <button
+              class="px-3.5 py-1.5 rounded-xl bg-white text-blue-600 shadow-sm font-extrabold"
+            >
+              Tháng 8
+            </button>
+            <button
+              class="px-3 py-1.5 rounded-xl text-slate-500 hover:text-slate-800 transition"
+            >
+              Học kỳ 1
+            </button>
+          </div>
+        </div>
+
+        <!-- THỐNG KÊ LỚP HỌC DÀNH CHO HỌC SINH VÀ GIÁO VIÊN -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div
+            class="bg-slate-50/80 p-3 rounded-2xl border border-slate-200/60 text-center"
+          >
+            <span
+              class="text-[10px] font-bold text-slate-400 block uppercase tracking-wider"
+              >ĐTB Lớp</span
+            >
+            <span class="text-sm font-extrabold text-slate-800">7.80 Điểm</span>
+          </div>
+          <div
+            class="bg-slate-50/80 p-3 rounded-2xl border border-slate-200/60 text-center"
+          >
+            <span
+              class="text-[10px] font-bold text-slate-400 block uppercase tracking-wider"
+              >Hoàn thành bài</span
+            >
+            <span class="text-sm font-extrabold text-blue-600"
+              >92% Bài tập</span
+            >
+          </div>
+          <div
+            class="bg-slate-50/80 p-3 rounded-2xl border border-slate-200/60 text-center"
+          >
+            <span
+              class="text-[10px] font-bold text-slate-400 block uppercase tracking-wider"
+              >Học sinh tăng hạng</span
+            >
+            <span class="text-sm font-extrabold text-emerald-600">18 Bạn</span>
+          </div>
+          <div
+            class="bg-slate-50/80 p-3 rounded-2xl border border-slate-200/60 text-center"
+          >
+            <span
+              class="text-[10px] font-bold text-slate-400 block uppercase tracking-wider"
+              >Chuỗi tích cực</span
+            >
+            <span class="text-base font-extrabold text-amber-600"
+              >12 Bạn > 7 ngày</span
+            >
+          </div>
+        </div>
+      </header>
+
+      <!-- 2. HERO CARD CÁ NHÂN "VỊ TRÍ CỦA BẠN TRONG LỚP" (XUẤT HIỆN ĐẦU TIÊN) -->
+      <section
+        class="glass-card rounded-3xl p-6 sm:p-7 border-2 border-blue-500/40 shadow-2xl shadow-blue-500/10 animate-slide-up space-y-5"
+      >
+        <!-- Profile Header -->
+        <div
+          class="flex flex-col md:flex-row items-center justify-between gap-6 pb-5 border-b border-slate-100 text-center md:text-left"
+        >
+          <div class="flex flex-col sm:flex-row items-center gap-4">
+            <div class="relative shrink-0">
+              <img
+                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
+                alt="Avatar"
+                class="w-16 h-16 rounded-2xl border-2 border-blue-500 object-cover shadow-md"
+              />
+              <span
+                class="absolute -bottom-2 -right-2 bg-amber-400 text-slate-950 font-black text-[11px] px-2 py-0.5 rounded-md border border-white shadow-sm"
+              >
+                #12
+              </span>
+            </div>
+
+            <div class="space-y-1">
+              <div
+                class="flex flex-wrap items-center justify-center sm:justify-start gap-2"
+              >
+                <h2 class="text-xl font-extrabold text-slate-900">
+                  Trần Duy Hải (Bạn)
+                </h2>
+                <!-- GIẢI THÍCH LÝ DO TĂNG HẠNG -->
+                <span
+                  class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-extrabold"
+                >
+                  ↑ Tăng 5 bậc (+3 bài nộp, +0.6 ĐTB)
+                </span>
+              </div>
+
+              <!-- DỮ LIỆU SO VỚI TRUNG BÌNH LỚP -->
+              <p class="text-xs text-slate-600 font-medium">
+                Đang xếp hạng
+                <strong class="text-blue-600 font-extrabold">12 / 32</strong>
+                trong lớp •
+                <span class="text-emerald-700 font-bold"
+                  >Thuộc Top 38% lớp</span
+                >
+              </p>
+            </div>
+          </div>
+
+          <!-- Score Display -->
+          <div
+            class="bg-gradient-to-br from-blue-600 to-indigo-600 text-white px-7 py-4 rounded-2xl shadow-lg shadow-blue-500/20 text-center flex flex-col items-center justify-center w-full md:w-auto shrink-0 min-w-[190px]"
+          >
+            <span
+              class="text-[10px] font-extrabold text-blue-100 uppercase tracking-wider block mb-0.5"
+            >
+              Điểm Trung Bình
+            </span>
+            <strong
+              class="text-3xl font-extrabold tracking-tight block leading-none counter"
+              data-target="8.10"
+            >
+              8.10
+            </strong>
+            <span class="text-[10px] font-bold text-emerald-300 mt-1"
+              >▲ Cao hơn ĐTB Lớp (+0.30)</span
+            >
+          </div>
+        </div>
+
+        <!-- KHOẢNG CÁCH HAI ĐẦU (TIẾN VỀ PHÍA TRƯỚC & AN TOÀN VỚI PHÍA SAU) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div
+            class="bg-blue-50/70 border border-blue-100 p-3 rounded-2xl flex items-center justify-between text-xs"
+          >
+            <div class="space-y-0.5">
+              <span
+                class="text-slate-500 font-semibold block text-[10px] uppercase"
+                >Khoảng cách tới vị trí #11</span
+              >
+              <span class="font-bold text-slate-800"
+                >Còn
+                <strong class="text-blue-600 font-black">+0.15 điểm</strong> để
+                vượt</span
+              >
+            </div>
+            <span class="text-blue-600 font-extrabold text-sm">82%</span>
+          </div>
+
+          <div
+            class="bg-emerald-50/70 border border-emerald-100 p-3 rounded-2xl flex items-center justify-between text-xs"
+          >
+            <div class="space-y-0.5">
+              <span
+                class="text-slate-500 font-semibold block text-[10px] uppercase"
+                >Khoảng cách an toàn phía sau</span
+              >
+              <span class="font-bold text-slate-800"
+                >Dẫn trước vị trí #13
+                <strong class="text-emerald-700 font-black"
+                  >+0.10 điểm</strong
+                ></span
+              >
+            </div>
+            <span
+              class="text-emerald-600 font-extrabold text-xs bg-emerald-100 px-2 py-0.5 rounded-md"
+              >An toàn</span
+            >
+          </div>
+        </div>
+
+        <!-- MỤC TIÊU CÁ NHÂN TRONG LỚP -->
+        <div
+          class="bg-gradient-to-r from-indigo-50/80 via-purple-50/50 to-blue-50/80 border border-indigo-100 p-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3"
+        >
+          <div class="flex items-center gap-3 text-center sm:text-left">
+            <div
+              class="w-9 h-9 rounded-xl bg-white text-indigo-600 flex items-center justify-center shrink-0 font-black text-base shadow-sm border border-indigo-100"
+            >
+              🎯
+            </div>
+            <div>
+              <span
+                class="text-[10px] font-bold text-slate-400 block uppercase tracking-wider"
+                >Mục tiêu cá nhân tháng 8</span
+              >
+              <h4 class="text-xs font-extrabold text-slate-900">
+                Gia nhập Top 10 của Lớp
+              </h4>
+            </div>
+          </div>
+
+          <div
+            class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end"
+          >
+            <span class="text-xs font-bold text-slate-600"
+              >Còn
+              <strong class="text-indigo-600 font-black"
+                >0.35 điểm</strong
+              ></span
+            >
+            <div class="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div class="bg-indigo-600 h-full w-[73%]"></div>
+            </div>
+            <span class="text-xs font-black text-indigo-600">73%</span>
+          </div>
+        </div>
+
+        <!-- HUY HIỆU DỰA TRÊN HỌC TẬP THỰC TẾ -->
+        <div
+          class="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2"
+        >
+          <span
+            class="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5"
+          >
+            <i class="fa-solid fa-check text-emerald-600"></i> Hoàn thành 12 bài
+            tập
+          </span>
+          <span
+            class="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5"
+          >
+            <i class="fa-solid fa-fire text-amber-500"></i> Chuỗi học tập 7 ngày
+          </span>
+          <span
+            class="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5"
+          >
+            <i class="fa-solid fa-star text-blue-500"></i> ĐTB trên 8.0
+          </span>
+        </div>
+      </section>
+
+      <!-- 3. NHÓM GẦN BẠN TRONG LỚP (#9 - #15) (TẬP TRUNG KHU VỰC QUAN TÂM) -->
+      <section class="space-y-2.5">
+        <div class="flex items-center justify-between px-1">
+          <h3
+            class="text-sm font-extrabold text-slate-900 uppercase tracking-tight"
+          >
+            Nhóm So Kè Gần Bạn (#9 - #15)
+          </h3>
+          <span class="text-xs font-semibold text-slate-400"
+            >Đối thủ cạnh tranh trực tiếp</span
+          >
+        </div>
+
+        <!-- #10 -->
+        <div
+          class="glass-card rounded-2xl p-3.5 flex items-center justify-between gap-4"
+        >
+          <div class="flex items-center gap-3">
+            <span class="font-extrabold text-slate-400 text-sm w-6 text-center"
+              >#10</span
+            >
+            <img
+              src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&auto=format&fit=crop&q=80"
+              class="w-9 h-9 rounded-xl object-cover shrink-0"
+            />
+            <div>
+              <h4 class="font-bold text-slate-900 text-sm">Vũ Minh K</h4>
+              <span class="text-[11px] font-medium text-slate-400"
+                >12 bài nộp</span
+              >
+            </div>
+          </div>
+          <div class="flex items-center gap-3 text-right">
+            <span
+              class="text-[10px] font-extrabold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-md"
+              >▼ -1</span
+            >
+            <span class="font-extrabold text-slate-900 text-sm w-10">8.30</span>
+          </div>
+        </div>
+
+        <!-- #11 (Xếp ngay trên) -->
+        <div
+          class="glass-card rounded-2xl p-3.5 flex items-center justify-between gap-4 border border-amber-200 bg-amber-50/30"
+        >
+          <div class="flex items-center gap-3">
+            <span class="font-extrabold text-amber-600 text-sm w-6 text-center"
+              >#11</span
+            >
+            <div
+              class="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 font-black flex items-center justify-center text-xs shrink-0"
+            >
+              NV
+            </div>
+            <div>
+              <h4 class="font-extrabold text-slate-900 text-sm">
+                Nguyễn Văn B
+                <span class="text-amber-600 text-xs font-normal"
+                  >🎯 Mục tiêu kế tiếp</span
+                >
+              </h4>
+              <span class="text-[11px] font-bold text-amber-700"
+                >Cần +0.15 điểm để vượt</span
+              >
+            </div>
+          </div>
+          <div class="flex items-center gap-3 text-right">
+            <span
+              class="text-[10px] font-extrabold text-emerald-600 bg-emerald-100 px-2.5 py-1 rounded-md"
+              >▲ +11</span
+            >
+            <span class="font-extrabold text-slate-900 text-sm w-10">8.25</span>
+          </div>
+        </div>
+
+        <!-- #12 (CHÍNH BẠN) -->
+        <div
+          class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl p-4 flex items-center justify-between gap-4 shadow-xl shadow-blue-500/20 scale-[1.01]"
+        >
+          <div class="flex items-center gap-3">
+            <span class="font-black text-amber-300 text-base w-6 text-center"
+              >#12</span
+            >
+            <img
+              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80"
+              class="w-9 h-9 rounded-xl object-cover shrink-0 border border-amber-300"
+            />
+            <div>
+              <h4 class="font-extrabold text-white text-sm">
+                Trần Duy Hải (Bạn) ⭐
+              </h4>
+              <span class="text-[10px] font-bold text-blue-100"
+                >Đã nộp 12 bài kiểm tra</span
+              >
+            </div>
+          </div>
+          <div class="flex items-center gap-3 text-right">
+            <span
+              class="text-[10px] font-black text-slate-950 bg-amber-300 px-2.5 py-1 rounded-md"
+              >▲ +5 bậc</span
+            >
+            <span class="font-black text-amber-300 text-sm w-10">8.10</span>
+          </div>
+        </div>
+
+        <!-- #13 (Xếp ngay dưới) -->
+        <div
+          class="glass-card rounded-2xl p-3.5 flex items-center justify-between gap-4"
+        >
+          <div class="flex items-center gap-3">
+            <span class="font-extrabold text-slate-400 text-sm w-6 text-center"
+              >#13</span
+            >
+            <div
+              class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 font-black flex items-center justify-center text-xs shrink-0"
+            >
+              TV
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-900 text-sm">Trần Văn C</h4>
+              <span class="text-[11px] font-medium text-slate-400"
+                >11 bài nộp</span
+              >
+            </div>
+          </div>
+          <div class="flex items-center gap-3 text-right">
+            <span
+              class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md"
+              >Duy trì</span
+            >
+            <span class="font-extrabold text-slate-900 text-sm w-10">8.00</span>
+          </div>
+        </div>
+
+        <!-- #14 -->
+        <div
+          class="glass-card rounded-2xl p-3.5 flex items-center justify-between gap-4"
+        >
+          <div class="flex items-center gap-3">
+            <span class="font-extrabold text-slate-400 text-sm w-6 text-center"
+              >#14</span
+            >
+            <img
+              src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&auto=format&fit=crop&q=80"
+              class="w-9 h-9 rounded-xl object-cover shrink-0"
+            />
+            <div>
+              <h4 class="font-bold text-slate-900 text-sm">Đỗ Thị M</h4>
+              <span class="text-[11px] font-medium text-slate-400"
+                >10 bài nộp</span
+              >
+            </div>
+          </div>
+          <div class="flex items-center gap-3 text-right">
+            <span
+              class="text-[10px] font-extrabold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-md"
+              >▼ -2</span
+            >
+            <span class="font-extrabold text-slate-900 text-sm w-10">7.85</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. TOP NỔI BẬT THÁNG NÀY (COMPACT CARD GỌN GÀNG) -->
+      <section class="space-y-3 pt-2">
+        <div class="flex items-center justify-between px-1">
+          <h3
+            class="text-sm font-extrabold text-slate-900 uppercase tracking-tight flex items-center gap-1.5"
+          >
+            <span>🌟</span> Top Nổi Bật Tháng 8
+          </h3>
+          <span class="text-xs font-bold text-slate-400">Lớp 10A1</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <!-- Top 1 -->
+          <div
+            class="glass-card rounded-2xl p-3.5 border-2 border-amber-300/80 flex items-center gap-3"
+          >
+            <div
+              class="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 font-black text-sm flex items-center justify-center shrink-0"
+            >
+              🥇
+            </div>
+            <div
+              class="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 font-black flex items-center justify-center text-xs shrink-0 border border-amber-400"
+            >
+              MA
+            </div>
+            <div class="min-w-0 flex-1">
+              <h4 class="font-bold text-slate-900 text-sm truncate">
+                Minh Anh
+              </h4>
+              <span class="text-[11px] font-extrabold text-amber-600 block"
+                >9.85 Điểm</span
+              >
+            </div>
+          </div>
+
+          <!-- Top 2 -->
+          <div
+            class="glass-card rounded-2xl p-3.5 border border-slate-200 flex items-center gap-3"
+          >
+            <div
+              class="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 font-black text-sm flex items-center justify-center shrink-0"
+            >
+              🥈
+            </div>
+            <img
+              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80"
+              class="w-9 h-9 rounded-xl object-cover shrink-0"
+            />
+            <div class="min-w-0 flex-1">
+              <h4 class="font-bold text-slate-900 text-sm truncate">
+                Phạm Hải
+              </h4>
+              <span class="text-[11px] font-extrabold text-slate-700 block"
+                >9.60 Điểm</span
+              >
+            </div>
+          </div>
+
+          <!-- Top 3 -->
+          <div
+            class="glass-card rounded-2xl p-3.5 border border-slate-200 flex items-center gap-3"
+          >
+            <div
+              class="w-8 h-8 rounded-xl bg-orange-50 text-orange-700 font-black text-sm flex items-center justify-center shrink-0"
+            >
+              🥉
+            </div>
+            <div
+              class="w-9 h-9 rounded-xl bg-orange-400 text-white font-black flex items-center justify-center text-xs shrink-0"
+            >
+              GH
+            </div>
+            <div class="min-w-0 flex-1">
+              <h4 class="font-bold text-slate-900 text-sm truncate">Gia Huy</h4>
+              <span class="text-[11px] font-extrabold text-orange-600 block"
+                >9.50 Điểm</span
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. VINH DANH "TIẾN BỘ NHẤT TUẦN" (GROWTH MINDSET CỦA LỚP) -->
+      <section
+        class="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-200 rounded-3xl p-4.5 shadow-sm"
+      >
+        <div
+          class="flex flex-col sm:flex-row items-center justify-between gap-4"
+        >
+          <div class="flex items-center gap-3.5 text-center sm:text-left">
+            <div
+              class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center shrink-0 text-lg shadow-md shadow-emerald-500/20"
+            >
+              🚀
+            </div>
+            <div class="space-y-0.5">
+              <span
+                class="px-2.5 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900 text-[10px] font-black uppercase tracking-wider"
+              >
+                Ghi nhận tiến bộ lớp
+              </span>
+              <h3 class="text-sm sm:text-base font-extrabold text-slate-900">
+                Nguyễn Văn B (Từ #22 ➔ #11)
+              </h3>
+              <p class="text-xs text-slate-600 font-medium">
+                Cải thiện
+                <strong class="text-emerald-700 font-extrabold">+11 bậc</strong>
+                tuần này – Nỗ lực tích cực nhất lớp!
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="bg-white px-3.5 py-1.5 rounded-2xl border border-emerald-200 text-center shrink-0 w-full sm:w-auto"
+          >
+            <span class="text-[10px] font-bold text-slate-400 block uppercase"
+              >ĐTB Hiện Tại</span
+            >
+            <span class="text-sm font-black text-emerald-600">8.25 Điểm</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. HEATMAP THEO LỊCH TUẦN & CHUỖI HỌC TẬP CÓ Ý NGHĨA -->
+      <section class="glass-card p-5 rounded-3xl space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="space-y-0.5">
+            <h3
+              class="text-xs font-extrabold text-slate-800 uppercase tracking-wide flex items-center gap-1.5"
+            >
+              <i class="fa-solid fa-calendar-check text-cyan-600"></i> Chuỗi
+              hoạt động làm bài tuần này
+            </h3>
+            <p class="text-[11px] text-slate-500 font-medium">
+              Duy trì làm bài thường xuyên giúp củng cố kiến thức tốt hơn
+            </p>
+          </div>
+          <span
+            class="text-[11px] font-extrabold text-cyan-700 bg-cyan-50 px-2.5 py-1 rounded-lg"
+          >
+            22/30 Ngày (73%)
+          </span>
+        </div>
+
+        <div
+          class="grid grid-cols-7 gap-1.5 text-center text-[10px] font-bold text-slate-400 pt-1"
+        >
+          <div>T2</div>
+          <div>T3</div>
+          <div>T4</div>
+          <div>T5</div>
+          <div>T6</div>
+          <div>T7</div>
+          <div>CN</div>
+          <div
+            class="h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold"
+          >
+            ✓
+          </div>
+          <div
+            class="h-7 rounded-lg bg-blue-500 text-white flex items-center justify-center font-bold"
+          >
+            ✓
+          </div>
+          <div
+            class="h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold"
+          >
+            ✓
+          </div>
+          <div
+            class="h-7 rounded-lg bg-slate-100 text-slate-300 flex items-center justify-center"
+          >
+            -
+          </div>
+          <div
+            class="h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold"
+          >
+            ✓
+          </div>
+          <div
+            class="h-7 rounded-lg bg-blue-500 text-white flex items-center justify-center font-bold"
+          >
+            ✓
+          </div>
+          <div
+            class="h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold"
+          >
+            ✓
+          </div>
+        </div>
+
+        <div
+          class="flex items-center justify-between text-[11px] font-bold text-slate-500 pt-1 border-t border-slate-100"
+        >
+          <span
+            >🔥 Chuỗi hiện tại:
+            <strong class="text-amber-600">7 ngày</strong></span
+          >
+          <span
+            >⭐ Chuỗi dài nhất:
+            <strong class="text-blue-600">15 ngày</strong></span
+          >
+        </div>
+      </section>
+
+      <!-- 7. GÓC BÁO CÁO DÀNH CHO GIÁO VIÊN VÀ TRẠNG THÁI KHÔNG ĐỦ ĐIỀU KIỆN -->
+      <section class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <!-- Báo cáo quản lý lớp -->
+        <div
+          class="md:col-span-2 bg-slate-900 text-white rounded-3xl p-5 shadow-xl space-y-3"
+        >
+          <div
+            class="flex items-center justify-between border-b border-slate-800 pb-2.5"
+          >
+            <div class="flex items-center gap-2">
+              <span class="text-amber-400">📊</span>
+              <h3 class="text-xs font-extrabold uppercase tracking-wide">
+                Báo Cáo Giáo Viên (Lớp 10A1)
+              </h3>
+            </div>
+            <span
+              class="text-[10px] font-bold bg-blue-600/30 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30"
+              >Hôm nay</span
+            >
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 text-xs text-center sm:text-left">
+            <div
+              class="bg-slate-800/80 p-2.5 rounded-2xl border border-slate-700/60"
+            >
+              <span class="text-slate-400 block text-[10px] mb-0.5"
+                >Tăng hạng</span
+              >
+              <strong class="text-emerald-400 font-black text-xs block"
+                >18 Học sinh</strong
+              >
+            </div>
+            <div
+              class="bg-slate-800/80 p-2.5 rounded-2xl border border-slate-700/60"
+            >
+              <span class="text-slate-400 block text-[10px] mb-0.5"
+                >Giảm điểm</span
+              >
+              <strong class="text-amber-400 font-black text-xs block"
+                >3 Học sinh</strong
+              >
+            </div>
+            <div
+              class="bg-slate-800/80 p-2.5 rounded-2xl border border-slate-700/60"
+            >
+              <span class="text-slate-400 block text-[10px] mb-0.5"
+                >Chuỗi tốt</span
+              >
+              <strong class="text-sky-400 font-black text-xs block"
+                >12 Bạn > 7d</strong
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- TRẠNG THÁI KHÔNG ĐỦ ĐIỀU KIỆN XẾP HẠNG (CHƯA ĐỦ 5 BÀI TEST) -->
+        <div
+          class="bg-amber-50/80 border border-amber-200/80 rounded-3xl p-4 flex flex-col justify-between text-xs space-y-2"
+        >
+          <div class="space-y-1">
+            <span
+              class="px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-black text-[9px] uppercase"
+              >Điều kiện ghi danh</span
+            >
+            <h4 class="font-extrabold text-slate-900 text-xs">
+              Yêu cầu tối thiểu 5 bài test
+            </h4>
+            <p class="text-[11px] text-slate-600 font-medium leading-relaxed">
+              Ví dụ học sinh mới hoàn thành
+              <strong class="text-amber-700 font-black">3/5 bài</strong>. Cần
+              làm thêm 2 bài nữa để xuất hiện chính thức.
+            </p>
+          </div>
+          <a
+            href="#"
+            class="text-[11px] font-extrabold text-amber-700 hover:underline"
+            >Làm bài tập ngay ➔</a
+          >
+        </div>
+      </section>
+
+      <!-- FOOTER NOTE -->
+      <div
+        class="glass-card p-4 rounded-2xl text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2"
+      >
+        <span
+          ><i class="fa-solid fa-circle-info text-blue-500 mr-1.5"></i> Hiển thị
+          25 / 32 học sinh lớp 10A1 đã nộp đủ tối thiểu 5 bài thi.</span
+        >
+        <a href="#" class="text-blue-600 font-extrabold hover:underline"
+          >Xem danh sách đầy đủ ➔</a
+        >
+      </div>
+    </div>
+
+    <!-- MOBILE STICKY BAR -->
+    <div class="fixed bottom-4 left-4 right-4 md:hidden z-40">
+      <div
+        class="bg-slate-900/95 backdrop-blur-md text-white rounded-2xl p-3.5 shadow-2xl flex items-center justify-between border border-blue-400/30"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 font-extrabold text-white flex items-center justify-center text-xs shadow"
+          >
+            #12
+          </div>
+          <div class="text-xs space-y-0.5">
+            <div class="font-extrabold text-white">⭐ Hải (Bạn) • Lớp 10A1</div>
+            <span class="text-amber-300 font-bold">8.10 ĐTB • ↑ +5 bậc</span>
+          </div>
+        </div>
+
+        <a
+          href="#"
+          class="px-3.5 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-extrabold text-[11px] rounded-xl shadow uppercase tracking-wider shrink-0"
+        >
+          Vị trí của tôi
+        </a>
+      </div>
+    </div>
+
+    <!-- Counter Script -->
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const counters = document.querySelectorAll(".counter");
+        counters.forEach((counter) => {
+          const target = +counter.getAttribute("data-target");
+          let count = 0;
+          const speed = 20;
+          const increment = target / speed;
+
+          const updateCount = () => {
+            count += increment;
+            if (count < target) {
+              counter.innerText = count.toFixed(2);
+              setTimeout(updateCount, 15);
+            } else {
+              counter.innerText = target.toFixed(2);
+            }
+          };
+          updateCount();
+        });
+      });
+    </script>
+  </body>
+</html>

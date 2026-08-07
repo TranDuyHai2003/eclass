@@ -33,6 +33,7 @@ model User {
   videoAssets         VideoAsset[]
   classId             String?
   studyClass          StudyClass?          @relation(fields: [classId], references: [id])
+  leaderboardSnapshots LeaderboardSnapshot[]
 
   @@index([classId])
 }
@@ -446,4 +447,29 @@ model StudyClass {
   updatedAt DateTime @updatedAt
   users     User[]
   courses   Course[]
+  leaderboardSnapshots LeaderboardSnapshot[]
 }
+
+model LeaderboardSnapshot {
+  id             String   @id @default(cuid())
+  userId         String
+  studyClassId   String
+  periodCode     String
+  snapshotType   String   @default("WEEKLY")
+
+  score          Float
+  rankingScore   Float
+  completedTests Int
+  rank           Int?
+
+  createdAt      DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyClass StudyClass @relation(fields: [studyClassId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, periodCode, snapshotType])
+  @@index([studyClassId, periodCode])
+  @@index([userId])
+  @@index([studyClassId])
+}
+

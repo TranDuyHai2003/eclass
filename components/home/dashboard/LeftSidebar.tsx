@@ -11,7 +11,8 @@ import {
   Facebook,
   Youtube,
   MessageCircle,
-  LayoutDashboard
+  LayoutDashboard,
+  Trophy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ export function LeftSidebar({ user }: { user: any }) {
     { icon: HomeIcon, label: "Khám phá", href: "/" },
     { icon: BookOpen, label: "Khóa học của tôi", href: "/courses" },
     { icon: ClipboardList, label: "Phòng luyện đề", href: "/practice" },
+    { icon: Trophy, label: "Bảng xếp hạng", href: "/ranking" },
     { icon: PlaySquare, label: "Lịch học Live", href: "/live" },
     { icon: User, label: "Trang cá nhân", href: "/profile" },
   ];
