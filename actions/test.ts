@@ -330,7 +330,7 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
         }
       }
     }
-  });
+  }, { timeout: 30000, maxWait: 10000 });
 
   // 4. Re-calculate scores for all existing attempts if keys changed
   await reCalculateAllAttempts(testId);
@@ -461,7 +461,7 @@ async function reCalculateAllAttempts(testId: string) {
         })
       ]);
     }
-  });
+  }, { timeout: 30000, maxWait: 10000 });
 }
 
 
@@ -600,14 +600,21 @@ function checkAnswerMatch(provided: string | null | undefined, expected: string 
 
   if (type === 'MULTIPLE_CHOICE' || type === 'TRUE_FALSE') {
     const providedParts = providedNorm.split(',').map(s => s.trim()).filter(Boolean);
-    const providedSorted = providedParts.sort().join(',');
+    const providedSorted = [...providedParts].sort().join(',');
 
     return expectedOptions.some(opt => {
       const optParts = opt.split(',').map(s => s.trim()).filter(Boolean);
-      const optSorted = optParts.sort().join(',');
+      const optSorted = [...optParts].sort().join(',');
       
       // Exact match
-      return providedSorted === optSorted;
+      if (providedSorted === optSorted) return true;
+
+      // Allow selecting 1 or more valid options if question has multiple correct answers (e.g. expected is "A,D" and student picked "A" or "D")
+      if (providedParts.length > 0 && providedParts.every(p => optParts.includes(p))) {
+        return true;
+      }
+
+      return false;
     });
   }
 
