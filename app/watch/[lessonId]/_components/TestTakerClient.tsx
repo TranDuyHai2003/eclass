@@ -15,7 +15,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { startTestAttempt, getTestDraft, saveTestDraft, submitTestAttempt } from "@/actions/test";
+// Server Actions đã được thay bằng fetch API routes để tránh lỗi khi deploy mới
+// (Server Action IDs thay đổi sau mỗi deploy, API route URLs thì không)
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -78,7 +79,8 @@ export default function TestTakerClient({
 
   const isSubmittingRef = useRef(false);
 
-  // Sync answers to server (debounced)
+  // Sync answers to server (debounced) — dùng fetch thay vì Server Action
+  // để tránh lỗi "Failed to find Server Action" khi deploy mới
   const syncToServer = useCallback(() => {
     const currentAttemptId = attemptIdRef.current;
     if (!currentAttemptId || isSubmitting || isSubmittingRef.current) return;
@@ -90,8 +92,11 @@ export default function TestTakerClient({
         answerProvided: typeof currentAnswers[qId] === 'object' ? JSON.stringify(currentAnswers[qId]) : currentAnswers[qId],
       }));
     if (answersArray.length === 0) return;
-    saveTestDraft(currentAttemptId, answersArray)
-      .catch((e) => console.error("[Auto-save] Sync failed:", e));
+    fetch("/api/tests/draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attemptId: currentAttemptId, answersArray }),
+    }).catch((e) => console.error("[Auto-save] Sync failed:", e));
   }, [isSubmitting]);
 
   const attemptIdRef = useRef(attemptId);
@@ -100,8 +105,10 @@ export default function TestTakerClient({
   }, [attemptId]);
 
   // Load initial attempt + reconcile server + localStorage
+  // Dùng fetch thay Server Action để không bị ảnh hưởng bởi deploy mới
   useEffect(() => {
-    startTestAttempt(test.id)
+    fetch(`/api/tests/${test.id}/attempt`, { method: "POST" })
+      .then((r) => r.json())
       .then(async (res) => {
         if (!res.success || !res.attempt) {
           toast.error("Không thể bắt đầu làm bài");
@@ -121,7 +128,7 @@ export default function TestTakerClient({
         // (to prevent auto-save effect from overwriting localStorage with empty answers)
         const serverAnswers: Record<string, string> = {};
         try {
-          const draftRes = await getTestDraft(res.attempt.id);
+          const draftRes = await fetch(`/api/tests/draft?attemptId=${res.attempt.id}`).then((r) => r.json());
           if (draftRes.success && draftRes.answers) {
             for (const a of draftRes.answers) {
               if (a.subAnswers && a.subAnswers.length > 0) {
@@ -131,7 +138,7 @@ export default function TestTakerClient({
                     parsedFromDraft = JSON.parse(a.answerProvided);
                   } catch (e) {}
                 }
-                
+
                 if (parsedFromDraft && typeof parsedFromDraft === 'object') {
                   serverAnswers[a.questionId] = parsedFromDraft;
                 } else {
@@ -194,10 +201,11 @@ export default function TestTakerClient({
             .filter((k) => merged[k] !== "")
             .map((qId) => ({ questionId: qId, answerProvided: typeof merged[qId] === 'object' ? JSON.stringify(merged[qId]) : merged[qId] }));
           if (mergedArray.length > 0) {
-            saveTestDraft(res.attempt.id, mergedArray)
-              .catch((e) =>
-                console.error("[Reconciliation] Push to server failed:", e),
-              );
+            fetch("/api/tests/draft", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ attemptId: res.attempt.id, answersArray: mergedArray }),
+            }).catch((e) => console.error("[Reconciliation] Push to server failed:", e));
           }
         }
 
@@ -288,11 +296,15 @@ export default function TestTakerClient({
 
   const executeSubmit = async () => {
     if (!attemptId || isSubmittingRef.current) return;
-    
+
     setShowConfirmSubmit(false);
     isSubmittingRef.current = true;
     setIsSubmitting(true);
-    
+
+    // Dừng auto-save ngay lập tức để tránh race condition với submit
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (syncIntervalRef.current) clearInterval(syncIntervalRef.current);
+
     try {
       const answersArray = Object.keys(answers).map((qId) => {
         const q = test.sections.flatMap((s: any) => s.questions).find((q: any) => q.id === qId);
@@ -310,7 +322,30 @@ export default function TestTakerClient({
         };
       });
 
-      const res = await submitTestAttempt(attemptId, answersArray);
+      // Dùng fetch thay Server Action — URL cố định, không bị đổi sau deploy
+      const httpRes = await fetch("/api/tests/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attemptId, answersArray }),
+      });
+
+      // Xử lý lỗi HTTP (401, 500, v.v.) một cách tường minh
+      if (httpRes.status === 401) {
+        toast.error(
+          "Phiên đăng nhập đã hết hạn. Đáp án đã được lưu tự động. Trang sẽ tải lại để tiếp tục...",
+          { duration: 4000 }
+        );
+        setTimeout(() => window.location.reload(), 3000);
+        return;
+      }
+
+      if (!httpRes.ok) {
+        const errData = await httpRes.json().catch(() => ({}));
+        throw new Error(errData.error || `Lỗi máy chủ (${httpRes.status})`);
+      }
+
+      const res = await httpRes.json();
+
       if (res.success) {
         if (!res.alreadySubmitted) {
           toast.success("Nộp bài thành công!");
@@ -326,10 +361,19 @@ export default function TestTakerClient({
           : `/watch/${lesson.id}/results/${attemptId}`;
         router.push(path);
       } else {
-        throw new Error((res as any).error || "Lỗi nộp bài");
+        throw new Error(res.error || "Lỗi nộp bài");
       }
     } catch (e: any) {
-      toast.error(e.message || "Không thể nộp bài");
+      // Lỗi mạng (fetch failed) — giữ học sinh ở trang, không để bị văng
+      const isNetworkError = e instanceof TypeError && e.message.includes("fetch");
+      if (isNetworkError) {
+        toast.error(
+          "Mất kết nối mạng. Đáp án đã được lưu. Vui lòng kiểm tra kết nối và thử lại.",
+          { duration: 5000 }
+        );
+      } else {
+        toast.error(e.message || "Không thể nộp bài. Vui lòng thử lại.");
+      }
     } finally {
       isSubmittingRef.current = false;
       setIsSubmitting(false);
