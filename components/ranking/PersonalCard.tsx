@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { RankingUser, PersonalRankingContext } from "@/actions/ranking";
-import { CheckCircle2, Flame, Star, Info, ChevronDown, ChevronUp, Trophy } from "lucide-react";
+import { RankStatus } from "@/lib/ranking-config";
+import { CheckCircle2, Flame, Star, Info, ChevronDown, ChevronUp, Trophy, Award } from "lucide-react";
 
 interface PersonalCardProps {
   currentUser: RankingUser | null;
@@ -30,12 +31,16 @@ export function PersonalCard({
 
   const user = currentUser || {
     id: "current",
-    name: "Trần Duy Hải",
+    name: "Học sinh",
     image: null,
     rank: 12,
     score: 8.10,
     avgScore: 8.10,
-    rankingScore: 81.0,
+    rankingScore: 91.0,
+    academicScore: 81.0,
+    completionBonus: 7.0,
+    activityBonus: 3.0,
+    rankStatus: RankStatus.SAME,
     completedTests: 12,
     isEligible: true,
     rankChange: 5,
@@ -56,6 +61,12 @@ export function PersonalCard({
   const userAvg = user.avgScore || user.score || 8.10;
   const scoreDiff = parseFloat((userAvg - classAvgScore).toFixed(2));
   const completed = user.completedTests || 12;
+
+  const academicScore = user.academicScore ?? parseFloat((userAvg * 10).toFixed(1));
+  const completionBonus = user.completionBonus ?? 7.0;
+  const activityBonus = user.activityBonus ?? 3.0;
+  const rankingScore = user.rankingScore ?? (academicScore + completionBonus + activityBonus);
+  const rankStatus = user.rankStatus || RankStatus.SAME;
 
   return (
     <section className="glass-card rounded-3xl p-5 sm:p-7 border-2 border-blue-500/40 shadow-xl shadow-blue-500/10 bg-white/95 backdrop-blur-2xl space-y-5">
@@ -84,16 +95,32 @@ export function PersonalCard({
               <h2 className="text-xl font-extrabold text-slate-900 truncate">
                 {user.name} (Bạn)
               </h2>
-              {/* RANK CHANGE REASON BADGE */}
-              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-extrabold inline-flex items-center gap-1 leading-tight">
-                {rankChange && rankChange > 0 ? (
-                  <>↑ Tăng {rankChange} bậc (+{completed} bài nộp, ĐTB {userAvg.toFixed(2)})</>
-                ) : rankChange && rankChange < 0 ? (
-                  <>↓ Giảm {Math.abs(rankChange)} bậc</>
-                ) : (
-                  <>⚡ Phong độ ổn định (+{completed} bài nộp)</>
-                )}
-              </span>
+              {/* RANK STATUS BADGE */}
+              {rankStatus === RankStatus.NEW && (
+                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-black inline-flex items-center gap-1 leading-tight animate-pulse">
+                  ✨ Lần đầu ghi danh Top Lớp!
+                </span>
+              )}
+              {rankStatus === RankStatus.RETURN && (
+                <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-900 border border-purple-300 text-xs font-black inline-flex items-center gap-1 leading-tight">
+                  🔥 Trở lại Bảng Xếp Hạng!
+                </span>
+              )}
+              {rankStatus === RankStatus.UP && (
+                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-extrabold inline-flex items-center gap-1 leading-tight">
+                  ↑ Tăng {rankChange || 1} bậc (+{completed} bài nộp)
+                </span>
+              )}
+              {rankStatus === RankStatus.DOWN && (
+                <span className="px-3 py-1 rounded-full bg-rose-50 text-rose-800 border border-rose-200 text-xs font-extrabold inline-flex items-center gap-1 leading-tight">
+                  ↓ Giảm {Math.abs(rankChange || 1)} bậc
+                </span>
+              )}
+              {rankStatus === RankStatus.SAME && (
+                <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-extrabold inline-flex items-center gap-1 leading-tight">
+                  ⚡ Phong độ ổn định
+                </span>
+              )}
             </div>
 
             {/* CLASS COMPARISON DATA */}
@@ -110,17 +137,31 @@ export function PersonalCard({
           </div>
         </div>
 
-        {/* Score Display */}
-        <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white px-7 py-4 rounded-2xl shadow-lg shadow-blue-500/20 text-center flex flex-col items-center justify-center w-full md:w-auto shrink-0 min-w-[190px]">
-          <span className="text-xs font-extrabold text-blue-100 uppercase tracking-wider block mb-0.5">
-            Điểm Trung Bình
-          </span>
-          <strong className="text-3xl sm:text-4xl font-black tracking-tight block leading-none py-1">
-            {userAvg.toFixed(2)}
-          </strong>
-          <span className="text-xs font-extrabold text-emerald-300">
-            {scoreDiff >= 0 ? `▲ Cao hơn ĐTB Lớp (+${scoreDiff.toFixed(2)})` : `▼ Thấp hơn ĐTB Lớp (${scoreDiff.toFixed(2)})`}
-          </span>
+        {/* Score Display with Breakdown */}
+        <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-950 text-white p-4 sm:p-5 rounded-2xl shadow-xl border border-indigo-800/50 w-full md:w-auto shrink-0 min-w-[240px]">
+          <div className="flex items-center justify-between gap-2 border-b border-indigo-800/60 pb-2 mb-2">
+            <span className="text-[11px] font-extrabold text-indigo-200 uppercase tracking-wider flex items-center gap-1">
+              <Award className="w-3.5 h-3.5 text-amber-400" />
+              Điểm Ranking Tổng
+            </span>
+            <strong className="text-2xl font-black text-amber-400 tracking-tight">
+              {rankingScore.toFixed(1)} <span className="text-xs font-normal text-indigo-300">đ</span>
+            </strong>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+            <div className="bg-white/10 rounded-xl p-1.5 border border-white/5">
+              <span className="text-[10px] text-indigo-200 font-bold block">Học Thuật</span>
+              <strong className="text-sm font-black text-white">{academicScore.toFixed(1)}</strong>
+            </div>
+            <div className="bg-white/10 rounded-xl p-1.5 border border-white/5">
+              <span className="text-[10px] text-emerald-300 font-bold block">Thưởng Bài</span>
+              <strong className="text-sm font-black text-emerald-300">+{completionBonus.toFixed(1)}</strong>
+            </div>
+            <div className="bg-white/10 rounded-xl p-1.5 border border-white/5">
+              <span className="text-[10px] text-amber-300 font-bold block">Thưởng Chăm</span>
+              <strong className="text-sm font-black text-amber-300">+{activityBonus.toFixed(1)}</strong>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -226,25 +267,26 @@ export function PersonalCard({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white p-3 rounded-xl border border-slate-200 text-center">
-              <span className="text-xs font-bold text-slate-500 block uppercase">75% Trọng số</span>
-              <strong className="text-blue-700 font-extrabold text-sm block mt-0.5">Kết quả học tập</strong>
-              <span className="text-xs text-slate-500 font-medium">(Academic Score)</span>
+              <span className="text-xs font-bold text-slate-500 block uppercase">Năng Lực Gốc</span>
+              <strong className="text-blue-700 font-extrabold text-sm block mt-0.5">Academic Score</strong>
+              <span className="text-xs text-slate-500 font-medium">= ĐTB × 10 (tối đa 100đ)</span>
             </div>
             <div className="bg-white p-3 rounded-xl border border-slate-200 text-center">
-              <span className="text-xs font-bold text-slate-500 block uppercase">15% Trọng số</span>
-              <strong className="text-indigo-700 font-extrabold text-sm block mt-0.5">Hoàn thành bài</strong>
-              <span className="text-xs text-slate-500 font-medium">(Completion Score)</span>
+              <span className="text-xs font-bold text-emerald-600 block uppercase">Điểm Thưởng Bài</span>
+              <strong className="text-emerald-700 font-extrabold text-sm block mt-0.5">Completion Bonus</strong>
+              <span className="text-xs text-slate-500 font-medium">Tối đa +7đ (+0.7 GPA)</span>
             </div>
             <div className="bg-white p-3 rounded-xl border border-slate-200 text-center">
-              <span className="text-xs font-bold text-slate-500 block uppercase">10% Trọng số</span>
-              <strong className="text-emerald-700 font-extrabold text-sm block mt-0.5">Tham gia gần đây</strong>
-              <span className="text-xs text-slate-500 font-medium">(30 ngày qua)</span>
+              <span className="text-xs font-bold text-amber-600 block uppercase">Điểm Thưởng Chăm</span>
+              <strong className="text-amber-700 font-extrabold text-sm block mt-0.5">Activity Bonus</strong>
+              <span className="text-xs text-slate-500 font-medium">Tối đa +3đ (+0.3 GPA)</span>
             </div>
           </div>
 
           <div className="pt-2 border-t border-slate-200 text-xs space-y-1.5 text-slate-700 font-semibold">
-            <p>• <strong>Điều kiện ghi danh:</strong> Hoàn thành tối thiểu 5 bài kiểm tra.</p>
-            <p>• <strong>Quy tắc hòa điểm (Tie-breaker):</strong> 1. ĐTB cao hơn $\rightarrow$ 2. Tỷ lệ hoàn thành cao hơn $\rightarrow$ 3. Tổng số bài nộp $\rightarrow$ 4. Nộp bài gần đây nhất.</p>
+            <p>• <strong>Triết lý:</strong> Học thuật chiếm 85–90%. Điểm thưởng giúp bứt phá khi năng lực tương đương.</p>
+            <p>• <strong>Điều kiện ghi danh:</strong> Hoàn thành tối thiểu 5 bài kiểm tra khác nhau.</p>
+            <p>• <strong>Tie-breaker:</strong> 1. Ranking Score → 2. Điểm TB → 3. Số bài hoàn thành → 4. Chuỗi học tập.</p>
           </div>
         </div>
       )}
