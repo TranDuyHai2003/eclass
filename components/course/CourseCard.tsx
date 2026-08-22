@@ -62,8 +62,8 @@ export default function CourseCard({ course, isLocked = false, progress }: Cours
 
         {/* Premium Badge */}
         <div className="absolute top-4 left-4 z-10">
-          <div className="px-3 py-1.5 bg-slate-900/90 backdrop-blur-md text-[9px] font-black uppercase tracking-wider text-white rounded-2xl shadow-lg flex items-center gap-2">
-            <Sparkles className="w-2.5 h-2.5 text-blue-400 animate-pulse" />
+          <div className="px-3.5 py-1.5 bg-slate-900/90 backdrop-blur-md text-xs sm:text-sm font-black uppercase tracking-wider text-white rounded-2xl shadow-lg flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
             {course.category?.name || "Toán Học"}
           </div>
         </div>
@@ -86,17 +86,17 @@ export default function CourseCard({ course, isLocked = false, progress }: Cours
       {/* Content Section */}
       <div className="p-6 flex-1 flex flex-col">
         <div className="space-y-2 mb-4">
-           <h3 className="font-black text-slate-900 text-base leading-tight group-hover:text-blue-600 transition-colors line-clamp-2 uppercase tracking-tight">
+           <h3 className="font-black text-slate-900 text-base sm:text-lg leading-tight group-hover:text-blue-600 transition-colors line-clamp-2 uppercase tracking-tight">
              {course.title}
            </h3>
            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                 <BookOpen className="w-3 h-3 text-blue-500" />
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm font-black text-slate-400 uppercase tracking-wider">
+                 <BookOpen className="w-4 h-4 text-blue-500" />
                  {totalLessons} Bài
               </div>
               <div className="w-1 h-1 rounded-full bg-slate-200" />
-              <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                 <Star className="w-3 h-3 text-orange-400 fill-orange-400" />
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm font-black text-slate-400 uppercase tracking-wider">
+                 <Star className="w-4 h-4 text-orange-400 fill-orange-400" />
                  Premium
               </div>
            </div>
@@ -106,8 +106,8 @@ export default function CourseCard({ course, isLocked = false, progress }: Cours
         {progress !== undefined && (
           <div className="mb-6 p-4 bg-blue-50/30 rounded-2xl border border-blue-100/50">
             <div className="flex justify-between items-end mb-2">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tiến trình</span>
-                <span className="text-xs font-black text-blue-600">{progress}%</span>
+                <span className="text-xs sm:text-sm font-black text-slate-400 uppercase tracking-wider">Tiến trình</span>
+                <span className="text-xs sm:text-sm font-black text-blue-600">{progress}%</span>
             </div>
             <div className="w-full h-2 bg-slate-200/50 rounded-full overflow-hidden p-0.5">
                 <div 
@@ -124,15 +124,15 @@ export default function CourseCard({ course, isLocked = false, progress }: Cours
             <div className="relative">
               <Avatar className="h-9 w-9 border-2 border-white shadow-sm ring-1 ring-slate-100">
                 <AvatarImage src={course.user?.image || ""} />
-                <AvatarFallback className="bg-blue-50 text-blue-600 font-black text-xs">
+                <AvatarFallback className="bg-blue-50 text-blue-600 font-black text-xs sm:text-sm">
                   {course.user?.name?.[0] || "T"}
                 </AvatarFallback>
               </Avatar>
               <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[12px] font-black text-slate-900 leading-none">{course.user?.name || "thatdehoctoan"}</span>
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1.5">Giảng viên</span>
+              <span className="text-xs sm:text-sm font-black text-slate-900 leading-none">{course.user?.name || "thatdehoctoan"}</span>
+              <span className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-wide mt-1">Giảng viên</span>
             </div>
           </div>
           

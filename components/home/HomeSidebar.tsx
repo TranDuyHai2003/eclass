@@ -56,7 +56,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
       ? [{ icon: HomeIcon, label: "Trang chủ", href: "/", exact: true }]
       : [{ icon: LogIn, label: "Đăng nhập", href: "/login" }]),
     { icon: BookOpen, label: "Khóa Học", href: "/courses" },
-    { icon: Trophy, label: "Bảng xếp hạng", href: "/ranking" },
+    { icon: Trophy, label: "Bảng xếp hạng Hunter", href: "/ranking" },
     {
       icon: DiscordIcon,
       label: "Discord",
@@ -148,7 +148,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
             >
               <item.icon className="w-4 h-4" />
             </div>
-            <span className="text-[13px] font-bold tracking-tight">
+            <span className="text-sm font-extrabold tracking-tight">
               {item.label}
             </span>
           </div>
@@ -166,13 +166,13 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
   };
 
   return (
-    <div className="w-full bg-blue-100 rounded-xl overflow-hidden">
-      <div className="overflow-y-auto max-h-[calc(100vh-8rem)] p-2 space-y-6 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+    <div className="w-full h-full flex flex-col justify-between overflow-y-auto pr-1 space-y-6 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+      <div className="space-y-6">
         <nav className="flex flex-col gap-1">{renderLinks(generalLinks)}</nav>
         
         {/* 1.Social Links Section */}
-        <div className="pt-4 border-t border-blue-100">
-          <h4 className="px-3 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+        <div className="pt-4 border-t border-slate-200/60">
+          <h4 className="px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-slate-400">
             Liên kết
           </h4>
           <nav className="flex flex-col gap-1 mt-1">
@@ -185,24 +185,24 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
                 onClick={() => {
                   if (onClick) onClick();
                 }}
-                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#FFF1F2]/40 transition-all text-slate-600 hover:text-blue-600 group"
+                className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100/80 transition-all text-slate-600 hover:text-blue-600 group"
               >
                 <div
                   className={cn(
-                    "p-1.5 rounded-lg bg-white border border-slate-100 group-hover:border-blue-100 transition-colors",
+                    "p-1.5 rounded-lg bg-white border border-slate-200/60 group-hover:border-blue-100 transition-colors",
                     item.color,
                   )}
                 >
                   <item.icon className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-bold">{item.label}</span>
+                <span className="text-sm font-bold">{item.label}</span>
               </a>
             ))}
           </nav>
         </div>
 
         {isTeacher && (
-          <div className="pt-4 border-t border-blue-100">
+          <div className="pt-4 border-t border-slate-200/60">
             <h4 className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
               Giảng viên
             </h4>
@@ -211,7 +211,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
         )}
 
         {isAdmin && (
-          <div className="pt-4 border-t border-blue-100">
+          <div className="pt-4 border-t border-slate-200/60">
             <h4 className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
               Hệ thống
             </h4>

@@ -26,8 +26,8 @@ export default async function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-slate-200/50 transition-all duration-300">
-      <div className="max-w-[1600px] mx-auto">
-        <div className="flex h-16 sm:h-20 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 sm:h-20 items-center justify-between gap-4">
           {/* Left: Mobile Menu & Logo Group */}
           <div className="flex items-center gap-4 sm:gap-6 flex-1 md:flex-none">
             <MobileMenu user={session?.user} />
@@ -64,7 +64,7 @@ export default async function Header() {
             <nav className="hidden lg:flex items-center gap-1.5 mr-2">
               <Link
                 href="/courses"
-                className="flex items-center gap-2 px-4 py-2 text-slate-500 hover:text-blue-600 font-black text-[11px] uppercase tracking-widest rounded-xl hover:bg-blue-50 transition-all"
+                className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-blue-600 font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl hover:bg-blue-50 transition-all"
               >
                 <BookOpen className="w-4 h-4" />
                 <span>Khóa học</span>
@@ -73,7 +73,7 @@ export default async function Header() {
               {isTeacher && (
                 <Link
                   href="/teacher/courses"
-                  className="flex items-center gap-2 px-4 py-2 text-slate-500 hover:text-orange-600 font-black text-[11px] uppercase tracking-widest rounded-xl hover:bg-orange-50 transition-all"
+                  className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-orange-600 font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl hover:bg-orange-50 transition-all"
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   <span>Quản lý</span>
