@@ -12,59 +12,49 @@ interface PersonalCardProps {
   totalStudents?: number;
   classAvgScore?: number;
   gaps?: {
-    aheadGapScore: number;
-    aheadStudentName: string;
-    behindGapScore: number;
-    behindStudentName: string;
+    aheadGapScore: number | null;
+    aheadStudentName: string | null;
+    behindGapScore: number | null;
+    behindStudentName: string | null;
   };
 }
 
 export function PersonalCard({
   currentUser,
   whyRanked,
-  studyClassName = "10A1",
-  totalStudents = 32,
-  classAvgScore = 7.8,
+  studyClassName,
+  totalStudents,
+  classAvgScore,
   gaps,
 }: PersonalCardProps) {
   const [showFormulaInfo, setShowFormulaInfo] = useState(false);
 
-  const user = currentUser || {
-    id: "current",
-    name: "Học sinh",
-    image: null,
-    rank: 12,
-    score: 8.10,
-    avgScore: 8.10,
-    rankingScore: 91.0,
-    academicScore: 81.0,
-    completionBonus: 7.0,
-    activityBonus: 3.0,
-    rankStatus: RankStatus.SAME,
-    completedTests: 12,
-    isEligible: true,
-    rankChange: 5,
-    lastSubmitAt: null,
-    isCurrentUser: true,
-  };
+  if (!currentUser) {
+    return (
+      <section className="glass-card rounded-3xl p-6 border border-slate-200 bg-white/95 text-center text-slate-500">
+        <Trophy className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+        <p className="text-sm font-semibold">Chưa có thông tin xếp hạng cá nhân</p>
+      </section>
+    );
+  }
 
-  const rank = user.rank || 12;
-  const rankChange = user.rankChange ?? 5;
-  const total = totalStudents || 32;
-  const topPercent = Math.max(5, Math.ceil((rank / total) * 100));
+  const user = currentUser;
+  const rank = user.rank;
+  const rankChange = user.rankChange;
+  const total = totalStudents || 0;
+  const topPercent = (rank && total > 0) ? Math.max(1, Math.ceil((rank / total) * 100)) : null;
 
-  const aheadGap = gaps?.aheadGapScore ?? 0.15;
-  const aheadTargetRank = Math.max(1, rank - 1);
-  const behindGap = gaps?.behindGapScore ?? 0.1;
-  const behindRank = rank + 1;
+  const aheadGap = gaps?.aheadGapScore != null ? gaps.aheadGapScore : null;
+  const aheadTargetRank = rank && rank > 1 ? rank - 1 : null;
+  const behindGap = gaps?.behindGapScore != null ? gaps.behindGapScore : null;
+  const behindRank = rank ? rank + 1 : null;
 
-  const userAvg = user.avgScore || user.score || 8.10;
-  const scoreDiff = parseFloat((userAvg - classAvgScore).toFixed(2));
-  const completed = user.completedTests || 12;
+  const userAvg = user.avgScore || user.score || 0;
+  const completed = user.completedTests || 0;
 
   const academicScore = user.academicScore ?? parseFloat((userAvg * 10).toFixed(1));
-  const completionBonus = user.completionBonus ?? 7.0;
-  const activityBonus = user.activityBonus ?? 3.0;
+  const completionBonus = user.completionBonus ?? 0;
+  const activityBonus = user.activityBonus ?? 0;
   const rankingScore = user.rankingScore ?? (academicScore + completionBonus + activityBonus);
   const rankStatus = user.rankStatus || RankStatus.SAME;
 
@@ -85,30 +75,27 @@ export function PersonalCard({
                 <span>{user.name?.[0] || "H"}</span>
               )}
             </div>
-            <span className="absolute -bottom-2 -right-2 bg-amber-400 text-slate-950 font-black text-xs px-2 py-0.5 rounded-md border border-white shadow-sm">
-              #{rank}
-            </span>
+            {rank !== null && (
+              <span className="absolute -bottom-2 -right-2 bg-amber-400 text-slate-950 font-black text-xs px-2 py-0.5 rounded-md border border-white shadow-sm">
+                #{rank}
+              </span>
+            )}
           </div>
 
           <div className="space-y-1.5 min-w-0">
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
               <h2 className="text-xl font-extrabold text-slate-900 truncate">
-                {user.name} (Bạn)
+                {user.name || "Bạn"} (Bạn)
               </h2>
               {/* RANK STATUS BADGE */}
               {rankStatus === RankStatus.NEW && (
                 <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-black inline-flex items-center gap-1 leading-tight animate-pulse">
-                  ✨ Lần đầu ghi danh Top Lớp!
-                </span>
-              )}
-              {rankStatus === RankStatus.RETURN && (
-                <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-900 border border-purple-300 text-xs font-black inline-flex items-center gap-1 leading-tight">
-                  🔥 Trở lại Bảng Xếp Hạng!
+                  ✨ Mới ghi danh Top Lớp!
                 </span>
               )}
               {rankStatus === RankStatus.UP && (
                 <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-extrabold inline-flex items-center gap-1 leading-tight">
-                  ↑ Tăng {rankChange || 1} bậc (+{completed} bài nộp)
+                  ↑ Tăng {rankChange || 1} bậc
                 </span>
               )}
               {rankStatus === RankStatus.DOWN && (
@@ -125,14 +112,22 @@ export function PersonalCard({
 
             {/* CLASS COMPARISON DATA */}
             <p className="text-xs sm:text-sm text-slate-700 font-semibold leading-normal">
-              Đang xếp hạng{" "}
-              <strong className="text-blue-600 font-black">
-                {rank} / {total}
-              </strong>{" "}
-              trong lớp •{" "}
-              <span className="text-emerald-700 font-extrabold">
-                Thuộc Top {topPercent}% lớp
-              </span>
+              {studyClassName ? `${studyClassName} • ` : ""}
+              {rank !== null ? (
+                <>
+                  Đang xếp hạng{" "}
+                  <strong className="text-blue-600 font-black">
+                    #{rank} {total > 0 ? `/ ${total}` : ""}
+                  </strong>
+                  {topPercent !== null && (
+                    <span className="text-emerald-700 font-extrabold ml-1">
+                      (Top {topPercent}%)
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="text-amber-700 font-semibold">Chưa đủ bài thi để vào xếp hạng chính thức</span>
+              )}
             </p>
           </div>
         </div>
@@ -165,85 +160,59 @@ export function PersonalCard({
         </div>
       </div>
 
-      {/* KHOẢNG CÁCH HAI ĐẦU */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="bg-blue-50/80 border border-blue-200/80 p-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm gap-2">
-          <div className="space-y-1 min-w-0">
-            <span className="text-slate-500 font-bold block text-xs uppercase truncate">
-              Khoảng cách tới vị trí #{aheadTargetRank}
-            </span>
-            <span className="font-extrabold text-slate-900 block text-xs sm:text-sm">
-              Còn{" "}
-              <strong className="text-blue-600 font-black">
-                +{aheadGap.toFixed(2)} điểm
-              </strong>{" "}
-              để vượt
-            </span>
-          </div>
-          <span className="text-blue-700 font-black text-sm shrink-0 bg-blue-100 px-2.5 py-1 rounded-lg">
-            82%
-          </span>
-        </div>
+      {/* KHOẢNG CÁCH THỰC TẾ (NẾU CÓ DỮ LIỆU) */}
+      {(aheadGap !== null || behindGap !== null) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {typeof aheadGap === "number" && aheadTargetRank && (
+            <div className="bg-blue-50/80 border border-blue-200/80 p-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm gap-2">
+              <div className="space-y-1 min-w-0">
+                <span className="text-slate-500 font-bold block text-xs uppercase truncate">
+                  Khoảng cách tới vị trí #{aheadTargetRank} ({gaps?.aheadStudentName || "Đối thủ"})
+                </span>
+                <span className="font-extrabold text-slate-900 block text-xs sm:text-sm">
+                  Kém{" "}
+                  <strong className="text-blue-600 font-black">
+                    +{aheadGap.toFixed(2)} điểm
+                  </strong>
+                </span>
+              </div>
+            </div>
+          )}
 
-        <div className="bg-emerald-50/80 border border-emerald-200/80 p-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm gap-2">
-          <div className="space-y-1 min-w-0">
-            <span className="text-slate-500 font-bold block text-xs uppercase truncate">
-              Khoảng cách an toàn phía sau
-            </span>
-            <span className="font-extrabold text-slate-900 block text-xs sm:text-sm">
-              Dẫn trước vị trí #{behindRank}{" "}
-              <strong className="text-emerald-700 font-black">
-                +{behindGap.toFixed(2)} điểm
-              </strong>
-            </span>
-          </div>
-          <span className="text-emerald-700 font-black text-xs bg-emerald-100 px-2.5 py-1 rounded-lg shrink-0">
-            An toàn
-          </span>
+          {typeof behindGap === "number" && behindRank && (
+            <div className="bg-emerald-50/80 border border-emerald-200/80 p-4 rounded-2xl flex items-center justify-between text-xs sm:text-sm gap-2">
+              <div className="space-y-1 min-w-0">
+                <span className="text-slate-500 font-bold block text-xs uppercase truncate">
+                  Khoảng cách vị trí #{behindRank} ({gaps?.behindStudentName || "Đối thủ"})
+                </span>
+                <span className="font-extrabold text-slate-900 block text-xs sm:text-sm">
+                  Dẫn trước{" "}
+                  <strong className="text-emerald-700 font-black">
+                    +{behindGap.toFixed(2)} điểm
+                  </strong>
+                </span>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
-      {/* MỤC TIÊU CÁ NHÂN TRONG LỚP */}
-      <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-blue-50 border border-indigo-200/80 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-3 text-center sm:text-left min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-white text-indigo-600 flex items-center justify-center shrink-0 font-black text-lg shadow-xs border border-indigo-100">
-            🎯
-          </div>
-          <div className="min-w-0">
-            <span className="text-xs font-extrabold text-slate-500 block uppercase tracking-wide">
-              Mục tiêu cá nhân tháng 8
-            </span>
-            <h4 className="text-sm font-black text-slate-900 truncate mt-0.5">
-              Gia nhập Top 10 của Lớp
-            </h4>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0">
-          <span className="text-xs font-extrabold text-slate-700 whitespace-nowrap">
-            Còn <strong className="text-indigo-600 font-black">0.35 điểm</strong>
-          </span>
-          <div className="w-24 h-2.5 bg-slate-200 rounded-full overflow-hidden shrink-0">
-            <div className="bg-indigo-600 h-full w-[73%]"></div>
-          </div>
-          <span className="text-xs font-black text-indigo-600 whitespace-nowrap">73%</span>
-        </div>
-      </div>
-
-      {/* HUY HIỆU DỰA TRÊN HỌC TẬP THỰC TẾ & NÚT HƯỚNG DẪN CÁCH TÍNH */}
+      {/* HUY HIỆU THỰC TẾ & CÔNG THỨC */}
       <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-extrabold flex items-center gap-1.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            Hoàn thành {completed} bài tập
+            Hoàn thành {completed} bài kiểm tra
           </span>
-          <span className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-extrabold flex items-center gap-1.5">
-            <Flame className="w-4 h-4 text-amber-500 fill-amber-500 shrink-0" />
-            Chuỗi học tập 8 bài
-          </span>
+          {user.streak ? (
+            <span className="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 text-xs font-extrabold flex items-center gap-1.5">
+              <Flame className="w-4 h-4 text-amber-500 fill-amber-500 shrink-0" />
+              Streak {user.streak} ngày liên tiếp
+            </span>
+          ) : null}
           <span className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-extrabold flex items-center gap-1.5">
             <Star className="w-4 h-4 text-blue-500 fill-blue-500 shrink-0" />
-            ĐTB trên {userAvg >= 8.0 ? "8.0" : userAvg.toFixed(1)}
+            ĐTB {userAvg.toFixed(1)}
           </span>
         </div>
 

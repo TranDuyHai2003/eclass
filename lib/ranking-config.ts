@@ -4,14 +4,20 @@ export enum RankStatus {
   UP = "UP",         // Tăng hạng
   DOWN = "DOWN",     // Giảm hạng
   SAME = "SAME",     // Giữ nguyên hạng
-  EXIT = "EXIT"      // Tuần trước có rank, tuần này không đủ điều kiện (Dành cho Teacher Dashboard/Analytics)
+  EXIT = "EXIT"      // Tuần trước có rank, tuần này không đủ điều kiện
 }
+
+export type RankConfirmationState = "LOCKED" | "PROVISIONAL" | "CONFIRMED";
 
 export interface RankingConfig {
   minRequiredTests: number;
+  minimumTests: number;
+  confirmationTests: number;
+  priorMean: number;
+  priorWeight: number;
   baseScoreMultiplier: number;
-  maxCompletionBonus: number; // Tối đa +7 điểm (tương đương +0.7 GPA)
-  maxActivityBonus: number;   // Tối đa +3 điểm (tương đương +0.3 GPA)
+  maxCompletionBonus: number; // Tối đa +7 điểm
+  maxActivityBonus: number;   // Tối đa +3 điểm
   gradeThresholds: {
     excellent: number;
     good: number;
@@ -21,6 +27,10 @@ export interface RankingConfig {
 
 export const DEFAULT_RANKING_CONFIG: RankingConfig = {
   minRequiredTests: 5,
+  minimumTests: 5,
+  confirmationTests: 15,
+  priorMean: 7.5,
+  priorWeight: 10,
   baseScoreMultiplier: 10,
   maxCompletionBonus: 7,
   maxActivityBonus: 3,

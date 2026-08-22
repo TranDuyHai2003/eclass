@@ -41,11 +41,14 @@ interface RankingViewManagerProps {
     gaps?: any;
     activity?: any;
     studentWeeklyProgress?: any;
+    quests?: any;
+    sessionProgress?: any;
+    weeklyProgress?: any;
     teacherAnalytics?: {
       gradeDistribution: any;
-      dailyParticipation: any;
+      dailyParticipation?: any;
       studentsNeedingSupport: any;
-      topImprovedStudents: any;
+      topImprovedStudents?: any;
       topProgressingStudents?: any;
     };
   };
@@ -132,6 +135,14 @@ export function RankingViewManager({ data, currentUserId }: RankingViewManagerPr
         )}
       </div>
 
+      {/* Slogan Banner */}
+      <div className="bg-[#0D121D]/90 border border-cyan-500/40 rounded-xl p-3 sm:p-4 text-cyan-200 text-xs sm:text-sm font-medium flex items-center gap-3 shadow-lg backdrop-blur-md">
+        <span className="text-base sm:text-xl shrink-0">🎯</span>
+        <p className="leading-relaxed">
+          <strong className="text-white font-bold">Không phải ai đạt điểm cao một lần cũng là người mạnh nhất</strong> — Rank thuộc về người chứng minh được năng lực của mình qua thời gian.
+        </p>
+      </div>
+
       {/* Rank Guide Modal Popup */}
       <RankGuideModal
         isOpen={isGuideOpen}
@@ -153,7 +164,10 @@ export function RankingViewManager({ data, currentUserId }: RankingViewManagerPr
           )}
 
           {/* 2. DUNGEON ASCENSION (HÀNH TRÌNH CHINH PHỤC CÁC TẦNG DUNGEON) */}
-          <WeeklyProgressTracker progressData={studentWeeklyProgress} />
+          <WeeklyProgressTracker
+            weeklyProgress={data.weeklyProgress}
+            sessionProgress={data.sessionProgress}
+          />
 
           {/* 3. HUNTER GUILD • TOP 15 (VISUAL PODIUM + COMPACT TABLE) */}
           <Top15Leaderboard

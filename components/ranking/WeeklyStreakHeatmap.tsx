@@ -9,11 +9,12 @@ interface CompletionProgressCardProps {
 }
 
 export function WeeklyStreakHeatmap({
-  completedTests = 25,
-  totalAssignedTests = 28,
-  consecutiveCompletedStreak = 8,
+  completedTests = 0,
+  totalAssignedTests = 0,
+  consecutiveCompletedStreak = 0,
 }: CompletionProgressCardProps) {
-  const percentage = Math.min(100, Math.round((completedTests / (totalAssignedTests || 1)) * 100));
+  const total = totalAssignedTests > 0 ? totalAssignedTests : Math.max(completedTests, 1);
+  const percentage = total > 0 ? Math.min(100, Math.round((completedTests / total) * 100)) : 0;
 
   return (
     <section className="glass-card p-5 sm:p-6 rounded-3xl space-y-4 bg-white/90 backdrop-blur-xl border border-white/80 shadow-md">
@@ -28,7 +29,7 @@ export function WeeklyStreakHeatmap({
               Mức độ hoàn thành
             </h3>
             <p className="text-xs text-slate-500 font-medium">
-              Chỉ số ghi nhận nỗ lực hoàn thành các bài kiểm tra được giao
+              Chỉ số ghi nhận nỗ lực hoàn thành các bài kiểm tra
             </p>
           </div>
         </div>
@@ -45,7 +46,7 @@ export function WeeklyStreakHeatmap({
             Số bài kiểm tra đã nộp
           </span>
           <span className="text-sm font-black text-slate-900">
-            <strong className="text-blue-600 text-base">{completedTests}</strong> / {totalAssignedTests} bài kiểm tra
+            <strong className="text-blue-600 text-base">{completedTests}</strong> {totalAssignedTests > 0 ? `/ ${totalAssignedTests} bài` : "bài"}
           </span>
         </div>
 
@@ -65,12 +66,12 @@ export function WeeklyStreakHeatmap({
             🎯
           </div>
           <span>
-            Đã hoàn thành <strong className="text-indigo-600 font-black">{consecutiveCompletedStreak} bài</strong> liên tiếp
+            Chuỗi hoạt động: <strong className="text-indigo-600 font-black">{consecutiveCompletedStreak} ngày</strong> liên tiếp
           </span>
         </div>
 
         <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-          Phong độ xuất sắc
+          Dữ liệu thực
         </span>
       </div>
     </section>

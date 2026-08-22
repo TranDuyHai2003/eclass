@@ -85,10 +85,10 @@ export function HeroCard({
             {/* Rank Badge */}
             <span className={`text-xs sm:text-sm lg:text-base font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-md border ${theme.badgeBg}`}>
               {!isEligibleForLeaderboard
-                ? `🔒 RANK ${provisionalRank} (CHƯA ĐỦ BÀI)`
+                ? `🔒 RANK ${provisionalRank} (CHƯA MỞ KHÓA)`
                 : isProvisional
-                  ? `🔒 RANK ${provisionalRank} (PROVISIONAL)`
-                  : theme.label}
+                  ? `🔐 RANK ${provisionalRank} (ĐANG XÁC NHẬN - ${completedTests}/15 BÀI)`
+                  : `👑 RANK ${provisionalRank} (CHÍNH THỨC)`}
             </span>
           </div>
         </div>
