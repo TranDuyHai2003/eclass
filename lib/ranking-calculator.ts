@@ -1,7 +1,9 @@
 import { DEFAULT_RANKING_CONFIG, RankingConfig } from "./ranking-config";
+import { calculateBayesianSkill } from "./game-rank";
 
 export interface ScoreBreakdown {
   academicScore: number;
+  bayesianSkill: number;
   completionBonus: number;
   activityBonus: number;
   totalScore: number;
@@ -9,10 +11,12 @@ export interface ScoreBreakdown {
 
 export function calculateAcademicScore(
   avgScore: number,
+  completedTests: number,
   config: RankingConfig = DEFAULT_RANKING_CONFIG
-): number {
-  const safeAvg = Math.max(0, Math.min(10, avgScore));
-  return parseFloat((safeAvg * config.baseScoreMultiplier).toFixed(1));
+): { academicScore: number; bayesianSkill: number } {
+  const bayesianSkill = calculateBayesianSkill(avgScore, completedTests);
+  const academicScore = parseFloat((bayesianSkill * config.baseScoreMultiplier).toFixed(1));
+  return { academicScore, bayesianSkill };
 }
 
 export function calculateCompletionBonus(
@@ -43,14 +47,15 @@ export function calculateRankingScore(
   availableLast30Days: number,
   config: RankingConfig = DEFAULT_RANKING_CONFIG
 ): ScoreBreakdown {
-  const academicScore = calculateAcademicScore(avgScore, config);
+  const { academicScore, bayesianSkill } = calculateAcademicScore(avgScore, completedTests, config);
   const completionBonus = calculateCompletionBonus(completedTests, availableTests, config);
   const activityBonus = calculateActivityBonus(completedLast30Days, availableLast30Days, config);
-  
+
   const totalScore = parseFloat((academicScore + completionBonus + activityBonus).toFixed(2));
 
   return {
     academicScore,
+    bayesianSkill,
     completionBonus,
     activityBonus,
     totalScore,

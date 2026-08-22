@@ -1,7 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
-import { DEFAULT_RANKING_CONFIG, RankStatus } from "@/lib/ranking-config";
+import { DEFAULT_RANKING_CONFIG, RankStatus, RankConfirmationState } from "@/lib/ranking-config";
 import { calculateRankingScore } from "@/lib/ranking-calculator";
+import { calculateActivityEngine, BUSINESS_TIMEZONE } from "@/lib/ranking/activity-engine";
+import { calculateStudentHistory, getWeekCode, DBLeaderboardSnapshot } from "@/lib/ranking/history-engine";
+import { calculateGrowthEngine, SnapshotForGrowth } from "@/lib/ranking/growth-engine";
+import { calculateClassStatsEngine } from "@/lib/ranking/class-stats-engine";
+import { evaluateQuestEngine } from "@/lib/ranking/quest-engine";
+import { calculateSessionProgressEngine } from "@/lib/ranking/session-progress-engine";
+import { calculateWeeklyProgressEngine } from "@/lib/ranking/weekly-progress-engine";
 
 export interface RankingUser {
   id: string;
@@ -10,13 +17,16 @@ export interface RankingUser {
   rank: number | null;
   score: number;
   avgScore: number;
+  bayesianSkill?: number;
   rankingScore: number;
   academicScore?: number;
   completionBonus?: number;
   activityBonus?: number;
   rankStatus?: RankStatus;
+  rankConfirmationState?: RankConfirmationState;
+  rankConfirmationProgress?: number;
   latestTestScore?: number;
-  completedTests: number; // Unique tests completed
+  completedTests: number;
   isEligible: boolean;
   rankChange: number | null;
   previousRank?: number | null;
@@ -48,28 +58,20 @@ export interface GetRankingOptions {
   studyClassId?: string;
 }
 
-function getWeekCode(date: Date = new Date(), offsetWeeks: number = 0): string {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  d.setUTCDate(d.getUTCDate() + offsetWeeks * 7);
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getFullYear(), 0, 1));
-  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  return `${d.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-}
-
 export async function getRankingData(options: GetRankingOptions = {}) {
   const session = await auth();
   if (!session || !session.user) {
     throw new Error("Unauthorized");
   }
 
-  const { period = "ALL_TIME" } = options;
   const currentUserId = session.user.id;
+  if (!currentUserId) {
+    throw new Error("Unauthorized: User ID missing");
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: currentUserId },
-    include: { studyClass: true }
+    include: { studyClass: true },
   });
 
   if (!user) {
@@ -100,14 +102,13 @@ export async function getRankingData(options: GetRankingOptions = {}) {
             score: true,
             completedAt: true,
             startedAt: true,
-            testId: true
+            testId: true,
           },
-          orderBy: { completedAt: "desc" }
-        }
-      }
+          orderBy: { completedAt: "desc" },
+        },
+      },
     });
   } else {
-    // If student is not assigned to any StudyClass yet, display full student list
     studyClassName = "Bảng Xếp Hạng Chung";
     studentsInClass = await prisma.user.findMany({
       where: { role: "STUDENT" },
@@ -121,44 +122,54 @@ export async function getRankingData(options: GetRankingOptions = {}) {
             score: true,
             completedAt: true,
             startedAt: true,
-            testId: true
+            testId: true,
           },
-          orderBy: { completedAt: "desc" }
-        }
-      }
+          orderBy: { completedAt: "desc" },
+        },
+      },
     });
   }
 
-  // Fetch previous snapshots for rank change calculation
-  let previousSnapshots: any[] = [];
+  // Fetch previous snapshots from DB for accurate history & rank movement
+  let dbSnapshots: DBLeaderboardSnapshot[] = [];
   try {
     if ((prisma as any).leaderboardSnapshot) {
-      previousSnapshots = await (prisma as any).leaderboardSnapshot.findMany({
-        where: {
-          periodCode: previousWeekCode,
-          snapshotType: "WEEKLY"
-        }
+      dbSnapshots = await (prisma as any).leaderboardSnapshot.findMany({
+        where: { snapshotType: "WEEKLY" },
+        select: {
+          userId: true,
+          periodCode: true,
+          score: true,
+          rankingScore: true,
+          completedTests: true,
+          rank: true,
+        },
       });
     }
   } catch (err) {
-    console.warn("[getRankingData] leaderboardSnapshot table query failed, falling back to empty list:", err);
-    previousSnapshots = [];
+    console.warn("[getRankingData] leaderboardSnapshot query failed:", err);
+    dbSnapshots = [];
   }
 
   const prevRankMap = new Map<string, number>();
-  previousSnapshots.forEach((snap: any) => {
-    if (snap.rank !== null) {
-      prevRankMap.set(snap.userId, snap.rank);
-    }
-  });
+  dbSnapshots
+    .filter((s) => s.periodCode === previousWeekCode)
+    .forEach((snap) => {
+      if (snap.rank !== null) {
+        prevRankMap.set(snap.userId, snap.rank);
+      }
+    });
 
   const totalPublishedTests = await prisma.test.count();
   const availableTests = Math.max(totalPublishedTests, 28);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  // Calculate metrics per student using the updated formula module
+  // 1. Calculate metrics & activity per student
   const studentMetrics = studentsInClass.map((student) => {
     const validAttempts = student.attempts || [];
+
+    // Calculate real activity metrics using Activity Engine (VN Timezone)
+    const activity = calculateActivityEngine(validAttempts, new Date(), BUSINESS_TIMEZONE);
 
     // Map unique test -> latest score & count 30-day activity
     const testScoreMap = new Map<string, number>();
@@ -178,18 +189,17 @@ export async function getRankingData(options: GetRankingOptions = {}) {
       }
     });
 
-    const completedTests = testScoreMap.size; // Unique completed tests
+    const completedTests = testScoreMap.size;
     const completedLast30Days = testLast30DaysSet.size;
 
     let totalScoreSum = 0;
-    testScoreMap.forEach((score) => {
-      totalScoreSum += score;
+    testScoreMap.forEach((sc) => {
+      totalScoreSum += sc;
     });
 
     const avgScore = completedTests > 0 ? parseFloat((totalScoreSum / completedTests).toFixed(1)) : 0;
     const availableLast30Days = Math.max(10, Math.ceil(availableTests * 0.35));
 
-    // Calculate ranking score breakdown using modular functions
     const breakdown = calculateRankingScore(
       avgScore,
       completedTests,
@@ -201,10 +211,8 @@ export async function getRankingData(options: GetRankingOptions = {}) {
 
     const isEligible = completedTests >= MIN_REQUIRED_TESTS;
     const latestScore = validAttempts[0]?.score ?? (completedTests > 0 ? avgScore : 0);
-    const completionRate = Math.min(completedTests / availableTests, 1.0);
-
-    // Dynamic streak calculation per student for tie-breaker
-    const streak = completedLast30Days > 0 ? Math.min(30, completedLast30Days * 2) : 0;
+    const rankConfirmationProgress = Math.min(completedTests / DEFAULT_RANKING_CONFIG.confirmationTests, 1.0);
+    const rankConfirmationState: RankConfirmationState = completedTests < 5 ? "LOCKED" : completedTests < 15 ? "PROVISIONAL" : "CONFIRMED";
 
     return {
       id: student.id,
@@ -213,44 +221,45 @@ export async function getRankingData(options: GetRankingOptions = {}) {
       completedTests,
       score: avgScore,
       avgScore,
+      bayesianSkill: breakdown.bayesianSkill,
       rankingScore: breakdown.totalScore,
       academicScore: breakdown.academicScore,
       completionBonus: breakdown.completionBonus,
       activityBonus: breakdown.activityBonus,
-      completionRate,
-      streak,
+      streak: activity.currentStreak,
+      activity,
+      rankConfirmationProgress,
+      rankConfirmationState,
       latestTestScore: parseFloat((latestScore || 0).toFixed(1)),
       lastSubmitAt: latestSubmit,
       isEligible,
-      isCurrentUser: student.id === currentUserId
+      isCurrentUser: student.id === currentUserId,
     };
   });
 
   const eligibleStudents = studentMetrics.filter((s) => s.isEligible);
   const ineligibleStudents = studentMetrics.filter((s) => !s.isEligible);
 
-  // Tie-breaker rules (Academic Integrity Focused):
+  // Deterministic 6-Level Tie-breaker rules:
   // 1. rankingScore DESC
-  // 2. avgScore DESC
-  // 3. completedTests DESC
-  // 4. streak DESC
+  // 2. bayesianSkill DESC (Academic evidence precedence when total score tied)
+  // 3. avgScore DESC
+  // 4. completedTests DESC
+  // 5. streak DESC
+  // 6. id ASC (Stable final fallback)
   eligibleStudents.sort((a, b) => {
-    if (b.rankingScore !== a.rankingScore) {
-      return b.rankingScore - a.rankingScore;
-    }
-    if (b.avgScore !== a.avgScore) {
-      return b.avgScore - a.avgScore;
-    }
-    if (b.completedTests !== a.completedTests) {
-      return b.completedTests - a.completedTests;
-    }
-    return (b.streak || 0) - (a.streak || 0);
+    if (b.rankingScore !== a.rankingScore) return b.rankingScore - a.rankingScore;
+    if ((b.bayesianSkill || 0) !== (a.bayesianSkill || 0)) return (b.bayesianSkill || 0) - (a.bayesianSkill || 0);
+    if (b.avgScore !== a.avgScore) return b.avgScore - a.avgScore;
+    if (b.completedTests !== a.completedTests) return b.completedTests - a.completedTests;
+    if ((b.streak || 0) !== (a.streak || 0)) return (b.streak || 0) - (a.streak || 0);
+    return a.id.localeCompare(b.id);
   });
 
   const rankedEligible: RankingUser[] = eligibleStudents.map((student, index) => {
     const currentRank = index + 1;
     const prevRank = prevRankMap.get(student.id);
-    const rankChange = prevRank ? prevRank - currentRank : null;
+    const rankChange = (prevRank !== undefined && prevRank !== null) ? prevRank - currentRank : null;
 
     let rankStatus = RankStatus.SAME;
     if (prevRank === undefined || prevRank === null) {
@@ -264,8 +273,9 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     return {
       ...student,
       rank: currentRank,
+      previousRank: prevRank || null,
       rankChange,
-      rankStatus
+      rankStatus,
     };
   });
 
@@ -276,15 +286,66 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     return {
       ...student,
       rank: null,
+      previousRank: prevRank || null,
       rankChange: null,
-      rankStatus
+      rankStatus,
     };
   });
 
   const fullLeaderboard = [...rankedEligible, ...rankedIneligible];
   const currentUserRanked = fullLeaderboard.find((s) => s.id === currentUserId) || null;
+  const currentUserMetric = studentMetrics.find((s) => s.id === currentUserId) || null;
 
-  // Grade Distribution Calculation (Xuất sắc, Khá, Trung bình, Cần hỗ trợ)
+  // 2. Class Stats Engine
+  const classStatsInputs = fullLeaderboard.map((s) => ({
+    id: s.id,
+    completedTests: s.completedTests,
+    currentStreak: s.streak || 0,
+    currentRank: s.rank,
+    previousRank: s.previousRank || null,
+    avgScore: s.avgScore,
+    isEligible: s.isEligible,
+  }));
+  const classStats = calculateClassStatsEngine(classStatsInputs);
+
+  // 3. Growth Engine
+  const snapshotsForGrowth: SnapshotForGrowth[] = dbSnapshots
+    .filter((s) => s.periodCode === previousWeekCode)
+    .map((s) => ({ userId: s.userId, score: s.score, rank: s.rank }));
+
+  const growthEngineOutput = calculateGrowthEngine(
+    rankedEligible.map((s) => ({
+      id: s.id,
+      name: s.name || "Học sinh",
+      currentScore: s.avgScore,
+      currentRank: s.rank,
+      completedTests: s.completedTests,
+    })),
+    snapshotsForGrowth
+  );
+
+  // 4. History Engine (4 periods for current user)
+  const userLiveHistoryMetrics = {
+    avgScore: currentUserRanked?.avgScore || 0,
+    rankingScore: currentUserRanked?.rankingScore || 0,
+    completedTests: currentUserRanked?.completedTests || 0,
+    rank: currentUserRanked?.rank || null,
+  };
+  const studentWeeklyProgress = calculateStudentHistory(
+    currentUserId,
+    userLiveHistoryMetrics,
+    dbSnapshots
+  );
+
+  // 5. Quest Engine for current user
+  const questEngineOutput = evaluateQuestEngine({
+    completedTests: currentUserRanked?.completedTests || 0,
+    avgScore: currentUserRanked?.avgScore || 0,
+    rank: currentUserRanked?.rank || null,
+    totalEligibleStudents: rankedEligible.length,
+  });
+
+  // 6. Teacher Analytics (Grade Distribution & Daily Participation)
   const totalInClass = studentsInClass.length || 1;
   const excellentStudents = studentMetrics.filter((s) => s.avgScore >= 8.5);
   const goodStudents = studentMetrics.filter((s) => s.avgScore >= 7.0 && s.avgScore < 8.5);
@@ -298,169 +359,17 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     needSupport: { count: needSupportStudentsList.length, percentage: Math.round((needSupportStudentsList.length / totalInClass) * 100) },
   };
 
-  // Daily Class Participation Heatmap (Mon - Sun of current week)
-  const now = new Date();
-  const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - (dayOfWeek - 1));
-  monday.setHours(0, 0, 0, 0);
-
-  const daySubmissionsMap = [new Set<string>(), new Set<string>(), new Set<string>(), new Set<string>(), new Set<string>(), new Set<string>(), new Set<string>()];
-
-  studentsInClass.forEach((st) => {
-    (st.attempts || []).forEach((att: any) => {
-      const attDate = new Date(att.completedAt || att.startedAt);
-      if (attDate >= monday) {
-        const dIndex = attDate.getDay() === 0 ? 6 : attDate.getDay() - 1;
-        if (dIndex >= 0 && dIndex < 7) {
-          daySubmissionsMap[dIndex].add(st.id);
-        }
-      }
-    });
-  });
-
-  const dailyParticipation = daySubmissionsMap.map((set) => {
-    const count = set.size;
-    const percentage = totalInClass > 0 ? Math.round((count / totalInClass) * 100) : 0;
-    return { count, total: totalInClass, percentage };
-  });
-
-  // Needing Support Alert List for Teacher
-  const studentsNeedingSupport = needSupportStudentsList.slice(0, 3).map((s, idx) => ({
+  const studentsNeedingSupport = needSupportStudentsList.slice(0, 3).map((s) => ({
     id: s.id,
     name: s.name,
-    rank: (s as any).rank || idx + 20,
+    rank: (s as any).rank || null,
     reason: s.avgScore < 5.0
       ? `Điểm trung bình bài vừa rồi: ${s.avgScore}`
       : `Chưa hoàn thành đủ 5 bài kiểm tra (Hiện có ${s.completedTests}/5 bài)`,
-    type: s.avgScore < 5.0 ? "SCORE" : "INCOMPLETE"
+    type: s.avgScore < 5.0 ? "SCORE" : "INCOMPLETE",
   }));
 
-  // Top Improved Students based on Score Growth (Growth Board for Teacher)
-  const studentGrowthList = rankedEligible.map((s) => {
-    const initialScore = parseFloat(Math.max(5.0, s.avgScore - 1.2).toFixed(1));
-    const deltaScore = parseFloat((s.avgScore - initialScore).toFixed(1));
-    return {
-      id: s.id,
-      name: s.name,
-      initialScore,
-      currentScore: s.avgScore,
-      deltaScore,
-      completedTests: s.completedTests,
-    };
-  }).sort((a, b) => b.deltaScore - a.deltaScore);
-
-  const topProgressingStudents = studentGrowthList.slice(0, 5);
-
-  const sortedByGain = [...rankedEligible]
-    .filter((s) => s.rankChange && s.rankChange > 0)
-    .sort((a, b) => (b.rankChange || 0) - (a.rankChange || 0));
-
-  const topImprovedStudents = sortedByGain.slice(0, 3).map((s) => ({
-    id: s.id,
-    name: s.name,
-    newRank: s.rank || 1,
-    oldRank: (s.rank || 1) + (s.rankChange || 0),
-    rankGain: s.rankChange || 0,
-    avgScore: s.avgScore
-  }));
-
-  // Student 4 Active Evaluated Periods Progress Calculation (Growth Mindset)
-  const currentStudentData = currentUserRanked || rankedEligible[0] || { avgScore: 8.4, completedTests: 12 };
-  const userAvg = currentStudentData.avgScore || 8.4;
-  const initialUserScore = parseFloat(Math.max(5.0, userAvg - 1.2).toFixed(1));
-  const userDelta = parseFloat((userAvg - initialUserScore).toFixed(1));
-
-  let feedbackMessage = "Cải thiện tuyệt vời! +1.2 điểm so với 4 chu kỳ trước 🚀";
-  let feedbackType: "EXCELLENT" | "STABLE" | "NEEDS_IMPROVEMENT" | "INSUFFICIENT_DATA" = "EXCELLENT";
-
-  if (userDelta >= 0.5) {
-    feedbackMessage = `Tốt hơn 4 chu kỳ trước 🚀 (+${userDelta} điểm)`;
-    feedbackType = "EXCELLENT";
-  } else if (userDelta >= 0) {
-    feedbackMessage = "Đang duy trì phong độ học tập ổn định ✨";
-    feedbackType = "STABLE";
-  } else {
-    feedbackMessage = "Điểm số có dấu hiệu giảm nhẹ, hãy cố gắng hơn trong bài tới 💪";
-    feedbackType = "NEEDS_IMPROVEMENT";
-  }
-
-  const studentWeeklyProgress = {
-    periods: [
-      { periodCode: "P1", label: "Chu kỳ 1", averageScore: parseFloat((initialUserScore).toFixed(1)), rankingScore: 74, completedTests: 4, isValid: true },
-      { periodCode: "P2", label: "Chu kỳ 2", averageScore: parseFloat((initialUserScore + 0.3).toFixed(1)), rankingScore: 78, completedTests: 5, isValid: true },
-      { periodCode: "P3", label: "Chu kỳ 3", averageScore: parseFloat((initialUserScore + 0.7).toFixed(1)), rankingScore: 82, completedTests: 4, isValid: true },
-      { periodCode: "P4", label: "Chu kỳ 4 (Mới nhất)", averageScore: userAvg, rankingScore: 86, completedTests: Math.max(3, currentStudentData.completedTests), isValid: true },
-    ],
-    deltaScore: userDelta,
-    initialScore: initialUserScore,
-    currentScore: userAvg,
-    feedbackMessage,
-    feedbackType,
-  };
-
-  // Near-Me View bounds handling (2 above, self, 2 below)
-  let nearMeList: RankingUser[] = [];
-  if (currentUserRanked && currentUserRanked.rank !== null && rankedEligible.length > 0) {
-    const myIndex = rankedEligible.findIndex((s) => s.id === currentUserId);
-    if (myIndex !== -1) {
-      if (rankedEligible.length <= 5) {
-        nearMeList = rankedEligible;
-      } else if (myIndex <= 2) {
-        nearMeList = rankedEligible.slice(0, 5);
-      } else if (myIndex >= rankedEligible.length - 3) {
-        nearMeList = rankedEligible.slice(rankedEligible.length - 5);
-      } else {
-        nearMeList = rankedEligible.slice(myIndex - 2, myIndex + 3);
-      }
-    }
-  } else {
-    nearMeList = rankedEligible.slice(0, Math.min(5, rankedEligible.length));
-  }
-
-  const showPodium = studentsInClass.length >= 10;
-  const top3 = showPodium ? rankedEligible.slice(0, 3) : [];
-
-  // Additional Class Metrics
-  const eligibleScores = rankedEligible.map((s) => s.avgScore);
-  const classAvgScore = eligibleScores.length > 0
-    ? parseFloat((eligibleScores.reduce((a, b) => a + b, 0) / eligibleScores.length).toFixed(2))
-    : 0;
-
-  const totalTestsAttempted = studentMetrics.reduce((acc, s) => acc + s.completedTests, 0);
-  const classCompletionRate = studentsInClass.length > 0
-    ? Math.min(99, Math.round((totalTestsAttempted / (studentsInClass.length * 15)) * 100)) || 85
-    : 0;
-
-  const studentsRankIncreasedCount = rankedEligible.filter((s) => s.rankChange && s.rankChange > 0).length || Math.min(18, Math.ceil(studentsInClass.length * 0.5));
-  const activeStreakStudentsCount = Math.min(12, Math.ceil(studentsInClass.length * 0.4));
-
-  // Find Most Improved Student
-  let mostImprovedStudent: { name: string; oldRank: number; newRank: number; rankGain: number; avgScore: number } | null = null;
-  if (sortedByGain.length > 0) {
-    const topGain = sortedByGain[0];
-    const newRank = topGain.rank || 1;
-    const rankGain = topGain.rankChange || 1;
-    mostImprovedStudent = {
-      name: topGain.name || "Học sinh",
-      oldRank: newRank + rankGain,
-      newRank,
-      rankGain,
-      avgScore: topGain.avgScore
-    };
-  } else if (rankedEligible.length >= 2) {
-    // Demo fallback for growth mindset display if no previous week snapshot yet
-    const demoStudent = rankedEligible[1];
-    mostImprovedStudent = {
-      name: demoStudent.name || "Nguyễn Văn B",
-      oldRank: (demoStudent.rank || 2) + 11,
-      newRank: demoStudent.rank || 2,
-      rankGain: 11,
-      avgScore: demoStudent.avgScore
-    };
-  }
-
-  // Calculate Gaps (Ahead & Behind) for Current User
+  // Gaps calculation (Ahead & Behind) for Current User (No fake gaps)
   let aheadGapScore: number | null = null;
   let aheadStudentName: string | null = null;
   let behindGapScore: number | null = null;
@@ -470,7 +379,6 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     const prevStudent = rankedEligible[currentUserRanked.rank - 2];
     if (prevStudent) {
       aheadGapScore = parseFloat((prevStudent.avgScore - currentUserRanked.avgScore).toFixed(2));
-      if (aheadGapScore <= 0) aheadGapScore = 0.05;
       aheadStudentName = prevStudent.name;
     }
   }
@@ -479,45 +387,23 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     const nextStudent = rankedEligible[currentUserRanked.rank];
     if (nextStudent) {
       behindGapScore = parseFloat((currentUserRanked.avgScore - nextStudent.avgScore).toFixed(2));
-      if (behindGapScore <= 0) behindGapScore = 0.05;
       behindStudentName = nextStudent.name;
     }
   }
 
-  // Calculate User 7-day Heatmap & Streaks (Mon - Sun of current week)
-  const currentUserData = studentsInClass.find((s) => s.id === currentUserId);
-  const weeklyHeatmap = [false, false, false, false, false, false, false];
+  // Activity output for Current User
+  const currentUserActivity = currentUserMetric?.activity || calculateActivityEngine([], new Date(), BUSINESS_TIMEZONE);
 
-  if (currentUserData && currentUserData.attempts) {
-    currentUserData.attempts.forEach((att: any) => {
-      const attDate = new Date(att.completedAt || att.startedAt);
-      if (attDate >= monday) {
-        const dIndex = attDate.getDay() === 0 ? 6 : attDate.getDay() - 1;
-        if (dIndex >= 0 && dIndex < 7) {
-          weeklyHeatmap[dIndex] = true;
-        }
-      }
-    });
-  }
-
-  // Count active days in current week for streak demo
-  const activeDaysThisWeek = weeklyHeatmap.filter(Boolean).length;
-  const currentStreak = Math.max(7, activeDaysThisWeek > 0 ? activeDaysThisWeek * 2 + 1 : 0);
-  const maxStreak = Math.max(15, currentStreak + 8);
-
-  let nextRankGapScore: number | null = null;
-  let nextRankName: string | null = null;
-
-  if (currentUserRanked && currentUserRanked.rank && currentUserRanked.rank > 1) {
-    const prevStudent = rankedEligible[currentUserRanked.rank - 2];
-    if (prevStudent) {
-      nextRankGapScore = parseFloat((prevStudent.rankingScore - currentUserRanked.rankingScore + 0.1).toFixed(1));
-      if (nextRankGapScore < 0.1) nextRankGapScore = 0.1;
-      nextRankName = prevStudent.name;
-    }
-  }
-
+  const nearMeList = getNearMeList(currentUserRanked, currentUserId, rankedEligible);
+  const showPodium = studentsInClass.length >= 10;
+  const top3 = showPodium ? rankedEligible.slice(0, 3) : [];
   const isClassEmpty = studentsInClass.length === 0 || eligibleStudents.length === 0;
+
+  // 6. Session Progress & Weekly Progress Engine (Buổi 1, 2, 3, 4 progress & Weekly Summary for current user)
+  const currentUserRawAttempts = (studentsInClass.find((s) => s.id === currentUserId)?.attempts || []) as any[];
+  const classMemberAvgs = studentMetrics.map((s) => ({ id: s.id, avgScore: s.avgScore }));
+  const sessionProgress = calculateSessionProgressEngine(currentUserRawAttempts, classMemberAvgs, 4);
+  const weeklyProgress = calculateWeeklyProgressEngine(sessionProgress.sessions, 4);
 
   return {
     currentUser: currentUserRanked,
@@ -533,41 +419,54 @@ export async function getRankingData(options: GetRankingOptions = {}) {
       completedTests: currentUserRanked?.completedTests || 0,
       minRequiredTests: MIN_REQUIRED_TESTS,
       isEligible: currentUserRanked?.isEligible || false,
-      nextRankGapScore,
-      nextRankName
+      nextRankGapScore: aheadGapScore,
+      nextRankName: aheadStudentName,
     },
     nearMeList,
     top3,
     leaderboard: fullLeaderboard,
     classStats: {
-      classAvgScore,
-      classCompletionRate,
-      studentsRankIncreasedCount,
-      activeStreakStudentsCount,
+      classAvgScore: classStats.classAvgScore,
+      classCompletionRate: classStats.classParticipationRate,
+      studentsRankIncreasedCount: classStats.studentsRankIncreasedCount,
+      activeStreakStudentsCount: classStats.activeStreakStudentsCount,
     },
-    mostImprovedStudent,
+    mostImprovedStudent: growthEngineOutput.mostImprovedStudent,
     gaps: {
-      aheadGapScore: aheadGapScore !== null ? aheadGapScore : 0.15,
-      aheadStudentName: aheadStudentName || "Đối thủ phía trên",
-      behindGapScore: behindGapScore !== null ? behindGapScore : 0.10,
-      behindStudentName: behindStudentName || "Đối thủ phía dưới",
+      aheadGapScore,
+      aheadStudentName,
+      behindGapScore,
+      behindStudentName,
     },
-    activity: {
-      weeklyHeatmap: weeklyHeatmap.some(Boolean) ? weeklyHeatmap : [true, true, true, false, true, true, true],
-      currentStreak,
-      maxStreak,
-      completedDaysThisMonth: 22,
-      totalDaysInMonth: 30,
-    },
+    activity: currentUserActivity,
+    quests: questEngineOutput,
+    sessionProgress,
+    weeklyProgress,
     teacherAnalytics: {
       gradeDistribution,
-      dailyParticipation,
       studentsNeedingSupport,
-      topImprovedStudents,
-      topProgressingStudents
+      topProgressingStudents: growthEngineOutput.topProgressingStudents,
     },
-    studentWeeklyProgress
+    studentWeeklyProgress,
   };
+}
+
+function getNearMeList(currentUserRanked: RankingUser | null, currentUserId: string, rankedEligible: RankingUser[]): RankingUser[] {
+  if (currentUserRanked && currentUserRanked.rank !== null && rankedEligible.length > 0) {
+    const myIndex = rankedEligible.findIndex((s) => s.id === currentUserId);
+    if (myIndex !== -1) {
+      if (rankedEligible.length <= 5) {
+        return rankedEligible;
+      } else if (myIndex <= 2) {
+        return rankedEligible.slice(0, 5);
+      } else if (myIndex >= rankedEligible.length - 3) {
+        return rankedEligible.slice(rankedEligible.length - 5);
+      } else {
+        return rankedEligible.slice(myIndex - 2, myIndex + 3);
+      }
+    }
+  }
+  return rankedEligible.slice(0, Math.min(5, rankedEligible.length));
 }
 
 export async function freezeWeeklySnapshot(studyClassId?: string) {
@@ -585,9 +484,9 @@ export async function freezeWeeklySnapshot(studyClassId?: string) {
       classId: true,
       attempts: {
         where: { score: { not: null } },
-        select: { score: true, completedAt: true, testId: true }
-      }
-    }
+        select: { score: true, completedAt: true, testId: true },
+      },
+    },
   });
 
   const MIN_REQUIRED_TESTS = 5;
@@ -601,11 +500,13 @@ export async function freezeWeeklySnapshot(studyClassId?: string) {
 
     const completedTests = testScoreMap.size;
     let total = 0;
-    testScoreMap.forEach((sc) => { total += sc; });
+    testScoreMap.forEach((sc) => {
+      total += sc;
+    });
     const avgScore = completedTests > 0 ? parseFloat((total / completedTests).toFixed(1)) : 0;
     const academicScore = avgScore * 10;
     const participationScore = Math.min(completedTests / 30, 1.0) * 100;
-    const rankingScore = parseFloat(((academicScore * 0.85) + (participationScore * 0.15)).toFixed(1));
+    const rankingScore = parseFloat((academicScore * 0.85 + participationScore * 0.15).toFixed(1));
 
     const isEligible = completedTests >= MIN_REQUIRED_TESTS;
 
@@ -615,7 +516,7 @@ export async function freezeWeeklySnapshot(studyClassId?: string) {
       score: avgScore,
       rankingScore,
       completedTests,
-      isEligible
+      isEligible,
     };
   });
 
@@ -623,10 +524,9 @@ export async function freezeWeeklySnapshot(studyClassId?: string) {
   eligible.sort((a, b) => b.rankingScore - a.rankingScore);
 
   if (!(prisma as any).leaderboardSnapshot) {
-    return { success: false, count: 0, periodCode: currentWeekCode, message: "Prisma client needs restart to sync model" };
+    return { success: false, count: 0, periodCode: currentWeekCode, message: "Prisma client needs restart" };
   }
 
-  // Idempotent upsert
   for (let i = 0; i < eligible.length; i++) {
     const student = eligible[i];
     await (prisma as any).leaderboardSnapshot.upsert({
@@ -634,14 +534,14 @@ export async function freezeWeeklySnapshot(studyClassId?: string) {
         userId_periodCode_snapshotType: {
           userId: student.userId,
           periodCode: currentWeekCode,
-          snapshotType: "WEEKLY"
-        }
+          snapshotType: "WEEKLY",
+        },
       },
       update: {
         score: student.score,
         rankingScore: student.rankingScore,
         completedTests: student.completedTests,
-        rank: i + 1
+        rank: i + 1,
       },
       create: {
         userId: student.userId,
@@ -651,8 +551,8 @@ export async function freezeWeeklySnapshot(studyClassId?: string) {
         score: student.score,
         rankingScore: student.rankingScore,
         completedTests: student.completedTests,
-        rank: i + 1
-      }
+        rank: i + 1,
+      },
     });
   }
 

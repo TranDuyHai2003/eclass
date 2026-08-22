@@ -5,19 +5,24 @@ import { Rocket } from "lucide-react";
 interface MostImprovedSpotlightProps {
   mostImprovedStudent?: {
     name: string;
-    oldRank: number;
+    oldRank: number | null;
     newRank: number;
-    rankGain: number;
-    avgScore: number;
+    rankGain: number | null;
+    currentScore: number;
+    scoreGrowth: number;
   } | null;
 }
 
 export function MostImprovedSpotlight({ mostImprovedStudent }: MostImprovedSpotlightProps) {
-  const name = mostImprovedStudent?.name || "Nguyễn Văn B";
-  const oldRank = mostImprovedStudent?.oldRank || 22;
-  const newRank = mostImprovedStudent?.newRank || 11;
-  const rankGain = mostImprovedStudent?.rankGain || 11;
-  const avgScore = mostImprovedStudent?.avgScore || 8.25;
+  if (!mostImprovedStudent) {
+    return (
+      <section className="bg-slate-50 border border-slate-200 rounded-3xl p-4 shadow-xs text-center text-slate-500">
+        <p className="text-xs font-semibold">Đang tích lũy dữ liệu snapshot để ghi nhận học sinh bứt phá nhất</p>
+      </section>
+    );
+  }
+
+  const { name, oldRank, newRank, rankGain, currentScore, scoreGrowth } = mostImprovedStudent;
 
   return (
     <section className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-200 rounded-3xl p-4.5 shadow-sm">
@@ -31,14 +36,14 @@ export function MostImprovedSpotlight({ mostImprovedStudent }: MostImprovedSpotl
               Ghi nhận tiến bộ lớp
             </span>
             <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
-              {name} (Từ #{oldRank} ➔ #{newRank})
+              {name} {oldRank ? `(Từ #${oldRank} ➔ #${newRank})` : `(Đang ở #${newRank})`}
             </h3>
             <p className="text-xs text-slate-600 font-medium">
-              Cải thiện{" "}
+              Tăng trưởng{" "}
               <strong className="text-emerald-700 font-extrabold">
-                +{rankGain} bậc
+                +{scoreGrowth.toFixed(1)} điểm
               </strong>{" "}
-              tuần này – Nỗ lực tích cực nhất lớp!
+              {rankGain ? `(↑ ${rankGain} bậc) ` : ""}so với chu kỳ trước!
             </p>
           </div>
         </div>
@@ -48,7 +53,7 @@ export function MostImprovedSpotlight({ mostImprovedStudent }: MostImprovedSpotl
             ĐTB Hiện Tại
           </span>
           <span className="text-sm font-black text-emerald-600">
-            {avgScore.toFixed(2)} Điểm
+            {currentScore.toFixed(1)} Điểm
           </span>
         </div>
       </div>
