@@ -31,15 +31,15 @@ const Unit = ({
         {value.toString().padStart(2, "0")}
       </span>
       {primary && (
-        <div className="absolute -top-2 -right-2 bg-blue-600 text-[8px] font-black text-white px-1.5 py-0.5 rounded-full animate-bounce">
+        <div className="absolute -top-2 -right-2 bg-blue-600 text-xs font-black text-white px-2 py-0.5 rounded-full animate-bounce">
           HOT
         </div>
       )}
     </div>
     <span
       className={cn(
-        "text-[9px] sm:text-[10px] font-black uppercase tracking-widest mt-2",
-        primary ? "text-[#FEE715]" : "text-white/60",
+        "text-xs sm:text-sm font-black uppercase tracking-wider mt-2",
+        primary ? "text-[#FEE715]" : "text-white/80",
       )}
     >
       {label}
@@ -73,8 +73,8 @@ export function HomePromo() {
         {/* Text Section */}
         <div className="text-center lg:text-left space-y-4 max-w-md">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full border border-white/30">
-            <Timer className="w-3.5 h-3.5 text-[#FEE715]" />
-            <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
+            <Timer className="w-4 h-4 text-[#FEE715]" />
+            <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wider">
               Mục tiêu chiến dịch
             </span>
           </div>
@@ -82,7 +82,7 @@ export function HomePromo() {
             <h2 className="text-3xl sm:text-5xl font-black text-white uppercase tracking-tighter leading-[0.9]">
               Chinh phục <br />
               <span className="text-[#FEE715] flex items-center gap-2">
-                Kỳ thi 2026{" "}
+                Kỳ thi 2027{" "}
                 <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 fill-[#FEE715]" />
               </span>
             </h2>

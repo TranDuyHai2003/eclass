@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { getRankingData } from "@/actions/ranking";
 import { HomeSidebar } from "@/components/home/HomeSidebar";
 import { RankingViewManager } from "@/components/ranking/RankingViewManager";
-import { ShieldAlert, BookOpen } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -45,22 +45,39 @@ export default async function RankingPage() {
   }
 
   return (
-    <div className="page-shell min-h-screen bg-gradient-to-b from-[#F8FBFF] via-[#F1F5F9] to-[#FFFFFF] text-slate-800 pb-28 pt-4">
-      <main className="container mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left Sidebar - PC Only */}
-          <aside className="hidden lg:block w-[280px] shrink-0">
-            <div className="sticky top-24 h-fit">
-              <HomeSidebar user={session.user} />
-            </div>
-          </aside>
+    <div className="page-shell min-h-screen bg-[#F8FBFF] text-slate-800">
+      {/* Outer flex container: 100% full width, sidebar anchored directly to far left margin */}
+      <div className="flex w-full min-h-[calc(100vh-5rem)]">
+        {/* Left Sidebar - Standard HomeSidebar completely unchanged */}
+        <aside className="hidden lg:block w-[250px] shrink-0 border-r border-slate-200/70 bg-white/70 backdrop-blur-xl p-3">
+          <div className="sticky top-24 h-[calc(100vh-7rem)]">
+            <HomeSidebar user={session.user} />
+          </div>
+        </aside>
 
-          {/* Right Main Content Area */}
-          <div className="flex-1 space-y-6 w-full max-w-5xl mx-auto">
+        {/* Right Main Content Area - 100% Full-Bleed Dark Hunter System Theme Container */}
+        <main className="flex-1 min-w-0 bg-[#060911] text-slate-100 relative overflow-hidden min-h-[calc(100vh-5rem)] border-l border-slate-800/80 shadow-2xl pb-16">
+          {/* Grand Overall AI Artwork Background filling 100% of main column */}
+          <div
+            className="absolute inset-0 bg-cover bg-top opacity-85 transition-opacity duration-700 pointer-events-none"
+            style={{ backgroundImage: "url('/ranking-overall-bg.png')" }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#060911]/30 via-[#060911]/65 to-[#060911]/90 pointer-events-none" />
+
+          {/* Ambient Glowing Rune Auras */}
+          <div className="absolute -top-24 -left-24 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Ranking Content inside 100% full-bleed theme */}
+          <div className="relative z-10 px-0 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
             <RankingViewManager data={rankingData} currentUserId={session.user.id || ""} />
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
+
+
+
+

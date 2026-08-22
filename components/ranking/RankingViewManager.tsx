@@ -2,26 +2,22 @@
 
 import { useState } from "react";
 import { RankingUser, PersonalRankingContext } from "@/actions/ranking";
+import { calculateGameRank } from "@/lib/game-rank";
 import { RoleSwitcherNavbar } from "./RoleSwitcherNavbar";
-import { RankingHeader } from "./RankingHeader";
-import { PersonalCard } from "./PersonalCard";
-import { IneligibleCard } from "./IneligibleCard";
-import { NearMeView } from "./NearMeView";
-import { PodiumTop3 } from "./PodiumTop3";
-import { MostImprovedSpotlight } from "./MostImprovedSpotlight";
-import { WeeklyStreakHeatmap } from "./WeeklyStreakHeatmap";
-import { TeacherOverviewCard } from "./TeacherOverviewCard";
-import { ClassLeaderboardTable } from "./ClassLeaderboardTable";
-import { MobileStickyRankBar } from "./MobileStickyRankBar";
-import { TeacherDashboardHeader } from "./TeacherDashboardHeader";
-import { GradeDistributionChart } from "./GradeDistributionChart";
-import { ClassActivityHeatmap } from "./ClassActivityHeatmap";
-import { NeedSupportAlertPanel } from "./NeedSupportAlertPanel";
-import { GrowthBoard } from "./GrowthBoard";
-import { TeacherAdminTable } from "./TeacherAdminTable";
+import { Swords, Shield, Sparkles, Castle } from "lucide-react";
 
-import { WeeklyProgressTrend } from "./WeeklyProgressTrend";
-import { TopProgressingStudentsBoard } from "./TopProgressingStudentsBoard";
+// Student View Components (HUNTER SYSTEM)
+import { HeroCard } from "./HeroCard";
+import { WeeklyProgressTracker } from "./WeeklyProgressTracker";
+import { Top15Leaderboard } from "./Top15Leaderboard";
+import { NearMeAndSpotlight } from "./NearMeAndSpotlight";
+import { MobileStickyRankBar } from "./MobileStickyRankBar";
+import { RankGuideModal } from "./RankGuideModal";
+
+// Teacher View Components (GUILD COMMAND CENTER)
+import { TeacherQuickStats } from "./TeacherQuickStats";
+import { ActionPanel } from "./ActionPanel";
+import { TeacherAdminTable } from "./TeacherAdminTable";
 
 interface RankingViewManagerProps {
   data: {
@@ -57,146 +53,143 @@ interface RankingViewManagerProps {
 }
 
 export function RankingViewManager({ data, currentUserId }: RankingViewManagerProps) {
-  const isTeacher = data.userRole === "TEACHER" || data.userRole === "ADMIN";
+  const isTeacherRole = data.userRole === "TEACHER" || data.userRole === "ADMIN";
   const [viewMode, setViewMode] = useState<"student" | "teacher">(
-    isTeacher ? "teacher" : "student"
+    isTeacherRole ? "teacher" : "student"
   );
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   const {
     currentUser,
     studyClassName,
     totalStudentsInClass,
-    isClassEmpty,
-    showPodium,
     whyRanked,
     nearMeList,
-    top3,
     leaderboard,
     classStats,
     mostImprovedStudent,
-    gaps,
-    activity,
     studentWeeklyProgress,
     teacherAnalytics,
   } = data;
 
-  const isEligible = whyRanked.isEligible;
+  const minRequiredTests = whyRanked?.minRequiredTests || 5;
+
+  // Single Source of Truth calculation for Current User Rank Result
+  const currentUserRankResult = currentUser
+    ? calculateGameRank(
+        currentUser.avgScore,
+        currentUser.rank,
+        totalStudentsInClass,
+        currentUser.completedTests,
+        minRequiredTests
+      )
+    : null;
+
+  // Count Rank S / SSS for Teacher Stats
+  const rankSCount = leaderboard.filter((u, idx) => {
+    const gr = calculateGameRank(u.avgScore, u.rank || idx + 1, totalStudentsInClass, u.completedTests, minRequiredTests);
+    return gr.rank === "S" || gr.rank === "SSS";
+  }).length;
 
   return (
-    <div className="space-y-6 w-full max-w-5xl mx-auto">
-      {/* Role Switcher Navbar */}
-      <RoleSwitcherNavbar
-        currentView={viewMode}
-        onViewChange={(v) => setViewMode(v)}
-        userRole={data.userRole}
+    <div className="space-y-6 w-full">
+      {/* Route Header Title */}
+      <div className="flex items-center justify-between px-3 sm:px-0">
+        <div className="flex flex-col gap-1 w-full sm:w-auto">
+          {/* Line 1: Icon Swords on far left + HỆ THỐNG THỢ SĂN */}
+          <div className="flex items-center gap-2">
+            <Swords className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-400 shrink-0" />
+            <h1 className="text-base sm:text-2xl lg:text-3xl font-black text-white tracking-tight uppercase">
+              HỆ THỐNG THỢ SĂN
+            </h1>
+          </div>
+
+          {/* Line 2: DUNGEON LỚP HỌC · MÙA 2026-2027 + Info ! Button on the right */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-slate-300 font-bold text-xs sm:text-lg lg:text-xl font-mono">
+              DUNGEON LỚP HỌC · MÙA 2026-2027
+            </span>
+
+            {/* Info Button ! for Rank Rules Modal */}
+            <button
+              onClick={() => setIsGuideOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/60 text-cyan-300 hover:bg-cyan-900/90 hover:text-white hover:border-cyan-400 transition-all shadow-[0_0_12px_rgba(6,182,212,0.35)] text-xs font-black font-mono shrink-0"
+              title="Xem quy tắc xếp hạng Thợ săn"
+            >
+              <span className="w-4 h-4 rounded-full bg-cyan-400 text-slate-950 font-black text-xs flex items-center justify-center">!</span>
+              <span className="text-[11px] sm:text-xs">Quy tắc Rank</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Show Role Switcher ONLY if Admin / Teacher for preview */}
+        {isTeacherRole && (
+          <RoleSwitcherNavbar
+            currentView={viewMode}
+            onViewChange={(v) => setViewMode(v)}
+            userRole={data.userRole}
+          />
+        )}
+      </div>
+
+      {/* Rank Guide Modal Popup */}
+      <RankGuideModal
+        isOpen={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)}
+        minRequiredTests={minRequiredTests}
       />
 
-      {/* TEACHER DASHBOARD VIEW */}
-      {viewMode === "teacher" && (
+      {/* STUDENT VIEW (HUNTER SYSTEM) */}
+      {viewMode === "student" && (
         <div className="space-y-6 animate-in fade-in duration-300">
-          {/* 1. Header Dashboard Giáo Viên & 4 Ô Thống Kê 3s */}
-          <TeacherDashboardHeader
-            studyClassName={studyClassName}
-            totalStudents={totalStudentsInClass}
-            classAvgScore={classStats?.classAvgScore ?? 7.8}
-            completionRate={classStats?.classCompletionRate ?? 92}
-            rankIncreasedCount={classStats?.studentsRankIncreasedCount ?? 24}
-            needSupportCount={teacherAnalytics?.studentsNeedingSupport?.length ?? 3}
-          />
-
-          {/* 2. Biểu Đồ Phân Bố Học Lực & Heatmap Hoạt Động Cả Lớp */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <GradeDistributionChart
+          {/* 1. HUNTER STATUS (HERO CARD LỚN NHẤT & QUAN TRỌNG NHẤT) */}
+          {currentUser && (
+            <HeroCard
+              currentUser={currentUser}
+              leaderboard={leaderboard}
               studyClassName={studyClassName}
-              distribution={teacherAnalytics?.gradeDistribution}
+              totalStudents={totalStudentsInClass}
             />
-            <ClassActivityHeatmap
-              dailyParticipation={teacherAnalytics?.dailyParticipation}
-            />
-          </div>
+          )}
 
-          {/* 3 & 4. Cảnh Báo "Cần Hỗ Trợ Gấp" & Top Học Sinh Tiến Bộ Nhất 4 Chu Kỳ */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <NeedSupportAlertPanel
-              studentsNeedingSupport={teacherAnalytics?.studentsNeedingSupport}
-            />
-            <TopProgressingStudentsBoard
-              topProgressingStudents={teacherAnalytics?.topProgressingStudents}
-              studyClassName={studyClassName}
-            />
-          </div>
+          {/* 2. DUNGEON ASCENSION (HÀNH TRÌNH CHINH PHỤC CÁC TẦNG DUNGEON) */}
+          <WeeklyProgressTracker progressData={studentWeeklyProgress} />
 
-          {/* 6 & 7. Bảng Xếp Hạng Đa Cột Dành Cho Giáo Viên */}
-          <TeacherAdminTable
+          {/* 3. HUNTER GUILD • TOP 15 (VISUAL PODIUM + COMPACT TABLE) */}
+          <Top15Leaderboard
             leaderboard={leaderboard}
-            studyClassName={studyClassName}
+            currentUserId={currentUserId}
+            totalStudentsInClass={totalStudentsInClass}
+            minRequiredTests={minRequiredTests}
           />
         </div>
       )}
 
-      {/* STUDENT VIEW */}
-      {viewMode === "student" && (
+      {/* TEACHER VIEW (GUILD COMMAND CENTER) */}
+      {viewMode === "teacher" && (
         <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Header & Bộ Lọc Thời Gian */}
-          <RankingHeader
+          {/* 1. QUICK STATS 4 Ô THỐNG KÊ NHANH */}
+          <TeacherQuickStats
             studyClassName={studyClassName}
             totalStudents={totalStudentsInClass}
-            classAvgScore={classStats?.classAvgScore ?? 7.8}
-            classCompletionRate={classStats?.classCompletionRate ?? 92}
-            studentsRankIncreasedCount={classStats?.studentsRankIncreasedCount ?? 18}
-            activeStreakStudentsCount={classStats?.activeStreakStudentsCount ?? 12}
+            classAvgScore={classStats?.classAvgScore}
+            completionRate={classStats?.classCompletionRate}
+            rankSCount={rankSCount}
+            needSupportCount={teacherAnalytics?.studentsNeedingSupport?.length}
           />
 
-          {/* 2. Hero Card Tiến Bộ Cá Nhân (LUÔN HIỂN THỊ) */}
-          <PersonalCard
-            currentUser={currentUser}
-            whyRanked={whyRanked}
-            studyClassName={studyClassName}
-            totalStudents={totalStudentsInClass}
-            classAvgScore={classStats?.classAvgScore ?? 7.8}
-            gaps={gaps}
-          />
-
-          {/* 3. TÍNH NĂNG THEO DÕI TIẾN BỘ HỌC TẬP CÁ NHÂN (GROWTH MINDSET - 4 CHU KỲ HOẠT ĐỘNG GẦN NHẤT) */}
-          <WeeklyProgressTrend progressData={studentWeeklyProgress} />
-
-          {!isEligible && (
-            <IneligibleCard
-              whyRanked={whyRanked}
-              studyClassName={studyClassName}
-            />
-          )}
-
-          <NearMeView
-            nearMeList={nearMeList}
-            currentUserId={currentUserId}
-            aheadGapScore={gaps?.aheadGapScore ?? 0.15}
-          />
-
-          {showPodium && (
-            <PodiumTop3 top3={top3} studyClassName={studyClassName} />
-          )}
-
-          <MostImprovedSpotlight mostImprovedStudent={mostImprovedStudent} />
-
-          <WeeklyStreakHeatmap
-            completedTests={currentUser?.completedTests ? Math.max(currentUser.completedTests, 25) : 25}
-            totalAssignedTests={28}
-            consecutiveCompletedStreak={8}
-          />
-
-          <ClassLeaderboardTable
+          {/* 2. BẢNG QUẢN LÝ DÂN SỐ THỢ SĂN (Lọc Rank SSS - C + % Vượt Trội) */}
+          <TeacherAdminTable
             leaderboard={leaderboard}
-            currentUserId={currentUserId}
-            totalStudentsInClass={totalStudentsInClass}
+            studyClassName={studyClassName}
+            minRequiredTests={minRequiredTests}
           />
 
-          {!isClassEmpty && isEligible && (
-            <MobileStickyRankBar
-              currentUser={currentUser}
-              studyClassName={studyClassName}
-            />
-          )}
+          {/* 3. PANEL HÀNH ĐỘNG 2 TAB (Cần Cứu Trợ & Bứt Phá) */}
+          <ActionPanel
+            studentsNeedingSupport={teacherAnalytics?.studentsNeedingSupport}
+            topProgressingStudents={teacherAnalytics?.topProgressingStudents}
+          />
         </div>
       )}
     </div>

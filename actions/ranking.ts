@@ -19,6 +19,8 @@ export interface RankingUser {
   completedTests: number; // Unique tests completed
   isEligible: boolean;
   rankChange: number | null;
+  previousRank?: number | null;
+  powerScore?: number;
   lastSubmitAt: Date | null;
   isCurrentUser: boolean;
   streak?: number;
@@ -128,12 +130,20 @@ export async function getRankingData(options: GetRankingOptions = {}) {
   }
 
   // Fetch previous snapshots for rank change calculation
-  const previousSnapshots = (prisma as any).leaderboardSnapshot ? await (prisma as any).leaderboardSnapshot.findMany({
-    where: {
-      periodCode: previousWeekCode,
-      snapshotType: "WEEKLY"
+  let previousSnapshots: any[] = [];
+  try {
+    if ((prisma as any).leaderboardSnapshot) {
+      previousSnapshots = await (prisma as any).leaderboardSnapshot.findMany({
+        where: {
+          periodCode: previousWeekCode,
+          snapshotType: "WEEKLY"
+        }
+      });
     }
-  }) : [];
+  } catch (err) {
+    console.warn("[getRankingData] leaderboardSnapshot table query failed, falling back to empty list:", err);
+    previousSnapshots = [];
+  }
 
   const prevRankMap = new Map<string, number>();
   previousSnapshots.forEach((snap: any) => {

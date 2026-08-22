@@ -29,17 +29,16 @@ export default async function CoursesPage({
 
   return (
     <div className="page-shell min-h-screen bg-[#EBF3FF]">
-      <main className="container mx-auto py-8 sm:py-10 px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left Sidebar - PC Only */}
-          <aside className="hidden lg:block w-[280px] shrink-0">
-            <div className="sticky top-24 h-fit">
-              <HomeSidebar user={session?.user} />
-            </div>
-          </aside>
+      <div className="flex w-full min-h-[calc(100vh-5rem)]">
+        {/* Left Sidebar - Fixed 250px Width, Anchored Flush Left */}
+        <aside className="hidden lg:block w-[250px] shrink-0 border-r border-slate-200/70 bg-white/70 backdrop-blur-xl p-3">
+          <div className="sticky top-24 h-[calc(100vh-7rem)]">
+            <HomeSidebar user={session?.user} />
+          </div>
+        </aside>
 
-          {/* Right Content Area */}
-          <div className="flex-1 space-y-10 sm:space-y-14">
+        {/* Right Content Area */}
+        <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 space-y-10 sm:space-y-14 max-w-[1600px]">
             {/* <div className="relative rounded-[3rem] overflow-hidden">
               <div className="absolute inset-0 bg-white shadow-xl shadow-slate-200/50 border border-slate-100" />
               <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-blue-50/50 to-transparent pointer-events-none" />
@@ -156,11 +155,8 @@ export default async function CoursesPage({
                 )}
               </div>
             </div>
-
-
-          </div>
-        </div>
-      </main>
+        </main>
+      </div>
 
       <style
         dangerouslySetInnerHTML={{

@@ -1,15 +1,14 @@
 export default function RankingLoading() {
   return (
     <div className="page-shell min-h-screen bg-[#EBF3FF] pb-24 md:pb-12">
-      <main className="container mx-auto py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left Sidebar Skeleton - PC Only */}
-          <aside className="hidden lg:block w-[280px] shrink-0">
-            <div className="sticky top-24 h-[400px] bg-white rounded-3xl animate-pulse p-4" />
-          </aside>
+      <div className="flex w-full min-h-[calc(100vh-5rem)]">
+        {/* Left Sidebar Skeleton - Flush Left */}
+        <aside className="hidden lg:block w-[250px] shrink-0 border-r border-slate-200/70 bg-white/70 backdrop-blur-xl p-3">
+          <div className="sticky top-24 h-[400px] bg-white rounded-3xl animate-pulse p-4" />
+        </aside>
 
-          {/* Right Main Content Skeleton */}
-          <div className="flex-1 space-y-6 sm:space-y-8">
+        {/* Right Main Content Skeleton */}
+        <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 space-y-6 sm:space-y-8 max-w-[1600px]">
             {/* Header Banner Skeleton */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100 animate-pulse space-y-3">
               <div className="w-32 h-6 bg-slate-200 rounded-full" />
@@ -48,9 +47,8 @@ export default function RankingLoading() {
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

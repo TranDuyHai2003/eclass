@@ -2,35 +2,62 @@
 
 import { useState } from "react";
 import { RankingUser } from "@/actions/ranking";
-import { Download, Search, Flame, ArrowUp, ArrowDown, Eye, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { calculateGameRank, GameRankType } from "@/lib/game-rank";
+import { Download, Search, Award, Lock, ShieldAlert, CheckCircle2 } from "lucide-react";
+import Image from "next/image";
 
 interface TeacherAdminTableProps {
   leaderboard: RankingUser[];
   studyClassName?: string | null;
+  minRequiredTests?: number;
 }
 
-export function TeacherAdminTable({ leaderboard, studyClassName }: TeacherAdminTableProps) {
+export function TeacherAdminTable({
+  leaderboard,
+  studyClassName,
+  minRequiredTests = 5,
+}: TeacherAdminTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRankFilter, setSelectedRankFilter] = useState<"ALL" | GameRankType>("ALL");
 
-  const filteredLeaderboard = leaderboard.filter((user) =>
-    (user.name || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const totalStudents = leaderboard.length;
+
+  // Process students with GameRank data
+  const processedStudents = leaderboard.map((user, idx) => {
+    const rankPos = user.rank || idx + 1;
+    const gameRank = calculateGameRank(
+      user.avgScore,
+      rankPos,
+      totalStudents,
+      user.completedTests,
+      minRequiredTests
+    );
+    return { user, rankPos, gameRank };
+  });
+
+  // Filter students by search term and selected Game Rank
+  const filteredList = processedStudents.filter(({ user, gameRank }) => {
+    const matchesSearch = (user.name || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRank = selectedRankFilter === "ALL"
+      ? true
+      : (gameRank.rank === selectedRankFilter || (selectedRankFilter === "C" && !gameRank.rank));
+    return matchesSearch && matchesRank;
+  });
 
   const handleExportExcel = () => {
-    alert("Đang chuẩn bị file Excel danh sách bảng điểm Lớp " + (studyClassName || "10A1") + "...");
+    alert("Đang chuẩn bị xuất file Excel danh sách học sinh Lớp " + (studyClassName || "10A1") + "...");
   };
 
   return (
-    <section className="glass-card rounded-3xl overflow-hidden shadow-sm border border-slate-200/80 bg-white/90">
-      {/* Table Top Controls */}
+    <section className="glass-card rounded-3xl overflow-hidden shadow-xl shadow-blue-950/5 border border-slate-200/80 bg-white/95 text-slate-800">
+      {/* Top Controls: Title, Search, Excel */}
       <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
         <div>
-          <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">
-            Bảng Điểm Danh Sách Học Sinh {studyClassName || "Lớp 10A1"}
+          <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+            BẢNG QUẢN LÝ DÂN SỐ THỢ SĂN {studyClassName ? `• LỚP ${studyClassName}` : ""}
           </h3>
-          <p className="text-[11px] text-slate-500 font-medium">
-            Đầy đủ thông số học tập để hỗ trợ quản lý chuyên môn
+          <p className="text-xs text-slate-500 font-medium">
+            Phân loại theo Rank Game (C đến SSS) và tỷ lệ vượt trội học lực trong lớp
           </p>
         </div>
 
@@ -41,14 +68,14 @@ export function TeacherAdminTable({ leaderboard, studyClassName }: TeacherAdminT
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Tìm tên học sinh..."
-              className="px-3 py-1.5 pl-8 rounded-xl border border-slate-200 text-xs bg-white outline-none w-44 focus:border-blue-500 transition"
+              className="px-3.5 py-1.5 pl-8 rounded-xl border border-slate-200 text-xs bg-white outline-none w-44 focus:border-blue-500 transition font-medium"
             />
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
           </div>
 
           <button
             onClick={handleExportExcel}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition shrink-0"
+            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-md transition shrink-0"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Xuất Excel</span>
@@ -56,134 +83,118 @@ export function TeacherAdminTable({ leaderboard, studyClassName }: TeacherAdminT
         </div>
       </div>
 
-      {/* Table Container */}
+      {/* Rank Filters Bar */}
+      <div className="p-3 bg-slate-100/60 border-b border-slate-200/60 flex items-center gap-1.5 overflow-x-auto text-xs font-black">
+        <span className="text-slate-400 text-[11px] uppercase tracking-wider px-2 shrink-0">
+          Lọc Rank:
+        </span>
+        {(["ALL", "SSS", "S", "A", "B", "C"] as const).map((r) => (
+          <button
+            key={r}
+            onClick={() => setSelectedRankFilter(r)}
+            className={`px-3 py-1 rounded-xl transition shrink-0 ${
+              selectedRankFilter === r
+                ? "bg-slate-900 text-white shadow-sm"
+                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            {r === "ALL" ? "Tất Cả Thợ Săn" : `Rank ${r}`}
+          </button>
+        ))}
+      </div>
+
+      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
-          <thead className="bg-slate-100/80 text-slate-500 uppercase tracking-wider font-extrabold border-b border-slate-200 text-[10px]">
+          <thead className="bg-slate-50 text-slate-400 uppercase tracking-widest font-extrabold text-[10px] border-b border-slate-100">
             <tr>
-              <th className="py-3.5 px-4 text-center w-12">Hạng</th>
+              <th className="py-3.5 px-4 text-center w-14">Hạng</th>
               <th className="py-3.5 px-4">Học Sinh</th>
-              <th className="py-3.5 px-4 text-center">Biến động</th>
-              <th className="py-3.5 px-4 text-center">Bài đã nộp</th>
-              <th className="py-3.5 px-4 text-center">Bài mới nhất</th>
-              <th className="py-3.5 px-4 text-center">Chuỗi học</th>
-              <th className="py-3.5 px-4 text-right">ĐTB</th>
-              <th className="py-3.5 px-4 text-center">Thao tác</th>
+              <th className="py-3.5 px-4 text-center">Rank Game</th>
+              <th className="py-3.5 px-4 text-center">Điểm TB</th>
+              <th className="py-3.5 px-4 text-center">% Vượt Trội</th>
+              <th className="py-3.5 px-4 text-center">Bài Đã Nộp</th>
+              <th className="py-3.5 px-4 text-center">Trạng Thái</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
-            {filteredLeaderboard.map((user) => {
-              const rankDisplay = user.rank ? `#${user.rank}` : "-";
-              const rankChange = user.rankChange;
-              const isLowScore = user.avgScore < 5.0 || !user.isEligible;
-              const latestScore = user.latestTestScore ?? user.avgScore;
+            {filteredList.map(({ user, rankPos, gameRank }) => {
+              const isNeedSupport = user.avgScore < 5.5 || !user.isEligible;
+              const userName = user.name || "Học sinh";
+              const avatarUrl = user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0D8ABC&color=fff`;
 
               return (
                 <tr
                   key={user.id}
-                  className={cn(
-                    "hover:bg-slate-50 transition-colors",
-                    isLowScore && "bg-rose-50/30"
-                  )}
+                  className={`hover:bg-slate-50/80 transition-colors ${
+                    isNeedSupport ? "bg-rose-50/20" : ""
+                  }`}
                 >
-                  <td
-                    className={cn(
-                      "py-3.5 px-4 text-center font-extrabold text-xs",
-                      user.rank === 1
-                        ? "text-amber-500 font-black text-sm"
-                        : "text-slate-500"
-                    )}
-                  >
-                    {rankDisplay}
+                  {/* Position */}
+                  <td className="py-3 px-4 text-center font-extrabold text-slate-700">
+                    #{rankPos}
                   </td>
 
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "font-bold text-sm",
-                          isLowScore ? "text-rose-600" : "text-slate-900"
-                        )}
-                      >
-                        {user.name}
+                  {/* Student Info */}
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 border border-slate-300 shrink-0">
+                        <Image
+                          src={avatarUrl}
+                          alt={user.name || "Student"}
+                          width={32}
+                          height={32}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <span className="font-extrabold text-slate-900">
+                        {user.name || "Ẩn danh"}
                       </span>
-                      {!user.isEligible && (
-                        <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
-                          Chưa đủ bài
-                        </span>
-                      )}
                     </div>
                   </td>
 
-                  <td className="py-3.5 px-4 text-center">
-                    <span
-                      className={cn(
-                        "px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-0.5",
-                        rankChange && rankChange > 0
-                          ? "bg-emerald-50 text-emerald-700"
-                          : rankChange && rankChange < 0
-                          ? "bg-rose-50 text-rose-600"
-                          : "bg-slate-100 text-slate-500"
-                      )}
-                    >
-                      {rankChange && rankChange > 0 ? (
-                        <>▲ +{rankChange}</>
-                      ) : rankChange && rankChange < 0 ? (
-                        <>▼ {rankChange}</>
-                      ) : (
-                        "Giữ"
-                      )}
-                    </span>
-                  </td>
-
-                  <td
-                    className={cn(
-                      "py-3.5 px-4 text-center font-bold",
-                      user.completedTests >= 5 ? "text-slate-800" : "text-rose-600"
-                    )}
-                  >
-                    {user.completedTests}/18
-                  </td>
-
-                  <td
-                    className={cn(
-                      "py-3.5 px-4 text-center font-bold",
-                      latestScore >= 8.0
-                        ? "text-emerald-600"
-                        : latestScore < 5.0
-                        ? "text-rose-600"
-                        : "text-slate-700"
-                    )}
-                  >
-                    {latestScore.toFixed(1)}
-                  </td>
-
-                  <td className="py-3.5 px-4 text-center font-bold text-amber-600">
-                    <span className="inline-flex items-center gap-1">
-                      {user.completedTests > 0 ? "7 ngày" : "0 ngày"}{" "}
-                      <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                    </span>
-                  </td>
-
-                  <td className="py-3.5 px-4 text-right font-extrabold text-slate-900 text-sm">
-                    {user.avgScore.toFixed(2)}
-                  </td>
-
-                  <td className="py-3.5 px-4 text-center">
-                    {isLowScore ? (
-                      <button
-                        onClick={() => alert(`Đã gửi thông báo cảnh báo hỗ trợ tới ${user.name}`)}
-                        className="text-rose-600 hover:underline font-bold text-[11px] flex items-center gap-1 mx-auto"
-                      >
-                        <AlertCircle className="w-3 h-3 text-rose-600" /> Cảnh báo
-                      </button>
+                  {/* Rank Game Badge */}
+                  <td className="py-3 px-4 text-center">
+                    {gameRank.rank ? (
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-full ${gameRank.badgeBg}`}>
+                        <Award className="w-3 h-3" />
+                        <span>Rank {gameRank.rank}</span>
+                      </span>
                     ) : (
-                      <button
-                        onClick={() => alert(`Xem chi tiết quá trình học của ${user.name}`)}
-                        className="text-blue-600 hover:underline font-bold text-[11px] flex items-center gap-1 mx-auto"
-                      >
-                        <Eye className="w-3 h-3 text-blue-600" /> Xem chi tiết
-                      </button>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                        <Lock className="w-3 h-3 text-amber-500" />
+                        <span>Khóa ({user.completedTests}/{minRequiredTests})</span>
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Score */}
+                  <td className="py-3 px-4 text-center font-mono font-extrabold text-blue-600 text-sm">
+                    {user.avgScore.toFixed(1)}
+                  </td>
+
+                  {/* Percentile */}
+                  <td className="py-3 px-4 text-center font-mono font-extrabold text-emerald-600">
+                    Cao hơn {gameRank.percentile}%
+                  </td>
+
+                  {/* Completed Tests */}
+                  <td className="py-3 px-4 text-center font-mono text-slate-600">
+                    {user.completedTests} bài
+                  </td>
+
+                  {/* Status */}
+                  <td className="py-3 px-4 text-center">
+                    {isNeedSupport ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full">
+                        <ShieldAlert className="w-3 h-3" />
+                        <span>Cần hỗ trợ</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Ổn định</span>
+                      </span>
                     )}
                   </td>
                 </tr>
