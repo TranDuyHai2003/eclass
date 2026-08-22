@@ -76,11 +76,10 @@ export function normalizeCdnUrl(url: string | null | undefined): string | null {
       const parsedUrl = new URL(url);
       const cdnHost = new URL(baseDomain).hostname;
 
-      // Check if host belongs to CDN / B2 bucket / local storage or pathname includes /file/
+      // Check if host belongs to CDN / B2 bucket / local storage
       const isCdnHost =
         parsedUrl.hostname === cdnHost ||
-        parsedUrl.hostname.includes("backblazeb2.com") ||
-        parsedUrl.pathname.includes("/file/");
+        parsedUrl.hostname.includes("backblazeb2.com");
 
       // If it's an external domain (e.g. youtube.com, youtu.be, vimeo.com, google.com, etc.),
       // return original URL unchanged.
