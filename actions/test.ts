@@ -364,7 +364,7 @@ async function reCalculateAllAttempts(testId: string) {
       include: {
         sections: {
           include: {
-            questions: { include: { subQuestions: true } }
+            questions: { include: { subQuestions: { orderBy: { position: "asc" } } }, orderBy: { position: "asc" } }
           }
         }
       }
@@ -708,7 +708,7 @@ export async function submitTestAttempt(
 
   const attempt = await prisma.studentAttempt.findUnique({
     where: { id: attemptId },
-    include: { test: { include: { sections: { include: { questions: { include: { subQuestions: true } } } } } } }
+    include: { test: { include: { sections: { include: { questions: { include: { subQuestions: { orderBy: { position: "asc" } } }, orderBy: { position: "asc" } } }, orderBy: { position: "asc" } } } } }
   });
 
   if (!attempt || attempt.userId !== session.user.id) {

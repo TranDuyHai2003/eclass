@@ -16,7 +16,7 @@ async function requireTestAccess(
       course: true,
       sections: includeSections
         ? {
-            include: { questions: { include: { subQuestions: true } } },
+            include: { questions: { include: { subQuestions: { orderBy: { position: "asc" } } }, orderBy: { position: "asc" } } },
             orderBy: { position: "asc" },
           }
         : false,

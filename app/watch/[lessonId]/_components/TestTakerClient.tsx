@@ -761,7 +761,7 @@ export default function TestTakerClient({
 
                           {normalizedType === "MULTIPLE_CHOICE_GROUP" && (
                             <div className="flex flex-col gap-2 w-full mt-2">
-                              {(q.subQuestions || []).map((sq: any, sqIdx: number) => {
+                              {[...(q.subQuestions || [])].sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0)).map((sq: any, sqIdx: number) => {
                                 const subVal = val ? val[sq.id] : "";
                                 const sqIsChoice = sq.type === "MULTIPLE_CHOICE";
                                 const sqIsTrueFalse = sq.type === "TRUE_FALSE";

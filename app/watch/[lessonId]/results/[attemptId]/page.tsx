@@ -364,8 +364,9 @@ export default async function TestResultPage({
 
                             {q.type === "MULTIPLE_CHOICE_GROUP" && (
                               <div className="mt-3 flex flex-col gap-2 pl-8 md:pl-12">
-                                {q.subQuestions?.map(
-                                  (sq: any, sqIdx: number) => {
+                                {[...(q.subQuestions || [])]
+                                  .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+                                  .map((sq: any, sqIdx: number) => {
                                     const subAns = studentAns?.subAnswers?.find(
                                       (a: any) => a.subQuestionId === sq.id,
                                     );

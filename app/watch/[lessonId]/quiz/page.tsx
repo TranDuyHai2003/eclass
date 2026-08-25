@@ -29,7 +29,7 @@ export default async function QuizPage({
           sections: {
             include: {
               questions: {
-                include: { subQuestions: true },
+                include: { subQuestions: { orderBy: { position: "asc" } } },
                 orderBy: { position: "asc" },
               },
             },
