@@ -223,7 +223,7 @@ export default function TestResultClient({ attempt, isTeacher = false }: { attem
 
                               {q.type === "MULTIPLE_CHOICE_GROUP" && (
                                 <div className="w-full flex flex-col gap-2 my-2">
-                                  {(q.subQuestions || []).map((sq: any, sqIdx: number) => {
+                                  {[...(q.subQuestions || [])].sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0)).map((sq: any, sqIdx: number) => {
                                     const subAns = (ansRecord?.subAnswers || []).find((sa: any) => sa.subQuestionId === sq.id);
                                     const subIsCorrect = subAns?.isCorrect;
                                     const rawVal = subAns?.answerProvided;

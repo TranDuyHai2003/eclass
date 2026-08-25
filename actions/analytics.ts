@@ -646,7 +646,7 @@ export async function getAttemptStatistics(attemptId: string) {
                     sections: {
                         include: {
                             questions: {
-                                include: { subQuestions: true },
+                                include: { subQuestions: { orderBy: { position: "asc" } } },
                                 orderBy: { position: 'asc' }
                             }
                         },

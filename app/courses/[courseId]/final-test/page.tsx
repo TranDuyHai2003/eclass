@@ -17,7 +17,7 @@ export default async function CourseFinalTestPage({
     where: { courseId },
     include: {
       sections: {
-        include: { questions: { include: { subQuestions: true }, orderBy: { position: "asc" } } },
+        include: { questions: { include: { subQuestions: { orderBy: { position: "asc" } } }, orderBy: { position: "asc" } } },
         orderBy: { position: "asc" },
       },
     },
