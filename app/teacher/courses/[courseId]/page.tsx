@@ -49,7 +49,6 @@ export default async function TeacherCourseEditPage({ params }: Props) {
                   </div>
 
                   {/* MAIN COURSE BUILDER */}
-                  {/* @ts-ignore - known relation type mismatch that is actually compatible at runtime */}
                   <CourseBuilder course={course} />
              </div>
         </div>

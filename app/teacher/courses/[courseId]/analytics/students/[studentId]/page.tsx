@@ -21,19 +21,23 @@ export default async function StudentAnalyticsPage({
 
   const { courseId, studentId } = await params;
 
+  let data;
   try {
-    const data = await getStudentCourseProgress(courseId, studentId);
-    
-    // Prepare chart data (only completed tests)
-    const chartData = data.progress
-      .filter((p: any) => p.status === "COMPLETED")
-      .map((p: any) => ({
-        name: p.title,
-        score: p.score,
-      }));
+    data = await getStudentCourseProgress(courseId, studentId);
+  } catch (error) {
+    return notFound();
+  }
 
-    return (
-      <div className="p-6 space-y-8 max-w-5xl mx-auto">
+  // Prepare chart data (only completed tests)
+  const chartData = data.progress
+    .filter((p: any) => p.status === "COMPLETED")
+    .map((p: any) => ({
+      name: p.title,
+      score: p.score,
+    }));
+
+  return (
+    <div className="p-6 space-y-8 max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center gap-6 bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
           <BackButton fallbackUrl={`/teacher/courses/${courseId}/analytics`} />
@@ -129,7 +133,4 @@ export default async function StudentAnalyticsPage({
         </div>
       </div>
     );
-  } catch (error) {
-    return notFound();
-  }
 }
