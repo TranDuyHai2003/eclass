@@ -898,49 +898,89 @@ export default function UnifiedTestBuilder({
                   </div>
 
                   <div className="space-y-3">
-                    {solutionVideos.map((video, idx) => (
-                      <div
-                        key={idx}
-                        className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300"
-                      >
-                        <div className="flex-1 space-y-1">
-                          <Input
-                            value={video.title}
-                            onChange={(e) =>
-                              handleUpdateSolutionVideo(
-                                idx,
-                                "title",
-                                e.target.value,
-                              )
-                            }
-                            placeholder="Tiêu đề (VD: Phần 1 - Đại số)"
-                            className="h-9 rounded-xl font-bold text-slate-700 bg-slate-50/50"
-                          />
-                          <Input
-                            value={video.url}
-                            onChange={(e) =>
-                              handleUpdateSolutionVideo(
-                                idx,
-                                "url",
-                                e.target.value,
-                              )
-                            }
-                            placeholder="Dán link Youtube tại đây..."
-                            className="h-9 rounded-xl text-sm"
-                          />
+                    {solutionVideos.map((video, idx) => {
+                      let typeBadge = null;
+                      if (video.url) {
+                        if (
+                          video.url.includes("youtube.com") ||
+                          video.url.includes("youtu.be")
+                        ) {
+                          typeBadge = {
+                            label: "YouTube",
+                            color: "bg-red-50 text-red-600 border-red-200",
+                          };
+                        } else if (
+                          video.url.includes("drive.google.com") ||
+                          video.url.includes("docs.google.com")
+                        ) {
+                          typeBadge = {
+                            label: "Google Drive",
+                            color: "bg-emerald-50 text-emerald-600 border-emerald-200",
+                          };
+                        } else {
+                          typeBadge = {
+                            label: "Direct Video",
+                            color: "bg-blue-50 text-blue-600 border-blue-200",
+                          };
+                        }
+                      }
+
+                      return (
+                        <div
+                          key={idx}
+                          className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300"
+                        >
+                          <div className="flex-1 space-y-2">
+                            <Input
+                              value={video.title}
+                              onChange={(e) =>
+                                handleUpdateSolutionVideo(
+                                  idx,
+                                  "title",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="Tiêu đề (VD: Phần 1 - Đại số)"
+                              className="h-9 rounded-xl font-bold text-slate-700 bg-slate-50/50"
+                            />
+                            <div className="relative flex items-center">
+                              <Input
+                                value={video.url}
+                                onChange={(e) =>
+                                  handleUpdateSolutionVideo(
+                                    idx,
+                                    "url",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="Dán link Youtube, Google Drive hoặc URL video..."
+                                className="h-9 rounded-xl text-sm pr-28"
+                              />
+                              {typeBadge && (
+                                <span
+                                  className={cn(
+                                    "absolute right-2 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border pointer-events-none",
+                                    typeBadge.color,
+                                  )}
+                                >
+                                  {typeBadge.label}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {solutionVideos.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveSolutionVideo(idx)}
+                              className="mt-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
-                        {solutionVideos.length > 1 && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveSolutionVideo(idx)}
-                            className="mt-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

@@ -183,7 +183,7 @@ export default async function TestResultPage({
                               {video.title}
                             </h4>
                           )}
-                          <div className="aspect-video w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                          <div className="w-full">
                             <VideoPlayer src={video.url} title={video.title} />
                           </div>
                         </div>
