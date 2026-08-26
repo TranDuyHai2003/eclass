@@ -41,7 +41,7 @@ export function WeeklyProgressTracker({
       {/* Background AI Artwork Backdrop */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-75 transition-opacity duration-500 pointer-events-none"
-        style={{ backgroundImage: "url('/dungeon-floors-bg.png')" }}
+        style={{ backgroundImage: "url('/dungeon-floors-bg.webp')" }}
       />
       <div className="absolute inset-0 bg-gradient-to-r from-[#0D121D] via-[#0D121D]/70 to-[#0D121D]/50 pointer-events-none" />
 
@@ -50,11 +50,8 @@ export function WeeklyProgressTracker({
         <div>
           <h3 className="font-black text-sm sm:text-lg lg:text-xl tracking-widest text-slate-200 uppercase flex items-center gap-2">
             <Castle className="w-5 h-5 text-cyan-400 shrink-0" />
-            <span>CON ĐƯỜNG CHINH PHỤC CÁC BUỔI THI (ASCENSION PATH)</span>
+            <span>TIẾN TRÌNH CÁC BUỔI THI</span>
           </h3>
-          <p className="text-xs sm:text-sm lg:text-base text-slate-400 font-medium mt-0.5">
-            Quỹ đạo thay đổi vị trí tương đối và điểm số của bạn qua từng buổi thi
-          </p>
         </div>
 
         {/* Weekly Growth Badge */}
@@ -75,8 +72,8 @@ export function WeeklyProgressTracker({
 
       {/* Weekly Trajectory Summary Statistics Bar */}
       {weeklyProgress && (weeklyProgress.startPercentile !== null || weeklyProgress.currentPercentile !== null) && (
-        <div className="relative z-10 bg-slate-900/80 border border-slate-800 p-3 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
-          <div className="flex items-center gap-4 flex-wrap">
+        <div className="relative z-10 bg-slate-900/80 border border-slate-800 p-3.5 sm:p-4 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs sm:text-base font-mono">
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
             <span className="text-slate-400">
               Đầu tuần:{" "}
               <strong className="text-slate-200 font-extrabold">
@@ -104,7 +101,7 @@ export function WeeklyProgressTracker({
       )}
 
       {/* Grid Layout: Exactly 4 columns on desktop (lg:grid-cols-4), 2 on tablet (sm:grid-cols-2), 1 on mobile */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 relative z-10 w-full min-w-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 relative z-10 w-full min-w-0">
         {sessions.map((sess, idx) => {
           const isCompleted = sess.status === "COMPLETED";
           const isCurrent = sess.isCurrent;
@@ -121,7 +118,7 @@ export function WeeklyProgressTracker({
           return (
             <div
               key={sess.id}
-              className={`rounded-xl p-4 transition-all duration-300 border flex flex-col justify-between space-y-3 min-w-0 ${
+              className={`rounded-xl p-4 sm:p-4.5 transition-all duration-300 border flex flex-col justify-between space-y-3 min-w-0 ${
                 isCurrent
                   ? "bg-[#091522] border-cyan-500/80 shadow-[0_0_15px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400/50"
                   : isCompleted
@@ -131,22 +128,22 @@ export function WeeklyProgressTracker({
             >
               {/* Header: Session Title & Stage Label */}
               <div className="flex items-start justify-between gap-2 min-w-0">
-                <span className="text-xs font-black tracking-wider uppercase text-slate-200 truncate">
+                <span className="text-xs sm:text-base font-black tracking-wider uppercase text-slate-200 truncate">
                   {sess.sessionName}
                 </span>
 
                 {isCompleted ? (
-                  <span className="text-[10px] font-black text-emerald-400 bg-emerald-950/80 border border-emerald-500/50 px-2 py-0.5 rounded uppercase flex items-center gap-1 shrink-0">
-                    <CheckCircle2 className="w-3 h-3" />
+                  <span className="text-[10px] sm:text-xs font-black text-emerald-400 bg-emerald-950/80 border border-emerald-500/50 px-2 py-0.5 rounded uppercase flex items-center gap-1 shrink-0">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>{stageLabel}</span>
                   </span>
                 ) : isCurrent ? (
-                  <span className="text-[10px] font-black text-cyan-400 bg-cyan-950/80 border border-cyan-500/50 px-2 py-0.5 rounded uppercase shrink-0">
+                  <span className="text-[10px] sm:text-xs font-black text-cyan-400 bg-cyan-950/80 border border-cyan-500/50 px-2 py-0.5 rounded uppercase shrink-0">
                     HIỆN TẠI
                   </span>
                 ) : (
-                  <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1 font-mono shrink-0">
-                    <Lock className="w-3 h-3" />
+                  <span className="text-[10px] sm:text-xs font-bold text-slate-500 flex items-center gap-1 font-mono shrink-0">
+                    <Lock className="w-3.5 h-3.5" />
                     KHÓA
                   </span>
                 )}
@@ -154,20 +151,20 @@ export function WeeklyProgressTracker({
 
               {/* Supremacy % Text & HigherThan Info */}
               <div className="space-y-1 min-w-0">
-                <div className="text-xs font-mono text-cyan-300 font-extrabold truncate">
+                <div className="text-xs sm:text-lg font-mono text-cyan-300 font-black truncate">
                   {sess.positionPercentile !== null
                     ? `Top ${sess.positionPercentile}% toàn khóa`
                     : "Chưa nộp bài"}
                 </div>
                 {sess.higherThanPercent !== null && (
-                  <p className="text-[11px] text-slate-300 font-bold truncate">
+                  <p className="text-[11px] sm:text-base text-slate-300 font-bold truncate">
                     Cao hơn {sess.higherThanPercent}% bạn học
                   </p>
                 )}
               </div>
 
               {/* Footer: Rank & Score + Growth Indicator */}
-              <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-xs font-mono font-bold text-slate-400 min-w-0">
+              <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-xs sm:text-base font-mono font-bold text-slate-400 min-w-0">
                 <span className={isCurrent ? "text-amber-400 font-black" : "text-slate-300"}>
                   {sess.rankText}
                 </span>
@@ -177,7 +174,7 @@ export function WeeklyProgressTracker({
                   </span>
                   {sess.scoreDelta !== null && (
                     <span
-                      className={`text-[10px] font-black ${
+                      className={`text-[10px] sm:text-sm font-black ${
                         sess.scoreDelta >= 0 ? "text-emerald-400" : "text-rose-400"
                       }`}
                     >

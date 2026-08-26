@@ -1,4 +1,4 @@
-export type GameRankType = 'SSS' | 'SS' | 'S' | 'A' | 'B' | 'C';
+export type GameRankType = 'SSS' | 'SS' | 'S' | 'A' | 'B' | 'C' | 'DANGER';
 
 export interface GameRankTheme {
   label: string;
@@ -10,13 +10,7 @@ export interface GameRankTheme {
 }
 
 export const RANKING_CONFIG = {
-  bayesianPrior: 10,       // k = 10 prior attempts
   globalAverage: 7.5,      // Class global average prior
-  minLeaderboardTests: 5,  // Min 5 tests to enter Official Leaderboard
-  fullConfidenceTests: 15, // 15 tests = 100% confidence (Confirmed Rank)
-  xpPerTest: 100,
-  xpPerStreakBonus: 50,
-  xpPerLevel: 500,
 };
 
 export const RANK_THEMES: Record<GameRankType, GameRankTheme> = {
@@ -68,36 +62,37 @@ export const RANK_THEMES: Record<GameRankType, GameRankTheme> = {
     borderColor: 'border-slate-700/50',
     glowColor: '',
   },
+  DANGER: {
+    label: 'Rank Báo Động (Chưa Làm Bài)',
+    title: 'Thợ Săn Chưa Hoạt Động (Inactive State)',
+    color: 'text-red-400 font-black tracking-wider animate-pulse',
+    badgeBg: 'bg-red-950/90 border border-red-500/90 text-red-300 shadow-[0_0_12px_rgba(239,68,68,0.5)] animate-pulse',
+    borderColor: 'border-red-500/80',
+    glowColor: 'shadow-red-600/50 shadow-2xl',
+  },
 };
 
-/**
- * Pure Function 1: Bayesian Average Skill Calculation
- * Formula: BayesianSkill = (avgScore * n + globalAverage * k) / (n + k)
- */
 export function calculateBayesianSkill(avgScore: number, completedTests: number): number {
-  if (completedTests <= 0) return RANKING_CONFIG.globalAverage;
+  return parseFloat((avgScore > 10 ? avgScore / 10 : avgScore).toFixed(2));
+}
+
+/**
+ * Ultra-Simple Power Score Formula:
+ * PowerScore = (rawAvgScore * 10) + (completedTests * 1) + (streak * 0.5)
+ * Direct, transparent, 100% intuitive for students!
+ */
+export function calculateSimplePowerScore(
+  avgScore: number,
+  completedTests: number,
+  streak: number = 0
+): { powerScore: number; displayPowerText: string } {
   const safeAvg = Math.max(0, Math.min(10, avgScore > 10 ? avgScore / 10 : avgScore));
-  const bayesian = (safeAvg * completedTests + RANKING_CONFIG.globalAverage * RANKING_CONFIG.bayesianPrior) / (completedTests + RANKING_CONFIG.bayesianPrior);
-  return parseFloat(bayesian.toFixed(2));
-}
-
-/**
- * Pure Function 2: Confidence Calculation
- * Formula: min(1.0, completedTests / 15)
- */
-export function calculateConfidence(completedTests: number): { confidenceRatio: number; confidencePercent: number } {
   const safeTests = Math.max(0, completedTests);
-  const confidenceRatio = Math.min(1.0, safeTests / RANKING_CONFIG.fullConfidenceTests);
-  const confidencePercent = Math.round(confidenceRatio * 100);
-  return { confidenceRatio, confidencePercent };
-}
+  const safeStreak = Math.max(0, streak);
 
-/**
- * Pure Function 3: Power Score Calculation
- * PowerScore = BayesianSkill * 10
- */
-export function calculatePowerScore(bayesianSkill: number): { powerScore: number; displayPowerText: string } {
-  const powerScore = parseFloat((bayesianSkill * 10).toFixed(1));
+  const rawPower = safeAvg * 10 + safeTests * 1 + safeStreak * 0.5;
+  const powerScore = parseFloat(rawPower.toFixed(1));
+
   return {
     powerScore,
     displayPowerText: powerScore.toFixed(1),
@@ -105,40 +100,7 @@ export function calculatePowerScore(bayesianSkill: number): { powerScore: number
 }
 
 /**
- * Pure Function 4: Event-based XP & Level Calculation
- * XP = (completedTests * 100) + min(completedTests * 50, streak * 50)
- * Level = floor(XP / 500) + 1
- */
-export function calculateXPAndLevel(completedTests: number, streak: number = 0): {
-  totalXp: number;
-  level: number;
-  currentLevelXp: number;
-  xpToNextLevel: number;
-  xpPercent: number;
-} {
-  const safeTests = Math.max(0, completedTests);
-  const safeStreak = Math.max(0, streak);
-
-  const xpFromTests = safeTests * RANKING_CONFIG.xpPerTest;
-  const xpFromStreak = Math.min(safeTests * RANKING_CONFIG.xpPerStreakBonus, safeStreak * RANKING_CONFIG.xpPerStreakBonus);
-  const totalXp = xpFromTests + xpFromStreak;
-
-  const level = Math.floor(totalXp / RANKING_CONFIG.xpPerLevel) + 1;
-  const currentLevelXp = totalXp % RANKING_CONFIG.xpPerLevel;
-  const xpToNextLevel = level * RANKING_CONFIG.xpPerLevel;
-  const xpPercent = Math.round((currentLevelXp / RANKING_CONFIG.xpPerLevel) * 100);
-
-  return {
-    totalXp,
-    level,
-    currentLevelXp,
-    xpToNextLevel,
-    xpPercent,
-  };
-}
-
-/**
- * Pure Function 5: Projected Rank Tier mapping by score (for non-leaderboard standalone calculations)
+ * Pure Function 2: Projected Rank Tier mapping by score (for non-leaderboard standalone calculations)
  */
 export function determineScoreRankTier(score: number): GameRankType {
   const safe = Math.max(0, Math.min(10, score > 10 ? score / 10 : score));
@@ -151,32 +113,23 @@ export function determineScoreRankTier(score: number): GameRankType {
 }
 
 /**
- * Backward compatibility helper for legacy UI components
+ * Legacy compatibility helper
  */
 export function calculateGameRank(
   score: number,
   rankPosition: number | null,
   totalStudents: number,
   completedTests: number,
-  minRequiredTests: number = 5
+  minRequiredTests: number = 1
 ) {
-  const bayesianSkill = calculateBayesianSkill(score, completedTests);
-  const { powerScore } = calculatePowerScore(bayesianSkill);
-  const { confidencePercent } = calculateConfidence(completedTests);
-  const { level, totalXp, xpPercent } = calculateXPAndLevel(completedTests);
-
-  const isEligible = completedTests >= minRequiredTests;
-  const isProvisional = completedTests < RANKING_CONFIG.fullConfidenceTests;
-  const potentialRank = determineScoreRankTier(bayesianSkill);
-
+  const { powerScore, displayPowerText } = calculateSimplePowerScore(score, completedTests);
+  const potentialRank = determineScoreRankTier(score);
   const theme = RANK_THEMES[potentialRank];
 
   return {
-    rank: isEligible ? potentialRank : null,
+    rank: potentialRank,
     potentialRank,
-    label: isEligible
-      ? (isProvisional ? `🔒 RANK ${potentialRank} (PROVISIONAL)` : theme.label)
-      : `🔒 Chưa mở khóa (Rank dự kiến: ${potentialRank})`,
+    label: theme.label,
     title: theme.title,
     color: theme.color,
     badgeBg: theme.badgeBg,
@@ -185,16 +138,13 @@ export function calculateGameRank(
     percentile: Math.round(((totalStudents - (rankPosition || totalStudents) + 1) / totalStudents) * 100),
     currentScore: parseFloat((score > 10 ? score / 10 : score).toFixed(2)),
     powerScore,
-    confidencePercent,
-    level,
-    totalXp,
-    expPercent: xpPercent,
+    displayPowerText,
     nextRank: potentialRank === 'SSS' ? null : potentialRank === 'SS' ? 'SSS' : potentialRank === 'S' ? 'SS' : potentialRank === 'A' ? 'S' : potentialRank === 'B' ? 'A' : 'B',
     scoreToNextRank: 0.5,
     eligibility: {
-      isEligible,
+      isEligible: true,
       completedTests,
-      minRequiredTests,
+      minRequiredTests: 1,
     },
   };
 }

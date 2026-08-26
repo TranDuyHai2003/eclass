@@ -349,6 +349,7 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
   if (test.courseId) {
     revalidatePath(`/courses/${test.courseId}`);
   }
+  revalidatePath("/ranking");
 
   return { success: true };
 }
@@ -895,6 +896,7 @@ export async function submitTestAttempt(
   if (attempt.test.lessonId) {
     revalidatePath(`/watch/${attempt.test.lessonId}`);
   }
+  revalidatePath("/ranking");
 
   return { success: true, score: finalScore };
 }

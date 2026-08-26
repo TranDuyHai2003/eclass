@@ -32,13 +32,13 @@ export function MostImprovedSpotlight({ mostImprovedStudent }: MostImprovedSpotl
             🚀
           </div>
           <div className="space-y-0.5">
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900 text-[10px] font-black uppercase tracking-wider">
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900 text-[10px] sm:text-xs font-black uppercase tracking-wider">
               Ghi nhận tiến bộ lớp
             </span>
-            <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
+            <h3 className="text-sm sm:text-lg font-black text-slate-900">
               {name} {oldRank ? `(Từ #${oldRank} ➔ #${newRank})` : `(Đang ở #${newRank})`}
             </h3>
-            <p className="text-xs text-slate-600 font-medium">
+            <p className="text-xs sm:text-base text-slate-600 font-bold">
               Tăng trưởng{" "}
               <strong className="text-emerald-700 font-extrabold">
                 +{scoreGrowth.toFixed(1)} điểm
@@ -48,11 +48,11 @@ export function MostImprovedSpotlight({ mostImprovedStudent }: MostImprovedSpotl
           </div>
         </div>
 
-        <div className="bg-white px-3.5 py-1.5 rounded-2xl border border-emerald-200 text-center shrink-0 w-full sm:w-auto">
-          <span className="text-[10px] font-bold text-slate-400 block uppercase">
+        <div className="bg-white px-3.5 py-2 rounded-2xl border border-emerald-200 text-center shrink-0 w-full sm:w-auto">
+          <span className="text-[10px] sm:text-xs font-bold text-slate-400 block uppercase">
             ĐTB Hiện Tại
           </span>
-          <span className="text-sm font-black text-emerald-600">
+          <span className="text-sm sm:text-lg font-black text-emerald-600">
             {currentScore.toFixed(1)} Điểm
           </span>
         </div>

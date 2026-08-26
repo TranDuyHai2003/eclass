@@ -6,7 +6,7 @@ import { ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-export const revalidate = 0; // Dynamic server rendering
+export const revalidate = 60; // Cache page for 60 seconds (revalidates in background)
 
 export default async function RankingPage() {
   const session = await auth();
@@ -60,7 +60,7 @@ export default async function RankingPage() {
           {/* Grand Overall AI Artwork Background filling 100% of main column */}
           <div
             className="absolute inset-0 bg-cover bg-top opacity-85 transition-opacity duration-700 pointer-events-none"
-            style={{ backgroundImage: "url('/ranking-overall-bg.png')" }}
+            style={{ backgroundImage: "url('/ranking-overall-bg.webp')" }}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#060911]/30 via-[#060911]/65 to-[#060911]/90 pointer-events-none" />
 

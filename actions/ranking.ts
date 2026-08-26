@@ -58,6 +58,107 @@ export interface GetRankingOptions {
   studyClassId?: string;
 }
 
+import { unstable_cache } from "next/cache";
+
+const fetchRawRankingBaseData = unstable_cache(
+  async (classIdKey: string) => {
+    const targetClassId = classIdKey === "ALL" ? null : classIdKey;
+    let studentsInClass: any[] = [];
+    let studyClassName = "Bảng Xếp Hạng Chung";
+
+    if (targetClassId) {
+      const cls = await prisma.studyClass.findUnique({ where: { id: targetClassId } });
+      if (cls) studyClassName = cls.name;
+
+      studentsInClass = await prisma.user.findMany({
+        where: { classId: targetClassId, role: "STUDENT" },
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          attempts: {
+            where: { score: { not: null } },
+            select: {
+              score: true,
+              completedAt: true,
+              startedAt: true,
+              testId: true,
+            },
+            orderBy: { completedAt: "desc" },
+            take: 100,
+          },
+        },
+      });
+    } else {
+      studentsInClass = await prisma.user.findMany({
+        where: { role: "STUDENT" },
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          attempts: {
+            where: { score: { not: null } },
+            select: {
+              score: true,
+              completedAt: true,
+              startedAt: true,
+              testId: true,
+            },
+            orderBy: { completedAt: "desc" },
+            take: 100,
+          },
+        },
+      });
+    }
+
+    let dbSnapshots: DBLeaderboardSnapshot[] = [];
+    try {
+      if ((prisma as any).leaderboardSnapshot) {
+        dbSnapshots = await (prisma as any).leaderboardSnapshot.findMany({
+          where: { snapshotType: "WEEKLY" },
+          select: {
+            userId: true,
+            periodCode: true,
+            score: true,
+            rankingScore: true,
+            completedTests: true,
+            rank: true,
+          },
+        });
+      }
+    } catch (err) {
+      console.warn("[getRankingData] leaderboardSnapshot query failed:", err);
+      dbSnapshots = [];
+    }
+
+    const publishedTests = await prisma.test.findMany({
+      orderBy: { createdAt: "asc" },
+      take: 8,
+      select: { id: true, title: true },
+    });
+
+    const totalPublishedTests = await prisma.test.count();
+
+    const fallbackTests = Array.from({ length: 8 }, (_, i) => ({
+      id: publishedTests[i]?.id || `test-${i + 1}`,
+      title: publishedTests[i]?.title || `Bài ${String(i + 1).padStart(2, "0")}`,
+    }));
+
+    return {
+      studentsInClass,
+      studyClassName,
+      dbSnapshots,
+      totalPublishedTests,
+      recent8TestsList: fallbackTests,
+    };
+  },
+  ["ranking-base-data"],
+  {
+    revalidate: 60,
+    tags: ["ranking"],
+  }
+);
+
 export async function getRankingData(options: GetRankingOptions = {}) {
   const session = await auth();
   if (!session || !session.user) {
@@ -71,7 +172,7 @@ export async function getRankingData(options: GetRankingOptions = {}) {
 
   const user = await prisma.user.findUnique({
     where: { id: currentUserId },
-    include: { studyClass: true },
+    select: { id: true, classId: true, role: true, studyClass: { select: { name: true } } },
   });
 
   if (!user) {
@@ -83,73 +184,8 @@ export async function getRankingData(options: GetRankingOptions = {}) {
   const currentWeekCode = getWeekCode(new Date(), 0);
   const previousWeekCode = getWeekCode(new Date(), -1);
 
-  let studentsInClass: any[] = [];
-  let studyClassName = user.studyClass?.name || null;
-
-  if (targetClassId) {
-    const cls = await prisma.studyClass.findUnique({ where: { id: targetClassId } });
-    if (cls) studyClassName = cls.name;
-
-    studentsInClass = await prisma.user.findMany({
-      where: { classId: targetClassId, role: "STUDENT" },
-      select: {
-        id: true,
-        name: true,
-        image: true,
-        attempts: {
-          where: { score: { not: null } },
-          select: {
-            score: true,
-            completedAt: true,
-            startedAt: true,
-            testId: true,
-          },
-          orderBy: { completedAt: "desc" },
-        },
-      },
-    });
-  } else {
-    studyClassName = "Bảng Xếp Hạng Chung";
-    studentsInClass = await prisma.user.findMany({
-      where: { role: "STUDENT" },
-      select: {
-        id: true,
-        name: true,
-        image: true,
-        attempts: {
-          where: { score: { not: null } },
-          select: {
-            score: true,
-            completedAt: true,
-            startedAt: true,
-            testId: true,
-          },
-          orderBy: { completedAt: "desc" },
-        },
-      },
-    });
-  }
-
-  // Fetch previous snapshots from DB for accurate history & rank movement
-  let dbSnapshots: DBLeaderboardSnapshot[] = [];
-  try {
-    if ((prisma as any).leaderboardSnapshot) {
-      dbSnapshots = await (prisma as any).leaderboardSnapshot.findMany({
-        where: { snapshotType: "WEEKLY" },
-        select: {
-          userId: true,
-          periodCode: true,
-          score: true,
-          rankingScore: true,
-          completedTests: true,
-          rank: true,
-        },
-      });
-    }
-  } catch (err) {
-    console.warn("[getRankingData] leaderboardSnapshot query failed:", err);
-    dbSnapshots = [];
-  }
+  const { studentsInClass, studyClassName, dbSnapshots, totalPublishedTests, recent8TestsList } =
+    await fetchRawRankingBaseData(targetClassId || "ALL");
 
   const prevRankMap = new Map<string, number>();
   dbSnapshots
@@ -160,7 +196,6 @@ export async function getRankingData(options: GetRankingOptions = {}) {
       }
     });
 
-  const totalPublishedTests = await prisma.test.count();
   const availableTests = Math.max(totalPublishedTests, 28);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
@@ -214,6 +249,19 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     const rankConfirmationProgress = Math.min(completedTests / DEFAULT_RANKING_CONFIG.confirmationTests, 1.0);
     const rankConfirmationState: RankConfirmationState = completedTests < 5 ? "LOCKED" : completedTests < 15 ? "PROVISIONAL" : "CONFIRMED";
 
+    // 8-Test Matrix Calculation
+    const recent8Matrix = recent8TestsList.map((t, idx) => {
+      const att = validAttempts.find((a: any) => a.testId === t.id);
+      return {
+        testId: t.id,
+        testTitle: t.title || `Bài ${String(idx + 1).padStart(2, "0")}`,
+        isCompleted: !!att,
+        score: att ? parseFloat((att.score || 0).toFixed(1)) : null,
+      };
+    });
+
+    const completedCountInLast8 = recent8Matrix.filter((m) => m.isCompleted).length;
+
     return {
       id: student.id,
       name: student.name || "Học sinh",
@@ -233,6 +281,9 @@ export async function getRankingData(options: GetRankingOptions = {}) {
       latestTestScore: parseFloat((latestScore || 0).toFixed(1)),
       lastSubmitAt: latestSubmit,
       isEligible,
+      recent8Matrix,
+      completedCountInLast8,
+      totalTestsTracked: recent8TestsList.length,
       isCurrentUser: student.id === currentUserId,
     };
   });
@@ -359,14 +410,16 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     needSupport: { count: needSupportStudentsList.length, percentage: Math.round((needSupportStudentsList.length / totalInClass) * 100) },
   };
 
-  const studentsNeedingSupport = needSupportStudentsList.slice(0, 3).map((s) => ({
+  const studentsNeedingSupport = needSupportStudentsList.slice(0, 5).map((s) => ({
     id: s.id,
     name: s.name,
     rank: (s as any).rank || null,
-    reason: s.avgScore < 5.0
-      ? `Điểm trung bình bài vừa rồi: ${s.avgScore}`
-      : `Chưa hoàn thành đủ 5 bài kiểm tra (Hiện có ${s.completedTests}/5 bài)`,
-    type: s.avgScore < 5.0 ? "SCORE" : "INCOMPLETE",
+    reason: s.completedTests === 0
+      ? `🚨 RANK BÁO ĐỘNG: Chưa làm bài thi nào!`
+      : s.avgScore < 5.0
+      ? `Điểm trung bình bài vừa rồi: ${s.avgScore}đ`
+      : `Mới hoàn thành ${s.completedTests} bài kiểm tra`,
+    type: s.completedTests === 0 ? "DANGER" : s.avgScore < 5.0 ? "SCORE" : "INCOMPLETE",
   }));
 
   // Gaps calculation (Ahead & Behind) for Current User (No fake gaps)
@@ -442,6 +495,8 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     quests: questEngineOutput,
     sessionProgress,
     weeklyProgress,
+    weeklyLeaderboard: computeTimeframeLeaderboard(studentsInClass, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), currentUserId),
+    monthlyLeaderboard: computeTimeframeLeaderboard(studentsInClass, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), currentUserId),
     teacherAnalytics: {
       gradeDistribution,
       studentsNeedingSupport,
@@ -449,6 +504,69 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     },
     studentWeeklyProgress,
   };
+}
+
+function computeTimeframeLeaderboard(
+  studentsInClass: any[],
+  filterStartDate: Date | null,
+  currentUserId: string
+): RankingUser[] {
+  const metrics = studentsInClass.map((student) => {
+    let validAttempts = student.attempts || [];
+    if (filterStartDate) {
+      validAttempts = validAttempts.filter((att: any) => {
+        const attDate = att.completedAt ? new Date(att.completedAt) : att.startedAt ? new Date(att.startedAt) : null;
+        return attDate && attDate >= filterStartDate;
+      });
+    }
+
+    const activity = calculateActivityEngine(validAttempts, new Date(), BUSINESS_TIMEZONE);
+    const testScoreMap = new Map<string, number>();
+
+    validAttempts.forEach((att: any) => {
+      if (att.testId && !testScoreMap.has(att.testId)) {
+        testScoreMap.set(att.testId, att.score || 0);
+      }
+    });
+
+    const completedTests = testScoreMap.size;
+    let totalScoreSum = 0;
+    testScoreMap.forEach((sc) => {
+      totalScoreSum += sc;
+    });
+
+    const avgScore = completedTests > 0 ? parseFloat((totalScoreSum / completedTests).toFixed(1)) : 0;
+    const powerScore = completedTests > 0 ? parseFloat((avgScore * 10 + completedTests * 1 + activity.currentStreak * 0.5).toFixed(1)) : 0;
+
+    return {
+      id: student.id,
+      name: student.name || "Thợ săn",
+      image: student.image,
+      completedTests,
+      score: avgScore,
+      avgScore,
+      rankingScore: powerScore,
+      powerScore,
+      streak: activity.currentStreak,
+      isEligible: completedTests > 0,
+      isCurrentUser: student.id === currentUserId,
+      lastSubmitAt: validAttempts[0]?.completedAt || null,
+      rankChange: 0,
+    };
+  });
+
+  const active = metrics.filter((s) => s.completedTests > 0);
+  active.sort((a, b) => {
+    if ((b.powerScore || 0) !== (a.powerScore || 0)) return (b.powerScore || 0) - (a.powerScore || 0);
+    if (b.avgScore !== a.avgScore) return b.avgScore - a.avgScore;
+    if (b.completedTests !== a.completedTests) return b.completedTests - a.completedTests;
+    return a.id.localeCompare(b.id);
+  });
+
+  return active.map((s, idx) => ({
+    ...s,
+    rank: idx + 1,
+  }));
 }
 
 function getNearMeList(currentUserRanked: RankingUser | null, currentUserId: string, rankedEligible: RankingUser[]): RankingUser[] {

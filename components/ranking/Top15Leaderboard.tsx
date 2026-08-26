@@ -1,12 +1,15 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { RankingUser } from "@/actions/ranking";
 import { calculateHunterLeaderboard } from "@/lib/ranking-engine";
-import { Swords, Crown, Flame, ShieldAlert, Sparkles, Trophy, Award, Zap } from "lucide-react";
+import { Swords, Crown, Flame, ShieldAlert, Sparkles, Trophy, Award, Zap, Calendar, Globe, ZapIcon } from "lucide-react";
 import Image from "next/image";
 
 interface Top15LeaderboardProps {
   leaderboard: RankingUser[];
+  weeklyLeaderboard?: RankingUser[];
+  monthlyLeaderboard?: RankingUser[];
   currentUserId?: string;
   totalStudentsInClass?: number;
   minRequiredTests?: number;
@@ -14,10 +17,14 @@ interface Top15LeaderboardProps {
 
 export function Top15Leaderboard({
   leaderboard,
+  weeklyLeaderboard,
+  monthlyLeaderboard,
   currentUserId,
   totalStudentsInClass,
   minRequiredTests = 5,
 }: Top15LeaderboardProps) {
+  const [period, setPeriod] = useState<"ALL_TIME" | "WEEKLY" | "MONTHLY">("ALL_TIME");
+
   // Fallback demo data with realistic rank movements
   const defaultList: RankingUser[] = [
     { id: "1", name: "Nguyễn Văn Quyền", image: "", rank: 1, score: 98.7, avgScore: 9.87, rankingScore: 98, completedTests: 23, isEligible: true, rankChange: 2, lastSubmitAt: null, isCurrentUser: false },
@@ -37,11 +44,20 @@ export function Top15Leaderboard({
     { id: "15", name: "Trịnh Tấn Phát", image: "", rank: 15, score: 60.0, avgScore: 6.00, rankingScore: 60, completedTests: 14, isEligible: true, rankChange: 0, lastSubmitAt: null, isCurrentUser: false },
   ];
 
-  const rawList = leaderboard && leaderboard.length > 0 ? leaderboard : defaultList;
+  const activeRawList = useMemo(() => {
+    if (period === "WEEKLY") {
+      return (weeklyLeaderboard && weeklyLeaderboard.length > 0) ? weeklyLeaderboard : leaderboard;
+    }
+    if (period === "MONTHLY") {
+      return (monthlyLeaderboard && monthlyLeaderboard.length > 0) ? monthlyLeaderboard : leaderboard;
+    }
+    return leaderboard && leaderboard.length > 0 ? leaderboard : defaultList;
+  }, [period, leaderboard, weeklyLeaderboard, monthlyLeaderboard, defaultList]);
+
   const totalCount = totalStudentsInClass || 140;
 
-  // Process through ranking engine (Isolates eligible >= 5 tests)
-  const engineResult = calculateHunterLeaderboard(rawList, totalCount);
+  // Process through ranking engine
+  const engineResult = calculateHunterLeaderboard(activeRawList, totalCount);
   const eligibleLeaderboard = engineResult.leaderboard.slice(0, 15);
 
   const top1 = eligibleLeaderboard[0];
@@ -62,27 +78,61 @@ export function Top15Leaderboard({
       {/* Background AI Guild Throne Room Artwork Backdrop */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-75 transition-opacity duration-500 pointer-events-none"
-        style={{ backgroundImage: "url('/guild-leaderboard-bg.png')" }}
+        style={{ backgroundImage: "url('/guild-leaderboard-bg.webp')" }}
       />
       <div className="absolute inset-0 bg-gradient-to-b from-[#0D121D]/50 via-[#0D121D]/75 to-[#0D121D]/95 pointer-events-none" />
 
-      {/* Header Row: BANG HỘI THỢ SĂN · TOP 15 */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800/80 pb-3 sm:pb-4 gap-2 relative z-10 w-full min-w-0">
+      {/* Header Row: BANG HỘI THỢ SĂN · TOP 15 + TIMEFRAME TABS */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800/80 pb-3 sm:pb-4 gap-3 relative z-10 w-full min-w-0">
         <div className="flex items-center gap-3 min-w-0">
           <div className="p-2 sm:p-2.5 rounded-xl bg-cyan-950/80 border border-cyan-500/50 shadow-[0_0_12px_rgba(6,182,212,0.4)] shrink-0">
             <Swords className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
           </div>
           <div className="min-w-0">
             <h3 className="font-black text-xs sm:text-lg lg:text-xl tracking-widest text-slate-100 uppercase">
-              BANG HỘI THỢ SĂN · TOP 15 LEADERBOARD
+              TOP 15 LEADERBOARD
             </h3>
-            <p className="text-[10px] sm:text-xs lg:text-sm text-slate-400 font-mono">Bảng xếp hạng chính thức (Đã đủ điều kiện từ 5 Quests trở lên)</p>
+            <p className="text-[10px] sm:text-xs lg:text-sm text-slate-400 font-mono">
+              {period === "ALL_TIME" ? "Xếp hạng tích lũy toàn khóa" : period === "WEEKLY" ? "Xếp hạng bứt phá trong tuần" : "Xếp hạng phong độ trong tháng"}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-[#080B12] border border-slate-800 text-[10px] sm:text-xs lg:text-sm font-bold text-slate-300 font-mono shrink-0 self-start sm:self-auto">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span>{engineResult.totalEligibleCount} THỢ SĂN CHÍNH THỨC</span>
+        {/* TIMEFRAME TABS (TOÀN KHÓA / TUẦN NÀY / THÁNG NÀY) */}
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/90 border border-slate-800/80 shrink-0 self-start md:self-auto shadow-inner">
+          <button
+            onClick={() => setPeriod("ALL_TIME")}
+            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-base font-black transition-all flex items-center gap-1.5 ${
+              period === "ALL_TIME"
+                ? "bg-gradient-to-r from-cyan-600/30 to-blue-600/30 text-cyan-300 border border-cyan-400/60 shadow-[0_0_12px_rgba(6,182,212,0.4)]"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400" />
+            <span>TOÀN KHÓA</span>
+          </button>
+          <button
+            onClick={() => setPeriod("WEEKLY")}
+            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-base font-black transition-all flex items-center gap-1.5 ${
+              period === "WEEKLY"
+                ? "bg-gradient-to-r from-amber-600/30 to-orange-600/30 text-amber-300 border border-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+            }`}
+          >
+            <ZapIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+            <span>TUẦN NÀY</span>
+          </button>
+          <button
+            onClick={() => setPeriod("MONTHLY")}
+            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-base font-black transition-all flex items-center gap-1.5 ${
+              period === "MONTHLY"
+                ? "bg-gradient-to-r from-emerald-600/30 to-teal-600/30 text-emerald-300 border border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.4)]"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+            <span>THÁNG NÀY</span>
+          </button>
         </div>
       </div>
 
@@ -228,7 +278,7 @@ export function Top15Leaderboard({
       <div className="sm:hidden space-y-2.5 relative z-10 w-full min-w-0">
         {tableList.map((user) => {
           const rankPos = user.position || 4;
-          const { theme, movement, displayTopText, displayPowerText, rawAverageScore, completedTests, isProvisional } = user;
+          const { theme, movement, displayTopText, displayPowerText, rawAverageScore, completedTests } = user;
 
           return (
             <div
@@ -242,7 +292,7 @@ export function Top15Leaderboard({
                     #{String(rankPos).padStart(2, "0")}
                   </span>
                   <span className={`text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${theme.badgeBg}`}>
-                    {isProvisional ? `🔒 ${user.provisionalRank} PROVISIONAL` : `RANK ${user.provisionalRank}`}
+                    RANK {user.provisionalRank}
                   </span>
                 </div>
 
@@ -288,8 +338,8 @@ export function Top15Leaderboard({
                     <h5 className="font-black text-white text-xs leading-snug break-words">
                       {user.name}
                     </h5>
-                    <span className="text-[10px] font-mono text-cyan-300 font-bold block">
-                      {displayTopText} TOÀN KHÓA
+                    <span className="text-[10px] font-mono text-emerald-400 font-bold block">
+                      {completedTests} Quests hoàn thành
                     </span>
                   </div>
                 </div>
@@ -328,8 +378,8 @@ export function Top15Leaderboard({
 
       {/* DESKTOP TABLE (hidden sm:block) - Transparent Glassmorphic Grid */}
       <div className="hidden sm:block overflow-x-auto w-full rounded-2xl border border-slate-800/70 bg-[#080B12]/30 backdrop-blur-md relative z-10 shadow-xl min-w-0">
-        <table className="w-full text-left text-sm text-slate-300 font-medium border-collapse">
-          <thead className="bg-[#0B0F17]/50 backdrop-blur-md text-slate-400 uppercase tracking-wider font-black text-xs sm:text-sm lg:text-base border-b border-slate-800/80">
+        <table className="w-full text-left text-base text-slate-300 font-medium border-collapse">
+          <thead className="bg-[#0B0F17]/50 backdrop-blur-md text-slate-400 uppercase tracking-wider font-black text-sm sm:text-base lg:text-lg border-b border-slate-800/80">
             <tr>
               <th className="py-4 px-5 text-center w-24">HẠNG</th>
               <th className="py-4 px-5 text-center w-24">BIẾN ĐỘNG</th>
@@ -342,7 +392,7 @@ export function Top15Leaderboard({
           <tbody className="divide-y divide-slate-800/50 font-medium">
             {tableList.map((user) => {
               const rankPos = user.position || 4;
-              const { theme, movement, displayTopText, displayPowerText, rawAverageScore, isProvisional } = user;
+              const { theme, movement, displayPowerText, rawAverageScore, completedTests } = user;
 
               return (
                 <tr
@@ -351,16 +401,16 @@ export function Top15Leaderboard({
                 >
                   {/* Position */}
                   <td className="py-4 px-5 text-center font-black font-mono">
-                    <span className="inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#0F1623] border border-slate-800 text-slate-300 text-sm sm:text-base font-black group-hover/row:border-cyan-500/50 group-hover/row:text-cyan-400 transition-colors">
+                    <span className="inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#0F1623] border border-slate-800 text-slate-300 text-base sm:text-lg font-black group-hover/row:border-cyan-500/50 group-hover/row:text-cyan-400 transition-colors">
                       #{String(rankPos).padStart(2, "0")}
                     </span>
                   </td>
 
                   {/* Rank Movement */}
-                  <td className="py-4 px-5 text-center font-mono font-black text-xs sm:text-sm">
+                  <td className="py-4 px-5 text-center font-mono font-black text-xs sm:text-base">
                     {movement.direction === "up" && (
                       <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-950/80 border border-emerald-500/50 px-2.5 py-1 rounded-full">
-                        <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />
+                        <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
                         <span>{movement.displayDeltaText}</span>
                       </span>
                     )}
@@ -373,7 +423,7 @@ export function Top15Leaderboard({
                       <span className="text-slate-500 font-bold">-</span>
                     )}
                     {movement.direction === "new" && (
-                      <span className="text-cyan-300 font-bold text-xs bg-cyan-950/80 border border-cyan-500/50 px-2.5 py-1 rounded-full">NEW</span>
+                      <span className="text-cyan-300 font-bold text-xs sm:text-sm bg-cyan-950/80 border border-cyan-500/50 px-2.5 py-1 rounded-full">NEW</span>
                     )}
                   </td>
 
@@ -390,11 +440,11 @@ export function Top15Leaderboard({
                         />
                       </div>
                       <div className="min-w-0 space-y-0.5">
-                        <h5 className="font-black text-white text-sm sm:text-base lg:text-lg truncate max-w-[240px] group-hover/row:text-cyan-300 transition-colors">
+                        <h5 className="font-black text-white text-base sm:text-lg lg:text-xl truncate max-w-[240px] group-hover/row:text-cyan-300 transition-colors">
                           {user.name}
                         </h5>
-                        <p className="text-xs font-mono text-cyan-400 font-bold">
-                          {displayTopText} TOÀN KHÓA
+                        <p className="text-xs sm:text-base font-mono text-emerald-400 font-bold">
+                          {completedTests} Quests hoàn thành
                         </p>
                       </div>
                     </div>
@@ -402,14 +452,14 @@ export function Top15Leaderboard({
 
                   {/* Cấp độ Rank */}
                   <td className="py-4 px-5 text-center">
-                    <span className={`inline-block text-xs sm:text-sm lg:text-base font-mono font-black px-4 py-1.5 rounded-full uppercase tracking-wider ${theme.badgeBg}`}>
-                      {isProvisional ? `🔒 ${user.provisionalRank} PROVISIONAL` : `RANK ${user.provisionalRank}`}
+                    <span className={`inline-block text-xs sm:text-base lg:text-lg font-mono font-black px-4 py-1.5 rounded-full uppercase tracking-wider ${theme.badgeBg}`}>
+                      RANK {user.provisionalRank}
                     </span>
                   </td>
 
                   {/* Power Score */}
-                  <td className="py-4 px-5 text-center font-mono text-amber-300 text-sm sm:text-base font-black">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-950/40 border border-amber-500/50 shadow-inner">
+                  <td className="py-4 px-5 text-center font-mono text-amber-300 text-base sm:text-lg lg:text-xl font-black">
+                    <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-950/40 border border-amber-500/50 shadow-inner">
                       <span>{displayPowerText} PTS</span>
                     </div>
                   </td>
