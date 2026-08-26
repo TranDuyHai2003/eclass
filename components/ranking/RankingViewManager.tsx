@@ -14,6 +14,8 @@ import { NearMeAndSpotlight } from "./NearMeAndSpotlight";
 import { MobileStickyRankBar } from "./MobileStickyRankBar";
 import { RankGuideModal } from "./RankGuideModal";
 
+import { Last8TestsMatrixBoard } from "./Last8TestsMatrixBoard";
+
 // Teacher View Components (GUILD COMMAND CENTER)
 import { TeacherQuickStats } from "./TeacherQuickStats";
 import { ActionPanel } from "./ActionPanel";
@@ -172,9 +174,17 @@ export function RankingViewManager({ data, currentUserId }: RankingViewManagerPr
           {/* 3. HUNTER GUILD • TOP 15 (VISUAL PODIUM + COMPACT TABLE) */}
           <Top15Leaderboard
             leaderboard={leaderboard}
+            weeklyLeaderboard={(data as any).weeklyLeaderboard}
+            monthlyLeaderboard={(data as any).monthlyLeaderboard}
             currentUserId={currentUserId}
             totalStudentsInClass={totalStudentsInClass}
             minRequiredTests={minRequiredTests}
+          />
+
+          {/* 4. LAST 8 TESTS MATRIX TRACKING BOARD */}
+          <Last8TestsMatrixBoard
+            leaderboard={leaderboard}
+            totalStudentsInClass={totalStudentsInClass}
           />
         </div>
       )}

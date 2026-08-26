@@ -2,11 +2,7 @@ import {
   GameRankType,
   GameRankTheme,
   RANK_THEMES,
-  RANKING_CONFIG,
-  calculateBayesianSkill,
-  calculateConfidence,
-  calculatePowerScore,
-  calculateXPAndLevel,
+  calculateSimplePowerScore,
   determineScoreRankTier,
 } from "./game-rank";
 
@@ -28,35 +24,27 @@ export interface HunterStudentOutput {
   image: string;
 
   // Status Flags
-  isEligibleForLeaderboard: boolean; // completedTests >= 5
-  isProvisional: boolean;            // completedTests < 15
-  isZeroTests: boolean;              // completedTests === 0
+  isZeroTests: boolean;
 
   // Ranks
-  rank: GameRankType | null;          // Official rank if eligible, null if !eligible
-  provisionalRank: GameRankType;     // Projected rank
+  rank: GameRankType | null;
+  provisionalRank: GameRankType;
   theme: GameRankTheme;
 
   // Performance
   rawAverageScore: number;
-  bayesianSkill: number;
-  confidencePercent: number;
   powerScore: number;
-  displayPowerText: string;          // "—" for 0 tests, "88.6" for active
+  displayPowerText: string;
 
   // Progression
-  level: number;
-  totalXp: number;
-  xpPercent: number;
   completedTests: number;
-  remainingTestsForConfirmation: number;
   streak: number;
 
   // Leaderboard Position & Percentile
-  position: number | null;           // Rank position on Official Leaderboard (null if !eligible)
+  position: number | null;
   totalEligibleStudents: number;
   topPercent: number;
-  displayTopText: string;            // e.g. "Top 1%"
+  displayTopText: string;
 
   // Movement
   movement: {
@@ -68,22 +56,18 @@ export interface HunterStudentOutput {
 }
 
 /**
- * Deterministic 5-Level Tie-Breaking Comparison
+ * Direct & Transparent Power Score Sort
  * 1. Power Score DESC
- * 2. Bayesian Skill DESC
- * 3. Confidence Percent DESC
- * 4. Completed Tests DESC
- * 5. Student ID ASC (Deterministic Fallback)
+ * 2. Raw Average Score DESC
+ * 3. Completed Tests DESC
+ * 4. Student ID ASC
  */
 function deterministicTieBreak(a: HunterStudentOutput, b: HunterStudentOutput): number {
   if (b.powerScore !== a.powerScore) {
     return b.powerScore - a.powerScore;
   }
-  if (b.bayesianSkill !== a.bayesianSkill) {
-    return b.bayesianSkill - a.bayesianSkill;
-  }
-  if (b.confidencePercent !== a.confidencePercent) {
-    return b.confidencePercent - a.confidencePercent;
+  if (b.rawAverageScore !== a.rawAverageScore) {
+    return b.rawAverageScore - a.rawAverageScore;
   }
   if (b.completedTests !== a.completedTests) {
     return b.completedTests - a.completedTests;
@@ -92,17 +76,17 @@ function deterministicTieBreak(a: HunterStudentOutput, b: HunterStudentOutput): 
 }
 
 /**
- * Assign Rank Tier based on Official Position & Total Eligible Count
+ * Assign Rank Tier based on Official Position & Total Count
  */
-function assignRankTierByPosition(position: number, totalEligible: number): GameRankType {
+function assignRankTierByPosition(position: number, totalCount: number): GameRankType {
   if (position <= 3) return 'SSS';
-  const top5Count = Math.max(3, Math.ceil(totalEligible * 0.05));
+  const top5Count = Math.max(3, Math.ceil(totalCount * 0.05));
   if (position <= top5Count) return 'SS';
-  const top10Count = Math.max(top5Count, Math.ceil(totalEligible * 0.10));
+  const top10Count = Math.max(top5Count, Math.ceil(totalCount * 0.10));
   if (position <= top10Count) return 'S';
-  const top25Count = Math.max(top10Count, Math.ceil(totalEligible * 0.25));
+  const top25Count = Math.max(top10Count, Math.ceil(totalCount * 0.25));
   if (position <= top25Count) return 'A';
-  const top50Count = Math.max(top25Count, Math.ceil(totalEligible * 0.50));
+  const top50Count = Math.max(top25Count, Math.ceil(totalCount * 0.50));
   if (position <= top50Count) return 'B';
   return 'C';
 }
@@ -126,39 +110,22 @@ export function calculateHunterLeaderboard(
     const streak = Math.max(0, s.streak ?? 0);
 
     const isZeroTests = completedTests === 0;
-    const isEligibleForLeaderboard = completedTests >= RANKING_CONFIG.minLeaderboardTests;
-    const isProvisional = completedTests < RANKING_CONFIG.fullConfidenceTests;
-
-    const bayesianSkill = calculateBayesianSkill(safeAvgScore, completedTests);
-    const { confidencePercent } = calculateConfidence(completedTests);
-    const { powerScore, displayPowerText } = calculatePowerScore(bayesianSkill);
-    const { level, totalXp, xpPercent } = calculateXPAndLevel(completedTests, streak);
-
-    const provisionalRank = determineScoreRankTier(bayesianSkill);
-    const theme = RANK_THEMES[provisionalRank];
-
-    const remainingTestsForConfirmation = Math.max(0, RANKING_CONFIG.fullConfidenceTests - completedTests);
+    const { powerScore, displayPowerText } = calculateSimplePowerScore(safeAvgScore, completedTests, streak);
+    const initialRank = determineScoreRankTier(safeAvgScore);
+    const theme = RANK_THEMES[initialRank];
 
     return {
       id: s.id,
       name: s.name || "Thợ săn",
       image: s.image || "",
-      isEligibleForLeaderboard,
-      isProvisional,
       isZeroTests,
-      rank: null, // Will be set after sorting eligible list
-      provisionalRank,
+      rank: initialRank,
+      provisionalRank: initialRank,
       theme,
       rawAverageScore: parseFloat(safeAvgScore.toFixed(2)),
-      bayesianSkill,
-      confidencePercent,
       powerScore: isZeroTests ? 0 : powerScore,
       displayPowerText: isZeroTests ? "—" : displayPowerText,
-      level,
-      totalXp,
-      xpPercent,
       completedTests,
-      remainingTestsForConfirmation,
       streak,
       position: null,
       totalEligibleStudents: 0,
@@ -173,27 +140,24 @@ export function calculateHunterLeaderboard(
     };
   });
 
-  // Separate eligible from non-eligible
-  const eligibleList = processedList.filter((s) => s.isEligibleForLeaderboard);
-  const provisionalList = processedList.filter((s) => !s.isEligibleForLeaderboard);
+  // All active students with tests participate in leaderboard
+  const activeStudents = processedList.filter((s) => !s.isZeroTests);
+  activeStudents.sort(deterministicTieBreak);
 
-  // Deterministic 5-level sort on eligible students ONLY
-  eligibleList.sort(deterministicTieBreak);
-
-  const totalEligibleCount = eligibleList.length || 1;
+  const totalCount = activeStudents.length || 1;
 
   // Assign official Leaderboard positions & Ranks
-  eligibleList.forEach((student, index) => {
+  activeStudents.forEach((student, index) => {
     const position = index + 1;
     student.position = position;
-    student.totalEligibleStudents = totalEligibleCount;
+    student.totalEligibleStudents = totalCount;
 
-    const rankTier = assignRankTierByPosition(position, totalEligibleCount);
+    const rankTier = assignRankTierByPosition(position, totalCount);
     student.rank = rankTier;
     student.provisionalRank = rankTier;
     student.theme = RANK_THEMES[rankTier];
 
-    const rawTop = Math.ceil((position / totalEligibleCount) * 100);
+    const rawTop = Math.ceil((position / totalCount) * 100);
     const topPercent = Math.max(1, rawTop);
     student.topPercent = topPercent;
     student.displayTopText = `Top ${topPercent}%`;
@@ -208,9 +172,9 @@ export function calculateHunterLeaderboard(
   });
 
   return {
-    leaderboard: eligibleList,
-    provisionalList,
+    leaderboard: activeStudents,
+    provisionalList: [],
     allStudents: processedList,
-    totalEligibleCount,
+    totalEligibleCount: totalCount,
   };
 }
