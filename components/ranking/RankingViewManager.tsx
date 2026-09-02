@@ -82,12 +82,12 @@ export function RankingViewManager({ data, currentUserId }: RankingViewManagerPr
   // Single Source of Truth calculation for Current User Rank Result
   const currentUserRankResult = currentUser
     ? calculateGameRank(
-        currentUser.avgScore,
-        currentUser.rank,
-        totalStudentsInClass,
-        currentUser.completedTests,
-        minRequiredTests
-      )
+      currentUser.avgScore,
+      currentUser.rank,
+      totalStudentsInClass,
+      currentUser.completedTests,
+      minRequiredTests
+    )
     : null;
 
   // Count Rank S / SSS for Teacher Stats
@@ -141,7 +141,7 @@ export function RankingViewManager({ data, currentUserId }: RankingViewManagerPr
       <div className="bg-[#0D121D]/90 border border-cyan-500/40 rounded-xl p-3 sm:p-4 text-cyan-200 text-xs sm:text-sm font-medium flex items-center gap-3 shadow-lg backdrop-blur-md">
         <span className="text-base sm:text-xl shrink-0">🎯</span>
         <p className="leading-relaxed">
-          <strong className="text-white font-bold">Không phải ai đạt điểm cao một lần cũng là người mạnh nhất</strong> — Rank thuộc về người chứng minh được năng lực của mình qua thời gian.
+          <strong className="text-white font-bold text-xl">Không phải ai đạt điểm cao một lần cũng là người mạnh nhất</strong> — Rank thuộc về người chứng minh được năng lực của mình qua thời gian.
         </p>
       </div>
 
@@ -185,6 +185,7 @@ export function RankingViewManager({ data, currentUserId }: RankingViewManagerPr
           <Last8TestsMatrixBoard
             leaderboard={leaderboard}
             totalStudentsInClass={totalStudentsInClass}
+            isTeacherView={false}
           />
         </div>
       )}
@@ -202,14 +203,21 @@ export function RankingViewManager({ data, currentUserId }: RankingViewManagerPr
             needSupportCount={teacherAnalytics?.studentsNeedingSupport?.length}
           />
 
-          {/* 2. BẢNG QUẢN LÝ DÂN SỐ THỢ SĂN (Lọc Rank SSS - C + % Vượt Trội) */}
+          {/* 2. BẢNG MA TRẬN BÁO ĐỘNG TOÀN BỘ HỌC SINH (FULL CHẾ ĐỘ GIÁO VIÊN) */}
+          <Last8TestsMatrixBoard
+            leaderboard={leaderboard}
+            totalStudentsInClass={totalStudentsInClass}
+            isTeacherView={true}
+          />
+
+          {/* 3. BẢNG QUẢN LÝ DÂN SỐ THỢ SĂN (Lọc Rank SSS - C + % Vượt Trội) */}
           <TeacherAdminTable
             leaderboard={leaderboard}
             studyClassName={studyClassName}
             minRequiredTests={minRequiredTests}
           />
 
-          {/* 3. PANEL HÀNH ĐỘNG 2 TAB (Cần Cứu Trợ & Bứt Phá) */}
+          {/* 4. PANEL HÀNH ĐỘNG 2 TAB (Cần Cứu Trợ & Bứt Phá) */}
           <ActionPanel
             studentsNeedingSupport={teacherAnalytics?.studentsNeedingSupport}
             topProgressingStudents={teacherAnalytics?.topProgressingStudents}

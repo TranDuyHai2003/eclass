@@ -83,6 +83,12 @@ const fetchRawRankingBaseData = unstable_cache(
               completedAt: true,
               startedAt: true,
               testId: true,
+              test: {
+                select: {
+                  title: true,
+                  lesson: { select: { title: true } },
+                },
+              },
             },
             orderBy: { completedAt: "desc" },
             take: 100,
@@ -103,6 +109,12 @@ const fetchRawRankingBaseData = unstable_cache(
               completedAt: true,
               startedAt: true,
               testId: true,
+              test: {
+                select: {
+                  title: true,
+                  lesson: { select: { title: true } },
+                },
+              },
             },
             orderBy: { completedAt: "desc" },
             take: 100,
@@ -131,17 +143,75 @@ const fetchRawRankingBaseData = unstable_cache(
       dbSnapshots = [];
     }
 
-    const publishedTests = await prisma.test.findMany({
-      orderBy: { createdAt: "asc" },
-      take: 8,
-      select: { id: true, title: true },
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    // Extract all test IDs that at least 1 student IN THIS CLASS has attempted
+    const attemptedTestIdsSet = new Set<string>();
+    studentsInClass.forEach((student) => {
+      student.attempts?.forEach((att: any) => {
+        if (att.testId && att.score !== null) {
+          attemptedTestIdsSet.add(att.testId);
+        }
+      });
     });
+    const classAttemptedTestIds = Array.from(attemptedTestIdsSet);
+
+    // 3 Filter rules for Alarm Matrix:
+    // 1. Created within the last 30 days (in current month)
+    // 2. Created at least 7 days ago (late by 1 week; current week tests excluded)
+    // 3. At least 1 student IN THIS CLASS has submitted an attempt
+    let publishedTests = await prisma.test.findMany({
+      where: {
+        id: { in: classAttemptedTestIds },
+        createdAt: {
+          gte: thirtyDaysAgo,
+          lte: sevenDaysAgo,
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, title: true, lessonId: true, courseId: true, lesson: { select: { title: true } } },
+    });
+
+    // Fallback 1: If empty in [30d, 7d] window, include tests in 30d with >= 1 attempt from THIS class
+    if (publishedTests.length === 0) {
+      publishedTests = await prisma.test.findMany({
+        where: {
+          id: { in: classAttemptedTestIds },
+          createdAt: {
+            gte: thirtyDaysAgo,
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, title: true, lessonId: true, courseId: true, lesson: { select: { title: true } } },
+      });
+    }
+
+    // Fallback 2: If still empty, get overall tests with attempts from THIS class
+    if (publishedTests.length === 0) {
+      publishedTests = await prisma.test.findMany({
+        where: {
+          id: { in: classAttemptedTestIds },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, title: true, lessonId: true, courseId: true, lesson: { select: { title: true } } },
+      });
+    }
+
+    // Sort chronologically (oldest to newest) for left-to-right matrix display
+    publishedTests = [...publishedTests].reverse();
+    if (publishedTests.length > 8) {
+      publishedTests = publishedTests.slice(publishedTests.length - 8);
+    }
 
     const totalPublishedTests = await prisma.test.count();
 
-    const fallbackTests = Array.from({ length: 8 }, (_, i) => ({
-      id: publishedTests[i]?.id || `test-${i + 1}`,
-      title: publishedTests[i]?.title || `Bài ${String(i + 1).padStart(2, "0")}`,
+    const fallbackTests = publishedTests.map((t, i) => ({
+      id: t.id,
+      testId: t.id,
+      lessonId: t.lessonId,
+      courseId: t.courseId,
+      title: t.lesson?.title || t.title || `Bài ${String(i + 1).padStart(2, "0")}`,
     }));
 
     return {
@@ -238,10 +308,7 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     const breakdown = calculateRankingScore(
       avgScore,
       completedTests,
-      availableTests,
-      completedLast30Days,
-      availableLast30Days,
-      DEFAULT_RANKING_CONFIG
+      activity.currentStreak
     );
 
     const isEligible = completedTests >= MIN_REQUIRED_TESTS;
@@ -250,11 +317,13 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     const rankConfirmationState: RankConfirmationState = completedTests < 5 ? "LOCKED" : completedTests < 15 ? "PROVISIONAL" : "CONFIRMED";
 
     // 8-Test Matrix Calculation
-    const recent8Matrix = recent8TestsList.map((t, idx) => {
+    const recent8Matrix = recent8TestsList.map((t: any, idx) => {
       const att = validAttempts.find((a: any) => a.testId === t.id);
       return {
         testId: t.id,
         testTitle: t.title || `Bài ${String(idx + 1).padStart(2, "0")}`,
+        lessonId: t.lessonId,
+        courseId: t.courseId,
         isCompleted: !!att,
         score: att ? parseFloat((att.score || 0).toFixed(1)) : null,
       };
@@ -307,9 +376,41 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     return a.id.localeCompare(b.id);
   });
 
+  // Fallback simulated previous rank map if DB snapshots are missing for some/all students
+  const prevAttemptMetrics = eligibleStudents.map((student) => {
+    if (prevRankMap.has(student.id)) {
+      return { id: student.id, prevScore: student.rankingScore, dbRank: prevRankMap.get(student.id)! };
+    }
+    const rawAttempts = studentsInClass.find((s) => s.id === student.id)?.attempts || [];
+    if (rawAttempts.length >= 2) {
+      const prevAttempts = rawAttempts.slice(1);
+      let sum = 0;
+      prevAttempts.forEach((a: any) => { sum += (a.score || 0); });
+      const prevAvg = sum / prevAttempts.length;
+      return { id: student.id, prevScore: prevAvg, dbRank: null };
+    }
+    return { id: student.id, prevScore: student.rankingScore, dbRank: null };
+  });
+
+  const simulatedStudents = [...prevAttemptMetrics];
+  simulatedStudents.sort((a, b) => {
+    if (a.dbRank !== null && b.dbRank !== null) return a.dbRank - b.dbRank;
+    return b.prevScore - a.prevScore;
+  });
+
+  const effectivePrevRankMap = new Map<string, number>();
+  simulatedStudents.forEach((item, idx) => {
+    const calculatedRank = item.dbRank !== null ? item.dbRank : idx + 1;
+    effectivePrevRankMap.set(item.id, calculatedRank);
+  });
+
   const rankedEligible: RankingUser[] = eligibleStudents.map((student, index) => {
     const currentRank = index + 1;
-    const prevRank = prevRankMap.get(student.id);
+    const dbPrevRank = prevRankMap.get(student.id);
+    const prevRank = dbPrevRank !== undefined && dbPrevRank !== null 
+      ? dbPrevRank 
+      : (student.completedTests > 1 ? effectivePrevRankMap.get(student.id) : null);
+
     const rankChange = (prevRank !== undefined && prevRank !== null) ? prevRank - currentRank : null;
 
     let rankStatus = RankStatus.SAME;
@@ -431,7 +532,7 @@ export async function getRankingData(options: GetRankingOptions = {}) {
   if (currentUserRanked && currentUserRanked.rank && currentUserRanked.rank > 1) {
     const prevStudent = rankedEligible[currentUserRanked.rank - 2];
     if (prevStudent) {
-      aheadGapScore = parseFloat((prevStudent.avgScore - currentUserRanked.avgScore).toFixed(2));
+      aheadGapScore = parseFloat((prevStudent.rankingScore - currentUserRanked.rankingScore).toFixed(1));
       aheadStudentName = prevStudent.name;
     }
   }
@@ -439,7 +540,7 @@ export async function getRankingData(options: GetRankingOptions = {}) {
   if (currentUserRanked && currentUserRanked.rank && currentUserRanked.rank < rankedEligible.length) {
     const nextStudent = rankedEligible[currentUserRanked.rank];
     if (nextStudent) {
-      behindGapScore = parseFloat((currentUserRanked.avgScore - nextStudent.avgScore).toFixed(2));
+      behindGapScore = parseFloat((currentUserRanked.rankingScore - nextStudent.rankingScore).toFixed(1));
       behindStudentName = nextStudent.name;
     }
   }
@@ -622,9 +723,7 @@ export async function freezeWeeklySnapshot(studyClassId?: string) {
       total += sc;
     });
     const avgScore = completedTests > 0 ? parseFloat((total / completedTests).toFixed(1)) : 0;
-    const academicScore = avgScore * 10;
-    const participationScore = Math.min(completedTests / 30, 1.0) * 100;
-    const rankingScore = parseFloat((academicScore * 0.85 + participationScore * 0.15).toFixed(1));
+    const rankingScore = parseFloat((avgScore * 10 + completedTests * 1).toFixed(1));
 
     const isEligible = completedTests >= MIN_REQUIRED_TESTS;
 

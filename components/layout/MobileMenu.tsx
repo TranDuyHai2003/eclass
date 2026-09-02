@@ -20,7 +20,7 @@ export function MobileMenu({ user }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex md:hidden">
+    <div className="flex lg:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <button className="p-2 -ml-2 text-gray-600 hover:text-blue-700 transition-colors active:scale-95 transition-transform">

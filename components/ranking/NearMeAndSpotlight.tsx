@@ -1,6 +1,7 @@
 "use client";
 
 import { RankingUser } from "@/actions/ranking";
+import { getSafeAvatarUrl } from "@/lib/game-rank";
 import Image from "next/image";
 
 interface NearMeAndSpotlightProps {
@@ -24,11 +25,7 @@ export function NearMeAndSpotlight({
     avatarUrl: "",
   };
 
-  const heroAvatar =
-    improvedHero.avatarUrl ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      improvedHero.name || "Top Student"
-    )}&background=0D8ABC&color=fff`;
+  const heroAvatar = getSafeAvatarUrl(improvedHero.name, improvedHero.avatarUrl);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

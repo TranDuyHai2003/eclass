@@ -3,7 +3,8 @@
 import { useState, useMemo } from "react";
 import { RankingUser } from "@/actions/ranking";
 import { calculateHunterLeaderboard } from "@/lib/ranking-engine";
-import { Swords, Crown, Flame, ShieldAlert, Sparkles, Trophy, Award, Zap, Calendar, Globe, ZapIcon } from "lucide-react";
+import { getSafeAvatarUrl } from "@/lib/game-rank";
+import { Swords, Crown, Flame, ShieldAlert, Sparkles, Trophy, Award, Zap, Calendar, Globe, ZapIcon, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import Image from "next/image";
 
 interface Top15LeaderboardProps {
@@ -16,33 +17,14 @@ interface Top15LeaderboardProps {
 }
 
 export function Top15Leaderboard({
-  leaderboard,
-  weeklyLeaderboard,
-  monthlyLeaderboard,
+  leaderboard = [],
+  weeklyLeaderboard = [],
+  monthlyLeaderboard = [],
   currentUserId,
   totalStudentsInClass,
   minRequiredTests = 5,
 }: Top15LeaderboardProps) {
   const [period, setPeriod] = useState<"ALL_TIME" | "WEEKLY" | "MONTHLY">("ALL_TIME");
-
-  // Fallback demo data with realistic rank movements
-  const defaultList: RankingUser[] = [
-    { id: "1", name: "Nguyễn Văn Quyền", image: "", rank: 1, score: 98.7, avgScore: 9.87, rankingScore: 98, completedTests: 23, isEligible: true, rankChange: 2, lastSubmitAt: null, isCurrentUser: false },
-    { id: "2", name: "Nguyễn Văn Khoa", image: "", rank: 2, score: 95.0, avgScore: 9.50, rankingScore: 95, completedTests: 32, isEligible: true, rankChange: 0, lastSubmitAt: null, isCurrentUser: false },
-    { id: "3", name: "Nguyễn Gia Hiếu", image: "", rank: 3, score: 92.0, avgScore: 9.20, rankingScore: 92, completedTests: 29, isEligible: true, rankChange: -2, lastSubmitAt: null, isCurrentUser: false },
-    { id: "4", name: "Võ Thành Khoa", image: "", rank: 4, score: 88.0, avgScore: 8.80, rankingScore: 88, completedTests: 32, isEligible: true, rankChange: 3, lastSubmitAt: null, isCurrentUser: false },
-    { id: "5", name: "Trần Bảo Nam", image: "", rank: 5, score: 85.0, avgScore: 8.50, rankingScore: 85, completedTests: 23, isEligible: true, rankChange: 1, lastSubmitAt: null, isCurrentUser: false },
-    { id: "6", name: "Lê Hoàng Yến", image: "", rank: 6, score: 82.0, avgScore: 8.20, rankingScore: 82, completedTests: 29, isEligible: true, rankChange: -1, lastSubmitAt: null, isCurrentUser: false },
-    { id: "7", name: "Phạm Minh Đức", image: "", rank: 7, score: 80.0, avgScore: 8.00, rankingScore: 80, completedTests: 25, isEligible: true, rankChange: 4, lastSubmitAt: null, isCurrentUser: false },
-    { id: "8", name: "Đặng Thị Thảo", image: "", rank: 8, score: 78.0, avgScore: 7.80, rankingScore: 78, completedTests: 22, isEligible: true, rankChange: 0, lastSubmitAt: null, isCurrentUser: false },
-    { id: "9", name: "Bùi Anh Tuấn", image: "", rank: 9, score: 75.0, avgScore: 7.50, rankingScore: 75, completedTests: 20, isEligible: true, rankChange: -3, lastSubmitAt: null, isCurrentUser: false },
-    { id: "10", name: "Hoàng Ngân Hà", image: "", rank: 10, score: 72.0, avgScore: 7.20, rankingScore: 72, completedTests: 19, isEligible: true, rankChange: 2, lastSubmitAt: null, isCurrentUser: false },
-    { id: "11", name: "Phan Văn Khánh", image: "", rank: 11, score: 70.0, avgScore: 7.00, rankingScore: 70, completedTests: 18, isEligible: true, rankChange: 1, lastSubmitAt: null, isCurrentUser: false },
-    { id: "12", name: "Vũ Phương Thảo", image: "", rank: 12, score: 68.0, avgScore: 6.80, rankingScore: 68, completedTests: 17, isEligible: true, rankChange: -2, lastSubmitAt: null, isCurrentUser: false },
-    { id: "13", name: "Ngô Quốc Việt", image: "", rank: 13, score: 65.0, avgScore: 6.50, rankingScore: 65, completedTests: 16, isEligible: true, rankChange: 5, lastSubmitAt: null, isCurrentUser: false },
-    { id: "14", name: "Dương Huỳnh Như", image: "", rank: 14, score: 62.0, avgScore: 6.20, rankingScore: 62, completedTests: 15, isEligible: true, rankChange: 0, lastSubmitAt: null, isCurrentUser: false },
-    { id: "15", name: "Trịnh Tấn Phát", image: "", rank: 15, score: 60.0, avgScore: 6.00, rankingScore: 60, completedTests: 14, isEligible: true, rankChange: 0, lastSubmitAt: null, isCurrentUser: false },
-  ];
 
   const activeRawList = useMemo(() => {
     if (period === "WEEKLY") {
@@ -51,10 +33,10 @@ export function Top15Leaderboard({
     if (period === "MONTHLY") {
       return (monthlyLeaderboard && monthlyLeaderboard.length > 0) ? monthlyLeaderboard : leaderboard;
     }
-    return leaderboard && leaderboard.length > 0 ? leaderboard : defaultList;
-  }, [period, leaderboard, weeklyLeaderboard, monthlyLeaderboard, defaultList]);
+    return leaderboard;
+  }, [period, leaderboard, weeklyLeaderboard, monthlyLeaderboard]);
 
-  const totalCount = totalStudentsInClass || 140;
+  const totalCount = totalStudentsInClass || Math.max(1, activeRawList.length);
 
   // Process through ranking engine
   const engineResult = calculateHunterLeaderboard(activeRawList, totalCount);
@@ -69,8 +51,7 @@ export function Top15Leaderboard({
 
   const getAvatarUrl = (u: any) => {
     if (!u) return "";
-    const userName = u.name || "Thợ săn";
-    return u.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0D8ABC&color=fff`;
+    return getSafeAvatarUrl(u.name, u.image);
   };
 
   return (
@@ -102,33 +83,30 @@ export function Top15Leaderboard({
         <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-950/90 border border-slate-800/80 shrink-0 self-start md:self-auto shadow-inner">
           <button
             onClick={() => setPeriod("ALL_TIME")}
-            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-base font-black transition-all flex items-center gap-1.5 ${
-              period === "ALL_TIME"
-                ? "bg-gradient-to-r from-cyan-600/30 to-blue-600/30 text-cyan-300 border border-cyan-400/60 shadow-[0_0_12px_rgba(6,182,212,0.4)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-            }`}
+            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-base font-black transition-all flex items-center gap-1.5 ${period === "ALL_TIME"
+              ? "bg-gradient-to-r from-cyan-600/30 to-blue-600/30 text-cyan-300 border border-cyan-400/60 shadow-[0_0_12px_rgba(6,182,212,0.4)]"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+              }`}
           >
             <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400" />
             <span>TOÀN KHÓA</span>
           </button>
           <button
             onClick={() => setPeriod("WEEKLY")}
-            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-base font-black transition-all flex items-center gap-1.5 ${
-              period === "WEEKLY"
-                ? "bg-gradient-to-r from-amber-600/30 to-orange-600/30 text-amber-300 border border-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-            }`}
+            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-base font-black transition-all flex items-center gap-1.5 ${period === "WEEKLY"
+              ? "bg-gradient-to-r from-amber-600/30 to-orange-600/30 text-amber-300 border border-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+              }`}
           >
             <ZapIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
             <span>TUẦN NÀY</span>
           </button>
           <button
             onClick={() => setPeriod("MONTHLY")}
-            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-base font-black transition-all flex items-center gap-1.5 ${
-              period === "MONTHLY"
-                ? "bg-gradient-to-r from-emerald-600/30 to-teal-600/30 text-emerald-300 border border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.4)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-            }`}
+            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-base font-black transition-all flex items-center gap-1.5 ${period === "MONTHLY"
+              ? "bg-gradient-to-r from-emerald-600/30 to-teal-600/30 text-emerald-300 border border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.4)]"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+              }`}
           >
             <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
             <span>THÁNG NÀY</span>
@@ -299,24 +277,26 @@ export function Top15Leaderboard({
                 {/* Rank Movement Tag */}
                 <div className="flex items-center gap-1">
                   {movement.direction === "up" && (
-                    <span className="text-[10px] font-mono font-black text-emerald-400 bg-emerald-950/80 border border-emerald-500/50 px-2 py-0.5 rounded-md flex items-center gap-0.5">
-                      <Flame className="w-3 h-3 text-orange-500 fill-orange-500" />
-                      <span>{movement.displayDeltaText}</span>
+                    <span className="whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-[10px] font-mono font-black shadow-[0_0_8px_rgba(16,185,129,0.2)]">
+                      <TrendingUp className="w-3 h-3 text-emerald-400 shrink-0" />
+                      <span>+{Math.abs(movement.delta || 0)}</span>
                     </span>
                   )}
                   {movement.direction === "down" && (
-                    <span className="text-[10px] font-mono font-black text-rose-400 bg-rose-950/80 border border-rose-500/50 px-2 py-0.5 rounded-md">
-                      {movement.displayDeltaText}
+                    <span className="whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/40 text-rose-400 text-[10px] font-mono font-black shadow-[0_0_8px_rgba(244,63,94,0.2)]">
+                      <TrendingDown className="w-3 h-3 text-rose-400 shrink-0" />
+                      <span>-{Math.abs(movement.delta || 0)}</span>
                     </span>
                   )}
                   {movement.direction === "same" && (
-                    <span className="text-[10px] font-mono font-bold text-slate-400 px-2 py-0.5">
-                      -
+                    <span className="whitespace-nowrap inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-slate-800/80 border border-slate-700/80 text-slate-400 text-[10px] font-mono font-bold">
+                      <Minus className="w-3 h-3 text-slate-400" />
                     </span>
                   )}
                   {movement.direction === "new" && (
-                    <span className="text-[10px] font-mono font-bold text-cyan-300 bg-cyan-950/80 border border-cyan-500/50 px-2 py-0.5 rounded-md">
-                      NEW
+                    <span className="whitespace-nowrap inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/50 text-cyan-300 text-[10px] font-mono font-black tracking-wider shadow-[0_0_8px_rgba(6,182,212,0.25)]">
+                      <Sparkles className="w-2.5 h-2.5 text-cyan-300 animate-pulse shrink-0" />
+                      <span>NEW</span>
                     </span>
                   )}
                 </div>
@@ -383,7 +363,7 @@ export function Top15Leaderboard({
             <tr>
               <th className="py-4 px-5 text-center w-24">HẠNG</th>
               <th className="py-4 px-5 text-center w-24">BIẾN ĐỘNG</th>
-              <th className="py-4 px-5">THỢ SẮN</th>
+              <th className="py-4 px-5">THỢ SĂN</th>
               <th className="py-4 px-5 text-center">CẤP ĐỘ RANK</th>
               <th className="py-4 px-5 text-center">POWER SCORE</th>
               <th className="py-4 px-5 text-right">ĐIỂM TB</th>
@@ -409,21 +389,27 @@ export function Top15Leaderboard({
                   {/* Rank Movement */}
                   <td className="py-4 px-5 text-center font-mono font-black text-xs sm:text-base">
                     {movement.direction === "up" && (
-                      <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-950/80 border border-emerald-500/50 px-2.5 py-1 rounded-full">
-                        <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
-                        <span>{movement.displayDeltaText}</span>
+                      <span className="whitespace-nowrap inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-xs sm:text-sm font-black shadow-[0_0_12px_rgba(16,185,129,0.25)]">
+                        <TrendingUp className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>+{Math.abs(movement.delta || 0)}</span>
                       </span>
                     )}
                     {movement.direction === "down" && (
-                      <span className="inline-flex items-center gap-1 text-rose-400 bg-rose-950/80 border border-rose-500/50 px-2.5 py-1 rounded-full">
-                        <span>{movement.displayDeltaText}</span>
+                      <span className="whitespace-nowrap inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/15 border border-rose-500/40 text-rose-400 text-xs sm:text-sm font-black shadow-[0_0_12px_rgba(244,63,94,0.25)]">
+                        <TrendingDown className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                        <span>-{Math.abs(movement.delta || 0)}</span>
                       </span>
                     )}
                     {movement.direction === "same" && (
-                      <span className="text-slate-500 font-bold">-</span>
+                      <span className="whitespace-nowrap inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-800/80 border border-slate-700/80 text-slate-400 text-xs font-bold mx-auto">
+                        <Minus className="w-3.5 h-3.5 text-slate-400" />
+                      </span>
                     )}
                     {movement.direction === "new" && (
-                      <span className="text-cyan-300 font-bold text-xs sm:text-sm bg-cyan-950/80 border border-cyan-500/50 px-2.5 py-1 rounded-full">NEW</span>
+                      <span className="whitespace-nowrap inline-flex items-center gap-1 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/50 text-cyan-300 text-xs font-black tracking-wider uppercase shadow-[0_0_12px_rgba(6,182,212,0.3)]">
+                        <Sparkles className="w-3 h-3 text-cyan-300 animate-pulse shrink-0" />
+                        <span>NEW</span>
+                      </span>
                     )}
                   </td>
 
@@ -440,7 +426,7 @@ export function Top15Leaderboard({
                         />
                       </div>
                       <div className="min-w-0 space-y-0.5">
-                        <h5 className="font-black text-white text-base sm:text-lg lg:text-xl truncate max-w-[240px] group-hover/row:text-cyan-300 transition-colors">
+                        <h5 className="font-black text-white text-base sm:text-lg lg:text-xl truncate group-hover/row:text-cyan-300 transition-colors" title={user.name || undefined}>
                           {user.name}
                         </h5>
                         <p className="text-xs sm:text-base font-mono text-emerald-400 font-bold">
