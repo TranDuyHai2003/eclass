@@ -4,6 +4,8 @@ export interface SessionProgressItem {
   id: number;
   sessionName: string; // "BUỔI 01", "BUỔI 02", "BUỔI 03", "BUỔI 04"
   testTitle?: string;
+  testId?: string;
+  lessonId?: string;
   score: number | null; // Điểm làm bài buổi này
   cumulativeAvg: number | null; // ĐTB đến buổi này
   scoreDelta: number | null; // +X.X điểm so với buổi trước
@@ -26,6 +28,13 @@ export interface StudentAttemptInput {
   testId: string;
   score: number;
   completedAt: Date | string | null;
+  testTitle?: string;
+  test?: {
+    id?: string;
+    title?: string;
+    lessonId?: string;
+    lesson?: { id?: string; title?: string };
+  };
 }
 
 export interface ClassMemberAvg {
@@ -75,38 +84,41 @@ export function calculateSessionProgressEngine(
   }
 
   const sessions: SessionProgressItem[] = [];
+  let prevScore: number | null = null;
   let prevAvg: number | null = null;
   let prevHigherThanPercent: number | null = null;
   let latestGrowthText: string | null = null;
 
   for (let i = 0; i < targetSessionCount; i++) {
     const sessionNum = startIndex + i + 1;
-    const sessionName = `BUỔI ${String(sessionNum).padStart(2, "0")}`;
     const att = displayAttempts[i];
+    const rawTitle = att?.test?.lesson?.title || att?.testTitle || att?.test?.title;
+    const sessionName = rawTitle || `BUỔI ${String(sessionNum).padStart(2, "0")}`;
 
     if (att) {
       const score = parseFloat(att.score.toFixed(1));
       runningSum += score;
       const currentAvg = parseFloat((runningSum / (startIndex + i + 1)).toFixed(1));
 
-      // Calculate score growth vs previous session
+      // Calculate score growth vs previous session test score directly
       let scoreDelta: number | null = null;
       let scoreGrowthPercent: number | null = null;
-      if (prevAvg !== null) {
-        scoreDelta = parseFloat((currentAvg - prevAvg).toFixed(1));
-        if (prevAvg > 0) {
-          scoreGrowthPercent = Math.round(((currentAvg - prevAvg) / prevAvg) * 100);
+      if (prevScore !== null) {
+        scoreDelta = parseFloat((score - prevScore).toFixed(1));
+        if (prevScore > 0) {
+          scoreGrowthPercent = Math.round(((score - prevScore) / prevScore) * 100);
         }
       }
 
-      // Calculate Class Position & HigherThanPercentile
+      // Calculate Class Position & HigherThanPercentile (Capped strictly at 100%)
       let positionPercentile: number | null = null;
       let higherThanPercent: number | null = null;
       let percentileDelta: number | null = null;
 
       if (classMembers.length > 0) {
         const higherCount = classMembers.filter((m) => m.avgScore > currentAvg).length;
-        positionPercentile = Math.max(1, Math.ceil(((higherCount + 1) / classMembers.length) * 100));
+        const rankInClass = Math.min(higherCount + 1, classMembers.length);
+        positionPercentile = Math.min(100, Math.max(1, Math.round((rankInClass / Math.max(1, classMembers.length)) * 100)));
         higherThanPercent = Math.max(0, 100 - positionPercentile);
 
         if (prevHigherThanPercent !== null) {
@@ -123,9 +135,15 @@ export function calculateSessionProgressEngine(
           : `↓ ${scoreDelta}đ SO VỚI BUỔI TRƯỚC`;
       }
 
+      const testId = att.testId || att.test?.id;
+      const lessonId = att.test?.lessonId || att.test?.lesson?.id;
+
       sessions.push({
         id: i + 1,
         sessionName,
+        testTitle: rawTitle,
+        testId,
+        lessonId,
         score,
         cumulativeAvg: currentAvg,
         scoreDelta,
@@ -138,6 +156,7 @@ export function calculateSessionProgressEngine(
         isCurrent,
       });
 
+      prevScore = score;
       prevAvg = currentAvg;
       prevHigherThanPercent = higherThanPercent;
     } else {

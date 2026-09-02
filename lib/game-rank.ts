@@ -73,7 +73,22 @@ export const RANK_THEMES: Record<GameRankType, GameRankTheme> = {
 };
 
 export function calculateBayesianSkill(avgScore: number, completedTests: number): number {
-  return parseFloat((avgScore > 10 ? avgScore / 10 : avgScore).toFixed(2));
+  const safeAvg = Math.max(0, Math.min(10, avgScore > 10 ? avgScore / 10 : avgScore));
+  return parseFloat(safeAvg.toFixed(2));
+}
+
+/**
+  * Safely get avatar URL with SVG data URI fallback instead of external ui-avatars.com
+  */
+export function getSafeAvatarUrl(name?: string | null, image?: string | null): string {
+  if (image && image.trim() !== "") return image;
+  const userName = (name || "Hunter").trim();
+  const initial = (userName.charAt(0) || "H").toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#0D8ABC"/>
+    <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-size="46" font-family="sans-serif" font-weight="900">${initial}</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 /**

@@ -142,13 +142,26 @@ export function calculateHunterLeaderboard(
 
   // All active students with tests participate in leaderboard
   const activeStudents = processedList.filter((s) => !s.isZeroTests);
-  activeStudents.sort(deterministicTieBreak);
+  
+  // If inputs already have backend rank position, sort by backend rank (s.rank)
+  activeStudents.sort((a, b) => {
+    const rawA = students.find((s) => s.id === a.id);
+    const rawB = students.find((s) => s.id === b.id);
+    const rankA = (rawA as any)?.rank;
+    const rankB = (rawB as any)?.rank;
+    if (typeof rankA === "number" && typeof rankB === "number") {
+      return rankA - rankB;
+    }
+    return deterministicTieBreak(a, b);
+  });
 
   const totalCount = activeStudents.length || 1;
 
   // Assign official Leaderboard positions & Ranks
   activeStudents.forEach((student, index) => {
-    const position = index + 1;
+    const rawInput = students.find((s) => s.id === student.id);
+    const backendRank = (rawInput as any)?.rank;
+    const position = typeof backendRank === "number" && backendRank > 0 ? backendRank : index + 1;
     student.position = position;
     student.totalEligibleStudents = totalCount;
 

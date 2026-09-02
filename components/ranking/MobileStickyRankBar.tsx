@@ -33,7 +33,7 @@ export function MobileStickyRankBar({
   };
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:hidden z-40">
+    <div className="fixed bottom-4 left-4 right-4 lg:hidden z-40">
       <div className="bg-slate-950/95 backdrop-blur-md text-white rounded-2xl p-3.5 shadow-2xl flex items-center justify-between border border-blue-500/40 shadow-blue-500/10">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 font-black text-white flex items-center justify-center text-xs shadow-md shrink-0 border border-white/20">

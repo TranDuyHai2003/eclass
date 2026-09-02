@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { RankingUser } from "@/actions/ranking";
-import { calculateGameRank, GameRankType } from "@/lib/game-rank";
+import { calculateGameRank, GameRankType, getSafeAvatarUrl } from "@/lib/game-rank";
 import { Download, Search, Award, Lock, ShieldAlert, CheckCircle2 } from "lucide-react";
 import Image from "next/image";
 
@@ -121,7 +121,7 @@ export function TeacherAdminTable({
             {filteredList.map(({ user, rankPos, gameRank }) => {
               const isNeedSupport = user.avgScore < 5.5 || !user.isEligible;
               const userName = user.name || "Học sinh";
-              const avatarUrl = user.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0D8ABC&color=fff`;
+              const avatarUrl = getSafeAvatarUrl(userName, user.image);
 
               return (
                 <tr
