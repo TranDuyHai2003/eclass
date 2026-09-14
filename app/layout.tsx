@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import Header from "@/components/layout/Header";
 import { Providers } from "./providers";
 import AntiInspectLayout from "@/components/layout/AntiInspectLayout";
+import { WatchRouteTracker } from "@/components/layout/WatchRouteTracker";
 import "./globals.css";
 
 const sansFont = Plus_Jakarta_Sans({
@@ -133,6 +134,7 @@ export default function RootLayout({
         className={`${sansFont.variable} ${headingFont.variable} antialiased text-[15px] sm:text-base leading-relaxed`}
       >
         <Providers>
+          <WatchRouteTracker />
           <AntiInspectLayout>
             <Toaster position="top-right" richColors toastOptions={{ className: "p-4" }} gap={12} />
             <Header />

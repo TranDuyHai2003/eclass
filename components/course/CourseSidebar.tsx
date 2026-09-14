@@ -86,8 +86,48 @@ export default function CourseSidebar({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Chapters start closed by default when entering page
-  const [openChapters, setOpenChapters] = useState<Record<string, boolean>>({});
+  // Session-aware chapter expansion state:
+  // First time entering from outside / non-watch page -> all chapters start collapsed ({})
+  // When switching lessons within watch page -> restore saved open chapters state
+  const [openChapters, setOpenChapters] = useState<Record<string, boolean>>(
+    () => {
+      if (typeof window !== "undefined") {
+        try {
+          const lastPath = sessionStorage.getItem("eclass_last_visited_path");
+          const referrer = document.referrer || "";
+
+          const isFromWatchPath = !!(lastPath && lastPath.startsWith("/watch"));
+          const isFromWatchReferrer = referrer.includes("/watch/");
+
+          if (isFromWatchPath || isFromWatchReferrer) {
+            const savedState = sessionStorage.getItem(`eclass_open_chapters_${course.id}`);
+            if (savedState) {
+              return JSON.parse(savedState);
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      // First time entering from non-watch page: start collapsed
+      return {};
+    },
+  );
+
+  // Save open chapters state & current watch path to sessionStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("eclass_last_visited_path", window.location.pathname);
+        sessionStorage.setItem(
+          `eclass_open_chapters_${course.id}`,
+          JSON.stringify(openChapters),
+        );
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, [openChapters, course.id]);
 
   // Keep track of which lesson's content is expanded
   const [expandedLessons, setExpandedLessons] = useState<

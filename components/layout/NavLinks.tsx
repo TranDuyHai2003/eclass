@@ -1,19 +1,29 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-
+import { useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { Home, User, BookOpen, LayoutDashboard, ChevronRight } from "lucide-react";
 
 interface NavLinksProps {
-  role?: "ADMIN" | "STUDENT" | string
-  vertical?: boolean
-  onClick?: () => void
+  role?: "ADMIN" | "STUDENT" | string;
+  vertical?: boolean;
+  onClick?: () => void;
 }
 
 export function NavLinks({ role, vertical, onClick }: NavLinksProps) {
-  const pathname = usePathname()
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && pathname && !pathname.startsWith("/watch")) {
+      try {
+        sessionStorage.setItem("eclass_last_visited_path", pathname);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, [pathname]);
 
   const isLoggedIn = !!role;
 
