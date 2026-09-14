@@ -25,6 +25,7 @@ import { SortSelect } from "@/components/ui/SortSelect";
 import TestTypeSwitcherClient from "./_components/TestTypeSwitcherClient";
 import DueDateUpdaterClient from "./_components/DueDateUpdaterClient";
 import { DeleteTestButton } from "./_components/DeleteTestButton";
+import CourseTestListClient, { TestItem } from "./_components/CourseTestListClient";
 
 export default async function TeacherTestsPage({ searchParams }: { searchParams: Promise<{ sort?: "desc" | "asc" | "default"; q?: string }> }) {
   const session = await auth();
@@ -381,13 +382,43 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
               ? [finalTest, ...lessonTests]
               : lessonTests;
 
-            if (sortOrder === "desc") {
-              allTests.sort((a, b) => new Date(b.test!.updatedAt).getTime() - new Date(a.test!.updatedAt).getTime());
-            } else if (sortOrder === "asc") {
-              allTests.sort((a, b) => new Date(a.test!.updatedAt).getTime() - new Date(b.test!.updatedAt).getTime());
+            if (sortOrder === "asc") {
+              allTests.sort(
+                (a, b) =>
+                  new Date(a.test!.createdAt || a.test!.updatedAt).getTime() -
+                  new Date(b.test!.createdAt || b.test!.updatedAt).getTime(),
+              );
+            } else {
+              // Default or desc: newest tests first
+              allTests.sort(
+                (a, b) =>
+                  new Date(b.test!.createdAt || b.test!.updatedAt).getTime() -
+                  new Date(a.test!.createdAt || a.test!.updatedAt).getTime(),
+              );
             }
 
             if (allTests.length === 0) return null;
+
+            const formattedTests: TestItem[] = allTests.map((t) => ({
+              id: t.id,
+              testId: t.testId,
+              title: t.title,
+              type: t.type,
+              test: t.test
+                ? {
+                    id: t.test.id,
+                    duration: t.test.duration,
+                    type: t.test.type,
+                    dueDate: t.test.dueDate ? t.test.dueDate.toISOString() : null,
+                    createdAt: t.test.createdAt.toISOString(),
+                    updatedAt: t.test.updatedAt.toISOString(),
+                  }
+                : null,
+              attempts: t.attempts.map((a) => ({
+                completedAt: a.completedAt ? a.completedAt.toISOString() : null,
+                score: a.score,
+              })),
+            }));
 
             return (
               <div
@@ -409,126 +440,11 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
                   </Badge>
                 </div>
 
-                <div className="divide-y divide-slate-50">
-                  {allTests.map((t) => {
-                    const finishedAttempts = t.attempts.filter(
-                      (a) => a.completedAt !== null,
-                    );
-                    const avgScore =
-                      finishedAttempts.length > 0
-                        ? finishedAttempts.reduce(
-                            (acc, curr) => acc + (curr.score || 0),
-                            0,
-                          ) / finishedAttempts.length
-                        : 0;
-
-                    return (
-                      <div
-                        key={t.id}
-                        className="px-8 py-6 hover:bg-slate-50/50 transition-colors group"
-                      >
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                          <div className="flex items-start gap-4">
-                            <div
-                              className={cn(
-                                "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
-                                t.type === "FINAL"
-                                  ? "bg-yellow-50"
-                                  : "bg-blue-50",
-                              )}
-                            >
-                              {t.type === "FINAL" ? (
-                                <Trophy className="w-6 h-6 text-yellow-600" />
-                              ) : (
-                                <GraduationCap className="w-6 h-6 text-blue-600" />
-                              )}
-                            </div>
-                            <div>
-                              <h3 className="font-black text-slate-900 group-hover:text-blue-600 transition-colors">
-                                {t.title}
-                              </h3>
-                              <div className="flex items-center gap-3 mt-1">
-                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                                  {t.type === "FINAL"
-                                    ? "Đề thi tổng kết"
-                                    : "Đề thi bài học"}{" "}
-                                  • {t.test?.duration} phút
-                                </p>
-                                <TestTypeSwitcherClient 
-                                  testId={t.test!.id} 
-                                  initialType={t.test!.type as "HOMEWORK" | "EXAM"} 
-                                />
-                                <DueDateUpdaterClient
-                                  testId={t.test!.id}
-                                  initialDueDate={t.test!.dueDate ? t.test!.dueDate.toISOString() : null}
-                                />
-                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                                  Tạo: {new Intl.DateTimeFormat("vi-VN", { dateStyle: 'short', timeStyle: 'short' }).format(new Date(t.test!.createdAt))}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-12">
-                            <div className="text-center">
-                              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">
-                                Lượt nộp
-                              </p>
-                              <p className="text-xl font-black text-slate-900">
-                                {finishedAttempts.length}
-                              </p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">
-                                Điểm TB
-                              </p>
-                              <p className="text-xl font-black text-blue-600">
-                                {avgScore.toFixed(2)}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                asChild
-                                className="rounded-xl font-bold border-slate-200"
-                              >
-                                <Link
-                                  href={
-                                    t.type === "FINAL"
-                                      ? `/teacher/courses/${course.id}/final-test`
-                                      : `/teacher/tests/${t.id}`
-                                  }
-                                >
-                                  <Pencil className="w-4 h-4 mr-2" /> Chỉnh sửa
-                                </Link>
-                              </Button>
-                              <Button
-                                size="sm"
-                                asChild
-                                className="rounded-xl font-black bg-slate-900 hover:bg-black"
-                              >
-                                <Link
-                                  href={
-                                    t.type === "FINAL"
-                                      ? `/teacher/courses/${course.id}/final-test/analytics`
-                                      : `/teacher/tests/${t.id}/analytics`
-                                  }
-                                >
-                                  <BarChart3 className="w-4 h-4 mr-2" /> Thống
-                                  kê
-                                </Link>
-                              </Button>
-                              {t.testId && (
-                                <DeleteTestButton testId={t.testId} />
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <CourseTestListClient
+                  courseId={course.id}
+                  tests={formattedTests}
+                  initialLimit={5}
+                />
               </div>
             );
           })}

@@ -14,6 +14,7 @@ import {
   Download,
   Image as ImageIcon,
   ExternalLink,
+  HelpCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -50,19 +51,25 @@ export default function TestResultClient({ attempt, isTeacher = false }: { attem
   let totalQuestions = 0;
   let correctAnswers = 0;
   let wrongAnswers = 0;
+  let ungradedAnswers = 0;
   let totalPoints = 0;
 
   const answerMap = new Map();
   attempt.answers.forEach((a: any) => {
     answerMap.set(a.questionId, a);
-    if (a.isCorrect === true) correctAnswers++;
-    if (a.isCorrect === false) wrongAnswers++;
   });
 
   test.sections.forEach((s: any) => {
     s.questions.forEach((q: any) => {
       totalQuestions++;
       totalPoints += q.points;
+      if (q.points === 0) {
+        ungradedAnswers++;
+      } else {
+        const a = answerMap.get(q.id);
+        if (a?.isCorrect === true) correctAnswers++;
+        if (a?.isCorrect === false) wrongAnswers++;
+      }
     });
   });
 
@@ -107,9 +114,12 @@ export default function TestResultClient({ attempt, isTeacher = false }: { attem
             </span>
           </div>
           <span className="hidden md:inline text-[10px] font-black text-slate-300">/ 10</span>
-          <div className="flex gap-1.5 md:gap-4 text-[9px] md:text-[10px] font-black uppercase tracking-widest md:border-l md:pl-6">
+          <div className="flex gap-1.5 md:gap-4 text-[9px] md:text-[10px] font-black uppercase tracking-widest md:border-l md:pl-6 flex-wrap">
             <span className="text-emerald-600">Đúng: {correctAnswers}</span>
             <span className="text-blue-500">Sai: {wrongAnswers}</span>
+            {ungradedAnswers > 0 && (
+              <span className="text-amber-600">Không tính điểm: {ungradedAnswers}</span>
+            )}
           </div>
         </div>
       </header>
@@ -173,19 +183,22 @@ export default function TestResultClient({ attempt, isTeacher = false }: { attem
                     {section.questions.map((q: any, qIdx: number) => {
                       const ansRecord = answerMap.get(q.id);
                       const isCorrect = ansRecord?.isCorrect;
+                      const isUngraded = q.points === 0;
                       const isPending = q.type === "ESSAY" && isCorrect === null;
                       return (
                         <div key={q.id} className="space-y-3">
                           <div
                             className={cn(
                               "flex items-center gap-3 md:gap-4 p-4 rounded-[20px] border transition-all",
-                              isCorrect === true
-                                ? "bg-emerald-50/50 border-emerald-100"
-                                : (ansRecord?.pointsAwarded || 0) > 0 && q.type === "MULTIPLE_CHOICE_GROUP"
-                                  ? "bg-amber-50/50 border-amber-100"
-                                  : isPending
-                                    ? "bg-blue-50/50 border-blue-100"
-                                    : "bg-blue-50/50 border-blue-100",
+                              isUngraded
+                                ? "bg-amber-50/70 border-amber-200"
+                                : isCorrect === true
+                                  ? "bg-emerald-50/50 border-emerald-100"
+                                  : (ansRecord?.pointsAwarded || 0) > 0 && q.type === "MULTIPLE_CHOICE_GROUP"
+                                    ? "bg-amber-50/50 border-amber-100"
+                                    : isPending
+                                      ? "bg-blue-50/50 border-blue-100"
+                                      : "bg-blue-50/50 border-blue-100",
                             )}
                           >
                             <div className="w-6 md:w-8 text-center text-xs font-black text-slate-400">
@@ -195,17 +208,26 @@ export default function TestResultClient({ attempt, isTeacher = false }: { attem
                             <div className="flex-1 flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8">
                               {q.type !== "MULTIPLE_CHOICE_GROUP" && (
                                 <div className="space-y-0.5">
-                                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                                    {q.type === "ESSAY" ? "Hình thức" : "Đáp án của bạn"}
-                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                                      {q.type === "ESSAY" ? "Hình thức" : "Đáp án của bạn"}
+                                    </p>
+                                    {isUngraded && (
+                                      <span className="text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded border border-amber-300/60">
+                                        Không tính điểm
+                                      </span>
+                                    )}
+                                  </div>
                                   <p
                                     className={cn(
                                       "font-black text-base md:text-lg",
-                                      isCorrect === true
-                                        ? "text-emerald-600"
-                                        : isPending
-                                          ? "text-blue-600"
-                                          : "text-blue-600",
+                                      isUngraded
+                                        ? "text-amber-800"
+                                        : isCorrect === true
+                                          ? "text-emerald-600"
+                                          : isPending
+                                            ? "text-blue-600"
+                                            : "text-blue-600",
                                     )}
                                   >
                                     {q.type === "ESSAY" ? (
@@ -272,7 +294,20 @@ export default function TestResultClient({ attempt, isTeacher = false }: { attem
                             </div>
 
                             <div className="shrink-0 flex flex-col items-center">
-                              {isCorrect === true ? (
+                              {isUngraded ? (
+                                <div className="flex flex-col items-center">
+                                  {isCorrect === true ? (
+                                    <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-amber-500" />
+                                  ) : isPending ? (
+                                    <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-amber-100 flex items-center justify-center">
+                                       <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-600" />
+                                    </div>
+                                  ) : (
+                                    <XCircle className="w-5 h-5 md:w-6 md:h-6 text-amber-500" />
+                                  )}
+                                  <span className="text-[10px] font-bold text-amber-600 mt-1">Không tính</span>
+                                </div>
+                              ) : isCorrect === true ? (
                                 <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
                               ) : (ansRecord?.pointsAwarded || 0) > 0 && q.type === "MULTIPLE_CHOICE_GROUP" ? (
                                 <div className="flex flex-col items-center">

@@ -17,6 +17,7 @@ import {
   Image as ImageIcon,
   ExternalLink,
   MessageSquareText,
+  HelpCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -88,11 +89,19 @@ export default async function TestResultPage({
   // 3. Calculate stats
   let totalQuestions = 0;
   let correctCount = 0;
+  let wrongCount = 0;
+  let ungradedCount = 0;
+
   test.sections.forEach((s) => {
     totalQuestions += s.questions.length;
     s.questions.forEach((q) => {
-      const ans = answerMap.get(q.id);
-      if (ans?.isCorrect) correctCount++;
+      if (q.points === 0) {
+        ungradedCount++;
+      } else {
+        const ans = answerMap.get(q.id);
+        if (ans?.isCorrect === true) correctCount++;
+        else if (ans?.isCorrect === false) wrongCount++;
+      }
     });
   });
 
@@ -141,11 +150,12 @@ export default async function TestResultPage({
         {/* Right: Answer Key & Student Answers */}
         <div className="w-full lg:w-1/2 flex flex-col bg-white overflow-hidden">
           <div className="min-h-12 py-2 px-6 border-b flex flex-wrap items-center justify-between gap-4 bg-slate-50/50 shrink-0">
-            <div className="flex gap-4 text-[10px] md:text-sm font-black uppercase tracking-widest">
+            <div className="flex gap-4 text-[10px] md:text-sm font-black uppercase tracking-widest flex-wrap">
               <span className="text-emerald-600">Đúng: {correctCount}</span>
-              <span className="text-blue-500">
-                Sai: {totalQuestions - correctCount}
-              </span>
+              <span className="text-blue-500">Sai: {wrongCount}</span>
+              {ungradedCount > 0 && (
+                <span className="text-amber-600">Không tính điểm: {ungradedCount}</span>
+              )}
             </div>
 
             {/* Score block */}
@@ -236,6 +246,7 @@ export default async function TestResultPage({
                       {section.questions.map((q, qIdx: number) => {
                         const studentAns = answerMap.get(q.id);
                         const isCorrect = studentAns?.isCorrect;
+                        const isUngraded = q.points === 0;
                         const isPending =
                           q.type === "ESSAY" && isCorrect === null;
 
@@ -244,11 +255,13 @@ export default async function TestResultPage({
                             <div
                               className={cn(
                                 "flex items-center gap-3 md:gap-4 p-4 rounded-[20px] border transition-all",
-                                isCorrect === true
-                                  ? "bg-emerald-50/50 border-emerald-100"
-                                  : isPending
-                                    ? "bg-blue-50/50 border-blue-100"
-                                    : "bg-blue-50/50 border-blue-100",
+                                isUngraded
+                                  ? "bg-amber-50/70 border-amber-200"
+                                  : isCorrect === true
+                                    ? "bg-emerald-50/50 border-emerald-100"
+                                    : isPending
+                                      ? "bg-blue-50/50 border-blue-100"
+                                      : "bg-blue-50/50 border-blue-100",
                               )}
                             >
                               <div className="w-6 md:w-8 text-center text-xs font-black text-slate-400">
@@ -257,21 +270,30 @@ export default async function TestResultPage({
 
                               <div className="flex-1 flex flex-wrap items-center gap-4 md:gap-8">
                                 <div className="space-y-0.5">
-                                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                                    {q.type === "ESSAY"
-                                      ? "Hình thức"
-                                      : q.type === "MULTIPLE_CHOICE_GROUP"
-                                        ? "Loại câu hỏi"
-                                        : "Đáp án của bạn"}
-                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                                      {q.type === "ESSAY"
+                                        ? "Hình thức"
+                                        : q.type === "MULTIPLE_CHOICE_GROUP"
+                                          ? "Loại câu hỏi"
+                                          : "Đáp án của bạn"}
+                                    </p>
+                                    {isUngraded && (
+                                      <span className="text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded border border-amber-300/60">
+                                        Không tính điểm
+                                      </span>
+                                    )}
+                                  </div>
                                   <p
                                     className={cn(
                                       "font-black text-base md:text-lg",
-                                      isCorrect === true
-                                        ? "text-emerald-600"
-                                        : isPending
-                                          ? "text-blue-600"
-                                          : "text-blue-600",
+                                      isUngraded
+                                        ? "text-amber-800"
+                                        : isCorrect === true
+                                          ? "text-emerald-600"
+                                          : isPending
+                                            ? "text-blue-600"
+                                            : "text-blue-600",
                                     )}
                                   >
                                     {q.type === "ESSAY" ? (
@@ -350,7 +372,20 @@ export default async function TestResultPage({
                               </div>
 
                               <div className="shrink-0">
-                                {isCorrect === true ? (
+                                {isUngraded ? (
+                                  <div className="flex flex-col items-center">
+                                    {isCorrect === true ? (
+                                      <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-amber-500" />
+                                    ) : isPending ? (
+                                      <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-amber-100 flex items-center justify-center">
+                                        <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-amber-600" />
+                                      </div>
+                                    ) : (
+                                      <XCircle className="w-5 h-5 md:w-6 md:h-6 text-amber-500" />
+                                    )}
+                                    <span className="text-[9px] font-black text-amber-600 mt-0.5">Không tính</span>
+                                  </div>
+                                ) : isCorrect === true ? (
                                   <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
                                 ) : isPending ? (
                                   <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-blue-100 flex items-center justify-center">

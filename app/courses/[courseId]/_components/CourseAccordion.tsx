@@ -24,10 +24,8 @@ interface CourseAccordionProps {
 }
 
 export function CourseAccordion({ chapters, isEnrolled }: CourseAccordionProps) {
-  // Open first chapter by default
-  const [openIds, setOpenIds] = useState<Set<string>>(
-    new Set(chapters.length > 0 ? [chapters[0].id] : [])
-  );
+  // Chapters start closed by default
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
 
   const toggle = (id: string) => {
     setOpenIds((prev) => {
