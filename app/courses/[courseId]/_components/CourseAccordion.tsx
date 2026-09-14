@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight, Lock, PlayCircle, FileText, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +26,21 @@ interface CourseAccordionProps {
 export function CourseAccordion({ chapters, isEnrolled }: CourseAccordionProps) {
   // Chapters start closed by default
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+
+  // Clear watch page session state when visiting course page so next entry starts collapsed
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        Object.keys(sessionStorage).forEach((key) => {
+          if (key.startsWith("in_watch_session_")) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
 
   const toggle = (id: string) => {
     setOpenIds((prev) => {
