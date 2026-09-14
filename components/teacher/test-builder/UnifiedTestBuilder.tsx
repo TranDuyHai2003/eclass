@@ -1261,7 +1261,27 @@ export default function UnifiedTestBuilder({
                               />
                             )}
 
-                            <div className="flex items-center gap-1.5 ml-auto">
+                            <div className="flex items-center gap-1.5 ml-auto flex-wrap sm:flex-nowrap">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleUpdateQuestion(
+                                    sIdx,
+                                    qIdx,
+                                    "points",
+                                    q.points === 0 ? 1.0 : 0,
+                                  )
+                                }
+                                className={cn(
+                                  "text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg transition-all border",
+                                  q.points === 0
+                                    ? "bg-amber-100 text-amber-800 border-amber-300 shadow-sm"
+                                    : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100 hover:text-slate-700",
+                                )}
+                                title="Bật/Tắt tính điểm cho câu hỏi này"
+                              >
+                                {q.points === 0 ? "Không tính điểm (0đ)" : "Tắt tính điểm"}
+                              </button>
                               <div className="relative">
                                 <Input
                                   type="number"
@@ -1276,10 +1296,15 @@ export default function UnifiedTestBuilder({
                                       parseFloat(e.target.value) || 0,
                                     )
                                   }
-                                  className="w-20 h-8 text-[11px] font-black px-2 rounded-lg border-slate-200"
+                                  className={cn(
+                                    "w-20 h-8 text-[11px] font-black px-2 rounded-lg border-slate-200",
+                                    q.points === 0 && "border-amber-300 text-amber-700 bg-amber-50/50",
+                                  )}
                                 />
                               </div>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:inline-block">Điểm</span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:inline-block">
+                                Điểm
+                              </span>
                               <Button
                                 onClick={() => handleRemoveQuestion(sIdx, qIdx)}
                                 size="icon"

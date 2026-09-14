@@ -86,19 +86,8 @@ export default function CourseSidebar({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Automatically open the chapter containing the current lesson
-  const [openChapters, setOpenChapters] = useState<Record<string, boolean>>(
-    () => {
-      const initialState: Record<string, boolean> = {};
-      course.chapters.forEach((ch, index) => {
-        const hasActiveLesson = ch.lessons.some(
-          (l) => l.id === currentLessonId,
-        );
-        initialState[ch.id] = hasActiveLesson || index === 0;
-      });
-      return initialState;
-    },
-  );
+  // Chapters start closed by default when entering page
+  const [openChapters, setOpenChapters] = useState<Record<string, boolean>>({});
 
   // Keep track of which lesson's content is expanded
   const [expandedLessons, setExpandedLessons] = useState<
@@ -227,15 +216,8 @@ export default function CourseSidebar({
   useEffect(() => {
     if (currentLessonId) {
       setExpandedLessons((prev) => ({ ...prev, [currentLessonId]: true }));
-      // Also ensure the chapter is open
-      const targetChapter = course.chapters.find((ch) =>
-        ch.lessons.some((l) => l.id === currentLessonId),
-      );
-      if (targetChapter) {
-        setOpenChapters((prev) => ({ ...prev, [targetChapter.id]: true }));
-      }
     }
-  }, [currentLessonId, course.chapters]);
+  }, [currentLessonId]);
 
   const toggleChapter = (id: string) => {
     setOpenChapters((prev) => ({ ...prev, [id]: !prev[id] }));
