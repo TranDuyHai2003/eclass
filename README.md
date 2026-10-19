@@ -4,6 +4,8 @@ eClass là nền tảng học trực tuyến (LMS) cho giáo viên và học sin
 
 Dự án viết bằng **Next.js 16 (App Router)**, **React 19**, **Prisma** + **PostgreSQL**. Video và tài liệu được lưu trên **Backblaze B2** và phân phối qua CDN.
 
+🌐 **Production:** [https://teacherduc.me](https://teacherduc.me)
+
 ---
 
 ## Mục lục
@@ -176,7 +178,7 @@ npx ts-node scripts/check-b2-files.ts
 
 ### Heroku (đang sử dụng)
 
-Ứng dụng chạy trên Heroku bằng Node.js buildpack:
+Ứng dụng production chạy tại **[teacherduc.me](https://teacherduc.me)**, host trên Heroku bằng Node.js buildpack:
 
 1. **Build**: Heroku chạy `npm install` rồi `npm run build`.
 2. **Release**: chạy `npx prisma migrate deploy` (khai báo trong `Procfile`).
