@@ -242,7 +242,7 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
           data: {
             testId,
             name: section.name,
-            position: Number.isFinite(section.position) ? section.position : sectionIndex,
+            position: sectionIndex,
           }
         });
         sectionId = createdSection.id;
@@ -252,7 +252,7 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
           where: { id: sectionId },
           data: {
             name: section.name,
-            position: Number.isFinite(section.position) ? section.position : sectionIndex,
+            position: sectionIndex,
           }
         });
       }
@@ -282,7 +282,7 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
 
         const questionData: any = {
           sectionId,
-          position: Number.isFinite(q.position) ? q.position : qIndex,
+          position: qIndex,
           category: q.category ?? q.question_category ?? null,
           type: normalizeType(q.type),
           correctAnswer: normalizeAnswer(q.correctAnswer),
@@ -358,7 +358,7 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
  * Re-calculates scores for all completed attempts of a test.
  * Used when a teacher updates the answer key or points.
  */
-async function reCalculateAllAttempts(testId: string) {
+export async function reCalculateAllAttempts(testId: string) {
   await prisma.$transaction(async (tx) => {
     const test = await tx.test.findUnique({
       where: { id: testId },

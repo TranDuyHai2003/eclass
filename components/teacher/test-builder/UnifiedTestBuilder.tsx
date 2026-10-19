@@ -608,17 +608,6 @@ export default function UnifiedTestBuilder({
   ) => {
     markDirty();
     const batchId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    const newQuestions = answers.map((ans, idx) => ({
-      id: `temp-q-fast-${batchId}-${idx}`,
-      position: idx,
-      type,
-      correctAnswer: ans.toUpperCase(),
-      points: 1.0,
-      explanation: "",
-      videoUrl: "",
-      audioUrl: "",
-      needsManualGrading: false,
-    }));
 
     setSections((prev) => {
       const ns = [...prev];
@@ -627,6 +616,18 @@ export default function UnifiedTestBuilder({
       const targetIdx =
         fastEntrySectionIdx !== null ? fastEntrySectionIdx : ns.length - 1;
       if (targetIdx >= 0 && targetIdx < ns.length) {
+        const startPos = ns[targetIdx].questions.length;
+        const newQuestions = answers.map((ans, idx) => ({
+          id: `temp-q-fast-${batchId}-${idx}`,
+          position: startPos + idx,
+          type,
+          correctAnswer: ans.toUpperCase(),
+          points: 1.0,
+          explanation: "",
+          videoUrl: "",
+          audioUrl: "",
+          needsManualGrading: false,
+        }));
         ns[targetIdx] = {
           ...ns[targetIdx],
           questions: [...ns[targetIdx].questions, ...newQuestions],

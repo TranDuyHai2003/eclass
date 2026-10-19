@@ -51,6 +51,7 @@ type Lesson = {
   attachments?: Attachment[];
   test?: {
     id: string;
+    title?: string | null;
     duration: number;
   } | null;
 };
@@ -506,9 +507,14 @@ export default function CourseSidebar({
                               <div className="w-7 h-7 bg-slate-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0 group-hover/sub:bg-blue-500 group-hover/sub:text-white transition-colors">
                                 <BookOpen className="w-3.5 h-3.5" />
                               </div>
-                              <span className="text-[11px] font-black uppercase tracking-tight text-slate-600 group-hover/sub:text-slate-900">
-                                Nộp bài tập & Chấm điểm
-                              </span>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[11px] font-black uppercase tracking-tight text-slate-600 group-hover/sub:text-slate-900 truncate">
+                                  {lesson.test.title || "Nộp bài tập & Chấm điểm"}
+                                </span>
+                                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider">
+                                  {lesson.test.title ? "Làm bài tập & Chấm điểm" : "Bài kiểm tra"}
+                                </span>
+                              </div>
                             </Link>
                           )}
 

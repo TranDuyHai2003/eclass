@@ -9,8 +9,10 @@ import {
   Trophy,
   Pencil,
   BarChart3,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import TestTypeSwitcherClient from "./TestTypeSwitcherClient";
 import DueDateUpdaterClient from "./DueDateUpdaterClient";
@@ -19,10 +21,13 @@ import { DeleteTestButton } from "./DeleteTestButton";
 export type TestItem = {
   id: string;
   testId?: string;
-  title: string;
+  title: string; // Tên bài giảng
+  testTitle?: string | null; // Tên đề thi riêng
+  chapterTitle?: string | null;
   type: string;
   test: {
     id: string;
+    title?: string | null;
     duration: number;
     type: string;
     dueDate: string | null;
@@ -66,6 +71,8 @@ export default function CourseTestListClient({
                 ) / finishedAttempts.length
               : 0;
 
+          const displayTestTitle = t.testTitle || t.test?.title;
+
           return (
             <div
               key={t.id}
@@ -85,10 +92,25 @@ export default function CourseTestListClient({
                       <GraduationCap className="w-6 h-6 text-blue-600" />
                     )}
                   </div>
-                  <div>
-                    <h3 className="font-black text-slate-900 group-hover:text-blue-600 transition-colors">
-                      {t.title}
-                    </h3>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-black text-slate-900 group-hover:text-blue-600 transition-colors text-base">
+                        {displayTestTitle || t.title}
+                      </h3>
+                      {displayTestTitle && displayTestTitle !== t.title && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-bold rounded-lg px-2">
+                          Đề thi riêng
+                        </Badge>
+                      )}
+                    </div>
+
+                    {t.type === "LESSON" && (
+                      <p className="text-xs font-medium text-slate-500">
+                        Bài giảng: <span className="font-bold text-slate-700">{t.title}</span>
+                        {t.chapterTitle && <span className="text-slate-400"> ({t.chapterTitle})</span>}
+                      </p>
+                    )}
+
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
                       <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
                         {t.type === "FINAL" ? "Đề thi tổng kết" : "Đề thi bài học"}{" "}
@@ -135,6 +157,23 @@ export default function CourseTestListClient({
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                      className="rounded-xl font-bold border-blue-200 text-blue-600 hover:bg-blue-50"
+                    >
+                      <Link
+                        href={
+                          t.type === "FINAL"
+                            ? `/courses/${courseId}/final-test`
+                            : `/watch/${t.id}/quiz`
+                        }
+                        target="_blank"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-1.5" /> Đến bài làm
+                      </Link>
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
