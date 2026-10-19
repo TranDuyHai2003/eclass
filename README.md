@@ -86,7 +86,7 @@ Tài khoản demo có quyền xem như quản trị viên (khóa học, bài ki�
 ├── lib/              # Prisma client, B2/S3 client, logic chấm điểm & xếp hạng
 ├── prisma/           # schema.prisma + migrations
 ├── public/           # Static assets
-├── scripts/          # Script vận hành/bảo trì (chạy thủ công bằng ts-node)
+├── scripts/          # Script vận hành/bảo trì, chạy thủ công (ts-node / node)
 ├── types/            # Khai báo kiểu dùng chung
 ├── auth.ts           # Cấu hình NextAuth
 ├── middleware.ts     # Bảo vệ route theo vai trò
