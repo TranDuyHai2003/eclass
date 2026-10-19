@@ -17,9 +17,9 @@ services:
 
   # --- NEXT.JS APP SERVICE ---
   app:
-    # 1. Đã xóa phần build (context, dockerfile)
-    # 2. Thêm dòng gọi image từ Docker Hub (HÃY THAY <TÊN_DOCKER_CỦA_BẠN> BẰNG USERNAME THẬT)
-    image: haiduytran/eclass-app:latest
+    # Build image trực tiếp từ source trong repo
+    build: .
+    image: eclass-app:latest
 
     container_name: eclass_app
     restart: always
@@ -28,6 +28,9 @@ services:
     # Chỉ cần mục này là nó tự động nạp TẤT CẢ các biến trong .env vào app
     env_file:
       - .env
+    environment:
+      # Trong mạng Docker, app kết nối tới service "postgres" (cổng nội bộ 5432)
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?schema=public
     depends_on:
       - postgres
     networks:

@@ -1,235 +1,290 @@
-# eClass — Nền tảng học trực tuyến
+# eClass — Learning Management System
 
-eClass là nền tảng học trực tuyến (LMS) cho giáo viên và học sinh. Hệ thống quản lý khóa học, video bài giảng, bài tập về nhà, bài kiểm tra, chấm điểm và bảng xếp hạng học sinh theo tuần.
+**English** | [Tiếng Việt](README.vi.md)
 
-Dự án viết bằng **Next.js 16 (App Router)**, **React 19**, **Prisma** + **PostgreSQL**. Video và tài liệu được lưu trên **Backblaze B2** và phân phối qua CDN.
+eClass is a full-stack Learning Management System (LMS) for online teaching. It covers course management, video lessons, interactive assessments with automated grading, learning-progress tracking, and student performance analytics.
 
-🌐 **Production:** [https://teacherduc.me](https://teacherduc.me). Nền tảng đang được học sinh thật sử dụng.
+The project began as a three-member graduation project at the Posts and Telecommunications Institute of Technology (PTIT) in 2025. It was later extended into a production platform, **[teacherduc.me](https://teacherduc.me)**, which serves real students.
 
-### Tài khoản demo
+## Project Highlights
 
-Hệ thống có **tài khoản demo chỉ xem (read-only)** dành cho người đánh giá học thuật và nhà tuyển dụng. Tài khoản này được cung cấp riêng khi có yêu cầu, vui lòng liên hệ tác giả.
+- **Production application:** [https://teacherduc.me](https://teacherduc.me), in daily use by real students.
+- **Tech stack:** Next.js 16 (App Router, Server Actions), React 19, TypeScript, PostgreSQL, Prisma ORM, Backblaze B2 + CDN.
+- **Core features:** course and lesson management, video learning, a test builder with several question types, automated and manual grading, progress tracking, weekly leaderboards, and analytics with Excel export.
+- **Demo access:** a restricted, read-only demo account with pseudonymized student data is available to academic reviewers and recruiters on request.
 
-Tài khoản demo có quyền xem như quản trị viên (khóa học, bài kiểm tra, thống kê, bảng xếp hạng). Mọi thao tác thay đổi dữ liệu đều bị chặn ở backend.
-
----
-
-## Mục lục
-
-- [Tính năng](#tính-năng)
-- [Công nghệ](#công-nghệ)
-- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
-- [Bắt đầu](#bắt-đầu)
-- [Biến môi trường](#biến-môi-trường)
-- [Scripts](#scripts)
-- [Database & Migration](#database--migration)
-- [Triển khai (Deploy)](#triển-khai-deploy)
-- [Quy ước đóng góp](#quy-ước-đóng-góp)
+<!-- TODO: add a verifiable usage metric, e.g. "~N weekly active students (MM/YYYY – MM/YYYY)". -->
 
 ---
 
-## Tính năng
+## Table of Contents
 
-### Học sinh
-- Đăng ký và đăng nhập bằng email/mật khẩu, Google hoặc Facebook (NextAuth v5).
-- Xem khóa học theo chương và bài học: video, tài liệu PDF, bài quiz.
-- Hệ thống lưu lại tiến độ học.
-- Làm bài tập về nhà và bài kiểm tra. Các dạng câu hỏi gồm trắc nghiệm, đúng/sai, nhóm trắc nghiệm nhiều ý, trả lời ngắn và tự luận.
-- Xem kết quả, đáp án và lịch sử làm bài.
-- Có bảng xếp hạng theo tuần, kèm trạng thái lên hạng, xuống hạng hoặc mới vào top.
-- Bình luận dưới bài học và nhận thông báo.
-
-### Giáo viên
-- Tạo và chỉnh sửa khóa học, chương, bài học (kéo-thả để sắp xếp). Có thể nhân bản khóa học.
-- **Test Builder**: soạn đề theo phần, hỗ trợ câu hỏi nhiều ý con. Đề có thể lưu vào ngân hàng đề để dùng lại.
-- Quản lý video: upload trực tiếp lên B2 qua presigned URL và đồng bộ thư viện video.
-- Chấm bài tập về nhà, xem kết quả và phân tích (analytics) theo từng bài và từng học sinh.
-
-### Quản trị viên
-- Quản lý người dùng, lớp học và phân lớp.
-- Xem thống kê toàn hệ thống, theo dõi tài chính và cấu hình hệ thống.
-- Xuất báo cáo Excel (ma trận điểm, bản offline) và chấm lại hàng loạt.
+1. [Project Background & Contributions](#project-background--contributions)
+2. [Screenshots](#screenshots)
+3. [System Architecture](#system-architecture)
+4. [Key Features](#key-features)
+5. [Engineering Challenges & Solutions](#engineering-challenges--solutions)
+6. [Technology Stack](#technology-stack)
+7. [Getting Started](#getting-started)
+8. [Database & Deployment](#database--deployment)
+9. [Security & Demo Access](#security--demo-access)
+10. [Future Improvements](#future-improvements)
 
 ---
 
-## Công nghệ
+## Project Background & Contributions
 
-| Hạng mục | Công nghệ |
+The first version of the LMS was built as a team graduation project at PTIT, supervised by Mr. Nguyen Manh Son. After graduation, the platform was developed further and adapted for real-world teaching at [teacherduc.me](https://teacherduc.me).
+
+<!--
+TODO (author): document individual contributions and keep the two phases separate:
+
+### Graduation project (2025, team of 3)
+- My role: ...
+- Features / modules I implemented: ...
+
+### Post-graduation development (independent)
+- Production deployment and operation (Heroku, PostgreSQL, B2/CDN)
+- ...
+-->
+
+---
+
+## Screenshots
+
+<!--
+TODO: add screenshots to docs/screenshots/ and reference them here, e.g.
+| Course page | Test builder | Leaderboard |
+|---|---|---|
+| ![](docs/screenshots/course.png) | ![](docs/screenshots/test-builder.png) | ![](docs/screenshots/ranking.png) |
+-->
+
+_Screenshots will be added soon. You can explore the live application at [teacherduc.me](https://teacherduc.me)._
+
+---
+
+## System Architecture
+
+```mermaid
+flowchart LR
+    subgraph Client["Browser"]
+        UI["React 19 UI<br/>(Server & Client Components)"]
+        Player["Vidstack player / react-pdf"]
+    end
+
+    subgraph App["Next.js 16 app (Heroku dyno)"]
+        MW["Middleware<br/>auth · role guard · demo read-only"]
+        RSC["Server Components<br/>(pages)"]
+        SA["Server Actions<br/>(actions/*.ts)"]
+        API["Route Handlers<br/>(app/api/*)"]
+        Prisma["Prisma Client<br/>+ demo-privacy extension"]
+    end
+
+    DB[("PostgreSQL")]
+    B2[("Backblaze B2<br/>object storage")]
+    CDN["CDN<br/>(video & documents)"]
+
+    UI --> MW --> RSC & SA & API
+    RSC & SA & API --> Prisma --> DB
+    API -- "presigned URL" --> UI
+    UI -- "direct upload" --> B2
+    B2 --> CDN --> Player
+```
+
+- **Rendering:** pages are Server Components that query PostgreSQL through Prisma. Mutations go through Server Actions, and file uploads and Excel exports go through Route Handlers.
+- **Auth:** NextAuth v5 (JWT sessions) with Credentials, Google and Facebook providers. Middleware enforces route access by role (`STUDENT`, `TEACHER`, `ADMIN`).
+- **Media:** large files are uploaded straight from the browser to B2 using presigned URLs and are served through a CDN, so video traffic does not pass through the application server.
+
+---
+
+## Key Features
+
+**Students**
+- Course → chapter → lesson structure with video, PDF and quiz lessons, plus progress tracking.
+- Homework and exams with multiple-choice, true/false, multi-statement groups, short-answer and essay questions.
+- Draft autosave while taking a test, then results, answer review and attempt history.
+- Weekly leaderboard showing rank movement (up, down, new, returning).
+- Lesson comments and notifications.
+
+**Teachers**
+- Course builder with drag-and-drop ordering and course duplication.
+- **Test builder** with sections and multi-part questions, plus a reusable question bank.
+- Video library: direct upload to B2 and library synchronization.
+- Homework grading, essay grading, and per-test and per-student analytics.
+
+**Administrators**
+- User, class and enrollment management.
+- System-wide analytics, Excel exports (score matrix, offline reports) and bulk re-grading.
+
+---
+
+## Engineering Challenges & Solutions
+
+| Challenge | Solution |
 |---|---|
-| Framework | Next.js 16 (App Router, Server Actions, output `standalone`) |
+| **Race between draft autosave and final submission.** A late autosave request could overwrite a submitted attempt. | Submission runs inside a database transaction that locks the attempt row with `SELECT … FOR UPDATE` and rejects any write once `completedAt` is set. |
+| **Large video and PDF uploads** on a dyno with limited memory and request timeouts. | The server issues short-lived (15 min) **presigned URLs** and the browser uploads directly to B2. Files go to a `temp/` prefix first and are *committed* (copied to their final key) only when the lesson is saved, which avoids orphaned files. |
+| **A fair weekly leaderboard.** Students with only a few lucky tests should not top the board. | Ranking combines academic score, completion and activity bonuses, requires a minimum number of tests, and breaks ties by academic evidence. Weeks are computed in the `Asia/Ho_Chi_Minh` timezone, and weekly **snapshots** are stored so rank changes can be shown. |
+| **Leaderboard query cost.** It aggregates attempts for every student in a class. | The base data is cached with `unstable_cache`, and per-user computation (current rank, personal context) runs on top of the shared cache. |
+| **Giving reviewers access to a live system without exposing real student data.** | A read-only demo role, enforced in the backend at three layers (middleware, Server Actions, and a Prisma Client extension that pseudonymizes personal data). See [Security & Demo Access](#security--demo-access). |
+| **Running a Next.js standalone build on Heroku.** | `output: "standalone"` plus a post-build step (`copy-assets.js`) that copies `public/` and `.next/static` into the standalone bundle. Prisma migrations run in Heroku's release phase. |
+
+---
+
+## Technology Stack
+
+| Area | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router, Server Actions, `standalone` output) |
 | UI | React 19, Tailwind CSS 4, Radix UI, lucide-react, sonner |
-| Form & validate | react-hook-form, zod |
+| Forms & validation | react-hook-form, zod |
 | Auth | NextAuth v5 (Credentials, Google, Facebook) + Prisma Adapter |
 | Database | PostgreSQL + Prisma ORM 6 |
-| Lưu trữ file | Backblaze B2 (S3-compatible, AWS SDK v3) + CDN |
+| Storage | Backblaze B2 (S3-compatible, AWS SDK v3) + CDN |
 | Media | Vidstack (video player), react-pdf |
-| Biểu đồ / xuất file | Recharts, ExcelJS |
-| Deploy | Heroku (Node buildpack); có sẵn Dockerfile cho VPS |
+| Charts & export | Recharts, ExcelJS |
+| Deployment | Heroku (Node.js buildpack); Docker setup included |
 
----
-
-## Cấu trúc thư mục
+### Project structure
 
 ```
 .
 ├── actions/          # Server Actions (course, test, homework, ranking, user, ...)
 ├── app/              # Next.js App Router
-│   ├── admin/        # Trang quản trị
-│   ├── teacher/      # Trang giáo viên (khóa học, bài kiểm tra, video, bài tập)
-│   ├── courses/      # Danh sách & chi tiết khóa học
-│   ├── watch/        # Trang học bài (video / tài liệu / quiz)
-│   ├── tests/        # Làm bài kiểm tra
-│   ├── ranking/      # Bảng xếp hạng
+│   ├── admin/        # Admin pages
+│   ├── teacher/      # Teacher pages (courses, tests, videos, homework)
+│   ├── courses/      # Course catalog & details
+│   ├── watch/        # Lesson player (video / document / quiz)
+│   ├── tests/        # Test taking
+│   ├── ranking/      # Leaderboard
 │   └── api/          # Route handlers (upload, videos, exams, analytics, auth, ...)
-├── components/       # React components theo module (ui/, course/, teacher/, ...)
+├── components/       # React components grouped by module
 ├── hooks/            # Custom React hooks
-├── lib/              # Prisma client, B2/S3 client, logic chấm điểm & xếp hạng
+├── lib/              # Prisma client, B2 client, grading & ranking logic, demo guards
 ├── prisma/           # schema.prisma + migrations
 ├── public/           # Static assets
-├── scripts/          # Script vận hành/bảo trì, chạy thủ công (ts-node / node)
-├── types/            # Khai báo kiểu dùng chung
-├── auth.ts           # Cấu hình NextAuth
-├── middleware.ts     # Bảo vệ route theo vai trò
-├── copy-assets.js    # Copy public/ và static/ vào bản build standalone
-├── Procfile          # Cấu hình process cho Heroku
-└── Dockerfile        # Build image cho môi trường VPS/Docker
+├── scripts/          # Maintenance scripts (run manually)
+├── types/            # Shared type declarations
+├── auth.ts           # NextAuth configuration
+├── middleware.ts     # Route protection by role / demo mode
+├── copy-assets.js    # Copies public/ and static/ into the standalone build
+├── Procfile          # Heroku process types
+└── Dockerfile        # Multi-stage Docker image
 ```
 
 ---
 
-## Bắt đầu
+## Getting Started
 
-### Yêu cầu
+### Requirements
 - Node.js **22+**
-- PostgreSQL **15+**. Có thể chạy bằng Docker, xem `docker-compose.yml`.
+- PostgreSQL **15+**
 - npm
 
-### Cài đặt
+### Local setup
 
 ```bash
 git clone https://github.com/TranDuyHai2003/eclass.git
 cd eclass
 
-# 1. Cài dependencies
 npm install
+cp .env.example .env          # fill in real values
 
-# 2. Tạo file biến môi trường rồi điền giá trị thật
-cp .env.example .env
-
-# 3. Khởi tạo database
 npx prisma generate
 npx prisma migrate deploy
 
-# 4. Chạy môi trường phát triển
-npm run dev
+npm run dev                   # http://localhost:3000
 ```
 
-Sau khi chạy, ứng dụng có tại http://localhost:3000.
+> Need a local database only? Run `docker compose up -d postgres`. It exposes PostgreSQL on port `5433`.
 
-> Chỉ cần database PostgreSQL cục bộ? Chạy `docker compose up -d postgres`.
+### Environment variables
 
----
+[.env.example](.env.example) lists every variable. The main ones are:
 
-## Biến môi trường
-
-File [.env.example](.env.example) liệt kê đầy đủ các biến. Các biến chính:
-
-| Biến | Mô tả |
+| Variable | Description |
 |---|---|
-| `DATABASE_URL` | Chuỗi kết nối PostgreSQL cho Prisma |
-| `AUTH_SECRET` | Secret ký session của NextAuth (`npx auth secret`) |
-| `AUTH_URL` | URL gốc của ứng dụng |
-| `AUTH_TRUST_HOST` | `true` khi chạy sau reverse proxy |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Đăng nhập Google (tùy chọn) |
-| `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | Đăng nhập Facebook (tùy chọn) |
-| `B2_KEY_ID` / `B2_APP_KEY` | Khóa truy cập Backblaze B2 |
-| `B2_REGION` / `B2_ENDPOINT` / `B2_BUCKET_NAME` | Cấu hình bucket B2 |
-| `NEXT_PUBLIC_VIDEO_DOMAIN` | Domain CDN phục vụ video/tài liệu |
-| `NEXT_PUBLIC_S3_DOMAIN` | Domain công khai cho file upload |
+| `DATABASE_URL` | PostgreSQL connection string used by Prisma |
+| `AUTH_SECRET` | NextAuth session secret (`npx auth secret`) |
+| `AUTH_URL` / `AUTH_TRUST_HOST` | Public base URL; set `true` when running behind a proxy |
+| `GOOGLE_*` / `FACEBOOK_*` | OAuth providers (optional) |
+| `B2_KEY_ID` / `B2_APP_KEY` / `B2_REGION` / `B2_ENDPOINT` / `B2_BUCKET_NAME` | Backblaze B2 storage |
+| `NEXT_PUBLIC_VIDEO_DOMAIN` / `NEXT_PUBLIC_S3_DOMAIN` | Public CDN domains for media and uploads |
 
-> ⚠️ **Không commit file `.env`.** File này đã có trong `.gitignore`. Trên Heroku, biến môi trường được khai báo ở **Settings → Config Vars**.
+### Scripts
 
----
-
-## Scripts
-
-| Lệnh | Mô tả |
+| Command | Description |
 |---|---|
-| `npm run dev` | Chạy server phát triển |
-| `npm run build` | Build production (standalone) và copy assets |
-| `npm start` | Chạy bản build: `node .next/standalone/server.js` |
-| `npm run lint` | Kiểm tra code bằng ESLint |
-| `npm run db:push` | Đồng bộ schema Prisma lên DB (chỉ dùng khi dev) |
-
-Các script bảo trì trong `scripts/` được chạy thủ công, ví dụ:
-
-```bash
-npx ts-node scripts/check-b2-files.ts
-```
+| `npm run dev` | Start the development server |
+| `npm run build` | Production build (standalone) and asset copy |
+| `npm start` | Run the build (`node .next/standalone/server.js`) |
+| `npm run lint` | Run ESLint |
+| `npm run db:push` | Push the Prisma schema to the DB (development only) |
 
 ---
 
-## Database & Migration
+## Database & Deployment
 
-- Schema nằm ở `prisma/schema.prisma`, migrations nằm ở `prisma/migrations/`.
-- Tạo migration mới khi đổi schema:
-  ```bash
-  npx prisma migrate dev --name ten_thay_doi
-  ```
-- Trên production, migration được áp dụng tự động bằng `prisma migrate deploy` (release phase của Heroku, xem `Procfile`).
+- The schema is in `prisma/schema.prisma` and versioned migrations are in `prisma/migrations/`.
+- To change the schema, run `npx prisma migrate dev --name <change_name>`.
+
+### Heroku (production)
+
+Production runs at **[teacherduc.me](https://teacherduc.me)** on Heroku with the Node.js buildpack:
+
+1. **Build:** `npm install` → `npm run build`
+2. **Release:** `npx prisma migrate deploy` (see `Procfile`)
+3. **Web:** `npm start`
+
+Environment variables are managed as Heroku **Config Vars**.
+
+### Docker (optional)
+
+`docker-compose.yml` builds the app image from source and starts it together with PostgreSQL:
+
+```bash
+cp .env.example .env    # set DB_USER, DB_PASSWORD, DB_NAME, AUTH_SECRET, B2_*, ...
+docker compose up -d --build
+```
+
+Inside the Docker network, Compose overrides `DATABASE_URL` so the app connects to the `postgres` service. The container runs `prisma migrate deploy` before starting the server.
 
 ---
 
-## Triển khai (Deploy)
+## Security & Demo Access
 
-### Heroku (đang sử dụng)
+A **read-only demo account** is available on request for academic reviewers and recruiters. Credentials are shared privately and are never committed to the repository.
 
-Ứng dụng production chạy tại **[teacherduc.me](https://teacherduc.me)**, host trên Heroku bằng Node.js buildpack:
+The demo account is an `ADMIN` with `isDemo = true`. It can browse the admin and teacher dashboards, and restrictions are enforced **in the backend**:
 
-1. **Build**: Heroku chạy `npm install` rồi `npm run build`.
-2. **Release**: chạy `npx prisma migrate deploy` (khai báo trong `Procfile`).
-3. **Web**: chạy `npm start`.
+1. **Middleware** (`middleware.ts`): any non-`GET/HEAD/OPTIONS` request to `/api/*` (except `/api/auth`) returns `403`. Enrollment and finance pages are also blocked.
+2. **Server Actions** (`actions/*.ts`): every mutating action calls `demoGuard()` (`lib/demo.ts`) before doing any work.
+3. **Data privacy** (`lib/demo-privacy.ts`): a Prisma Client extension pseudonymizes every `User` record returned to a demo viewer, including records nested in `include`/`select` results (resolved through Prisma DMMF). Student names become stable aliases such as `Học viên 3F9A2C`, and emails and avatars are hidden. Shared caches always hold the original data, and masking is applied per request.
 
-```bash
-git push heroku master
-```
+The `isDemo` flag comes from the signed session token and the database, never from client input.
 
-### Tài khoản demo (chỉ xem)
-
-Tài khoản demo là tài khoản `ADMIN` có cờ `isDemo = true`. Cơ chế chặn ghi dữ liệu được thực thi ở backend tại hai lớp:
-
-- **Middleware** (`middleware.ts`): trả `403` cho mọi request không phải `GET/HEAD/OPTIONS` tới `/api/*`, trừ `/api/auth`.
-- **Server Actions** (`actions/*.ts`): mọi action ghi dữ liệu đều gọi `demoGuard()` (trong `lib/demo.ts`) ngay ở đầu hàm.
-
-Cờ `isDemo` được đọc lại từ database ở mỗi lần lấy session, nên client không thể giả mạo.
-
-Tạo tài khoản hoặc đổi mật khẩu (thông tin đăng nhập **không** lưu trong repo):
+Create the demo account or rotate its password:
 
 ```bash
-# Production (Heroku). Bỏ trống DEMO_PASSWORD để tự sinh mật khẩu ngẫu nhiên
 heroku run -a <app> -e "DEMO_EMAIL=<email>" -- node scripts/create-demo-account.js
 ```
 
-Chạy lại lệnh trên để đổi mật khẩu khi cần thu hồi quyền truy cập.
+If `DEMO_PASSWORD` is omitted, the script generates a random password. Re-running the command rotates the password and revokes earlier access.
 
-### Docker / VPS (tùy chọn)
-
-Repo có sẵn `Dockerfile` (multi-stage, output standalone) và `docker-compose.yml` (gồm app và PostgreSQL):
-
-```bash
-docker build -t eclass-app .
-docker compose up -d
-```
+Other practices:
+- Secrets live only in environment variables. `.env`, SQL dumps and logs are git-ignored.
+- Passwords are hashed with bcrypt.
+- Role-based route protection is applied in middleware and re-checked in Server Actions.
 
 ---
 
-## Quy ước đóng góp
+## Future Improvements
 
-- Nhánh chính: `master`. Nên tạo nhánh riêng cho từng tính năng hoặc bản sửa lỗi.
-- Chạy `npm run lint` và `npm run build` trước khi tạo commit hoặc PR.
-- Không commit dữ liệu thật (dump SQL, file `.env`, khóa bí mật). Các loại file này đã được chặn trong `.gitignore`.
-- Mọi thay đổi schema phải đi kèm migration.
+- Automated tests (unit tests for grading and ranking logic, end-to-end tests for test-taking flows) and a CI pipeline.
+- Observability: structured logging and error tracking in production.
+- Internationalization (the UI is currently in Vietnamese).
+- An in-browser practice mode for the demo account, so reviewers can try test-taking without writing to the database.
 
 ---
 
-© eClass. Bảo lưu mọi quyền.
+© eClass. All rights reserved.
