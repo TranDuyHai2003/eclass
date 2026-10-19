@@ -48,6 +48,11 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/login", nextUrl));
   }
 
+  // 3b. Tài khoản demo không được xem trang ghi danh / tài chính
+  if (req.auth?.user?.isDemo && nextUrl.pathname.startsWith("/admin/finance")) {
+    return NextResponse.redirect(new URL("/admin/users", nextUrl));
+  }
+
   // 4. Kiểm tra quyền Admin/Teacher cho các route đặc biệt
   if (isLoggedIn) {
     if (nextUrl.pathname.startsWith("/admin") && userRole !== "ADMIN") {

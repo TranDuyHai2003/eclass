@@ -1,7 +1,20 @@
 import { PrismaClient } from "@prisma/client"
+import { withDemoPrivacy } from "@/lib/demo-privacy"
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
+type ExtendedPrismaClient = ReturnType<typeof withDemoPrivacy>
 
-export const prisma = globalForPrisma.prisma || new PrismaClient()
+const globalForPrisma = globalThis as unknown as {
+  prismaBase?: PrismaClient
+  prisma?: ExtendedPrismaClient
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
+/** Client gốc, không ẩn danh — chỉ dùng cho NextAuth (adapter, callbacks). */
+export const prismaBase = globalForPrisma.prismaBase || new PrismaClient()
+
+/** Client dùng trong ứng dụng: tự ẩn danh dữ liệu cá nhân khi người xem là tài khoản demo. */
+export const prisma = globalForPrisma.prisma || withDemoPrivacy(prismaBase)
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prismaBase = prismaBase
+  globalForPrisma.prisma = prisma
+}
