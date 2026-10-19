@@ -34,7 +34,11 @@ import { cn } from "@/lib/utils";
 type CourseWithRelations = Prisma.CourseGetPayload<{
   include: {
     chapters: {
-      include: { lessons: true };
+      include: {
+        lessons: {
+          include: { test: true };
+        };
+      };
     };
     user: true;
     category: true;
@@ -55,6 +59,11 @@ export default async function CoursePage({
       chapters: {
         include: {
           lessons: {
+            include: {
+              test: {
+                select: { id: true, title: true, duration: true },
+              },
+            },
             orderBy: { position: "asc" },
           },
         },

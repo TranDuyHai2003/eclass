@@ -134,9 +134,11 @@ export default function TestBankEditorClient({ testId }: { testId: string }) {
         setTestType(test?.type || "HOMEWORK");
 
         if (Array.isArray(test?.sections) && test.sections.length > 0) {
-          const flatQuestions = test.sections
-            .flatMap((section: any) => section.questions || [])
-            .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+          const flatQuestions = [...test.sections]
+            .sort((s1: any, s2: any) => (s1.position ?? 0) - (s2.position ?? 0))
+            .flatMap((section: any) =>
+              [...(section.questions || [])].sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+            )
             .map((q: any, index: number) => ({
               id: q.id,
               label: `Câu ${index + 1}`,

@@ -93,11 +93,23 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
         OR: [
           { title: { contains: searchQuery, mode: "insensitive" } },
           {
+            finalTest: {
+              OR: [
+                { title: { contains: searchQuery, mode: "insensitive" } },
+                { subject: { contains: searchQuery, mode: "insensitive" } }
+              ]
+            }
+          },
+          {
             chapters: {
               some: {
                 lessons: {
                   some: {
-                    title: { contains: searchQuery, mode: "insensitive" }
+                    OR: [
+                      { title: { contains: searchQuery, mode: "insensitive" } },
+                      { test: { title: { contains: searchQuery, mode: "insensitive" } } },
+                      { test: { subject: { contains: searchQuery, mode: "insensitive" } } }
+                    ]
                   }
                 }
               }
@@ -117,7 +129,13 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
           lessons: {
             where: {
               test: { isNot: null },
-              ...(searchQuery ? { title: { contains: searchQuery, mode: "insensitive" } } : {})
+              ...(searchQuery ? {
+                OR: [
+                  { title: { contains: searchQuery, mode: "insensitive" } },
+                  { test: { title: { contains: searchQuery, mode: "insensitive" } } },
+                  { test: { subject: { contains: searchQuery, mode: "insensitive" } } }
+                ]
+              } : {})
             },
             include: {
               test: {
@@ -360,6 +378,8 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
                   id: l.id,
                   testId: l.test?.id,
                   title: l.title,
+                  testTitle: l.test?.title || null,
+                  chapterTitle: c.title || null,
                   type: "LESSON",
                   test: l.test,
                   attempts: l.test?.attempts || [],
@@ -372,6 +392,8 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
                   id: course.id,
                   testId: course.finalTest.id,
                   title: "Bài kiểm tra cuối khóa",
+                  testTitle: course.finalTest.title || "Bài kiểm tra cuối khóa",
+                  chapterTitle: null,
                   type: "FINAL",
                   test: course.finalTest,
                   attempts: course.finalTest.attempts || [],
@@ -403,10 +425,13 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
               id: t.id,
               testId: t.testId,
               title: t.title,
+              testTitle: t.testTitle,
+              chapterTitle: t.chapterTitle,
               type: t.type,
               test: t.test
                 ? {
                     id: t.test.id,
+                    title: t.test.title || null,
                     duration: t.test.duration,
                     type: t.test.type,
                     dueDate: t.test.dueDate ? t.test.dueDate.toISOString() : null,

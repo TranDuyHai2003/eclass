@@ -10,6 +10,11 @@ interface Lesson {
   isFree: boolean;
   type: string;
   duration: number | null;
+  test?: {
+    id: string;
+    title?: string | null;
+    duration: number;
+  } | null;
 }
 
 interface Chapter {
@@ -138,10 +143,18 @@ export function CourseAccordion({ chapters, isEnrolled }: CourseAccordionProps) 
                         <span className="text-sm font-black text-slate-900 block truncate uppercase tracking-tight">
                           {lesson.title}
                         </span>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                               {lesson.type === 'QUIZ' ? 'Luyện tập' : lesson.type === 'DOCUMENT' ? 'Tài liệu' : 'Bài giảng Video'}
                            </span>
+                           {lesson.test?.title && (
+                             <>
+                               <span className="text-[10px] text-slate-300">•</span>
+                               <span className="text-[9px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 uppercase tracking-tight">
+                                 Đề thi: {lesson.test.title}
+                               </span>
+                             </>
+                           )}
                            {lesson.isFree && !isEnrolled && (
                              <>
                                <span className="text-[10px] text-slate-300">•</span>

@@ -91,7 +91,7 @@ export default async function WatchPage({
                 where: { userId: session.user.id },
               },
               test: {
-                select: { id: true, duration: true },
+                select: { id: true, title: true, duration: true },
               },
               attachments: true,
               homeworkSubmissions: {
