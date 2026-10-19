@@ -23,9 +23,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Custom ignores:
     "public/pdf.worker.min.mjs",
-    "old_client.tsx",
     "scripts/**",
-    "test*.ts"
+    "_backup/**"
   ]),
 ]);
 

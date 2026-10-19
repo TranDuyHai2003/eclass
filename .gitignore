@@ -50,6 +50,12 @@ yarn-error.log*
 # Không chặn docker-compose.yml vì cần để deploy, 
 # nhưng mật khẩu nên để trong .env thay vì viết thẳng vào compose.
 
+# --- FILE RÁC / DỮ LIỆU CỤC BỘ ---
 *.txt
+*.log
+*.sql
+*.dump
+/_backup/
 
-prod_dump.sql
+# Cho phép file mẫu biến môi trường
+!.env.example
