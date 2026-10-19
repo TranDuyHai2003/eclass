@@ -1,10 +1,14 @@
 "use server";
 
+import { demoGuard } from "@/lib/demo";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 
 export async function createEnrollment(courseId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   try {
     const session = await auth();
     if (!session?.user?.id) throw new Error("Unauthorized");
@@ -78,6 +82,9 @@ export async function getPendingEnrollments() {
 }
 
 export async function adminApproveEnrollment(enrollmentId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (!session || session.user.role !== "ADMIN") throw new Error("Unauthorized");
 
@@ -98,6 +105,9 @@ export async function adminApproveEnrollment(enrollmentId: string) {
 }
 
 export async function adminRejectEnrollment(enrollmentId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (!session || session.user.role !== "ADMIN") throw new Error("Unauthorized");
 

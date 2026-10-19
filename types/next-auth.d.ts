@@ -6,6 +6,7 @@ export type ExtendedUser = DefaultSession["user"] & {
   role: Role;
   studentType: StudentType;
   level: Level;
+  isDemo?: boolean;
 };
 
 declare module "next-auth" {
@@ -17,6 +18,7 @@ declare module "next-auth" {
     role?: Role;
     studentType?: StudentType;
     level?: Level;
+    isDemo?: boolean;
   }
 }
 
@@ -26,5 +28,6 @@ declare module "next-auth/jwt" {
     role?: Role;
     studentType?: StudentType;
     level?: Level;
+    isDemo?: boolean;
   }
 }

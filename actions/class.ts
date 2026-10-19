@@ -1,5 +1,6 @@
 "use server";
 
+import { demoGuard } from "@/lib/demo";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
@@ -25,6 +26,9 @@ export async function getClasses() {
 }
 
 export async function createClass(name: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   try {
     const session = await auth();
     if (!session || session.user.role !== "ADMIN") {
@@ -53,6 +57,9 @@ export async function createClass(name: string) {
 }
 
 export async function updateClass(id: string, name: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   try {
     const session = await auth();
     if (!session || session.user.role !== "ADMIN") {
@@ -82,6 +89,9 @@ export async function updateClass(id: string, name: string) {
 }
 
 export async function deleteClass(id: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   try {
     const session = await auth();
     if (!session || session.user.role !== "ADMIN") {

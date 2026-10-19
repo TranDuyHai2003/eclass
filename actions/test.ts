@@ -1,5 +1,6 @@
 "use server";
 
+import { demoGuard } from "@/lib/demo";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
@@ -67,6 +68,9 @@ export async function upsertTest(
     dueDate?: Date | null;
   },
 ) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await requireTeacherOrAdmin();
 
   const lesson = await prisma.lesson.findUnique({
@@ -141,6 +145,9 @@ export async function upsertCourseTest(
     dueDate?: Date | null;
   },
 ) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await requireTeacherOrAdmin();
 
   const course = await prisma.course.findUnique({ where: { id: courseId } });
@@ -182,6 +189,9 @@ export async function upsertCourseTest(
 // Data format for sections:
 // [ { name: string, position: number, questions: [ { position, type, correctAnswer, points, explanation, videoUrl, audioUrl, needsManualGrading } ] } ]
 export async function saveTestMatrix(testId: string, sections: any[]) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await requireTeacherOrAdmin();
 
   const normalizeType = (raw: unknown) => {
@@ -359,6 +369,9 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
  * Used when a teacher updates the answer key or points.
  */
 export async function reCalculateAllAttempts(testId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   await prisma.$transaction(async (tx) => {
     const test = await tx.test.findUnique({
       where: { id: testId },
@@ -486,6 +499,9 @@ export async function reCalculateAllAttempts(testId: string) {
 // =============================================
 
 export async function startTestAttempt(testId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (!session || !session.user.id) {
     throw new Error("Unauthorized");
@@ -545,6 +561,9 @@ export async function startTestAttempt(testId: string) {
 }
 
 export async function deleteStudentAttempt(attemptId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
     throw new Error("Unauthorized");
@@ -699,6 +718,9 @@ export async function submitTestAttempt(
   attemptId: string, 
   studentAnswers: { questionId: string, answerProvided: string, subAnswers?: { subQuestionId: string, answerProvided: string }[] }[]
 ) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   console.log("[submitTestAttempt] attemptId:", attemptId);
   console.log("[submitTestAttempt] studentAnswers:", JSON.stringify(studentAnswers, null, 2));
 
@@ -932,6 +954,9 @@ export async function getTeacherCoursesWithLessons() {
 }
 
 export async function mapTestToLesson(testId: string, lessonId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await requireTeacherOrAdmin();
 
   const test = await prisma.test.findUnique({
@@ -970,6 +995,9 @@ export async function mapTestToLesson(testId: string, lessonId: string) {
 }
 
 export async function unmapTest(testId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await requireTeacherOrAdmin();
 
   const test = await prisma.test.findUnique({
@@ -1005,6 +1033,9 @@ export async function gradeStudentAnswer(
   isCorrect: boolean,
   feedback?: string,
 ) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await requireTeacherOrAdmin();
 
   const answer = await prisma.studentAnswer.findUnique({
@@ -1088,6 +1119,9 @@ export async function resubmitEssayAnswer(
   questionId: string,
   answerProvided: string,
 ) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (!session || !session.user.id) {
     throw new Error("Unauthorized");
@@ -1155,6 +1189,9 @@ export async function resubmitEssayAnswer(
 // =============================================
 
 export async function saveTestDraft(attemptId: string, answers: { questionId: string, answerProvided: string }[]) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (!session || !session.user.id) {
     throw new Error("Unauthorized");
@@ -1231,6 +1268,9 @@ export async function getTestDraft(attemptId: string) {
 }
 
 export async function reopenTestAttempt(attemptId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
     throw new Error("Unauthorized");

@@ -1,5 +1,6 @@
 "use server";
 
+import { demoGuard } from "@/lib/demo";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
@@ -10,6 +11,9 @@ export async function createComment(
   parentId?: string,
   images?: string[],
 ) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -110,6 +114,9 @@ export async function getComments(lessonId: string) {
 }
 
 export async function updateComment(commentId: string, content: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -145,6 +152,9 @@ export async function updateComment(commentId: string, content: string) {
 }
 
 export async function deleteComment(commentId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   try {
     const session = await auth();
     if (!session?.user?.id) {

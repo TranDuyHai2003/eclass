@@ -29,6 +29,15 @@ export default auth((req) => {
   // 1. Cho phép các API Auth
   if (isApiAuthRoute) return NextResponse.next();
 
+  // 1b. Tài khoản demo chỉ xem: chặn mọi request ghi dữ liệu vào API
+  const isReadMethod = ["GET", "HEAD", "OPTIONS"].includes(req.method);
+  if (req.auth?.user?.isDemo && nextUrl.pathname.startsWith("/api") && !isReadMethod) {
+    return NextResponse.json(
+      { success: false, error: "Demo Mode — tài khoản chỉ xem, không thể thay đổi dữ liệu." },
+      { status: 403 },
+    );
+  }
+
   // 2. Chặn truy cập trang login/register nếu đã đăng nhập
   if (isLoggedIn && (nextUrl.pathname === "/login" || nextUrl.pathname === "/register")) {
     return NextResponse.redirect(new URL("/", nextUrl));

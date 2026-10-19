@@ -52,6 +52,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           level: user.level,
           image: user.image,
           isApproved: user.isApproved,
+          isDemo: user.isDemo,
         };
       },
     }),
@@ -80,7 +81,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.sub) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.sub },
-          select: { name: true, image: true, role: true, studentType: true, level: true, isApproved: true }
+          select: { name: true, image: true, role: true, studentType: true, level: true, isApproved: true, isDemo: true }
         });
         if (dbUser) {
           session.user.name = dbUser.name;
@@ -89,6 +90,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           session.user.studentType = dbUser.studentType;
           (session.user as any).level = dbUser.level;
           (session.user as any).isApproved = dbUser.isApproved;
+          session.user.isDemo = dbUser.isDemo;
         }
       }
 

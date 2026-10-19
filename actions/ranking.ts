@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { demoGuard } from "@/lib/demo";
 import { auth } from "@/auth";
 import { DEFAULT_RANKING_CONFIG, RankStatus, RankConfirmationState } from "@/lib/ranking-config";
 import { calculateRankingScore } from "@/lib/ranking-calculator";
@@ -689,6 +690,9 @@ function getNearMeList(currentUserRanked: RankingUser | null, currentUserId: str
 }
 
 export async function freezeWeeklySnapshot(studyClassId?: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (!session || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
     throw new Error("Unauthorized: Only Admin or Teacher can freeze snapshots");
