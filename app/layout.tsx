@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Outfit } from "next/font/google";
 import { Toaster } from "sonner";
 import Header from "@/components/layout/Header";
+import DemoBanner from "@/components/layout/DemoBanner";
 import { Providers } from "./providers";
 import AntiInspectLayout from "@/components/layout/AntiInspectLayout";
 import { WatchRouteTracker } from "@/components/layout/WatchRouteTracker";
@@ -137,6 +138,7 @@ export default function RootLayout({
           <WatchRouteTracker />
           <AntiInspectLayout>
             <Toaster position="top-right" richColors toastOptions={{ className: "p-4" }} gap={12} />
+            <DemoBanner />
             <Header />
             {children}
           </AntiInspectLayout>

@@ -11,6 +11,7 @@ export default {
         token.studentType = (user as any).studentType;
         token.level = (user as any).level;
         token.isApproved = (user as any).isApproved;
+        token.isDemo = (user as any).isDemo ?? false;
         token.id = user.id;
       }
 
@@ -29,6 +30,9 @@ export default {
     session({ session, token }) {
       if (token.role && session.user) {
         (session.user as any).role = token.role;
+      }
+      if (session.user) {
+        (session.user as any).isDemo = !!token.isDemo;
       }
       if (token.sub && session.user) {
         session.user.id = token.sub;

@@ -1,5 +1,6 @@
 "use server";
 
+import { demoGuard } from "@/lib/demo";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
@@ -229,6 +230,9 @@ export async function createCourse(data: {
   isStructured?: boolean;
   level?: "BASIC" | "ADVANCED";
 }) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (
     !session ||
@@ -287,6 +291,9 @@ export async function getDefaultChapter(courseId: string) {
 }
 
 export async function getOrCreateFlatChapter(courseId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (
     !session ||
@@ -326,6 +333,9 @@ export async function updateCourse(
     classIds?: string[];
   },
 ) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (
     !session ||
@@ -456,6 +466,9 @@ export async function updateCourse(
 }
 
 export async function deleteCourse(courseId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   try {
     const session = await auth();
     if (
@@ -503,6 +516,9 @@ export async function deleteCourse(courseId: string) {
 // =============================================
 
 export async function createChapter(courseId: string, title?: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (
     !session ||
@@ -536,6 +552,9 @@ export async function updateChapter(
     isPublished?: boolean;
   },
 ) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (
     !session ||
@@ -582,6 +601,9 @@ export async function updateChapter(
 }
 
 export async function deleteChapter(chapterId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   try {
     const session = await auth();
     if (
@@ -619,6 +641,9 @@ export async function deleteChapter(chapterId: string) {
 export async function reorderChapters(
   list: { id: string; position: number }[],
 ) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (
     !session ||
@@ -643,6 +668,9 @@ export async function reorderChapters(
 // =============================================
 
 export async function createLesson(chapterId: string, title: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (
     !session ||
@@ -684,6 +712,9 @@ export async function updateLesson(
     type?: "VIDEO" | "DOCUMENT" | "QUIZ";
   },
 ) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (
     !session ||
@@ -735,6 +766,9 @@ export async function updateLesson(
 }
 
 export async function deleteLesson(lessonId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   try {
     const session = await auth();
     if (
@@ -774,6 +808,9 @@ export async function deleteLesson(lessonId: string) {
  * @param list Array of { id: string, position: number }
  */
 export async function reorderLessons(list: { id: string; position: number }[]) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (
     !session ||
@@ -802,6 +839,9 @@ export async function updateLessonProgress({
   lessonId: string;
   isCompleted: boolean;
 }) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   try {
     const session = await auth();
     if (!session?.user?.id) throw new Error("Unauthorized");
@@ -842,6 +882,9 @@ export async function createAttachment(data: {
   courseId?: string;
   lessonId?: string;
 }) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (
     !session ||
@@ -856,6 +899,9 @@ export async function createAttachment(data: {
 }
 
 export async function deleteAttachment(attachmentId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (
     !session ||

@@ -1,5 +1,6 @@
 "use server";
 
+import { demoGuard } from "@/lib/demo";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -41,6 +42,9 @@ function extractS3Key(fileUrl: string): string | null {
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // Đặt giới hạn cứng là 50MB
 
 export async function deleteDraftFile(url: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
@@ -61,6 +65,9 @@ export async function submitHomework(
   lessonId: string,
   attachments: { name: string; url: string; size?: number }[],
 ) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   // Rà soát lại toàn bộ file trước khi lưu
   for (const file of attachments) {
     if (file.size && file.size > MAX_FILE_SIZE) {
@@ -140,6 +147,9 @@ export async function gradeHomework(
   status: "SATISFACTORY" | "UNSATISFACTORY",
   feedback?: string,
 ) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (
     !session?.user ||
@@ -172,6 +182,9 @@ export async function gradeHomework(
 }
 
 export async function deleteHomeworkSubmission(submissionId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth();
   if (
     !session?.user ||

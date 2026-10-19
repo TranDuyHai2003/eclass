@@ -1,5 +1,6 @@
 "use server"
 
+import { demoGuard } from "@/lib/demo";
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
@@ -20,6 +21,9 @@ export async function getUsers() {
 }
 
 export async function toggleUserApproval(userId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
     const session = await auth()
     if (!session || session.user.role !== "ADMIN") {
         return { success: false, error: "Unauthorized" }
@@ -43,6 +47,9 @@ export async function toggleUserApproval(userId: string) {
 }
 
 export async function updateUserRole(userId: string, newRole: Role) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
     const session = await auth()
     if (!session || session.user.role !== "ADMIN") {
         return { success: false, error: "Unauthorized" }
@@ -71,6 +78,9 @@ export async function updateUserRole(userId: string, newRole: Role) {
 }
 
 export async function updateStudentType(userId: string, newType: StudentType) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
     const session = await auth()
     if (!session || session.user.role !== "ADMIN") {
         return { success: false, error: "Unauthorized" }
@@ -94,6 +104,9 @@ export async function updateStudentType(userId: string, newType: StudentType) {
 }
 
 export async function updateUserLevel(userId: string, newLevel: Level) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
   const session = await auth()
   if (!session || session.user.role !== "ADMIN") {
     return { success: false, error: "Unauthorized" }
@@ -117,6 +130,9 @@ export async function updateUserLevel(userId: string, newLevel: Level) {
 }
 
 export async function updateUserClass(userId: string, classId: string | null) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
     const session = await auth();
     if (!session || session.user.role !== "ADMIN") {
         return { success: false, error: "Unauthorized" };
@@ -136,6 +152,9 @@ export async function updateUserClass(userId: string, classId: string | null) {
 }
 
 export async function deleteUser(userId: string) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
     const session = await auth()
     if (!session || session.user.role !== "ADMIN") {
         return { success: false, error: "Unauthorized" }
@@ -152,6 +171,9 @@ export async function deleteUser(userId: string) {
 }
 
 export async function updateProfile(data: { name?: string; image?: string }) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+
     const session = await auth()
     if (!session || !session.user) {
         return { success: false, error: "Chưa đăng nhập" }

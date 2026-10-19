@@ -4,7 +4,13 @@ eClass là nền tảng học trực tuyến (LMS) cho giáo viên và học sin
 
 Dự án viết bằng **Next.js 16 (App Router)**, **React 19**, **Prisma** + **PostgreSQL**. Video và tài liệu được lưu trên **Backblaze B2** và phân phối qua CDN.
 
-🌐 **Production:** [https://teacherduc.me](https://teacherduc.me)
+🌐 **Production:** [https://teacherduc.me](https://teacherduc.me). Nền tảng đang được học sinh thật sử dụng.
+
+### Tài khoản demo
+
+Hệ thống có **tài khoản demo chỉ xem (read-only)** dành cho người đánh giá học thuật và nhà tuyển dụng. Tài khoản này được cung cấp riêng khi có yêu cầu, vui lòng liên hệ tác giả.
+
+Tài khoản demo có quyền xem như quản trị viên (khóa học, bài kiểm tra, thống kê, bảng xếp hạng). Mọi thao tác thay đổi dữ liệu đều bị chặn ở backend.
 
 ---
 
@@ -187,6 +193,24 @@ npx ts-node scripts/check-b2-files.ts
 ```bash
 git push heroku master
 ```
+
+### Tài khoản demo (chỉ xem)
+
+Tài khoản demo là tài khoản `ADMIN` có cờ `isDemo = true`. Cơ chế chặn ghi dữ liệu được thực thi ở backend tại hai lớp:
+
+- **Middleware** (`middleware.ts`): trả `403` cho mọi request không phải `GET/HEAD/OPTIONS` tới `/api/*`, trừ `/api/auth`.
+- **Server Actions** (`actions/*.ts`): mọi action ghi dữ liệu đều gọi `demoGuard()` (trong `lib/demo.ts`) ngay ở đầu hàm.
+
+Cờ `isDemo` được đọc lại từ database ở mỗi lần lấy session, nên client không thể giả mạo.
+
+Tạo tài khoản hoặc đổi mật khẩu (thông tin đăng nhập **không** lưu trong repo):
+
+```bash
+# Production (Heroku). Bỏ trống DEMO_PASSWORD để tự sinh mật khẩu ngẫu nhiên
+heroku run -a <app> -e "DEMO_EMAIL=<email>" -- node scripts/create-demo-account.js
+```
+
+Chạy lại lệnh trên để đổi mật khẩu khi cần thu hồi quyền truy cập.
 
 ### Docker / VPS (tùy chọn)
 
