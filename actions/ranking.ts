@@ -1,5 +1,6 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, prismaBase } from "@/lib/prisma";
 import { demoGuard } from "@/lib/demo";
+import { maskUsersForDemo } from "@/lib/demo-privacy";
 import { auth } from "@/auth";
 import { DEFAULT_RANKING_CONFIG, RankStatus, RankConfirmationState } from "@/lib/ranking-config";
 import { calculateRankingScore } from "@/lib/ranking-calculator";
@@ -255,8 +256,10 @@ export async function getRankingData(options: GetRankingOptions = {}) {
   const currentWeekCode = getWeekCode(new Date(), 0);
   const previousWeekCode = getWeekCode(new Date(), -1);
 
-  const { studentsInClass, studyClassName, dbSnapshots, totalPublishedTests, recent8TestsList } =
-    await fetchRawRankingBaseData(targetClassId || "ALL");
+  const rawBaseData = await fetchRawRankingBaseData(targetClassId || "ALL");
+  const { studyClassName, dbSnapshots, totalPublishedTests, recent8TestsList } = rawBaseData;
+  // Dữ liệu trong unstable_cache dùng chung → ẩn danh sau khi lấy ra, chỉ cho tài khoản demo
+  const studentsInClass = await maskUsersForDemo(rawBaseData.studentsInClass, prismaBase);
 
   const prevRankMap = new Map<string, number>();
   dbSnapshots
