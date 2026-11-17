@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import type { PDFDocumentProxy } from "pdfjs-dist";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -30,6 +31,10 @@ interface PDFViewerProps {
   noScroll?: boolean;
   flat?: boolean;
   renderLeft?: React.ReactNode;
+  /** Gọi khi tài liệu tải xong (vd: để dò vị trí các câu) */
+  onDocumentLoad?: (pdf: PDFDocumentProxy) => void;
+  /** Cuộn tới vị trí này và đánh dấu; đổi `key` để cuộn lại */
+  scrollTarget?: { page: number; yPct: number; key: string; label?: string } | null;
 }
 
 function isGoogleDriveFolder(url: string) {
@@ -61,6 +66,8 @@ export default function PDFViewer({
   noScroll = false,
   flat = false,
   renderLeft,
+  onDocumentLoad,
+  scrollTarget,
 }: PDFViewerProps) {
   const normalized = normalizeCdnUrl(rawUrl) || rawUrl || "";
   // Backblaze B2 sẽ trả về lỗi 400 (Bad character in percent-encoded string: 44)
@@ -72,19 +79,65 @@ export default function PDFViewer({
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const [zoom, setZoom] = useState<number>(1.0);
 
-  // Resize listener to make PDF responsive
-  useEffect(() => {
-    const updateWidth = () => {
-      const container = document.getElementById("pdf-container");
-      if (container) {
-        setContainerWidth(container.clientWidth - 32);
-      }
-    };
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const renderedPagesRef = useRef<Set<number>>(new Set());
+  const [renderTick, setRenderTick] = useState(0);
+  const pendingScrollRef = useRef<string | null>(null);
 
+  // Theo dõi kích thước container (kể cả khi nằm trong tab bị ẩn rồi hiện lại)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const updateWidth = () => {
+      if (container.clientWidth > 0) setContainerWidth(container.clientWidth - 32);
+    };
     updateWidth();
-    window.addEventListener("resize", updateWidth);
-    return () => window.removeEventListener("resize", updateWidth);
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(container);
+    return () => observer.disconnect();
   }, []);
+
+  const lastScrolledKeyRef = useRef<string | null>(null);
+
+  // Đánh dấu cần cuộn mỗi khi đích thay đổi
+  useEffect(() => {
+    pendingScrollRef.current = scrollTarget?.key ?? null;
+  }, [scrollTarget?.key]);
+
+  // Người dùng tự cuộn → ngừng tự căn chỉnh
+  useEffect(() => {
+    const area = scrollAreaRef.current;
+    if (!area) return;
+    const stop = () => {
+      pendingScrollRef.current = null;
+    };
+    area.addEventListener("wheel", stop, { passive: true });
+    area.addEventListener("touchstart", stop, { passive: true });
+    area.addEventListener("mousedown", stop);
+    return () => {
+      area.removeEventListener("wheel", stop);
+      area.removeEventListener("touchstart", stop);
+      area.removeEventListener("mousedown", stop);
+    };
+  }, []);
+
+  // Cuộn tới đích, rồi tiếp tục căn lại mỗi khi trang render/đổi kích thước làm lệch vị trí
+  useEffect(() => {
+    if (!scrollTarget || pendingScrollRef.current !== scrollTarget.key) return;
+    const area = scrollAreaRef.current;
+    const pageEl = area?.querySelector<HTMLElement>(`[data-page="${scrollTarget.page}"]`);
+    if (!area || !pageEl || pageEl.offsetHeight === 0) return;
+
+    const areaTop = area.getBoundingClientRect().top;
+    const pageTop = pageEl.getBoundingClientRect().top - areaTop + area.scrollTop;
+    const top = Math.max(0, pageTop + (pageEl.offsetHeight * scrollTarget.yPct) / 100 - 24);
+    const isNewTarget = lastScrolledKeyRef.current !== scrollTarget.key;
+    lastScrolledKeyRef.current = scrollTarget.key;
+    if (isNewTarget || Math.abs(area.scrollTop - top) > 4) {
+      area.scrollTo({ top, behavior: isNewTarget ? "smooth" : "auto" });
+    }
+  }, [scrollTarget, renderTick, containerWidth, zoom]);
 
   if (isGoogleDriveFolder(url)) {
     return (
@@ -103,8 +156,10 @@ export default function PDFViewer({
 
   const fileUrl = needsProxy(url) ? getProxyUrl(url) : url;
 
-  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
-    setNumPages(numPages);
+  function onDocumentLoadSuccess(pdf: PDFDocumentProxy) {
+    renderedPagesRef.current = new Set();
+    setNumPages(pdf.numPages);
+    onDocumentLoad?.(pdf);
   }
 
   const handleZoomIn = () => {
@@ -120,7 +175,7 @@ export default function PDFViewer({
 
   return (
     <div
-      id="pdf-container"
+      ref={containerRef}
       className={cn(
         "flex flex-col bg-slate-200/50",
         !noScroll && "h-full overflow-hidden",
@@ -187,6 +242,7 @@ export default function PDFViewer({
 
       {/* PDF Content Area */}
       <div
+        ref={scrollAreaRef}
         className={cn(
           "flex-1 relative bg-slate-300/20 overflow-auto",
           !noScroll ? "h-full" : "overflow-y-visible",
@@ -227,14 +283,35 @@ export default function PDFViewer({
             <div className="space-y-4 p-4">
               {pages.map((pageNum) => (
                 <div key={pageNum} className="flex justify-center">
-                  <Page
-                    pageNumber={pageNum}
-                    scale={zoom}
-                    rotate={rotation}
-                    width={containerWidth > 0 ? containerWidth : undefined}
-                    className="shadow-2xl border border-slate-300 rounded-sm overflow-hidden"
-                    loading={null}
-                  />
+                  <div className="relative" data-page={pageNum}>
+                    <Page
+                      pageNumber={pageNum}
+                      scale={zoom}
+                      rotate={rotation}
+                      width={containerWidth > 0 ? containerWidth : undefined}
+                      className="shadow-2xl border border-slate-300 rounded-sm overflow-hidden"
+                      loading={null}
+                      onRenderSuccess={() => {
+                        renderedPagesRef.current.add(pageNum);
+                        setRenderTick((t) => t + 1);
+                      }}
+                    />
+                    {scrollTarget && scrollTarget.page === pageNum && rotation === 0 && (
+                      <div
+                        key={scrollTarget.key}
+                        className="pointer-events-none absolute left-0 right-0 z-10 flex items-center animate-in fade-in duration-500"
+                        style={{ top: `calc(${scrollTarget.yPct}% - 6px)` }}
+                      >
+                        <div className="h-7 w-1.5 rounded-r bg-amber-400" />
+                        {scrollTarget.label && (
+                          <span className="ml-1 rounded-md bg-amber-400 px-1.5 py-0.5 text-[10px] font-black uppercase text-white shadow">
+                            {scrollTarget.label}
+                          </span>
+                        )}
+                        <div className="ml-1 h-7 flex-1 bg-amber-300/20" />
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
