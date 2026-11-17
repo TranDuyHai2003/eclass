@@ -443,7 +443,7 @@ export default function UserManagementPage() {
                         }
                         disabled={isPending}
                       >
-                        <SelectTrigger className="w-[90px] h-7 text-[10px] font-bold border-slate-200 rounded-lg">
+                        <SelectTrigger className="w-auto min-w-[90px] gap-1 px-2.5 h-7 text-[10px] font-bold border-slate-200 rounded-lg">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -479,7 +479,7 @@ export default function UserManagementPage() {
                           >
                             <SelectTrigger
                               className={cn(
-                                "w-[90px] h-7 text-[10px] font-bold border-slate-200 rounded-lg",
+                                "w-auto min-w-[90px] gap-1 px-2.5 h-7 text-[10px] font-bold border-slate-200 rounded-lg",
                                 user.studentType === "OFFLINE"
                                   ? "bg-orange-50 text-orange-700"
                                   : "bg-blue-50 text-blue-700",
@@ -511,7 +511,7 @@ export default function UserManagementPage() {
                           >
                             <SelectTrigger
                               className={cn(
-                                "w-[90px] h-7 text-[10px] font-bold border-slate-200 rounded-lg",
+                                "w-auto min-w-[90px] gap-1 px-2.5 h-7 text-[10px] font-bold border-slate-200 rounded-lg",
                                 user.level === "ADVANCED"
                                   ? "bg-purple-50 text-purple-700"
                                   : "bg-green-50 text-green-700",
@@ -541,7 +541,7 @@ export default function UserManagementPage() {
                             }
                             disabled={isPending}
                           >
-                            <SelectTrigger className="w-[90px] h-7 text-[10px] font-bold border-slate-200 rounded-lg">
+                            <SelectTrigger className="w-auto min-w-[90px] gap-1 px-2.5 h-7 text-[10px] font-bold border-slate-200 rounded-lg">
                               <SelectValue placeholder="Chưa xếp lớp" />
                             </SelectTrigger>
                             <SelectContent>
