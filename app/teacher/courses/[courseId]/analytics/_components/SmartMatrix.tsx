@@ -163,10 +163,10 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
             <TableHeader className="bg-slate-50/50">
               <TableRow>
                 {/* Rank & Student Info */}
-                <TableHead className="w-[60px] font-black uppercase text-[10px] tracking-widest text-slate-500 text-center sticky left-0 bg-slate-50 z-30">
+                <TableHead className="w-[44px] md:w-[60px] font-black uppercase text-[10px] tracking-widest text-slate-500 text-center md:sticky md:left-0 bg-slate-50 md:z-30">
                   #
                 </TableHead>
-                <TableHead className="min-w-[180px] font-black uppercase text-[10px] tracking-widest text-slate-500 sticky left-[60px] bg-slate-50 z-30 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                <TableHead className="min-w-[140px] md:min-w-[180px] font-black uppercase text-[10px] tracking-widest text-slate-500 sticky left-0 md:left-[60px] bg-slate-50 z-30 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                   Học sinh
                 </TableHead>
 
@@ -202,7 +202,7 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
                 ))}
 
                 {/* Missed Counter */}
-                <TableHead className="min-w-[100px] font-black uppercase text-[10px] tracking-widest text-blue-500 text-center sticky right-0 bg-slate-50 z-30 border-l shadow-[-2px_0_5px_rgba(0,0,0,0.05)]">
+                <TableHead className="min-w-[90px] md:min-w-[100px] font-black uppercase text-[10px] tracking-widest text-blue-500 text-center md:sticky md:right-0 bg-slate-50 md:z-30 md:border-l shadow-[-2px_0_5px_rgba(0,0,0,0.05)]">
                   <div className="flex items-center justify-center gap-1">
                     <AlertTriangle className="w-3 h-3" /> Bỏ bài
                   </div>
@@ -216,12 +216,12 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
                   className="hover:bg-slate-50/50 transition-colors group"
                 >
                   {/* Rank */}
-                  <TableCell className="text-center font-black text-slate-400 sticky left-0 bg-white group-hover:bg-slate-50 z-20">
+                  <TableCell className="text-center font-black text-slate-400 md:sticky md:left-0 bg-white group-hover:bg-slate-50 md:z-20">
                     {index + 1}
                   </TableCell>
 
                   {/* Name - Clickable to Cấp độ 2 */}
-                  <TableCell className="sticky left-[60px] bg-white group-hover:bg-slate-50 z-20 border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                  <TableCell className="sticky left-0 md:left-[60px] bg-white group-hover:bg-slate-50 z-20 border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
                     <div className="flex flex-col">
                       <Link
                         href={`/teacher/courses/${courseId}/analytics/students/${student.studentId}`}
@@ -321,7 +321,7 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
                   {/* Missed Count */}
                   <TableCell
                     className={cn(
-                      "text-center font-black sticky right-0 bg-white group-hover:bg-slate-50 z-20 border-l shadow-[-2px_0_5px_rgba(0,0,0,0.02)]",
+                      "text-center font-black md:sticky md:right-0 bg-white group-hover:bg-slate-50 md:z-20 md:border-l md:shadow-[-2px_0_5px_rgba(0,0,0,0.02)]",
                       student.missedCount > 2
                         ? "text-blue-600 bg-blue-50/30"
                         : "text-slate-600",
