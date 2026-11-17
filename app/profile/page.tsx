@@ -2,6 +2,8 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { HomeSidebar } from "@/components/home/HomeSidebar";
 import ProfileClient from "@/components/profile/ProfileClient";
+import ChangePasswordCard from "@/components/profile/ChangePasswordCard";
+import { prisma } from "@/lib/prisma";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -11,6 +13,10 @@ export default async function ProfilePage() {
   }
 
   const { user } = session;
+
+  const account = user.id
+    ? await prisma.user.findUnique({ where: { id: user.id }, select: { password: true } })
+    : null;
 
   return (
     <div className="page-shell bg-[#EBF3FF] min-h-screen">
@@ -30,6 +36,7 @@ export default async function ProfilePage() {
             email: user.email || null,
             image: user.image || null,
           }} />
+          <ChangePasswordCard hasPassword={!!account?.password} />
         </main>
       </div>
     </div>
