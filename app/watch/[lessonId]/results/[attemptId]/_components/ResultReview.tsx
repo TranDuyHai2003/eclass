@@ -107,6 +107,8 @@ interface ResultReviewProps {
   canSeeAnswers: boolean;
   isTeacher: boolean;
   score: number;
+  /** Thời gian làm bài (giây), null nếu chưa nộp */
+  durationSeconds: number | null;
 }
 
 type Status = "correct" | "wrong" | "blank" | "pending" | "ungraded";
@@ -188,6 +190,7 @@ export function ResultReview({
   canSeeAnswers,
   isTeacher,
   score,
+  durationSeconds,
 }: ResultReviewProps) {
   const answerMap = useMemo(() => new Map(answers.map((a) => [a.questionId, a])), [answers]);
 
@@ -345,6 +348,8 @@ export function ResultReview({
       onlyWrong={onlyWrong}
       onToggleOnlyWrong={() => setOnlyWrong((v) => !v)}
       counts={counts}
+      score={score}
+      durationSeconds={durationSeconds}
     />
   );
 
@@ -385,7 +390,8 @@ export function ResultReview({
       <div className="flex-1 min-h-0 relative">
         {/* TAB: Chữa từng câu */}
         {canSeeAnswers && mountedTabs.has("review") && (
-          <div className={cn("absolute inset-0 flex", tab !== "review" && "hidden")}>
+          <div className={cn("absolute inset-0 flex justify-center bg-slate-100/70", tab !== "review" && "hidden")}>
+            <div className="flex w-full max-w-[1280px] bg-white xl:border-x xl:border-slate-200">
             <aside className="hidden lg:flex w-72 xl:w-80 shrink-0 flex-col border-r bg-white overflow-y-auto custom-scrollbar">
               {grid}
             </aside>
@@ -395,6 +401,7 @@ export function ResultReview({
                 <>
                   {/* Chế độ tập trung: câu hỏi + đúng phần lời giải, cuộn chung một cột */}
                   <div className={cn("flex-1 min-h-0 overflow-y-auto custom-scrollbar", showFull && "hidden")}>
+                    <div className="mx-auto w-full max-w-4xl">
                     <QuestionDetail
                       item={selected}
                       isTeacher={isTeacher}
@@ -469,12 +476,14 @@ export function ResultReview({
                         />
                       </div>
                     </section>
+                    </div>
                   </div>
 
                   {/* Chế độ toàn bộ file: thông tin câu ở trên, PDF cuộn tới câu ở dưới */}
                   {fullMounted && (
                     <div className={cn("flex-1 min-h-0 flex flex-col", !showFull && "hidden")}>
                       <div className="shrink-0 max-h-[45%] overflow-y-auto custom-scrollbar">
+                        <div className="mx-auto w-full max-w-4xl">
                         <QuestionDetail
                           item={selected}
                           isTeacher={isTeacher}
@@ -510,11 +519,13 @@ export function ResultReview({
                             </p>
                           }
                         />
+                        </div>
                       </div>
                       <div className="flex-1 min-h-0 border-t bg-slate-100">
                         <PDFViewer
                           url={reviewPdfUrl}
                           flat
+                          maxPageWidth={880}
                           onDocumentLoad={handleReviewPdfLoad}
                           scrollTarget={scrollTarget}
                           renderLeft={
@@ -532,15 +543,28 @@ export function ResultReview({
               )}
             </div>
 
+            {/* Điện thoại/tablet: tab dọc ở mép phải mở ngăn kết quả (tham khảo LAB Study) */}
+            <button
+              onClick={() => setGridOpen(true)}
+              className="lg:hidden fixed right-0 top-[64%] z-40 -translate-y-1/2 flex flex-col items-center gap-0.5 rounded-l-xl bg-blue-600/95 px-1 py-2.5 text-white shadow-lg shadow-blue-600/30 active:bg-blue-700"
+              aria-label="Mở kết quả chi tiết"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span className="text-[9px] font-black uppercase tracking-widest [writing-mode:vertical-rl] rotate-180">
+                Kết quả
+              </span>
+            </button>
+
             <Sheet open={gridOpen} onOpenChange={setGridOpen}>
-              <SheetContent side="bottom" className="max-h-[80dvh] overflow-y-auto rounded-t-3xl p-0">
-                <SheetHeader className="px-5 pt-5 pb-0">
-                  <SheetTitle>Danh sách câu</SheetTitle>
+              <SheetContent side="right" className="w-[86vw] max-w-sm gap-0 overflow-y-auto p-0">
+                <SheetHeader className="border-b px-5 py-4">
+                  <SheetTitle>Kết quả chi tiết</SheetTitle>
                   <SheetDescription className="sr-only">Chọn một câu để xem đáp án và lời giải</SheetDescription>
                 </SheetHeader>
                 {grid}
               </SheetContent>
             </Sheet>
+            </div>
           </div>
         )}
 
@@ -548,7 +572,7 @@ export function ResultReview({
         {mountedTabs.has("paper") && (
           <div className={cn("absolute inset-0 flex flex-col lg:flex-row", tab !== "paper" && "hidden")}>
             <div className="flex-1 min-h-0 bg-slate-100">
-              <PDFViewer url={pdfUrl} flat />
+              <PDFViewer url={pdfUrl} flat maxPageWidth={900} />
             </div>
             {!canSeeAnswers && (
               <HiddenAnswersPanel
@@ -584,6 +608,14 @@ export function ResultReview({
 
 // ---------- Lưới câu hỏi ----------
 
+function formatDuration(totalSeconds: number) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const sec = totalSeconds % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+}
+
 function QuestionGrid({
   sections,
   flat,
@@ -593,6 +625,8 @@ function QuestionGrid({
   onlyWrong,
   onToggleOnlyWrong,
   counts,
+  score,
+  durationSeconds,
 }: {
   sections: ReviewSection[];
   flat: FlatQuestion[];
@@ -602,11 +636,26 @@ function QuestionGrid({
   onlyWrong: boolean;
   onToggleOnlyWrong: () => void;
   counts: Record<Status, number>;
+  score: number;
+  durationSeconds: number | null;
 }) {
   const byId = new Map(flat.map((f) => [f.q.id, f]));
 
   return (
     <div className="p-5 space-y-5">
+      <div className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Điểm</p>
+          <p className="text-xl font-black text-blue-600">{score.toFixed(2)}<span className="text-sm text-slate-400">/10</span></p>
+        </div>
+        {durationSeconds !== null && (
+          <div className="text-right">
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Thời gian</p>
+            <p className="text-xl font-black text-slate-700">{formatDuration(durationSeconds)}</p>
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="rounded-2xl bg-emerald-50 py-2">
           <div className="text-lg font-black text-emerald-600">{counts.correct}</div>

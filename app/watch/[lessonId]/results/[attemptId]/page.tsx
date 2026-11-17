@@ -45,7 +45,7 @@ export default async function TestResultPage({
   return (
     <div className="h-[100dvh] flex flex-col bg-[#E2EEFF] overflow-hidden">
       {/* Result Header */}
-      <header className="h-16 px-3 md:px-6 border-b flex items-center justify-between gap-3 shrink-0 bg-white z-[60] shadow-sm">
+      <header className="h-16 px-3 md:px-6 border-b flex items-center justify-between gap-3 shrink-0 bg-white z-40 shadow-sm">
         <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
           <Button variant="ghost" size="icon" asChild className="rounded-xl">
             <Link href={`/watch/${lessonId}`}>
@@ -81,6 +81,11 @@ export default async function TestResultPage({
         canSeeAnswers={test.showAnswers || isTeacher}
         isTeacher={isTeacher}
         score={Number(attempt.score || 0)}
+        durationSeconds={
+          attempt.completedAt
+            ? Math.max(0, Math.floor((attempt.completedAt.getTime() - attempt.startedAt.getTime()) / 1000))
+            : null
+        }
       />
     </div>
   );
