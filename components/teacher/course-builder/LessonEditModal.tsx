@@ -39,7 +39,8 @@ interface LessonEditModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lesson: Lesson & { attachments: Attachment[] };
-  onSuccess: () => void;
+  /** `updated`: các trường vừa lưu, để danh sách bài học cập nhật ngay (không chờ tải lại) */
+  onSuccess: (updated?: Partial<Lesson>) => void;
 }
 
 const isYoutubeUrl = (url: string) => {
@@ -116,7 +117,7 @@ export function LessonEditModal({
       });
       if (res.success) {
         toast.success("Đã lưu thay đổi");
-        onSuccess();
+        onSuccess({ title, description, videoUrl, homeworkVideoUrl, type: type as Lesson["type"], hasHomework });
         onOpenChange(false);
       } else {
         toast.error(res.error || "Lỗi khi lưu");
@@ -552,7 +553,11 @@ export function LessonEditModal({
             </div>
             <Button 
               onClick={async () => {
-                if (lesson.type !== "QUIZ") await updateLesson(lesson.id, { type: "QUIZ" });
+                // Chỉ chuyển sang loại "Bài tập Quiz" khi bài học còn trống. Bài video/tài liệu có kèm
+                // bài tập giữ nguyên loại — học sinh vẫn vào làm bài qua mục bài tập của bài học.
+                // (Trước đây luôn đổi sang Quiz → bài video bị "nhảy" về Quiz sau khi soạn bài tập.)
+                const isEmptyLesson = !lesson.videoUrl && type !== "DOCUMENT" && lesson.type !== "DOCUMENT";
+                if (lesson.type !== "QUIZ" && isEmptyLesson) await updateLesson(lesson.id, { type: "QUIZ" });
                 window.location.href = `/teacher/tests/${lesson.id}`;
               }}
               className="bg-slate-900 hover:bg-blue-600 h-14 px-10 font-black uppercase text-xs tracking-widest rounded-2xl shadow-2xl transition-all"

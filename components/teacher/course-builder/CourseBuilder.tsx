@@ -244,7 +244,19 @@ export function CourseBuilder({ course: initialCourse }: CourseBuilderProps) {
           open={isModalOpen}
           onOpenChange={setIsModalOpen}
           lesson={editingLesson}
-          onSuccess={refreshData}
+          onSuccess={(updated) => {
+            // Cập nhật ngay trong danh sách để mở lại bài học thấy đúng dữ liệu vừa lưu
+            if (updated) {
+              setCourse((prev) => ({
+                ...prev,
+                chapters: prev.chapters.map((ch) => ({
+                  ...ch,
+                  lessons: ch.lessons.map((l) => (l.id === editingLesson.id ? { ...l, ...updated } : l)),
+                })),
+              }));
+            }
+            refreshData();
+          }}
         />
       )}
       {editingChapter && (
