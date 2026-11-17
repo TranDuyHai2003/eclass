@@ -61,7 +61,10 @@ export interface SolutionRegion {
 
 export const DEFAULT_LAYOUT: PdfLayout = { top: 0, bottom: 100, left: 0, right: 100 };
 
-const MARKER_REGEX = /^\s*(TDHT|Câu|Cau|Bài|Bai)\s*(\d{1,3})\s*[.:)]/i;
+// "TDHT 5." | "Câu 5:" | "» Câu 5)" | nhãn nhóm "Câu 1-4." (một đề bài chung cho câu 1→4)
+const MARKER_REGEX = /^[\s»•▪►*]*(TDHT|Câu|Cau|Bài|Bai)\s*(\d{1,3})(?:\s*[-–]\s*(\d{1,3}))?\s*[.:)]/i;
+/** Nhãn nhóm hợp lệ tối đa bao nhiêu câu */
+const MAX_GROUP_SIZE = 10;
 const round1 = (v: number) => Math.round(v * 10) / 10;
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
@@ -140,21 +143,38 @@ export async function analyzePdf(pdf: PDFDocumentProxy): Promise<PdfAnalysis> {
   };
 }
 
+const keywordOf = (raw: string) =>
+  raw.toLowerCase().replace(/^cau$/, "câu").replace(/^bai$/, "bài");
+
 function findMarkers(pages: TextLine[][]): PdfMarker[] {
-  const markers: PdfMarker[] = [];
+  const markers: (PdfMarker & { kw: string })[] = [];
   pages.forEach((lines, i) => {
     for (const line of lines) {
       const match = line.text.match(MARKER_REGEX);
       if (!match) continue;
-      markers.push({
-        n: Number(match[2]),
-        page: i + 1,
-        y: round1(clamp(line.top - 0.6, 0, 100)),
-        label: `${match[1]} ${match[2]}`,
-      });
+      // "BÀI 1: ..." viết hoa toàn bộ là tiêu đề chương, không phải nhãn câu
+      if (/^B[ÀA]I$/.test(match[1])) continue;
+      const kw = keywordOf(match[1]);
+      const from = Number(match[2]);
+      const to = match[3] ? Number(match[3]) : from;
+      const y = round1(clamp(line.top - 0.6, 0, 100));
+      if (to > from && to - from < MAX_GROUP_SIZE) {
+        // Nhóm câu dùng chung đề: mỗi câu trong nhóm bắt đầu tại cùng vị trí
+        for (let n = from; n <= to; n++) {
+          markers.push({ n, page: i + 1, y, label: `${match[1]} ${from}-${to}`, kw });
+        }
+      } else {
+        markers.push({ n: from, page: i + 1, y, label: `${match[1]} ${from}`, kw });
+      }
     }
   });
-  return markers.sort(comparePoints);
+
+  // File có thể dùng lẫn "TDHT" và "Câu" cho các phần khác nhau → giữ cả hai.
+  // "Bài n" thì thường là tiêu đề/tham chiếu: chỉ coi là nhãn câu khi file chủ yếu dùng "Bài".
+  const baiCount = markers.filter((m) => m.kw === "bài").length;
+  const kept = baiCount < markers.length * 0.5 ? markers.filter((m) => m.kw !== "bài") : markers;
+
+  return kept.map(({ kw: _kw, ...m }) => m).sort(comparePoints);
 }
 
 /**
@@ -235,6 +255,15 @@ export function mapMarkersToQuestions(markers: PdfMarker[], sections: string[][]
 
   const maxN = (run: PdfMarker[]) => Math.max(...run.map((m) => m.n));
 
+  // Số nhãn đúng bằng số câu và dãy số hợp lý ở từng phần → ghép tuần tự theo thứ tự đọc
+  const flatIds = sections.flat();
+  if (markers.length === flatIds.length && isConsistentSequence(markers, sections)) {
+    markers.forEach((m, i) => {
+      result[flatIds[i]] = { page: m.page, y: m.y, label: m.label, source: "auto" };
+    });
+    return result;
+  }
+
   if (sections.length === 1) {
     // Một phần: lấy đợt đánh số dài nhất (bỏ qua các nhãn lẻ như ví dụ minh hoạ)
     const longest = runs.reduce((a, b) => (b.length > a.length ? b : a));
@@ -265,6 +294,27 @@ export function mapMarkersToQuestions(markers: PdfMarker[], sections: string[][]
     sectionPtr = idx + 1;
   }
   return result;
+}
+
+/**
+ * Kiểm tra trước khi ghép tuần tự: trong mỗi phần, số nhãn không giảm và phần bắt đầu
+ * từ 1 hoặc nối tiếp số cuối của phần trước — tránh trường hợp số lượng trùng nhau ngẫu nhiên.
+ */
+function isConsistentSequence(markers: PdfMarker[], sections: string[][]) {
+  let offset = 0;
+  let prevLast = 0;
+  for (const section of sections) {
+    const slice = markers.slice(offset, offset + section.length);
+    offset += section.length;
+    if (slice.length === 0) continue;
+    const first = slice[0].n;
+    if (first !== 1 && first !== prevLast + 1) return false;
+    for (let i = 1; i < slice.length; i++) {
+      if (slice[i].n < slice[i - 1].n) return false;
+    }
+    prevLast = slice[slice.length - 1].n;
+  }
+  return true;
 }
 
 /** Tạo bộ mốc tự động từ kết quả phân tích. */
