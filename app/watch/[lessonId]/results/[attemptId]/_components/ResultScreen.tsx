@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
+import { formatInTimeZone } from "date-fns-tz";
 import { Button } from "@/components/ui/button";
 import { parseSolutionAnchors } from "@/lib/pdf-question-anchors";
 import { ReopenAttemptButton } from "./ReopenAttemptButton";
 import { ResultReview } from "./ResultReview";
+import { FillViewport } from "@/components/layout/FillViewport";
+
+// Server (Heroku) chạy giờ UTC → định dạng thời gian theo giờ Việt Nam
+const VN_TZ = "Asia/Ho_Chi_Minh";
 
 /**
  * Khung màn kết quả dùng chung cho bài kiểm tra theo bài học và bài kiểm tra cuối khoá.
@@ -73,8 +76,11 @@ export function ResultScreen({
   const solutionPdfUrl = canSeeAnswers && test.explanation?.trim() ? test.explanation : null;
 
   return (
-    // Trừ chiều cao header của site (h-16 / sm:h-20 + viền 1px) để không phải cuộn hai lớp
-    <div className="h-[calc(100dvh-4rem-1px)] sm:h-[calc(100dvh-5rem-1px)] flex flex-col bg-[#E2EEFF] overflow-hidden">
+    // Chiếm đúng phần còn lại của màn hình (dưới header/banner của site) → không cuộn hai lớp
+    <FillViewport
+      className="flex flex-col bg-[#E2EEFF] overflow-hidden"
+      fallbackClassName="h-[calc(100dvh-4rem-1px)] sm:h-[calc(100dvh-5rem-1px)]"
+    >
       <header className="h-16 px-3 md:px-6 border-b flex items-center justify-between gap-3 shrink-0 bg-white z-40 shadow-sm">
         <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
           <Button variant="ghost" size="icon" asChild className="rounded-xl shrink-0">
@@ -87,7 +93,7 @@ export function ResultScreen({
               Kết quả: {title}
             </h2>
             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              Lượt làm bài ngày {format(attempt.startedAt, "dd/MM/yyyy", { locale: vi })}
+              Lượt làm bài ngày {formatInTimeZone(attempt.startedAt, VN_TZ, "dd/MM/yyyy")}
             </p>
           </div>
         </div>
@@ -110,12 +116,14 @@ export function ResultScreen({
         canSeeAnswers={canSeeAnswers}
         isTeacher={isTeacher}
         score={Number(attempt.score || 0)}
+        completedLabel={attempt.completedAt ? formatInTimeZone(attempt.completedAt, VN_TZ, "HH:mm:ss dd/MM/yyyy") : null}
+        backHref={backHref}
         durationSeconds={
           attempt.completedAt
             ? Math.max(0, Math.floor((attempt.completedAt.getTime() - attempt.startedAt.getTime()) / 1000))
             : null
         }
       />
-    </div>
+    </FillViewport>
   );
 }

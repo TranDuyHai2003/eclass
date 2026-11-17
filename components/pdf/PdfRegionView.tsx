@@ -30,6 +30,11 @@ interface PdfRegionViewProps {
   /** Nội dung hiển thị khi chưa có vùng */
   placeholder?: React.ReactNode;
   className?: string;
+  /**
+   * Tài liệu đã tải sẵn (từ PdfDocumentLoader). Có thì dùng chung, không tạo <Document> riêng —
+   * cho phép vẽ nhiều vùng của cùng một file ở nhiều chỗ mà chỉ tải/phân tích file một lần.
+   */
+  pdf?: PDFDocumentProxy | null;
 }
 
 /**
@@ -45,6 +50,7 @@ export default function PdfRegionView({
   onDocumentLoad,
   placeholder,
   className,
+  pdf,
 }: PdfRegionViewProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -66,13 +72,51 @@ export default function PdfRegionView({
   const pageRenderWidth = Math.round(viewWidth / visibleFraction);
   const offsetX = (pageRenderWidth * layout.left) / 100;
 
+  const renderSegments = () =>
+    segments?.map((seg, i) => {
+      const pageHeight = pageRenderWidth * (aspects[seg.page] ?? DEFAULT_ASPECT);
+      const height = (pageHeight * (seg.bottom - seg.top)) / 100;
+      return (
+        <div key={`${seg.page}-${seg.top}-${seg.bottom}`}>
+          {i > 0 && <div className="mx-auto my-1 border-t border-dashed border-slate-300" style={{ width: viewWidth }} />}
+          <div className="relative mx-auto overflow-hidden bg-white" style={{ width: viewWidth, height }}>
+            <div className="absolute" style={{ left: -offsetX, top: -(pageHeight * seg.top) / 100 }}>
+              <Page
+                {...(pdf ? { pdf } : {})}
+                pageNumber={seg.page}
+                width={pageRenderWidth}
+                devicePixelRatio={Math.min(2, typeof window !== "undefined" ? window.devicePixelRatio : 1)}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+                loading={<div className="bg-white" style={{ width: pageRenderWidth, height: pageHeight }} />}
+                onLoadSuccess={(page) => {
+                  const ratio = page.originalHeight / page.originalWidth;
+                  if (ratio > 0 && Math.abs((aspects[seg.page] ?? 0) - ratio) > 0.001) {
+                    setAspects((prev) => ({ ...prev, [seg.page]: ratio }));
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    });
+
+  if (pdf) {
+    return (
+      <div ref={wrapperRef} className={cn("w-full overflow-x-auto", className)}>
+        {!segments || segments.length === 0 ? placeholder : renderSegments()}
+      </div>
+    );
+  }
+
   return (
     <div ref={wrapperRef} className={cn("w-full overflow-x-auto", className)}>
       <Document
         file={resolvePdfFileUrl(url)}
-        onLoadSuccess={(pdf) => {
+        onLoadSuccess={(doc) => {
           setLoaded(true);
-          onDocumentLoad?.(pdf);
+          onDocumentLoad?.(doc);
         }}
         loading={
           <div className="flex items-center justify-center gap-2 py-16 text-sm font-bold text-slate-400">
@@ -87,34 +131,25 @@ export default function PdfRegionView({
         }
       >
         {loaded && (!segments || segments.length === 0) && placeholder}
-        {segments?.map((seg, i) => {
-          const pageHeight = pageRenderWidth * (aspects[seg.page] ?? DEFAULT_ASPECT);
-          const height = (pageHeight * (seg.bottom - seg.top)) / 100;
-          return (
-            <div key={`${seg.page}-${seg.top}-${seg.bottom}`}>
-              {i > 0 && <div className="mx-auto my-1 border-t border-dashed border-slate-300" style={{ width: viewWidth }} />}
-              <div className="relative mx-auto overflow-hidden bg-white" style={{ width: viewWidth, height }}>
-                <div className="absolute" style={{ left: -offsetX, top: -(pageHeight * seg.top) / 100 }}>
-                  <Page
-                    pageNumber={seg.page}
-                    width={pageRenderWidth}
-                    devicePixelRatio={Math.min(2, typeof window !== "undefined" ? window.devicePixelRatio : 1)}
-                    renderTextLayer={false}
-                    renderAnnotationLayer={false}
-                    loading={<div className="bg-white" style={{ width: pageRenderWidth, height: pageHeight }} />}
-                    onLoadSuccess={(page) => {
-                      const ratio = page.originalHeight / page.originalWidth;
-                      if (ratio > 0 && Math.abs((aspects[seg.page] ?? 0) - ratio) > 0.001) {
-                        setAspects((prev) => ({ ...prev, [seg.page]: ratio }));
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {renderSegments()}
       </Document>
+    </div>
+  );
+}
+
+/** Tải một file PDF (không hiển thị gì) và trả tài liệu qua onLoad để các PdfRegionView dùng chung. */
+export function PdfDocumentLoader({
+  url,
+  onLoad,
+  onError,
+}: {
+  url: string;
+  onLoad: (pdf: PDFDocumentProxy) => void;
+  onError?: () => void;
+}) {
+  return (
+    <div className="hidden" aria-hidden>
+      <Document file={resolvePdfFileUrl(url)} onLoadSuccess={onLoad} onLoadError={onError} loading={null} error={null} />
     </div>
   );
 }

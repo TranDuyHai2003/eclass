@@ -35,6 +35,8 @@ export interface PdfAnalysis {
   numPages: number;
   markers: PdfMarker[];
   layout: PdfLayout;
+  /** Vị trí các dòng tiêu đề "Lời giải" — để tách phần đề và phần lời giải của mỗi câu */
+  solutionMarks?: PdfPoint[];
 }
 
 export interface AnchorItem extends PdfPoint {
@@ -52,6 +54,8 @@ export interface SolutionAnchorsData {
   layout: PdfLayout;
   /** Mọi nhãn dò được (kể cả chưa ghép với câu nào) — dùng làm ranh giới kết thúc */
   boundaries: PdfPoint[];
+  /** Các dòng tiêu đề "Lời giải" (tách đề / lời giải trong vùng của một câu) */
+  solutionMarks?: PdfPoint[];
   items: Record<string, AnchorItem>;
 }
 
@@ -142,7 +146,25 @@ export async function analyzePdf(pdf: PDFDocumentProxy): Promise<PdfAnalysis> {
     numPages: pdf.numPages,
     markers: findMarkers(pages),
     layout: detectLayout(pages),
+    solutionMarks: findSolutionMarks(pages),
   };
+}
+
+/** Dòng chỉ gồm tiêu đề "Lời giải" / "Hướng dẫn giải" / "Bài giải" (có thể kèm biểu tượng phía trước). */
+// Ví dụ: "Lời giải", "✎ Lời giải", "Lời giải (C)", "Lời giải: Chọn A", "Hướng dẫn giải"
+const SOLUTION_HEADING_REGEX =
+  /^[^\p{L}\d]{0,4}(lời giải( chi tiết)?|hướng dẫn giải|bài giải|đáp án chi tiết)\s*(\([^)]{0,15}\))?\s*[:.]?\s*(chọn\s*[a-d]\s*\.?)?\s*$/iu;
+
+function findSolutionMarks(pages: TextLine[][]): PdfPoint[] {
+  const marks: PdfPoint[] = [];
+  pages.forEach((lines, i) => {
+    for (const line of lines) {
+      if (SOLUTION_HEADING_REGEX.test(line.text.trim())) {
+        marks.push({ page: i + 1, y: round1(clamp(line.top - 0.6, 0, 100)) });
+      }
+    }
+  });
+  return marks.sort(comparePoints);
 }
 
 const keywordOf = (raw: string) =>
@@ -422,6 +444,7 @@ export function buildAutoAnchors(analysis: PdfAnalysis, sections: string[][], pd
     numPages: analysis.numPages,
     layout: analysis.layout,
     boundaries: analysis.markers.map(({ page, y }) => ({ page, y })),
+    solutionMarks: analysis.solutionMarks ?? [],
     items: mapMarkersToQuestions(analysis.markers, sections),
   };
 }
@@ -469,6 +492,25 @@ export function resolveRegion(data: SolutionAnchorsData, questionId: string): So
   }
 
   return { start, end: { page: end.page, y: Math.min(end.y, layout.bottom) }, label: item.label };
+}
+
+/**
+ * Tách vùng của một câu thành phần đề và phần lời giải theo dòng "Lời giải" đầu tiên nằm trong vùng.
+ * Không tìm thấy → solution = null (cả vùng được coi là đề + lời giải).
+ */
+export function splitRegion(region: SolutionRegion, solutionMarks: PdfPoint[] | undefined) {
+  const mark = (solutionMarks ?? []).find(
+    (m) =>
+      comparePoints(m, { page: region.start.page, y: region.start.y + MIN_GAP }) > 0 &&
+      comparePoints(m, region.end) < 0,
+  );
+  if (!mark) return { question: region, solution: null as SolutionRegion | null };
+  // mark.y lùi 0.6% so với mép trên dòng "Lời giải" → cắt đúng mép trên để không lộ dòng phía trên
+  const cut = { page: mark.page, y: Math.min(100, mark.y + 0.6) };
+  return {
+    question: { ...region, end: cut },
+    solution: { ...region, start: cut } as SolutionRegion,
+  };
 }
 
 /** Các đoạn cần vẽ cho một vùng (mỗi trang một đoạn), đã bỏ header/footer ở chỗ nối trang. */
@@ -530,6 +572,11 @@ export function sanitizeSolutionAnchors(
     .slice(0, 2000)
     .map((p: PdfPoint) => ({ page: p.page, y: round1(p.y) }));
 
+  const solutionMarks = (Array.isArray(raw.solutionMarks) ? raw.solutionMarks : [])
+    .filter(inRange)
+    .slice(0, 2000)
+    .map((p: PdfPoint) => ({ page: p.page, y: round1(p.y) }));
+
   const items: Record<string, AnchorItem> = {};
   for (const [id, it] of Object.entries<any>(raw.items || {})) {
     if (!allowedQuestionIds.has(id) || !inRange(it)) continue;
@@ -544,5 +591,5 @@ export function sanitizeSolutionAnchors(
     };
   }
 
-  return { version: 1, numPages, layout, boundaries, items };
+  return { version: 1, numPages, layout, boundaries, solutionMarks, items };
 }
