@@ -75,6 +75,8 @@ export default function PDFViewer({
   const [aspects, setAspects] = useState<Record<number, number>>({});
   const [defaultAspect, setDefaultAspect] = useState(DEFAULT_ASPECT);
   const [visiblePages, setVisiblePages] = useState<Set<number>>(() => new Set([1, 2]));
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const pageElsRef = useRef(new Set<HTMLDivElement>());
 
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -111,6 +113,7 @@ export default function PDFViewer({
       return null;
     };
     const root = noScroll ? findScrollParent(scrollAreaRef.current) : scrollAreaRef.current;
+    observerRef.current?.disconnect();
     const observer = new IntersectionObserver(
       (entries) => {
         setVisiblePages((prev) => {
@@ -131,9 +134,25 @@ export default function PDFViewer({
       },
       { root, rootMargin: RENDER_MARGIN },
     );
-    scrollAreaRef.current?.querySelectorAll<HTMLElement>("[data-page]").forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
+    // Trang có thể được vẽ SAU khi effect này chạy (Document vẽ con chậm hơn một nhịp) → mỗi trang
+    // tự đăng ký qua observePage; ở đây chỉ bắt những trang đã có sẵn trong DOM.
+    observerRef.current = observer;
+    pageElsRef.current.forEach((el) => observer.observe(el));
+    return () => {
+      observer.disconnect();
+      if (observerRef.current === observer) observerRef.current = null;
+    };
   }, [numPages, noScroll]);
+
+  const observePage = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    pageElsRef.current.add(el);
+    observerRef.current?.observe(el);
+    return () => {
+      pageElsRef.current.delete(el);
+      observerRef.current?.unobserve(el);
+    };
+  }, []);
 
   // Đánh dấu cần cuộn mỗi khi đích thay đổi
   useEffect(() => {
@@ -326,6 +345,7 @@ export default function PDFViewer({
                     <div
                       className={cn("relative", onPageClick && "cursor-crosshair")}
                       data-page={pageNum}
+                      ref={observePage}
                       style={{ minHeight: pageHeight(pageNum), minWidth: pageWidth }}
                       onClick={onPageClick ? (e) => handlePageClick(pageNum, e) : undefined}
                     >
