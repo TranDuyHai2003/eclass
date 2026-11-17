@@ -5,11 +5,13 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import {
+  ArrowLeft,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock,
   ExternalLink,
+  LayoutGrid,
   FileText,
   Headphones,
   Image as ImageIcon,
@@ -113,8 +115,14 @@ interface ResultReviewProps {
   durationSeconds: number | null;
   /** Thời điểm nộp bài đã định dạng (giờ Việt Nam), vd "00:13:15 16/11/2026" */
   completedLabel: string | null;
-  /** Nút "Quay lại" ở thanh dưới */
+  /** Nút quay lại (về bài học) ở đầu thanh công cụ */
   backHref: string;
+  /** Tên bài kiểm tra */
+  title: string;
+  /** Ngày bắt đầu làm (dd/MM/yyyy) — hiển thị khi bài chưa nộp */
+  startedLabel: string;
+  /** Nút thao tác thêm ở cuối thanh công cụ (vd. giáo viên "Cho phép sửa bài") */
+  headerAction?: React.ReactNode;
 }
 
 type Status = "correct" | "wrong" | "blank" | "pending" | "ungraded";
@@ -230,6 +238,9 @@ export function ResultReview({
   durationSeconds,
   completedLabel,
   backHref,
+  title,
+  startedLabel,
+  headerAction,
 }: ResultReviewProps) {
   const answerMap = useMemo(() => new Map(answers.map((a) => [a.questionId, a])), [answers]);
 
@@ -428,46 +439,67 @@ export function ResultReview({
     />
   );
 
+  const visibleTabs = tabs.filter((t) => t.show);
+  const tabButtons = visibleTabs.map((t) => (
+    <button
+      key={t.id}
+      onClick={() => openTab(t.id)}
+      aria-pressed={tab === t.id}
+      className={cn(
+        "flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-black transition-colors md:flex-none md:text-sm",
+        tab === t.id ? "bg-indigo-600 text-white shadow-sm shadow-indigo-200" : "text-slate-500 hover:bg-white hover:text-slate-900 md:hover:bg-white",
+      )}
+    >
+      {t.icon}
+      {t.label}
+    </button>
+  ));
+  const subtitle = [
+    completedLabel ? `Nộp lúc ${completedLabel}` : `Bắt đầu ${startedLabel} · chưa nộp`,
+    durationSeconds !== null ? `làm trong ${formatDuration(durationSeconds)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-white">
-      {/* Thanh tab + điểm */}
-      <div className="shrink-0 border-b bg-white px-3 md:px-6 py-2 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-          {tabs
-            .filter((t) => t.show)
-            .map((t) => (
-              <button
-                key={t.id}
-                onClick={() => openTab(t.id)}
-                className={cn(
-                  "flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-2 text-xs md:text-sm font-black transition-colors",
-                  tab === t.id ? "bg-indigo-600 text-white shadow-sm shadow-indigo-200" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900",
-                )}
-              >
-                {t.icon}
-                {t.label}
-              </button>
-            ))}
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          {tab === "review" && !panelOpen && (
-            <button
-              onClick={() => setPanelOpen(true)}
-              className="hidden lg:flex h-9 items-center gap-1 rounded-xl border border-slate-200 px-3 text-xs font-black text-slate-600 hover:bg-slate-50"
-            >
-              <ChevronLeft className="h-4 w-4" /> Mở kết quả chi tiết
-            </button>
-          )}
-          <div className="hidden md:flex gap-1.5 text-xs font-black">
-            <span className="rounded-lg bg-emerald-100 px-2 py-1 text-emerald-700">Đúng {counts.correct}</span>
-            <span className="rounded-lg bg-rose-100 px-2 py-1 text-rose-700">Sai {counts.wrong}</span>
-            {counts.blank > 0 && <span className="rounded-lg bg-slate-100 px-2 py-1 text-slate-600">Trống {counts.blank}</span>}
+      {/* Thanh công cụ gọn: quay lại · tên bài · tab · điểm (điện thoại: tab xuống hàng thứ hai) */}
+      <div className="shrink-0 border-b border-slate-200 bg-white">
+        <div className="flex h-14 items-center gap-2 px-2 md:gap-3 md:px-4">
+          <Link
+            href={backHref}
+            aria-label="Quay lại bài học"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div className="min-w-0 flex-1 md:max-w-[38%] md:flex-none">
+            <h1 className="truncate text-sm font-black text-slate-900 md:text-base" title={title}>
+              {title}
+            </h1>
+            <p className="truncate text-[11px] font-semibold text-slate-400">{subtitle}</p>
           </div>
-          <div className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-1.5 text-white shadow-sm shadow-indigo-200">
-            <Trophy className="w-4 h-4 text-yellow-300" />
-            <span className="text-sm md:text-base font-black">{score.toFixed(2)} / 10</span>
+
+          {visibleTabs.length > 1 && <nav className="ml-1 hidden md:flex items-center gap-1 rounded-xl bg-slate-100 p-1">{tabButtons}</nav>}
+
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {/* Bảng bên phải đã có số câu đúng/sai → chỉ hiện ở thanh trên khi bảng đó không hiển thị */}
+            <div className={cn("hidden md:flex gap-1.5 text-xs font-black", tab === "review" && panelOpen && "lg:hidden")}>
+              <span className="rounded-lg bg-emerald-100 px-2 py-1 text-emerald-700">Đúng {counts.correct}</span>
+              <span className="rounded-lg bg-rose-100 px-2 py-1 text-rose-700">Sai {counts.wrong}</span>
+              {counts.blank > 0 && <span className="rounded-lg bg-slate-100 px-2 py-1 text-slate-600">Trống {counts.blank}</span>}
+            </div>
+            <div className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-2.5 py-1.5 text-white shadow-sm shadow-indigo-200 md:px-3">
+              <Trophy className="h-4 w-4 text-yellow-300" />
+              <span className="text-sm font-black md:text-base">
+                {score.toFixed(2)}
+                <span className="text-xs font-bold text-indigo-200">/10</span>
+              </span>
+            </div>
+            {headerAction}
           </div>
         </div>
+        {visibleTabs.length > 1 && <nav className="flex gap-1 px-2 pb-2 md:hidden">{tabButtons}</nav>}
       </div>
 
       <div className="flex-1 min-h-0 relative">
@@ -636,22 +668,29 @@ export function ResultReview({
                 )}
               </div>
 
-              {/* Thanh dưới cùng: thời điểm nộp, vị trí câu, điều hướng */}
+              {/* Thanh dưới cùng: vị trí câu (bấm để mở bảng câu hỏi) + điều hướng */}
               <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-200 bg-white px-3 py-2 md:px-6">
-                <p className="min-w-0 truncate text-xs font-medium text-slate-500">
-                  {completedLabel && (
-                    <>
-                      <span className="hidden sm:inline">Hoàn thành: {completedLabel}</span>
-                      <span className="sm:hidden">HT: {completedLabel.split(" ").pop()}</span>
-                      {" • "}
-                    </>
+                <button
+                  onClick={openResultPanel}
+                  className={cn(
+                    "flex h-9 min-w-0 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-700 hover:bg-slate-50",
+                    // Máy tính đang mở bảng bên phải → chỉ là nhãn vị trí, không cần nút
+                    panelOpen && "lg:pointer-events-none lg:border-transparent lg:px-0 lg:text-slate-500",
                   )}
-                  Câu {selectedVisibleIndex + 1} / {visible.length}
-                </p>
+                  aria-label="Mở bảng câu hỏi"
+                >
+                  <LayoutGrid className={cn("h-4 w-4 shrink-0 text-indigo-600", panelOpen && "lg:hidden")} />
+                  <span className="truncate">
+                    Câu {selectedVisibleIndex + 1}
+                    <span className="text-slate-400"> / {visible.length}</span>
+                  </span>
+                  <span className={cn("hidden text-indigo-600", !panelOpen && "lg:inline")}>· Mở bảng kết quả</span>
+                </button>
                 <div className="flex shrink-0 items-center gap-2">
                   <button
                     onClick={() => goTo(-1)}
                     disabled={selectedVisibleIndex <= 0}
+                    aria-label="Câu trước"
                     className="flex h-9 items-center gap-1 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -662,15 +701,9 @@ export function ResultReview({
                     disabled={selectedVisibleIndex === -1 || selectedVisibleIndex >= visible.length - 1}
                     className="flex h-9 items-center gap-1 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-40"
                   >
-                    <span className="hidden sm:inline">Câu tiếp</span>
+                    Câu tiếp
                     <ChevronRight className="h-4 w-4" />
                   </button>
-                  <Link
-                    href={backHref}
-                    className="hidden h-9 items-center rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-600 hover:bg-slate-50 md:flex"
-                  >
-                    Quay lại
-                  </Link>
                 </div>
               </footer>
             </div>
@@ -692,20 +725,6 @@ export function ResultReview({
               </aside>
             )}
 
-            {/* Tab dọc ở mép phải: mở ngăn kết quả (điện thoại) hoặc mở lại bảng đã thu gọn (máy tính) */}
-            <button
-              onClick={openResultPanel}
-              className={cn(
-                "fixed right-0 top-[64%] z-40 -translate-y-1/2 flex flex-col items-center gap-0.5 rounded-l-xl bg-indigo-600/95 px-1 py-2.5 text-white shadow-lg shadow-indigo-600/30 active:bg-indigo-700",
-                panelOpen && "lg:hidden",
-              )}
-              aria-label="Mở kết quả chi tiết"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-              <span className="text-[9px] font-black uppercase tracking-widest [writing-mode:vertical-rl] rotate-180">
-                Kết quả
-              </span>
-            </button>
 
             <Sheet open={gridOpen} onOpenChange={setGridOpen}>
               <SheetContent side="right" className="w-[86vw] max-w-sm gap-0 overflow-y-auto p-0">

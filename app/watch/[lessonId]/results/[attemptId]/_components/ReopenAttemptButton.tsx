@@ -39,10 +39,12 @@ export const ReopenAttemptButton = ({ attemptId }: { attemptId: string }) => {
         variant="outline" 
         size="sm" 
         disabled={isLoading}
-        className="rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 bg-blue-50/50"
+        title="Cho phép học sinh sửa bài"
+        aria-label="Cho phép sửa bài"
+        className="h-9 rounded-xl border-blue-200 bg-blue-50/50 px-2.5 text-blue-600 hover:bg-blue-50 hover:text-blue-700 xl:px-3"
       >
-        <Unlock className="w-4 h-4 mr-2" />
-        {isLoading ? "Đang mở..." : "Cho phép sửa bài"}
+        <Unlock className="w-4 h-4 xl:mr-1.5" />
+        <span className="hidden xl:inline">{isLoading ? "Đang mở..." : "Cho phép sửa bài"}</span>
       </Button>
     </ConfirmModal>
   );

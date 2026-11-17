@@ -1,7 +1,4 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
-import { Button } from "@/components/ui/button";
 import { parseSolutionAnchors } from "@/lib/pdf-question-anchors";
 import { ReopenAttemptButton } from "./ReopenAttemptButton";
 import { ResultReview } from "./ResultReview";
@@ -76,33 +73,10 @@ export function ResultScreen({
   const solutionPdfUrl = canSeeAnswers && test.explanation?.trim() ? test.explanation : null;
 
   return (
-    // Chiếm đúng phần còn lại của màn hình (dưới header/banner của site) → không cuộn hai lớp
-    <FillViewport
-      className="flex flex-col bg-[#E2EEFF] overflow-hidden"
-      fallbackClassName="h-[calc(100dvh-4rem-1px)] sm:h-[calc(100dvh-5rem-1px)]"
-    >
-      <header className="h-16 px-3 md:px-6 border-b flex items-center justify-between gap-3 shrink-0 bg-white z-40 shadow-sm">
-        <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
-          <Button variant="ghost" size="icon" asChild className="rounded-xl shrink-0">
-            <Link href={backHref} aria-label="Quay lại">
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-          </Button>
-          <div className="min-w-0">
-            <h2 className="font-black text-slate-900 truncate md:max-w-[560px]" title={title}>
-              Kết quả: {title}
-            </h2>
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              Lượt làm bài ngày {formatInTimeZone(attempt.startedAt, VN_TZ, "dd/MM/yyyy")}
-            </p>
-          </div>
-        </div>
-        {isTeacher && attempt.completedAt && (
-          <div className="flex items-center gap-2 shrink-0">
-            <ReopenAttemptButton attemptId={attempt.id} />
-          </div>
-        )}
-      </header>
+    // Chiếm đúng phần còn lại của màn hình (dưới banner demo nếu có) → không cuộn hai lớp
+    <FillViewport className="flex flex-col bg-[#E2EEFF] overflow-hidden" fallbackClassName="h-dvh">
+      {/* Màn chữa bài dùng toàn màn hình như màn làm bài: ẩn header chung của site */}
+      <style dangerouslySetInnerHTML={{ __html: "header { display: none !important; }" }} />
 
       <ResultReview
         attemptId={attempt.id}
@@ -116,8 +90,11 @@ export function ResultScreen({
         canSeeAnswers={canSeeAnswers}
         isTeacher={isTeacher}
         score={Number(attempt.score || 0)}
-        completedLabel={attempt.completedAt ? formatInTimeZone(attempt.completedAt, VN_TZ, "HH:mm:ss dd/MM/yyyy") : null}
+        completedLabel={attempt.completedAt ? formatInTimeZone(attempt.completedAt, VN_TZ, "HH:mm dd/MM/yyyy") : null}
         backHref={backHref}
+        title={title}
+        startedLabel={formatInTimeZone(attempt.startedAt, VN_TZ, "dd/MM/yyyy")}
+        headerAction={isTeacher && attempt.completedAt ? <ReopenAttemptButton key="reopen" attemptId={attempt.id} /> : undefined}
         durationSeconds={
           attempt.completedAt
             ? Math.max(0, Math.floor((attempt.completedAt.getTime() - attempt.startedAt.getTime()) / 1000))
