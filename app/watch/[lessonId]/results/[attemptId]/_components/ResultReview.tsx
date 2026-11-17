@@ -867,6 +867,7 @@ function QuestionDetail({
         {/* Chấm tự luận (giáo viên) */}
         {isTeacher && q.type === "ESSAY" && answer && (
           <GradeEssay
+            key={answer.id}
             answerId={answer.id}
             initialPoints={answer.pointsAwarded}
             maxPoints={q.points}
@@ -887,7 +888,7 @@ function QuestionDetail({
                 </div>
               </div>
             )}
-            {answer.isCorrect === false && <ReuploadForm attemptId={attemptId} questionId={q.id} />}
+            {answer.isCorrect === false && <ReuploadForm key={q.id} attemptId={attemptId} questionId={q.id} />}
           </>
         )}
 

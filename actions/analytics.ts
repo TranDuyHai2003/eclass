@@ -627,35 +627,3 @@ export async function getGlobalTestAnalytics(filters: {
         }
     };
 }
-
-export async function getAttemptStatistics(attemptId: string) {
-    const session = await auth();
-    if (!session) throw new Error("Unauthorized");
-
-    const attempt = await prisma.studentAttempt.findUnique({
-        where: { id: attemptId },
-        include: {
-            answers: {
-                include: {
-                    question: true,
-                    subAnswers: true
-                }
-            },
-            test: {
-                include: {
-                    sections: {
-                        include: {
-                            questions: {
-                                include: { subQuestions: { orderBy: { position: "asc" } } },
-                                orderBy: { position: 'asc' }
-                            }
-                        },
-                        orderBy: { position: 'asc' }
-                    }
-                }
-            }
-        }
-    });
-
-    return { attempt };
-}

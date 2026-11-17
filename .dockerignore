@@ -6,4 +6,5 @@ npm-debug.log
 !.env.example
 _backup
 *.sql
+!prisma/migrations/**/migration.sql
 *.dump

@@ -90,7 +90,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           session.user.studentType = dbUser.studentType;
           (session.user as any).level = dbUser.level;
           (session.user as any).isApproved = dbUser.isApproved;
-          session.user.isDemo = dbUser.isDemo;
+          // Cờ demo trong token (đặt lúc đăng nhập) vẫn giữ hiệu lực dù DB đổi
+          session.user.isDemo = dbUser.isDemo || !!token.isDemo;
+        } else {
+          // Tài khoản đã bị xoá nhưng JWT còn hạn → không giữ quyền cũ trong token
+          session.user.role = "STUDENT" as Role;
+          (session.user as any).isApproved = false;
+          session.user.isDemo = !!token.isDemo;
         }
       }
 

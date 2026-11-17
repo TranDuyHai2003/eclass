@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
+import { loadAttemptForResult } from "@/lib/attempt-result";
 import { ResultScreen } from "@/app/watch/[lessonId]/results/[attemptId]/_components/ResultScreen";
 
 export const dynamic = "force-dynamic";
@@ -15,26 +15,7 @@ export default async function CourseFinalTestResultPage({
 
   const { courseId, attemptId } = await params;
 
-  const attempt = await prisma.studentAttempt.findUnique({
-    where: { id: attemptId },
-    include: {
-      test: {
-        include: {
-          course: { select: { title: true } },
-          sections: {
-            orderBy: { position: "asc" },
-            include: {
-              questions: {
-                orderBy: { position: "asc" },
-                include: { subQuestions: { orderBy: { position: "asc" } } },
-              },
-            },
-          },
-        },
-      },
-      answers: { include: { subAnswers: true } },
-    },
-  });
+  const attempt = await loadAttemptForResult(attemptId);
 
   // Lượt làm bài phải thuộc bài kiểm tra cuối khoá của đúng khoá học này
   if (!attempt || attempt.test.courseId !== courseId) {
@@ -45,6 +26,11 @@ export default async function CourseFinalTestResultPage({
   const isTeacher = session.user.role === "ADMIN" || session.user.role === "TEACHER";
   if (attempt.userId !== session.user.id && !isTeacher) {
     redirect("/");
+  }
+
+  // Học sinh chưa nộp bài thì quay lại trang làm bài
+  if (!attempt.completedAt && !isTeacher) {
+    redirect(`/courses/${courseId}/final-test`);
   }
 
   return (

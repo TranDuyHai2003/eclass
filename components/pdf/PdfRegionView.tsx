@@ -98,6 +98,7 @@ export default function PdfRegionView({
                   <Page
                     pageNumber={seg.page}
                     width={pageRenderWidth}
+                    devicePixelRatio={Math.min(2, typeof window !== "undefined" ? window.devicePixelRatio : 1)}
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
                     loading={<div className="bg-white" style={{ width: pageRenderWidth, height: pageHeight }} />}

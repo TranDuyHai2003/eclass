@@ -5,7 +5,8 @@
  *   DEMO_EMAIL=demo@teacherduc.me DEMO_PASSWORD='...' node scripts/create-demo-account.js
  *
  * Bỏ trống DEMO_PASSWORD để script tự sinh mật khẩu ngẫu nhiên và in ra màn hình.
- * Chạy lại script với mật khẩu mới để đổi mật khẩu / thu hồi quyền truy cập.
+ * Chạy lại script với mật khẩu mới để đổi mật khẩu. Lưu ý: phiên đăng nhập (JWT) đang có
+ * vẫn còn hiệu lực tới khi hết hạn; xoá tài khoản thì phiên cũ bị hạ về quyền học sinh, chỉ xem.
  */
 require("dotenv/config");
 const crypto = require("crypto");
