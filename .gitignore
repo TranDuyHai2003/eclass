@@ -54,6 +54,8 @@ yarn-error.log*
 *.txt
 *.log
 *.sql
+# ...nhưng luôn theo dõi migration của Prisma (Heroku chạy `prisma migrate deploy` khi release)
+!prisma/migrations/**/migration.sql
 *.dump
 /_backup/
 
