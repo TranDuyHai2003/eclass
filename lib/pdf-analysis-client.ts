@@ -3,7 +3,7 @@ import { analyzePdf, type PdfAnalysis } from "@/lib/pdf-question-anchors";
 
 // Chỉ dùng ở client (cần Web Worker + localStorage).
 
-const CACHE_PREFIX = "pdf-analysis:v8:";
+const CACHE_PREFIX = "pdf-analysis:v9:";
 
 /**
  * Như analyzePdf nhưng:

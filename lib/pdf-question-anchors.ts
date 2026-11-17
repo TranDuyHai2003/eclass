@@ -37,6 +37,8 @@ export interface PdfAnalysis {
   layout: PdfLayout;
   /** Vị trí các dòng tiêu đề "Lời giải" — để tách phần đề và phần lời giải của mỗi câu */
   solutionMarks?: PdfPoint[];
+  /** Tiêu đề mục ("Dạng 3:", "Phần 2:", "Kiểu 1:") — là ranh giới kết thúc của câu đứng trước */
+  headings?: PdfPoint[];
 }
 
 export interface AnchorItem extends PdfPoint {
@@ -147,7 +149,23 @@ export async function analyzePdf(pdf: PDFDocumentProxy): Promise<PdfAnalysis> {
     markers: findMarkers(pages),
     layout: detectLayout(pages),
     solutionMarks: findSolutionMarks(pages),
+    headings: findHeadings(pages),
   };
+}
+
+// "Dạng 3: PHỦ ĐỊNH ...", "Phần 2. Đúng sai", "Kiểu 1: ...", "DẠNG 1: ..." (kể cả biểu tượng phía trước)
+const HEADING_REGEX = /^[^\p{L}\d]{0,4}(dạng|phần|kiểu)\s*\d{1,2}\s*[:.]/iu;
+
+function findHeadings(pages: TextLine[][]): PdfPoint[] {
+  const points: PdfPoint[] = [];
+  pages.forEach((lines, i) => {
+    for (const line of lines) {
+      if (HEADING_REGEX.test(line.text.trim())) {
+        points.push({ page: i + 1, y: round1(clamp(line.top - 0.6, 0, 100)) });
+      }
+    }
+  });
+  return points.sort(comparePoints);
 }
 
 /** Dòng chỉ gồm tiêu đề "Lời giải" / "Hướng dẫn giải" / "Bài giải" (có thể kèm biểu tượng phía trước). */
@@ -155,11 +173,17 @@ export async function analyzePdf(pdf: PDFDocumentProxy): Promise<PdfAnalysis> {
 const SOLUTION_HEADING_REGEX =
   /^[^\p{L}\d]{0,4}(lời giải( chi tiết)?|hướng dẫn giải|bài giải|đáp án chi tiết)\s*(\([^)]{0,15}\))?\s*[:.]?\s*(chọn\s*[a-d]\s*\.?)?\s*$/iu;
 
+// Dòng đáp án ghi thẳng: "Chọn B", "Chọn đáp án: C", "Đáp án D (Lừa sang B)", "Đáp án đúng là A"
+// (chữ A–D phải đứng riêng → không khớp "Chọn khẳng định ...", "Đáp án dưới đây ...")
+const ANSWER_LINE_REGEX =
+  /^[^\p{L}\d]{0,4}(chọn(\s*đáp án)?|đáp án(\s*đúng)?(\s*là)?)\s*[:.]?\s*[A-D](?![\p{L}\d])/iu;
+
 function findSolutionMarks(pages: TextLine[][]): PdfPoint[] {
   const marks: PdfPoint[] = [];
   pages.forEach((lines, i) => {
     for (const line of lines) {
-      if (SOLUTION_HEADING_REGEX.test(line.text.trim())) {
+      const text = line.text.trim();
+      if (SOLUTION_HEADING_REGEX.test(text) || ANSWER_LINE_REGEX.test(text)) {
         marks.push({ page: i + 1, y: round1(clamp(line.top - 0.6, 0, 100)) });
       }
     }
@@ -443,7 +467,9 @@ export function buildAutoAnchors(analysis: PdfAnalysis, sections: string[][], pd
     pdfUrl,
     numPages: analysis.numPages,
     layout: analysis.layout,
-    boundaries: analysis.markers.map(({ page, y }) => ({ page, y })),
+    boundaries: [...analysis.markers.map(({ page, y }) => ({ page, y })), ...(analysis.headings ?? [])].sort(
+      comparePoints,
+    ),
     solutionMarks: analysis.solutionMarks ?? [],
     items: mapMarkersToQuestions(analysis.markers, sections),
   };
