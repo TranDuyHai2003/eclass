@@ -14,11 +14,8 @@ import {
   Headphones,
   Image as ImageIcon,
   Info,
-  LayoutGrid,
-  Lightbulb,
   ListChecks,
   Maximize2,
-  Minimize2,
   PencilLine,
   ZoomIn,
   ZoomOut,
@@ -36,8 +33,8 @@ import {
   buildAutoAnchors,
   regionSegments,
   resolveRegion,
+  splitRegion,
   type SolutionAnchorsData,
-  type SolutionRegion,
 } from "@/lib/pdf-question-anchors";
 import { analyzePdfCached } from "@/lib/pdf-analysis-client";
 import { ReuploadForm } from "./ReuploadForm";
@@ -49,6 +46,10 @@ const PdfRegionView = dynamic(() => import("@/components/pdf/PdfRegionView"), {
       <Loader2 className="h-5 w-5 animate-spin text-blue-600" /> Đang tải lời giải...
     </div>
   ),
+});
+
+const PdfDocumentLoader = dynamic(() => import("@/components/pdf/PdfRegionView").then((m) => m.PdfDocumentLoader), {
+  ssr: false,
 });
 
 const PDFViewer = dynamic(() => import("@/components/ui/pdf-viewer"), {
@@ -110,6 +111,10 @@ interface ResultReviewProps {
   score: number;
   /** Thời gian làm bài (giây), null nếu chưa nộp */
   durationSeconds: number | null;
+  /** Thời điểm nộp bài đã định dạng (giờ Việt Nam), vd "00:13:15 16/11/2026" */
+  completedLabel: string | null;
+  /** Nút "Quay lại" ở thanh dưới */
+  backHref: string;
 }
 
 type Status = "correct" | "wrong" | "blank" | "pending" | "ungraded";
@@ -223,6 +228,8 @@ export function ResultReview({
   isTeacher,
   score,
   durationSeconds,
+  completedLabel,
+  backHref,
 }: ResultReviewProps) {
   const answerMap = useMemo(() => new Map(answers.map((a) => [a.questionId, a])), [answers]);
 
@@ -334,10 +341,39 @@ export function ResultReview({
   const region = selected && anchorsData ? resolveRegion(anchorsData, selected.q.id) : null;
   const segments = region && anchorsData ? regionSegments(region, anchorsData.layout) : null;
 
-  // "focus" = chỉ phần lời giải của câu đang xem; "full" = cả file, cuộn tới câu
-  const [preferFull, setPreferFull] = useState(false);
+  // Tải file lời giải một lần, dùng chung cho phần đề và phần lời giải của mọi câu
+  const [reviewPdf, setReviewPdf] = useState<PDFDocumentProxy | null>(null);
+  const [pdfFailed, setPdfFailed] = useState(false);
+  const onReviewPdfLoaded = useCallback(
+    (pdf: PDFDocumentProxy) => {
+      setReviewPdf(pdf);
+      handleReviewPdfLoad(pdf);
+    },
+    [handleReviewPdfLoad],
+  );
+
+  // Tách vùng của câu: phần đề (luôn hiện) và phần lời giải (bấm "Xem đáp án chi tiết")
+  const split = region ? splitRegion(region, anchorsData?.solutionMarks) : null;
+  const layout = anchorsData?.layout ?? { top: 0, bottom: 100, left: 0, right: 100 };
+  const questionSegments = split ? regionSegments(split.question, layout) : null;
+  const solutionSegments = split?.solution ? regionSegments(split.solution, layout) : null;
+
+  const [showSolution, setShowSolution] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
+  const [showWholeFile, setShowWholeFile] = useState(false);
+  const [wholeFileMounted, setWholeFileMounted] = useState(false);
+  // Sang câu khác thì thu gọn lại như LAB Study
+  useEffect(() => {
+    setShowSolution(false);
+    setShowVideo(false);
+    setShowWholeFile(false);
+  }, [selectedId]);
+  useEffect(() => {
+    if (showWholeFile) setWholeFileMounted(true);
+  }, [showWholeFile]);
+
   const [focusZoom, setFocusZoomState] = useState(1);
-  // Nhớ mức phóng to lời giải trên thiết bị (site tắt pinch-zoom nên học sinh dùng nút +/−)
+  // Nhớ mức phóng to (site tắt pinch-zoom nên học sinh dùng nút +/−)
   useEffect(() => {
     try {
       const saved = Number(localStorage.getItem("result-solution-zoom"));
@@ -356,16 +392,10 @@ export function ResultReview({
       }
       return next;
     });
-  const showFull = preferFull || (anchorsReady && !region);
-  const [fullMounted, setFullMounted] = useState(false);
-  useEffect(() => {
-    if (showFull) setFullMounted(true);
-  }, [showFull]);
 
   const scrollTarget = region
     ? { page: region.start.page, yPct: region.start.y, key: selected!.q.id, label: region.label }
     : null;
-  const docLabel = solutionPdfUrl ? "lời giải" : "đề";
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; show: boolean }[] = [
     { id: "review", label: "Chữa từng câu", icon: <ListChecks className="w-4 h-4" />, show: canSeeAnswers },
@@ -418,6 +448,14 @@ export function ResultReview({
             ))}
         </div>
         <div className="flex items-center gap-3 shrink-0">
+          {tab === "review" && !panelOpen && (
+            <button
+              onClick={() => setPanelOpen(true)}
+              className="hidden lg:flex h-9 items-center gap-1 rounded-xl border border-slate-200 px-3 text-xs font-black text-slate-600 hover:bg-slate-50"
+            >
+              <ChevronLeft className="h-4 w-4" /> Mở kết quả chi tiết
+            </button>
+          )}
           <div className="hidden md:flex gap-1.5 text-xs font-black">
             <span className="rounded-lg bg-emerald-100 px-2 py-1 text-emerald-700">Đúng {counts.correct}</span>
             <span className="rounded-lg bg-rose-100 px-2 py-1 text-rose-700">Sai {counts.wrong}</span>
@@ -433,149 +471,200 @@ export function ResultReview({
       <div className="flex-1 min-h-0 relative">
         {/* TAB: Chữa từng câu */}
         {canSeeAnswers && mountedTabs.has("review") && (
-          <div className={cn("absolute inset-0 flex bg-slate-50", tab !== "review" && "hidden")}>
-            <div className="flex-1 min-w-0 flex flex-col">
-              {selected ? (
-                /*
-                  < xl : câu hỏi ở trên, lời giải ở dưới (chế độ tập trung cuộn chung; chế độ toàn bộ chia 45/55)
-                  ≥ xl : 2 cột — "Câu hỏi & đáp án" | "Lời giải chi tiết"
-                */
-                <div className={cn("flex-1 min-h-0", showFull ? "flex flex-col" : "overflow-y-auto custom-scrollbar")}>
-                  <div
-                    className={cn(
-                      "z-20 shadow-sm",
-                      showFull ? "shrink-0 max-h-[45%] overflow-y-auto custom-scrollbar" : "sticky top-0",
-                    )}
-                  >
-                    <QuestionDetail
-                      item={selected}
-                      isTeacher={isTeacher}
-                      attemptId={attemptId}
-                      position={`${selectedVisibleIndex + 1}/${visible.length}`}
-                      canPrev={selectedVisibleIndex > 0}
-                      canNext={selectedVisibleIndex !== -1 && selectedVisibleIndex < visible.length - 1}
-                      onPrev={() => goTo(-1)}
-                      onNext={() => goTo(1)}
-                      onOpenGrid={() => setGridOpen(true)}
-                    />
-                  </div>
+          <div className={cn("absolute inset-0 flex bg-slate-100", tab !== "review" && "hidden")}>
+            {!pdfFailed && (
+              <PdfDocumentLoader url={reviewPdfUrl} onLoad={onReviewPdfLoaded} onError={() => setPdfFailed(true)} />
+            )}
 
-                  <section className={cn(showFull ? "flex flex-1 min-h-0 flex-col" : "min-h-full bg-amber-50/50")}>
-                    <div className={cn(showFull && "flex flex-1 min-h-0 flex-col")}>
-                      {/* Tiêu đề khung lời giải (màu vàng cam để tách khỏi phần câu hỏi/đáp án) */}
-                      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 md:px-5 py-2">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-400 text-white">
-                          <Lightbulb className="h-4 w-4" />
+            <div className="flex-1 min-w-0 flex flex-col">
+              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+                {selected ? (
+                  <article className="mx-auto w-full max-w-5xl p-2 sm:p-3 md:p-6">
+                    <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4 md:p-6">
+                      {/* Số câu + phần */}
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-base font-black text-slate-700">
+                          {selected.number}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-black uppercase tracking-widest text-amber-800">
-                            {solutionPdfUrl ? "Lời giải chi tiết" : "Đề bài (chưa có file lời giải)"}
-                          </p>
-                          <p className="truncate text-[11px] font-bold text-amber-700/80">
-                            {region ? (
-                              <>
-                                {region.label ? `${region.label} · ` : ""}trang {region.start.page}
-                                {region.end.page !== region.start.page ? `–${region.end.page}` : ""}
-                              </>
-                            ) : anchorsReady ? (
-                              <>Chưa xác định được vị trí câu này — cuộn {docLabel} để xem</>
-                            ) : (
-                              <span className="inline-flex items-center gap-1">
-                                <Loader2 className="h-3 w-3 animate-spin" /> Đang tìm vị trí câu trong {docLabel}...
-                              </span>
-                            )}
-                          </p>
+                          <p className="truncate text-xs font-bold uppercase tracking-wider text-slate-400">{selected.sectionName}</p>
                         </div>
                         <div className="flex items-center gap-1">
-                          {!showFull && (
-                            <>
-                              <button
-                                onClick={() => setFocusZoom((z) => Math.max(1, Math.round((z - 0.25) * 100) / 100))}
-                                disabled={focusZoom <= 1}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg text-amber-700 hover:bg-amber-100 disabled:opacity-40"
-                                aria-label="Thu nhỏ lời giải"
-                              >
-                                <ZoomOut className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => setFocusZoom((z) => Math.min(2.5, z + 0.25))}
-                                disabled={focusZoom >= 2.5}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg text-amber-700 hover:bg-amber-100 disabled:opacity-40"
-                                aria-label="Phóng to lời giải"
-                              >
-                                <ZoomIn className="h-4 w-4" />
-                              </button>
-                            </>
-                          )}
+                          <button
+                            onClick={() => setFocusZoom((z) => Math.max(1, Math.round((z - 0.25) * 100) / 100))}
+                            disabled={focusZoom <= 1}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40"
+                            aria-label="Thu nhỏ"
+                          >
+                            <ZoomOut className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setFocusZoom((z) => Math.min(2.5, z + 0.25))}
+                            disabled={focusZoom >= 2.5}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40"
+                            aria-label="Phóng to"
+                          >
+                            <ZoomIn className="h-4 w-4" />
+                          </button>
                           {isTeacher && solutionPdfUrl && (
                             <Link
                               href={`/teacher/tests/solutions/${testId}?q=${selected.q.id}`}
-                              className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-black text-amber-800 hover:bg-amber-100"
+                              className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-black text-slate-500 hover:bg-slate-100"
                               title="Chỉnh vị trí lời giải"
                             >
                               <PencilLine className="h-3.5 w-3.5" />
                               <span className="hidden sm:inline">Chỉnh</span>
                             </Link>
                           )}
-                          {showFull ? (
-                            region &&
-                            preferFull && (
-                              <button
-                                onClick={() => setPreferFull(false)}
-                                className="flex h-8 items-center gap-1 rounded-lg bg-white px-2.5 text-xs font-black text-amber-800 shadow-sm hover:bg-amber-100"
-                              >
-                                <Minimize2 className="h-3.5 w-3.5" /> Chỉ câu này
-                              </button>
-                            )
+                        </div>
+                      </div>
+
+                      {/* Đề bài (cắt từ file) */}
+                      {questionSegments ? (
+                        <PdfRegionView
+                          url={reviewPdfUrl}
+                          pdf={reviewPdf}
+                          segments={questionSegments}
+                          layout={layout}
+                          zoom={focusZoom}
+                          placeholder={null}
+                        />
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm font-bold text-slate-500">
+                          {pdfFailed ? (
+                            "Không tải được file lời giải."
+                          ) : !anchorsReady || !reviewPdf ? (
+                            <span className="inline-flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin text-indigo-500" /> Đang tải đề bài...
+                            </span>
+                          ) : solutionPdfUrl ? (
+                            <>Chưa tách được đề của câu này khỏi file. Bấm “Xem đáp án chi tiết” để xem trong file lời giải.</>
                           ) : (
-                            <button
-                              onClick={() => setPreferFull(true)}
-                              className="flex h-8 items-center gap-1 rounded-lg bg-white px-2.5 text-xs font-black text-amber-800 shadow-sm hover:bg-amber-100"
-                            >
-                              <Maximize2 className="h-3.5 w-3.5" />
-                              Toàn bộ {docLabel}
-                            </button>
+                            <>Chưa tách được đề của câu này. Xem đầy đủ ở tab “Đề gốc”.</>
                           )}
                         </div>
-                      </div>
-
-                      {/* Chế độ tập trung: chỉ đúng phần lời giải của câu */}
-                      <div className={cn("p-3 md:p-6", showFull && "hidden")}>
-                        <div className="mx-auto max-w-[960px] overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
-                          <PdfRegionView
-                            url={reviewPdfUrl}
-                            segments={segments}
-                            layout={anchorsData?.layout ?? { left: 0, right: 100 }}
-                            zoom={focusZoom}
-                            onDocumentLoad={handleReviewPdfLoad}
-                            className="bg-white"
-                            placeholder={
-                              <div className="flex items-center justify-center gap-2 py-16 text-sm font-bold text-slate-400">
-                                <Loader2 className="h-5 w-5 animate-spin text-amber-500" /> Đang tìm lời giải câu này...
-                              </div>
-                            }
-                          />
-                        </div>
-                      </div>
-
-                      {/* Chế độ toàn bộ file: PDF cuộn tới câu đang xem */}
-                      {fullMounted && (
-                        <div className={cn("flex-1 min-h-0 bg-amber-50/40", !showFull && "hidden")}>
-                          <PDFViewer
-                            url={reviewPdfUrl}
-                            flat
-                            maxPageWidth={960}
-                            onDocumentLoad={handleReviewPdfLoad}
-                            scrollTarget={scrollTarget}
-                          />
-                        </div>
                       )}
+
+                      <QuestionCard
+                        item={selected}
+                        isTeacher={isTeacher}
+                        attemptId={attemptId}
+                        showSolutionButton={!!solutionPdfUrl}
+                        solutionOpen={solutionSegments ? showSolution : showWholeFile}
+                        onToggleSolution={() =>
+                          solutionSegments ? setShowSolution((v) => !v) : setShowWholeFile((v) => !v)
+                        }
+                        hasVideo={solutionVideos.length > 0 || !!selected.q.videoUrl}
+                        videoOpen={showVideo}
+                        onToggleVideo={() => setShowVideo((v) => !v)}
+                      >
+                        {/* Đáp án chi tiết (bung ra ngay dưới, như LAB Study) */}
+                        {solutionSegments && showSolution && (
+                          <div className="overflow-hidden rounded-xl border border-rose-200 bg-rose-50/40">
+                            <p className="px-4 pt-3 text-sm font-black text-rose-600">Đáp án chi tiết:</p>
+                            <div className="p-1 sm:p-2 md:p-3">
+                              <PdfRegionView
+                                url={reviewPdfUrl}
+                                pdf={reviewPdf}
+                                segments={solutionSegments}
+                                layout={layout}
+                                zoom={focusZoom}
+                                className="rounded-lg bg-white"
+                              />
+                            </div>
+                            <button
+                              onClick={() => setShowWholeFile((v) => !v)}
+                              className="flex w-full items-center justify-center gap-1 border-t border-rose-200 py-2 text-xs font-black text-rose-600 hover:bg-rose-50"
+                            >
+                              <Maximize2 className="h-3.5 w-3.5" />
+                              {showWholeFile ? "Ẩn toàn bộ file lời giải" : "Xem trong toàn bộ file lời giải"}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Toàn bộ file lời giải, cuộn tới câu đang xem */}
+                        {wholeFileMounted && (
+                          <div
+                            className={cn(
+                              "h-[75vh] overflow-hidden rounded-xl border border-rose-200",
+                              !showWholeFile && "hidden",
+                            )}
+                          >
+                            <PDFViewer
+                              url={reviewPdfUrl}
+                              flat
+                              maxPageWidth={960}
+                              scrollTarget={scrollTarget}
+                              renderLeft={
+                                <span className="text-[10px] font-black uppercase tracking-widest text-rose-500">
+                                  Toàn bộ file lời giải
+                                </span>
+                              }
+                            />
+                          </div>
+                        )}
+
+                        {/* Video hướng dẫn giải (chưa chia mốc theo câu → video đầy đủ) */}
+                        {showVideo && (
+                          <div className="space-y-3">
+                            {(selected.q.videoUrl
+                              ? [{ title: "Video câu này", url: selected.q.videoUrl }]
+                              : solutionVideos
+                            ).map((video, idx) => (
+                              <div key={idx} className="space-y-1.5">
+                                {solutionVideos.length > 1 && !selected.q.videoUrl && (
+                                  <p className="text-xs font-black text-slate-500">{video.title || `Video ${idx + 1}`}</p>
+                                )}
+                                <VideoPlayer src={video.url} title={video.title || "Video hướng dẫn giải"} />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </QuestionCard>
                     </div>
-                  </section>
+                  </article>
+                ) : (
+                  <div className="p-8 text-center text-sm font-bold text-slate-400">Bài không có câu hỏi.</div>
+                )}
+              </div>
+
+              {/* Thanh dưới cùng: thời điểm nộp, vị trí câu, điều hướng */}
+              <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-200 bg-white px-3 py-2 md:px-6">
+                <p className="min-w-0 truncate text-xs font-medium text-slate-500">
+                  {completedLabel && (
+                    <>
+                      <span className="hidden sm:inline">Hoàn thành: {completedLabel}</span>
+                      <span className="sm:hidden">HT: {completedLabel.split(" ").pop()}</span>
+                      {" • "}
+                    </>
+                  )}
+                  Câu {selectedVisibleIndex + 1} / {visible.length}
+                </p>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    onClick={() => goTo(-1)}
+                    disabled={selectedVisibleIndex <= 0}
+                    className="flex h-9 items-center gap-1 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline">Câu trước</span>
+                  </button>
+                  <button
+                    onClick={() => goTo(1)}
+                    disabled={selectedVisibleIndex === -1 || selectedVisibleIndex >= visible.length - 1}
+                    className="flex h-9 items-center gap-1 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-40"
+                  >
+                    <span className="hidden sm:inline">Câu tiếp</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                  <Link
+                    href={backHref}
+                    className="hidden h-9 items-center rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-600 hover:bg-slate-50 md:flex"
+                  >
+                    Quay lại
+                  </Link>
                 </div>
-              ) : (
-                <div className="p-8 text-center text-sm font-bold text-slate-400">Bài không có câu hỏi.</div>
-              )}
+              </footer>
             </div>
 
             {/* Máy tính: bảng kết quả chi tiết ở bên phải (giống ngăn kéo trên điện thoại) */}
@@ -783,215 +872,190 @@ function QuestionGrid({
 
 // ---------- Chi tiết một câu ----------
 
-function QuestionDetail({
+const STATUS_LINE: Record<Status, { icon: React.ReactNode; text: string; className: string }> = {
+  correct: { icon: <CheckCircle2 className="h-5 w-5" />, text: "Đúng", className: "text-emerald-600" },
+  wrong: { icon: <XCircle className="h-5 w-5" />, text: "Sai", className: "text-rose-600" },
+  blank: { icon: <XCircle className="h-5 w-5" />, text: "Chưa làm", className: "text-orange-500" },
+  pending: { icon: <Clock className="h-5 w-5" />, text: "Chờ chấm", className: "text-violet-600" },
+  ungraded: { icon: <Info className="h-5 w-5" />, text: "Không tính điểm", className: "text-amber-600" },
+};
+
+function QuestionCard({
   item,
   isTeacher,
   attemptId,
-  position,
-  canPrev,
-  canNext,
-  onPrev,
-  onNext,
-  onOpenGrid,
+  showSolutionButton,
+  solutionOpen,
+  onToggleSolution,
+  hasVideo,
+  videoOpen,
+  onToggleVideo,
+  children,
 }: {
   item: FlatQuestion;
   isTeacher: boolean;
   attemptId: string;
-  position: string;
-  canPrev: boolean;
-  canNext: boolean;
-  onPrev: () => void;
-  onNext: () => void;
-  onOpenGrid: () => void;
+  showSolutionButton: boolean;
+  solutionOpen: boolean;
+  onToggleSolution: () => void;
+  hasVideo: boolean;
+  videoOpen: boolean;
+  onToggleVideo: () => void;
+  children?: React.ReactNode;
 }) {
   const { q, answer, status } = item;
-  const style = STATUS_STYLE[status];
+  const line = STATUS_LINE[status];
   const subQuestions = [...(q.subQuestions || [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   const isSimple = q.type !== "MULTIPLE_CHOICE_GROUP" && q.type !== "ESSAY";
-  const hasBody =
-    !isSimple || !!q.videoUrl || !!q.audioUrl || !!q.explanation;
+  const correctText =
+    q.type === "MULTIPLE_CHOICE_GROUP"
+      ? subQuestions.map((sq) => tfLabel(sq.correctAnswer)).join(" ; ")
+      : q.type === "ESSAY"
+        ? null
+        : formatCorrectAnswer(q);
 
   return (
-    <div className="bg-white">
-      {/* Thanh câu hỏi: số câu, trạng thái, đáp án đã chọn / đáp án đúng, điều hướng — luôn hiện ở trên */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-indigo-100 bg-indigo-50 px-3 md:px-5 py-2.5">
-        <button
-          onClick={onOpenGrid}
-          className="lg:hidden flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-indigo-200 bg-white text-indigo-600"
-          aria-label="Danh sách câu"
-        >
-          <LayoutGrid className="w-4 h-4" />
-        </button>
-        <div className="min-w-0 flex-1 md:flex-none">
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-black text-indigo-700">Câu {item.number}</span>
-            <span className={cn("rounded-md px-2 py-0.5 text-[10px] font-black uppercase", style.badge)}>{style.label}</span>
-          </div>
-          <p className="truncate text-[10px] font-bold uppercase tracking-wider text-indigo-400">{item.sectionName}</p>
-        </div>
+    <div className="space-y-4">
+      {/* Trạng thái */}
+      <p className={cn("flex items-center gap-2 text-base font-bold", line.className)}>
+        {line.icon} {line.text}
+      </p>
 
+      {/* Bảng từng ý (Đúng/Sai nhiều ý) */}
+      {q.type === "MULTIPLE_CHOICE_GROUP" && (
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+          <div className="grid grid-cols-[3rem_1fr_1fr_2rem] bg-slate-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-slate-500">
+            <span>Ý</span>
+            <span>Bạn chọn</span>
+            <span>Đáp án</span>
+            <span />
+          </div>
+          {subQuestions.map((sq, i) => {
+            const sub = answer?.subAnswers?.find((a) => a.subQuestionId === sq.id);
+            const value = cleanStudentAnswer(sub?.answerProvided);
+            return (
+              <div
+                key={sq.id}
+                className={cn(
+                  "grid grid-cols-[3rem_1fr_1fr_2rem] items-center border-t border-slate-100 px-3 py-2 text-sm font-bold",
+                  sub?.isCorrect ? "bg-emerald-50/70" : value ? "bg-rose-50/70" : "bg-white",
+                )}
+              >
+                <span className="text-slate-500">{String.fromCharCode(97 + i)})</span>
+                <span className={sub?.isCorrect ? "text-emerald-700" : value ? "text-rose-600" : "text-slate-400"}>
+                  {value ? tfLabel(value) : "Chưa làm"}
+                </span>
+                <span className="text-emerald-700">{tfLabel(sq.correctAnswer)}</span>
+                {sub?.isCorrect ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <XCircle className={cn("h-4 w-4", value ? "text-rose-500" : "text-slate-300")} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Hộp đáp án + nút xem lời giải / video */}
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
         {isSimple && (
-          <div className="order-last flex w-full gap-2 md:order-none md:w-auto md:flex-1">
-            <div className={cn("flex flex-1 items-center justify-between gap-3 rounded-xl border-2 px-3 py-1.5 md:max-w-[240px]", style.card)}>
-              <span className={cn("flex items-center gap-1 text-[10px] font-black uppercase tracking-widest", style.text)}>
-                {status === "correct" ? <CheckCircle2 className="h-3.5 w-3.5" /> : status === "wrong" ? <XCircle className="h-3.5 w-3.5" /> : null}
-                Bạn chọn
-              </span>
-              <span className={cn("text-xl font-black", style.text)}>{formatStudentAnswer(q, answer)}</span>
-            </div>
-            <div className="flex flex-1 items-center justify-between gap-3 rounded-xl border-2 border-emerald-300 bg-emerald-50 px-3 py-1.5 md:max-w-[240px]">
-              <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Đáp án đúng
-              </span>
-              <span className="text-xl font-black text-emerald-600">{formatCorrectAnswer(q)}</span>
-            </div>
+          <p className="text-base text-slate-700">
+            <span className="font-bold">Bạn chọn: </span>
+            <span className={cn("font-black italic", STATUS_STYLE[status].text)}>{formatStudentAnswer(q, answer)}</span>
+          </p>
+        )}
+        {correctText && (
+          <p className="text-base text-slate-700">
+            <span className="font-bold">Đáp án đúng: </span>
+            <span className="font-black italic text-emerald-700">{correctText}</span>
+          </p>
+        )}
+        {q.type === "ESSAY" && (
+          <p className="flex flex-wrap items-center gap-2 text-base text-slate-700">
+            <span className="font-bold">Bài làm:</span>
+            {answer?.answerProvided ? (
+              <a
+                href={answer.answerProvided}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 font-black text-blue-600 hover:underline"
+              >
+                <ImageIcon className="h-4 w-4" /> Xem bài làm <ExternalLink className="h-3 w-3" />
+              </a>
+            ) : (
+              <span className="font-bold text-slate-500">Làm ra giấy</span>
+            )}
+          </p>
+        )}
+
+        {(showSolutionButton || hasVideo) && (
+          <div className="flex flex-wrap gap-2">
+            {showSolutionButton && (
+              <button
+                onClick={onToggleSolution}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-red-700"
+              >
+                {solutionOpen ? "Ẩn đáp án chi tiết" : "Xem đáp án chi tiết"}
+              </button>
+            )}
+            {hasVideo && (
+              <button
+                onClick={onToggleVideo}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-red-700"
+              >
+                {videoOpen ? "Ẩn video hướng dẫn giải" : "Xem video hướng dẫn giải"}
+              </button>
+            )}
           </div>
         )}
-        {!isSimple && <div className="hidden md:block md:flex-1" />}
 
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="hidden sm:block text-[10px] font-black text-indigo-400">{position}</span>
-          <button
-            onClick={onPrev}
-            disabled={!canPrev}
-            className="flex h-9 items-center gap-1 rounded-xl border border-indigo-200 bg-white px-2.5 text-xs font-black text-indigo-700 hover:bg-indigo-50 disabled:opacity-40"
+        {children}
+
+        {q.explanation && (
+          <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+            <p className="whitespace-pre-wrap text-sm text-slate-700">{q.explanation}</p>
+          </div>
+        )}
+        {q.audioUrl && (
+          <a
+            href={q.audioUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-600 hover:bg-slate-100"
           >
-            <ChevronLeft className="w-4 h-4" />
-            <span className="hidden md:inline">Câu trước</span>
-          </button>
-          <button
-            onClick={onNext}
-            disabled={!canNext}
-            className="flex h-9 items-center gap-1 rounded-xl bg-indigo-600 px-2.5 text-xs font-black text-white shadow-sm shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-40"
-          >
-            <span className="hidden md:inline">Câu tiếp</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+            <Headphones className="h-3.5 w-3.5" /> Audio
+          </a>
+        )}
       </div>
 
-      {hasBody && (
-        <div className="space-y-3 px-3 md:px-5 py-3">
-          {/* Đúng/Sai nhiều ý: bảng từng ý */}
-          {q.type === "MULTIPLE_CHOICE_GROUP" && (
-            <div className="overflow-hidden rounded-2xl border border-slate-200 lg:max-w-2xl">
-              <div className="grid grid-cols-[3rem_1fr_1fr_2rem] bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                <span>Ý</span>
-                <span>Bạn chọn</span>
-                <span>Đáp án</span>
-                <span />
+      {/* Chấm tự luận (giáo viên) */}
+      {isTeacher && q.type === "ESSAY" && answer && (
+        <GradeEssay
+          key={answer.id}
+          answerId={answer.id}
+          initialPoints={answer.pointsAwarded}
+          maxPoints={q.points}
+          isCorrect={answer.isCorrect}
+          initialFeedback={answer.feedback}
+        />
+      )}
+
+      {/* Góp ý của giáo viên + nộp lại (học sinh) */}
+      {!isTeacher && q.type === "ESSAY" && answer && (
+        <>
+          {answer.feedback && (
+            <div className="flex gap-2 rounded-xl border border-orange-200 bg-orange-50 p-3">
+              <MessageSquareText className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+              <div>
+                <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-orange-600">Góp ý của giảng viên</p>
+                <p className="whitespace-pre-wrap text-sm text-slate-700">{answer.feedback}</p>
               </div>
-              {subQuestions.map((sq, i) => {
-                const sub = answer?.subAnswers?.find((a) => a.subQuestionId === sq.id);
-                const value = cleanStudentAnswer(sub?.answerProvided);
-                return (
-                  <div
-                    key={sq.id}
-                    className={cn(
-                      "grid grid-cols-[3rem_1fr_1fr_2rem] items-center border-t border-slate-100 px-3 py-2 text-sm font-bold",
-                      sub?.isCorrect ? "bg-emerald-50/70" : value ? "bg-rose-50/70" : "bg-white",
-                    )}
-                  >
-                    <span className="text-indigo-500">{String.fromCharCode(97 + i)})</span>
-                    <span className={sub?.isCorrect ? "text-emerald-700" : value ? "text-rose-600" : "text-slate-400"}>
-                      {value ? tfLabel(value) : "Bỏ trống"}
-                    </span>
-                    <span className="text-emerald-700">{tfLabel(sq.correctAnswer)}</span>
-                    {sub?.isCorrect ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    ) : (
-                      <XCircle className={cn("h-4 w-4", value ? "text-rose-500" : "text-slate-300")} />
-                    )}
-                  </div>
-                );
-              })}
             </div>
           )}
-
-          {/* Tự luận: bài làm */}
-          {q.type === "ESSAY" && (
-            <div className={cn("flex items-center gap-3 rounded-2xl border-2 p-3 lg:max-w-2xl", style.card)}>
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Bài làm</span>
-              {answer?.answerProvided ? (
-                <a
-                  href={answer.answerProvided}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-sm font-black text-indigo-600 hover:underline"
-                >
-                  <ImageIcon className="h-4 w-4" /> Xem bài làm <ExternalLink className="h-3 w-3" />
-                </a>
-              ) : (
-                <span className="text-sm font-bold text-slate-500">Làm ra giấy</span>
-              )}
-              {status === "pending" && (
-                <span className="ml-auto flex items-center gap-1 text-xs font-bold text-violet-600">
-                  <Clock className="h-3.5 w-3.5" /> Chờ chấm
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Chấm tự luận (giáo viên) */}
-          {isTeacher && q.type === "ESSAY" && answer && (
-            <GradeEssay
-              key={answer.id}
-              answerId={answer.id}
-              initialPoints={answer.pointsAwarded}
-              maxPoints={q.points}
-              isCorrect={answer.isCorrect}
-              initialFeedback={answer.feedback}
-            />
-          )}
-
-          {/* Góp ý của giáo viên + nộp lại (học sinh) */}
-          {!isTeacher && q.type === "ESSAY" && answer && (
-            <>
-              {answer.feedback && (
-                <div className="flex gap-2 rounded-xl border border-orange-200 bg-orange-50 p-3 lg:max-w-2xl">
-                  <MessageSquareText className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
-                  <div>
-                    <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-orange-600">Góp ý của giảng viên</p>
-                    <p className="whitespace-pre-wrap text-sm text-slate-700">{answer.feedback}</p>
-                  </div>
-                </div>
-              )}
-              {answer.isCorrect === false && <ReuploadForm key={q.id} attemptId={attemptId} questionId={q.id} />}
-            </>
-          )}
-
-          {/* Video / audio / ghi chú riêng của câu (nếu giáo viên có nhập) */}
-          {(q.videoUrl || q.audioUrl) && (
-            <div className="flex flex-wrap gap-2">
-              {q.videoUrl && (
-                <a
-                  href={q.videoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-black text-sky-700 hover:bg-sky-100"
-                >
-                  <Video className="h-3.5 w-3.5" /> Video câu này
-                </a>
-              )}
-              {q.audioUrl && (
-                <a
-                  href={q.audioUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-black text-sky-700 hover:bg-sky-100"
-                >
-                  <Headphones className="h-3.5 w-3.5" /> Audio
-                </a>
-              )}
-            </div>
-          )}
-          {q.explanation && (
-            <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 lg:max-w-2xl">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-              <p className="whitespace-pre-wrap text-sm text-slate-700">{q.explanation}</p>
-            </div>
-          )}
-        </div>
+          {answer.isCorrect === false && <ReuploadForm key={q.id} attemptId={attemptId} questionId={q.id} />}
+        </>
       )}
     </div>
   );
