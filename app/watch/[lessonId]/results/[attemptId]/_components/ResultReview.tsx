@@ -361,12 +361,14 @@ export function ResultReview({
   const [showSolution, setShowSolution] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [showWholeFile, setShowWholeFile] = useState(false);
+  const [showAnswerOnly, setShowAnswerOnly] = useState(false);
   const [wholeFileMounted, setWholeFileMounted] = useState(false);
   // Sang câu khác thì thu gọn lại như LAB Study
   useEffect(() => {
     setShowSolution(false);
     setShowVideo(false);
     setShowWholeFile(false);
+    setShowAnswerOnly(false);
   }, [selectedId]);
   useEffect(() => {
     if (showWholeFile) setWholeFileMounted(true);
@@ -549,10 +551,16 @@ export function ResultReview({
                         item={selected}
                         isTeacher={isTeacher}
                         attemptId={attemptId}
-                        showSolutionButton={!!solutionPdfUrl}
-                        solutionOpen={solutionSegments ? showSolution : showWholeFile}
+                        hasSolutionFile={!!solutionPdfUrl}
+                        solutionOpen={
+                          !solutionPdfUrl ? showAnswerOnly : solutionSegments ? showSolution : showWholeFile
+                        }
                         onToggleSolution={() =>
-                          solutionSegments ? setShowSolution((v) => !v) : setShowWholeFile((v) => !v)
+                          !solutionPdfUrl
+                            ? setShowAnswerOnly((v) => !v)
+                            : solutionSegments
+                              ? setShowSolution((v) => !v)
+                              : setShowWholeFile((v) => !v)
                         }
                         hasVideo={solutionVideos.length > 0 || !!selected.q.videoUrl}
                         videoOpen={showVideo}
@@ -884,7 +892,7 @@ function QuestionCard({
   item,
   isTeacher,
   attemptId,
-  showSolutionButton,
+  hasSolutionFile,
   solutionOpen,
   onToggleSolution,
   hasVideo,
@@ -895,7 +903,9 @@ function QuestionCard({
   item: FlatQuestion;
   isTeacher: boolean;
   attemptId: string;
-  showSolutionButton: boolean;
+  /** Có file lời giải → nút "Xem đáp án chi tiết"; không có → nút "Xem đáp án" */
+  hasSolutionFile: boolean;
+  /** Đã bấm xem → mới hiện đáp án đúng (trước đó chỉ hiện đáp án học sinh đã chọn) */
   solutionOpen: boolean;
   onToggleSolution: () => void;
   hasVideo: boolean;
@@ -921,14 +931,23 @@ function QuestionCard({
         {line.icon} {line.text}
       </p>
 
-      {/* Bảng từng ý (Đúng/Sai nhiều ý) */}
+      {/* Bảng từng ý (Đúng/Sai nhiều ý) — cột đáp án và đúng/sai từng ý chỉ hiện sau khi bấm xem */}
       {q.type === "MULTIPLE_CHOICE_GROUP" && (
         <div className="overflow-hidden rounded-xl border border-slate-200">
-          <div className="grid grid-cols-[3rem_1fr_1fr_2rem] bg-slate-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-slate-500">
+          <div
+            className={cn(
+              "grid bg-slate-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-slate-500",
+              solutionOpen ? "grid-cols-[3rem_1fr_1fr_2rem]" : "grid-cols-[3rem_1fr]",
+            )}
+          >
             <span>Ý</span>
             <span>Bạn chọn</span>
-            <span>Đáp án</span>
-            <span />
+            {solutionOpen && (
+              <>
+                <span>Đáp án</span>
+                <span />
+              </>
+            )}
           </div>
           {subQuestions.map((sq, i) => {
             const sub = answer?.subAnswers?.find((a) => a.subQuestionId === sq.id);
@@ -937,19 +956,34 @@ function QuestionCard({
               <div
                 key={sq.id}
                 className={cn(
-                  "grid grid-cols-[3rem_1fr_1fr_2rem] items-center border-t border-slate-100 px-3 py-2 text-sm font-bold",
-                  sub?.isCorrect ? "bg-emerald-50/70" : value ? "bg-rose-50/70" : "bg-white",
+                  "grid items-center border-t border-slate-100 px-3 py-2 text-sm font-bold",
+                  solutionOpen ? "grid-cols-[3rem_1fr_1fr_2rem]" : "grid-cols-[3rem_1fr]",
+                  solutionOpen && (sub?.isCorrect ? "bg-emerald-50/70" : value ? "bg-rose-50/70" : "bg-white"),
                 )}
               >
                 <span className="text-slate-500">{String.fromCharCode(97 + i)})</span>
-                <span className={sub?.isCorrect ? "text-emerald-700" : value ? "text-rose-600" : "text-slate-400"}>
+                <span
+                  className={
+                    !value
+                      ? "text-slate-400"
+                      : !solutionOpen
+                        ? "text-slate-800"
+                        : sub?.isCorrect
+                          ? "text-emerald-700"
+                          : "text-rose-600"
+                  }
+                >
                   {value ? tfLabel(value) : "Chưa làm"}
                 </span>
-                <span className="text-emerald-700">{tfLabel(sq.correctAnswer)}</span>
-                {sub?.isCorrect ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                ) : (
-                  <XCircle className={cn("h-4 w-4", value ? "text-rose-500" : "text-slate-300")} />
+                {solutionOpen && (
+                  <>
+                    <span className="text-emerald-700">{tfLabel(sq.correctAnswer)}</span>
+                    {sub?.isCorrect ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <XCircle className={cn("h-4 w-4", value ? "text-rose-500" : "text-slate-300")} />
+                    )}
+                  </>
                 )}
               </div>
             );
@@ -965,7 +999,7 @@ function QuestionCard({
             <span className={cn("font-black italic", STATUS_STYLE[status].text)}>{formatStudentAnswer(q, answer)}</span>
           </p>
         )}
-        {correctText && (
+        {correctText && solutionOpen && (
           <p className="text-base text-slate-700">
             <span className="font-bold">Đáp án đúng: </span>
             <span className="font-black italic text-emerald-700">{correctText}</span>
@@ -989,14 +1023,20 @@ function QuestionCard({
           </p>
         )}
 
-        {(showSolutionButton || hasVideo) && (
+        {(q.type !== "ESSAY" || hasSolutionFile || hasVideo) && (
           <div className="flex flex-wrap gap-2">
-            {showSolutionButton && (
+            {(q.type !== "ESSAY" || hasSolutionFile) && (
               <button
                 onClick={onToggleSolution}
                 className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-red-700"
               >
-                {solutionOpen ? "Ẩn đáp án chi tiết" : "Xem đáp án chi tiết"}
+                {hasSolutionFile
+                  ? solutionOpen
+                    ? "Ẩn đáp án chi tiết"
+                    : "Xem đáp án chi tiết"
+                  : solutionOpen
+                    ? "Ẩn đáp án"
+                    : "Xem đáp án"}
               </button>
             )}
             {hasVideo && (
