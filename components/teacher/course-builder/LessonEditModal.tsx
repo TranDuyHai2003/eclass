@@ -15,21 +15,35 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   updateLesson,
   createAttachment,
   deleteAttachment,
 } from "@/actions/course";
 import axios from "axios";
-import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { toast } from "sonner";
-import { Trash2, CheckCircle2, Upload, X, PlaySquare, Youtube, Link as LinkIcon } from "lucide-react";
+import { Trash2, Upload, X, Youtube, FileText, ClipboardList, Video } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const LESSON_TYPES = [
+  {
+    value: "VIDEO",
+    label: "Video bài giảng",
+    icon: Video,
+    hint: "Học sinh xem video bài giảng. Bài tập kèm theo (nếu có) nằm ở mục bài tập của bài học.",
+  },
+  {
+    value: "DOCUMENT",
+    label: "Tài liệu / PDF",
+    icon: FileText,
+    hint: "Hiển thị file PDF đính kèm đầu tiên (khi bài học không có video).",
+  },
+  {
+    value: "QUIZ",
+    label: "Bài tập Quiz",
+    icon: ClipboardList,
+    hint: "Hiển thị thẻ vào làm bài (khi bài học không có video).",
+  },
+] as const;
 import { LibrarySelect } from "./LibrarySelect";
 import VideoPlayer from "@/components/player/VideoPlayer";
 
@@ -40,7 +54,7 @@ interface LessonEditModalProps {
   onOpenChange: (open: boolean) => void;
   lesson: Lesson & { attachments: Attachment[] };
   /** `updated`: các trường vừa lưu, để danh sách bài học cập nhật ngay (không chờ tải lại) */
-  onSuccess: (updated?: Partial<Lesson>) => void;
+  onSuccess: (updated?: Partial<Lesson & { attachments: Attachment[] }>) => void;
 }
 
 const isYoutubeUrl = (url: string) => {
@@ -103,24 +117,42 @@ export function LessonEditModal({
     }
   }, [open, lesson.id, videoUrl, homeworkVideoUrl]);
 
+  // ─── Thay đổi chưa lưu ─────────────────────
+  // Mọi trường trong form (kể cả video) chỉ lưu khi bấm "Lưu thay đổi" → một cách lưu thống nhất,
+  // không còn trường hợp lưu được video nhưng mất loại bài/tiêu đề khi đóng cửa sổ.
+  const isDirty =
+    title !== lesson.title ||
+    type !== (lesson.type || "VIDEO") ||
+    description !== (lesson.description || "") ||
+    videoUrl !== (lesson.videoUrl || "") ||
+    homeworkVideoUrl !== (lesson.homeworkVideoUrl || "") ||
+    hasHomework !== (lesson.hasHomework || false);
+
   // ─── Save ──────────────────────────────────
+  const saveChanges = async () => {
+    const data = {
+      title,
+      description,
+      videoUrl,
+      homeworkVideoUrl,
+      type: type as Lesson["type"],
+      hasHomework,
+    };
+    const res = await updateLesson(lesson.id, data);
+    if (!res.success) {
+      toast.error(res.error || "Lỗi khi lưu");
+      return false;
+    }
+    onSuccess(data);
+    return true;
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await updateLesson(lesson.id, {
-        title,
-        description,
-        videoUrl,
-        homeworkVideoUrl,
-        type: type as any,
-        hasHomework,
-      });
-      if (res.success) {
+      if (await saveChanges()) {
         toast.success("Đã lưu thay đổi");
-        onSuccess({ title, description, videoUrl, homeworkVideoUrl, type: type as Lesson["type"], hasHomework });
         onOpenChange(false);
-      } else {
-        toast.error(res.error || "Lỗi khi lưu");
       }
     } catch (error) {
       console.error(error);
@@ -130,83 +162,50 @@ export function LessonEditModal({
     }
   };
 
-  const handleAddYoutube = async () => {
+  const handleAddYoutube = () => {
     if (!youtubeInput) return;
     if (!isYoutubeUrl(youtubeInput)) {
       toast.error("Link YouTube không hợp lệ");
       return;
     }
-
-    setIsSaving(true);
-    try {
-      const res = await updateLesson(lesson.id, { videoUrl: youtubeInput });
-      if (res.success) {
-        setVideoUrl(youtubeInput);
-        setYoutubeInput("");
-        setShowYoutubeInput(false);
-        toast.success("Đã gắn link YouTube");
-        onSuccess();
-      } else {
-        toast.error(res.error || "Lỗi khi gắn link");
-      }
-    } finally {
-      setIsSaving(false);
-    }
+    setVideoUrl(youtubeInput);
+    setYoutubeInput("");
+    setShowYoutubeInput(false);
   };
 
-  const handleAddHWYoutube = async () => {
+  const handleAddHWYoutube = () => {
     if (!hwYoutubeInput) return;
     if (!isYoutubeUrl(hwYoutubeInput)) {
       toast.error("Link YouTube không hợp lệ");
       return;
     }
-
-    setIsSaving(true);
-    try {
-      const res = await updateLesson(lesson.id, { homeworkVideoUrl: hwYoutubeInput });
-      if (res.success) {
-        setHomeworkVideoUrl(hwYoutubeInput);
-        setHwYoutubeInput("");
-        setShowHWYoutubeInput(false);
-        toast.success("Đã gắn link YouTube cho video hướng dẫn");
-        onSuccess();
-      } else {
-        toast.error(res.error || "Lỗi khi gắn link");
-      }
-    } finally {
-      setIsSaving(false);
-    }
+    setHomeworkVideoUrl(hwYoutubeInput);
+    setHwYoutubeInput("");
+    setShowHWYoutubeInput(false);
   };
 
-  const handleRemoveVideo = async () => {
-    if (!confirm("Xóa video này?")) return;
-    setIsSaving(true);
-    try {
-      const res = await updateLesson(lesson.id, { videoUrl: "" });
-      if (res.success) {
-        setVideoUrl("");
-        toast.success("Đã xóa video");
-        onSuccess();
-      } else {
-        toast.error(res.error || "Lỗi xóa video");
-      }
-    } finally {
-      setIsSaving(false);
-    }
+  const handleRemoveVideo = () => {
+    if (!confirm("Gỡ video này khỏi bài học? (Áp dụng khi bấm Lưu thay đổi)")) return;
+    setVideoUrl("");
   };
 
-  const handleRemoveHWVideo = async () => {
-    if (!confirm("Xóa video hướng dẫn này?")) return;
+  const handleRemoveHWVideo = () => {
+    if (!confirm("Gỡ video hướng dẫn này? (Áp dụng khi bấm Lưu thay đổi)")) return;
+    setHomeworkVideoUrl("");
+  };
+
+  /** Mở trình tạo bài tập: lưu thay đổi đang dở trước, rồi mới chuyển trang */
+  const handleOpenTestBuilder = async () => {
     setIsSaving(true);
     try {
-      const res = await updateLesson(lesson.id, { homeworkVideoUrl: "" });
-      if (res.success) {
-        setHomeworkVideoUrl("");
-        toast.success("Đã xóa video hướng dẫn");
-        onSuccess();
-      } else {
-        toast.error(res.error || "Lỗi xóa video hướng dẫn");
+      if (isDirty && !(await saveChanges())) return;
+      // Chỉ chuyển sang loại "Bài tập Quiz" khi bài học còn trống. Bài video/tài liệu có kèm
+      // bài tập giữ nguyên loại — học sinh vẫn vào làm bài qua mục bài tập của bài học.
+      const isEmptyLesson = !videoUrl && type !== "DOCUMENT";
+      if (type !== "QUIZ" && isEmptyLesson) {
+        await updateLesson(lesson.id, { type: "QUIZ" });
       }
+      window.location.href = `/teacher/tests/${lesson.id}`;
     } finally {
       setIsSaving(false);
     }
@@ -230,8 +229,12 @@ export function LessonEditModal({
         type: file.type,
       });
       if (attachmentRes.success && attachmentRes.attachment) {
-        setAttachments((prev) => [...prev, attachmentRes.attachment!]);
+        const next = [...attachments, attachmentRes.attachment];
+        setAttachments(next);
+        onSuccess({ attachments: next });
         toast.success("Đã thêm tài liệu");
+      } else {
+        toast.error(("error" in attachmentRes && attachmentRes.error) || "Không thể thêm tài liệu");
       }
     } catch (error) {
       toast.error("Upload thất bại");
@@ -244,8 +247,14 @@ export function LessonEditModal({
   const handleDeleteAttachment = async (attachmentId: string) => {
     if (!confirm("Xóa tài liệu này?")) return;
     try {
-      await deleteAttachment(attachmentId);
-      setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+      const res = await deleteAttachment(attachmentId);
+      if (res && "success" in res && !res.success) {
+        toast.error(("error" in res && res.error) || "Lỗi xóa tài liệu");
+        return;
+      }
+      const next = attachments.filter((a) => a.id !== attachmentId);
+      setAttachments(next);
+      onSuccess({ attachments: next });
       toast.success("Đã xóa tài liệu");
     } catch {
       toast.error("Lỗi xóa tài liệu");
@@ -256,6 +265,7 @@ export function LessonEditModal({
     if (uploading || attUploading) {
       if (!confirm("File đang được tải lên. Bạn có chắc muốn đóng?")) return;
     }
+    if (isDirty && !confirm("Bạn có thay đổi chưa lưu. Đóng và bỏ các thay đổi này?")) return;
     onOpenChange(false);
   };
 
@@ -268,7 +278,7 @@ export function LessonEditModal({
       }}
     >
       <DialogContent
-        className="max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden"
+        className="max-w-4xl sm:max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden"
       >
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle>Chỉnh sửa bài học</DialogTitle>
@@ -286,24 +296,40 @@ export function LessonEditModal({
           </div>
 
           <TabsContent value="video" className="flex-1 p-6 overflow-y-auto space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2 space-y-2">
+            <div className="grid grid-cols-1 gap-6">
+              <div className="space-y-2">
                 <Label>Tiêu đề bài học</Label>
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} />
               </div>
-              <div className="space-y-2">
-                <Label>Loại bài học</Label>
-                <Select value={type} onValueChange={setType}>
-                  <SelectTrigger className="rounded-xl font-bold border-slate-200">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="VIDEO">🎥 Video bài giảng</SelectItem>
-                    <SelectItem value="DOCUMENT">📄 Tài liệu / PDF</SelectItem>
-                    <SelectItem value="QUIZ">📝 Bài tập Quiz</SelectItem>
-                  </SelectContent>
-                </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Loại bài học</Label>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Loại bài học">
+                {LESSON_TYPES.map((t) => {
+                  const Icon = t.icon;
+                  const active = type === t.value;
+                  return (
+                    <button
+                      key={t.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => setType(t.value)}
+                      className={cn(
+                        "flex items-center justify-center gap-2 rounded-xl border-2 px-3 py-2.5 text-sm font-bold transition-colors",
+                        active
+                          ? "border-blue-600 bg-blue-50 text-blue-700"
+                          : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50",
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{t.label}</span>
+                    </button>
+                  );
+                })}
               </div>
+              <p className="text-xs text-slate-500">{LESSON_TYPES.find((t) => t.value === type)?.hint}</p>
             </div>
 
             <div className="flex items-center justify-between p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
@@ -317,9 +343,12 @@ export function LessonEditModal({
                />
             </div>
 
-            {type === "VIDEO" && (
-              <div className="space-y-4 animate-in fade-in duration-500">
-                <Label>Video bài giảng</Label>
+            {(
+              <div className="space-y-4">
+                <Label>
+                  Video bài giảng
+                  {type !== "VIDEO" && <span className="ml-2 text-xs font-normal text-slate-400">(không bắt buộc)</span>}
+                </Label>
 
                 {videoUrl ? (
                   <div className="border rounded-xl overflow-hidden bg-black relative shadow-2xl group">
@@ -336,12 +365,7 @@ export function LessonEditModal({
                     {/* Hover Buttons Overlay - High Z-index */}
                     <div className="absolute top-3 right-3 flex gap-2 z-[70] opacity-0 group-hover:opacity-100 transition-opacity">
                       <LibrarySelect
-                        onSelectVideo={(url) => {
-                          setVideoUrl(url);
-                          updateLesson(lesson.id, { videoUrl: url });
-                          toast.success("Đã thay đổi video");
-                          onSuccess();
-                        }}
+                        onSelectVideo={(url) => setVideoUrl(url)}
                         customTrigger={
                           <button className="bg-white/95 hover:bg-white text-gray-900 text-[10px] font-black px-3 py-2 rounded-lg shadow-xl uppercase tracking-wider">
                             Thư viện
@@ -371,11 +395,7 @@ export function LessonEditModal({
                     </div>
                     <div className="flex gap-4">
                         <LibrarySelect
-                          onSelectVideo={(url) => {
-                            setVideoUrl(url);
-                            updateLesson(lesson.id, { videoUrl: url });
-                            onSuccess();
-                          }}
+                          onSelectVideo={(url) => setVideoUrl(url)}
                           customTrigger={
                             <Button className="bg-blue-600 hover:bg-blue-700 font-black uppercase text-xs rounded-xl px-6 h-11">
                                Thư viện
@@ -440,12 +460,7 @@ export function LessonEditModal({
                   </div>
                   <div className="absolute top-3 right-3 flex gap-2 z-[70] opacity-0 group-hover:opacity-100 transition-opacity">
                     <LibrarySelect
-                      onSelectVideo={(url) => {
-                        setHomeworkVideoUrl(url);
-                        updateLesson(lesson.id, { homeworkVideoUrl: url });
-                        toast.success("Đã thay đổi video hướng dẫn");
-                        onSuccess();
-                      }}
+                      onSelectVideo={(url) => setHomeworkVideoUrl(url)}
                       customTrigger={
                         <button className="bg-white/95 hover:bg-white text-gray-900 text-[10px] font-black px-3 py-2 rounded-lg shadow-xl uppercase tracking-wider">
                           Thư viện
@@ -475,11 +490,7 @@ export function LessonEditModal({
                   </div>
                   <div className="flex gap-4">
                       <LibrarySelect
-                        onSelectVideo={(url) => {
-                          setHomeworkVideoUrl(url);
-                          updateLesson(lesson.id, { homeworkVideoUrl: url });
-                          onSuccess();
-                        }}
+                        onSelectVideo={(url) => setHomeworkVideoUrl(url)}
                         customTrigger={
                           <Button className="bg-blue-600 hover:bg-blue-700 font-black uppercase text-xs rounded-xl px-6 h-11">
                               Thư viện
@@ -552,24 +563,23 @@ export function LessonEditModal({
                <p className="text-slate-500 max-w-sm mx-auto font-medium">Tạo đề thi từ PDF, thiết lập đáp án và chấm điểm tự động.</p>
             </div>
             <Button 
-              onClick={async () => {
-                // Chỉ chuyển sang loại "Bài tập Quiz" khi bài học còn trống. Bài video/tài liệu có kèm
-                // bài tập giữ nguyên loại — học sinh vẫn vào làm bài qua mục bài tập của bài học.
-                // (Trước đây luôn đổi sang Quiz → bài video bị "nhảy" về Quiz sau khi soạn bài tập.)
-                const isEmptyLesson = !lesson.videoUrl && type !== "DOCUMENT" && lesson.type !== "DOCUMENT";
-                if (lesson.type !== "QUIZ" && isEmptyLesson) await updateLesson(lesson.id, { type: "QUIZ" });
-                window.location.href = `/teacher/tests/${lesson.id}`;
-              }}
+              onClick={handleOpenTestBuilder}
+              disabled={isSaving}
               className="bg-slate-900 hover:bg-blue-600 h-14 px-10 font-black uppercase text-xs tracking-widest rounded-2xl shadow-2xl transition-all"
             >
-              Mở Trình tạo Bài tập
+              {isDirty ? "Lưu & mở Trình tạo Bài tập" : "Mở Trình tạo Bài tập"}
             </Button>
           </TabsContent>
         </Tabs>
 
-        <div className="p-6 border-t bg-slate-50 flex justify-end gap-3">
+        <div className="p-6 border-t bg-slate-50 flex items-center justify-end gap-3">
+          {isDirty && (
+            <span className="mr-auto rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700">
+              Có thay đổi chưa lưu
+            </span>
+          )}
           <Button variant="ghost" onClick={handleClose} className="font-bold uppercase text-xs">Hủy bỏ</Button>
-          <Button onClick={handleSave} disabled={isSaving || uploading || attUploading} className="bg-blue-600 hover:bg-blue-700 font-black uppercase text-xs px-8 h-11 rounded-xl shadow-xl shadow-blue-200">
+          <Button onClick={handleSave} disabled={isSaving || uploading || attUploading || !isDirty} className="bg-blue-600 hover:bg-blue-700 font-black uppercase text-xs px-8 h-11 rounded-xl shadow-xl shadow-blue-200">
             {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
           </Button>
         </div>
