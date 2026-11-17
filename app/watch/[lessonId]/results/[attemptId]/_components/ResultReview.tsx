@@ -231,6 +231,11 @@ export function ResultReview({
   const selected = flat.find((f) => f.q.id === selectedId) ?? visible[0] ?? null;
   const selectedVisibleIndex = selected ? visible.findIndex((f) => f.q.id === selected.q.id) : -1;
 
+  // Bật lọc "chỉ câu sai" khi đang xem câu đúng → chuyển sang câu đầu tiên trong danh sách lọc
+  useEffect(() => {
+    if (selectedVisibleIndex === -1 && visible.length > 0) setSelectedId(visible[0].q.id);
+  }, [selectedVisibleIndex, visible]);
+
   const [tab, setTab] = useState<Tab>(canSeeAnswers ? "review" : "paper");
   const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(() => new Set([canSeeAnswers ? "review" : "paper"]));
   const openTab = (t: Tab) => {
@@ -676,13 +681,19 @@ function QuestionGrid({
         Chỉ xem câu sai / bỏ trống
       </label>
 
+      {onlyWrong && visibleIds.size === 0 && (
+        <p className="rounded-2xl bg-emerald-50 px-4 py-6 text-center text-sm font-bold text-emerald-700">
+          Không có câu sai hoặc bỏ trống 🎉
+        </p>
+      )}
+
       {sections.map((section) => {
         const items = section.questions.filter((q) => visibleIds.has(q.id));
         if (items.length === 0) return null;
         return (
           <div key={section.id} className="space-y-2">
             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">{section.name}</h4>
-            <div className="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-5 xl:grid-cols-6 gap-1.5">
+            <div className="grid grid-cols-6 lg:grid-cols-5 xl:grid-cols-6 gap-1.5">
               {items.map((q) => {
                 const item = byId.get(q.id)!;
                 return (
@@ -690,6 +701,8 @@ function QuestionGrid({
                     key={q.id}
                     onClick={() => onSelect(q.id)}
                     title={`Câu ${item.number}: ${STATUS_STYLE[item.status].label}`}
+                    aria-label={`${section.name} câu ${item.number}: ${STATUS_STYLE[item.status].label}`}
+                    aria-current={selectedId === q.id ? "true" : undefined}
                     className={cn(
                       "aspect-square rounded-xl border text-xs font-black transition-all hover:scale-105",
                       STATUS_STYLE[item.status].cell,

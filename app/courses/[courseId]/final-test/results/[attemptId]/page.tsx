@@ -1,7 +1,9 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
-import TestResultClient from "@/app/watch/[lessonId]/results/[attemptId]/_components/TestResultClient";
+import { ResultScreen } from "@/app/watch/[lessonId]/results/[attemptId]/_components/ResultScreen";
+
+export const dynamic = "force-dynamic";
 
 export default async function CourseFinalTestResultPage({
   params,
@@ -18,33 +20,39 @@ export default async function CourseFinalTestResultPage({
     include: {
       test: {
         include: {
-          lesson: true,
-          course: true,
+          course: { select: { title: true } },
           sections: {
-            include: { questions: { orderBy: { position: "asc" } } },
             orderBy: { position: "asc" },
+            include: {
+              questions: {
+                orderBy: { position: "asc" },
+                include: { subQuestions: { orderBy: { position: "asc" } } },
+              },
+            },
           },
         },
       },
-      answers: true,
+      answers: { include: { subAnswers: true } },
     },
   });
 
-  // Guard: attempt must exist and belong to this course's test
+  // Lượt làm bài phải thuộc bài kiểm tra cuối khoá của đúng khoá học này
   if (!attempt || attempt.test.courseId !== courseId) {
     return notFound();
   }
 
-  // Only the student or admin/teacher can view
-  if (attempt.userId !== session.user.id && session.user.role === "STUDENT") {
+  // Chỉ học sinh làm bài hoặc giáo viên/admin được xem
+  const isTeacher = session.user.role === "ADMIN" || session.user.role === "TEACHER";
+  if (attempt.userId !== session.user.id && !isTeacher) {
     redirect("/");
   }
 
-  const isTeacher = session.user.role === "ADMIN" || session.user.role === "TEACHER";
-
   return (
-    <div className="h-[calc(100vh-64px)] overflow-hidden flex flex-col bg-gray-50">
-      <TestResultClient attempt={attempt} isTeacher={isTeacher} />
-    </div>
+    <ResultScreen
+      attempt={attempt}
+      backHref={`/courses/${courseId}/final-test`}
+      fallbackTitle={attempt.test.course?.title ? `Kiểm tra cuối khoá — ${attempt.test.course.title}` : null}
+      isTeacher={isTeacher}
+    />
   );
 }
