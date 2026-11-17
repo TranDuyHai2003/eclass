@@ -10,6 +10,7 @@ import { vi } from "date-fns/locale";
 import { getAttemptStatistics } from "@/actions/analytics";
 import { ReopenAttemptButton } from "./_components/ReopenAttemptButton";
 import { ResultReview } from "./_components/ResultReview";
+import { parseSolutionAnchors } from "@/lib/pdf-question-anchors";
 
 export default async function TestResultPage({
   params,
@@ -70,8 +71,10 @@ export default async function TestResultPage({
 
       <ResultReview
         attemptId={attempt.id}
+        testId={test.id}
         pdfUrl={test.pdfUrl}
         solutionPdfUrl={test.explanation?.trim() ? test.explanation : null}
+        solutionAnchors={parseSolutionAnchors(test.solutionAnchors, test.explanation)}
         solutionVideos={solutionVideos.filter((v: any) => v?.url)}
         sections={test.sections}
         answers={attempt.answers}

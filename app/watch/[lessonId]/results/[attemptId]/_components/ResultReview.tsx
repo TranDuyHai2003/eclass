@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import {
@@ -15,6 +16,11 @@ import {
   Info,
   LayoutGrid,
   ListChecks,
+  Maximize2,
+  Minimize2,
+  PencilLine,
+  ZoomIn,
+  ZoomOut,
   Loader2,
   MessageSquareText,
   Trophy,
@@ -26,11 +32,23 @@ import VideoPlayer from "@/components/player/VideoPlayer";
 import { GradeEssay } from "@/components/teacher/test-builder/GradeEssay";
 import { cn } from "@/lib/utils";
 import {
-  extractQuestionMarkersCached,
-  mapMarkersToQuestions,
-  type QuestionAnchor,
+  buildAutoAnchors,
+  regionSegments,
+  resolveRegion,
+  type SolutionAnchorsData,
+  type SolutionRegion,
 } from "@/lib/pdf-question-anchors";
+import { analyzePdfCached } from "@/lib/pdf-analysis-client";
 import { ReuploadForm } from "./ReuploadForm";
+
+const PdfRegionView = dynamic(() => import("@/components/pdf/PdfRegionView"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center gap-2 py-16 text-sm font-bold text-slate-400">
+      <Loader2 className="h-5 w-5 animate-spin text-blue-600" /> Đang tải lời giải...
+    </div>
+  ),
+});
 
 const PDFViewer = dynamic(() => import("@/components/ui/pdf-viewer"), {
   ssr: false,
@@ -78,8 +96,11 @@ interface ReviewAnswer {
 
 interface ResultReviewProps {
   attemptId: string;
+  testId: string;
   pdfUrl: string;
   solutionPdfUrl: string | null;
+  /** Mốc lời giải đã lưu (đã kiểm tra khớp file lời giải hiện tại) */
+  solutionAnchors: SolutionAnchorsData | null;
   solutionVideos: { title?: string; url: string }[];
   sections: ReviewSection[];
   answers: ReviewAnswer[];
@@ -157,8 +178,10 @@ const STATUS_STYLE: Record<Status, { cell: string; label: string; text: string }
 
 export function ResultReview({
   attemptId,
+  testId,
   pdfUrl,
   solutionPdfUrl,
+  solutionAnchors,
   solutionVideos,
   sections,
   answers,
@@ -237,26 +260,66 @@ export function ResultReview({
     return () => window.removeEventListener("keydown", onKey);
   }, [tab, goTo]);
 
-  // Dò vị trí từng câu trong PDF lời giải (hoặc trong đề nếu không có lời giải)
+  // Vị trí lời giải từng câu: ưu tiên mốc giáo viên đã lưu, nếu chưa có thì tự dò trong PDF
   const reviewPdfUrl = solutionPdfUrl || pdfUrl;
-  const [anchors, setAnchors] = useState<Record<string, QuestionAnchor> | null>(null);
+  const [autoAnchors, setAutoAnchors] = useState<SolutionAnchorsData | null>(null);
+  const [analysisFailed, setAnalysisFailed] = useState(false);
+  const analysisStartedRef = useRef(false);
+  const anchorsData = solutionAnchors ?? autoAnchors;
+  const anchorsReady = anchorsData !== null || analysisFailed;
+
   const handleReviewPdfLoad = useCallback(
     async (pdf: PDFDocumentProxy) => {
+      if (solutionAnchors || analysisStartedRef.current) return;
+      analysisStartedRef.current = true;
       try {
-        const markers = await extractQuestionMarkersCached(pdf);
-        setAnchors(mapMarkersToQuestions(markers, sections.map((s) => s.questions.map((q) => q.id))));
+        const analysis = await analyzePdfCached(pdf);
+        setAutoAnchors(
+          buildAutoAnchors(analysis, sections.map((s) => s.questions.map((q) => q.id)), reviewPdfUrl),
+        );
       } catch (error) {
         console.error("[ResultReview] Không dò được vị trí câu trong PDF", error);
-        setAnchors({});
+        setAnalysisFailed(true);
       }
     },
-    [sections],
+    [solutionAnchors, sections, reviewPdfUrl],
   );
 
-  const anchor = selected && anchors ? anchors[selected.q.id] : undefined;
-  const scrollTarget = anchor
-    ? { page: anchor.page, yPct: anchor.yPct, key: selected!.q.id, label: anchor.label }
+  const region = selected && anchorsData ? resolveRegion(anchorsData, selected.q.id) : null;
+  const segments = region && anchorsData ? regionSegments(region, anchorsData.layout) : null;
+
+  // "focus" = chỉ phần lời giải của câu đang xem; "full" = cả file, cuộn tới câu
+  const [preferFull, setPreferFull] = useState(false);
+  const [focusZoom, setFocusZoomState] = useState(1);
+  // Nhớ mức phóng to lời giải trên thiết bị (site tắt pinch-zoom nên học sinh dùng nút +/−)
+  useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem("result-solution-zoom"));
+      if (saved >= 1 && saved <= 2.5) setFocusZoomState(saved);
+    } catch {
+      // localStorage bị chặn — dùng mặc định
+    }
+  }, []);
+  const setFocusZoom = (update: (z: number) => number) =>
+    setFocusZoomState((z) => {
+      const next = update(z);
+      try {
+        localStorage.setItem("result-solution-zoom", String(next));
+      } catch {
+        // bỏ qua
+      }
+      return next;
+    });
+  const showFull = preferFull || (anchorsReady && !region);
+  const [fullMounted, setFullMounted] = useState(false);
+  useEffect(() => {
+    if (showFull) setFullMounted(true);
+  }, [showFull]);
+
+  const scrollTarget = region
+    ? { page: region.start.page, yPct: region.start.y, key: selected!.q.id, label: region.label }
     : null;
+  const docLabel = solutionPdfUrl ? "lời giải" : "đề";
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; show: boolean }[] = [
     { id: "review", label: "Chữa từng câu", icon: <ListChecks className="w-4 h-4" />, show: canSeeAnswers },
@@ -329,37 +392,144 @@ export function ResultReview({
 
             <div className="flex-1 min-w-0 flex flex-col">
               {selected ? (
-                <QuestionDetail
-                  item={selected}
-                  anchor={anchor}
-                  anchorsReady={anchors !== null}
-                  hasSolutionPdf={!!solutionPdfUrl}
-                  isTeacher={isTeacher}
-                  attemptId={attemptId}
-                  position={`${selectedVisibleIndex + 1}/${visible.length}`}
-                  canPrev={selectedVisibleIndex > 0}
-                  canNext={selectedVisibleIndex !== -1 && selectedVisibleIndex < visible.length - 1}
-                  onPrev={() => goTo(-1)}
-                  onNext={() => goTo(1)}
-                  onOpenGrid={() => setGridOpen(true)}
-                />
+                <>
+                  {/* Chế độ tập trung: câu hỏi + đúng phần lời giải, cuộn chung một cột */}
+                  <div className={cn("flex-1 min-h-0 overflow-y-auto custom-scrollbar", showFull && "hidden")}>
+                    <QuestionDetail
+                      item={selected}
+                      isTeacher={isTeacher}
+                      attemptId={attemptId}
+                      position={`${selectedVisibleIndex + 1}/${visible.length}`}
+                      canPrev={selectedVisibleIndex > 0}
+                      canNext={selectedVisibleIndex !== -1 && selectedVisibleIndex < visible.length - 1}
+                      onPrev={() => goTo(-1)}
+                      onNext={() => goTo(1)}
+                      onOpenGrid={() => setGridOpen(true)}
+                    />
+                    <section className="px-3 md:px-5 pb-6">
+                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-3 py-2">
+                          <p className="min-w-0 flex-1 truncate text-[11px] font-black uppercase tracking-widest text-slate-500">
+                            {solutionPdfUrl ? "Lời giải" : "Đề bài"}
+                            {region && (
+                              <span className="ml-2 normal-case tracking-normal font-bold text-slate-400">
+                                {region.label ? `${region.label} · ` : ""}trang {region.start.page}
+                                {region.end.page !== region.start.page ? `–${region.end.page}` : ""}
+                              </span>
+                            )}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setFocusZoom((z) => Math.max(1, Math.round((z - 0.25) * 100) / 100))}
+                              disabled={focusZoom <= 1}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40"
+                              aria-label="Thu nhỏ lời giải"
+                            >
+                              <ZoomOut className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => setFocusZoom((z) => Math.min(2.5, z + 0.25))}
+                              disabled={focusZoom >= 2.5}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40"
+                              aria-label="Phóng to lời giải"
+                            >
+                              <ZoomIn className="h-4 w-4" />
+                            </button>
+                            {isTeacher && solutionPdfUrl && (
+                              <Link
+                                href={`/teacher/tests/solutions/${testId}?q=${selected.q.id}`}
+                                className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-black text-slate-500 hover:bg-slate-100"
+                                title="Chỉnh vị trí lời giải"
+                              >
+                                <PencilLine className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">Chỉnh</span>
+                              </Link>
+                            )}
+                            <button
+                              onClick={() => setPreferFull(true)}
+                              className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-black text-blue-600 hover:bg-blue-50"
+                            >
+                              <Maximize2 className="h-3.5 w-3.5" />
+                              Toàn bộ {docLabel}
+                            </button>
+                          </div>
+                        </div>
+                        <PdfRegionView
+                          url={reviewPdfUrl}
+                          segments={segments}
+                          layout={anchorsData?.layout ?? { left: 0, right: 100 }}
+                          zoom={focusZoom}
+                          onDocumentLoad={handleReviewPdfLoad}
+                          className="bg-white"
+                          placeholder={
+                            <div className="flex items-center justify-center gap-2 py-16 text-sm font-bold text-slate-400">
+                              <Loader2 className="h-5 w-5 animate-spin text-blue-600" /> Đang tìm lời giải câu này...
+                            </div>
+                          }
+                        />
+                      </div>
+                    </section>
+                  </div>
+
+                  {/* Chế độ toàn bộ file: thông tin câu ở trên, PDF cuộn tới câu ở dưới */}
+                  {fullMounted && (
+                    <div className={cn("flex-1 min-h-0 flex flex-col", !showFull && "hidden")}>
+                      <div className="shrink-0 max-h-[45%] overflow-y-auto custom-scrollbar">
+                        <QuestionDetail
+                          item={selected}
+                          isTeacher={isTeacher}
+                          attemptId={attemptId}
+                          position={`${selectedVisibleIndex + 1}/${visible.length}`}
+                          canPrev={selectedVisibleIndex > 0}
+                          canNext={selectedVisibleIndex !== -1 && selectedVisibleIndex < visible.length - 1}
+                          onPrev={() => goTo(-1)}
+                          onNext={() => goTo(1)}
+                          onOpenGrid={() => setGridOpen(true)}
+                          statusLine={
+                            <p className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-400">
+                              {region ? (
+                                <>
+                                  <span className="h-2 w-2 rounded-full bg-amber-400" />
+                                  Đã chuyển tới {region.label ?? "câu này"} (trang {region.start.page}) trong {docLabel} bên dưới
+                                </>
+                              ) : anchorsReady ? (
+                                <>Chưa xác định được vị trí câu này, hãy cuộn {docLabel} bên dưới để xem.</>
+                              ) : (
+                                <>
+                                  <Loader2 className="h-3 w-3 animate-spin" /> Đang tìm vị trí câu trong {docLabel}...
+                                </>
+                              )}
+                              {region && preferFull && (
+                                <button
+                                  onClick={() => setPreferFull(false)}
+                                  className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 font-black text-blue-600 hover:bg-blue-50"
+                                >
+                                  <Minimize2 className="h-3.5 w-3.5" /> Chỉ xem lời giải câu này
+                                </button>
+                              )}
+                            </p>
+                          }
+                        />
+                      </div>
+                      <div className="flex-1 min-h-0 border-t bg-slate-100">
+                        <PDFViewer
+                          url={reviewPdfUrl}
+                          flat
+                          onDocumentLoad={handleReviewPdfLoad}
+                          scrollTarget={scrollTarget}
+                          renderLeft={
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 truncate">
+                              {solutionPdfUrl ? "Lời giải" : "Đề bài (chưa có file lời giải)"}
+                            </span>
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="p-8 text-center text-sm font-bold text-slate-400">Bài không có câu hỏi.</div>
               )}
-
-              <div className="flex-1 min-h-0 border-t bg-slate-100">
-                <PDFViewer
-                  url={reviewPdfUrl}
-                  flat
-                  onDocumentLoad={handleReviewPdfLoad}
-                  scrollTarget={scrollTarget}
-                  renderLeft={
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 truncate">
-                      {solutionPdfUrl ? "Lời giải" : "Đề bài (chưa có file lời giải)"}
-                    </span>
-                  }
-                />
-              </div>
             </div>
 
             <Sheet open={gridOpen} onOpenChange={setGridOpen}>
@@ -504,9 +674,6 @@ function QuestionGrid({
 
 function QuestionDetail({
   item,
-  anchor,
-  anchorsReady,
-  hasSolutionPdf,
   isTeacher,
   attemptId,
   position,
@@ -515,11 +682,9 @@ function QuestionDetail({
   onPrev,
   onNext,
   onOpenGrid,
+  statusLine,
 }: {
   item: FlatQuestion;
-  anchor: QuestionAnchor | undefined;
-  anchorsReady: boolean;
-  hasSolutionPdf: boolean;
   isTeacher: boolean;
   attemptId: string;
   position: string;
@@ -528,13 +693,14 @@ function QuestionDetail({
   onPrev: () => void;
   onNext: () => void;
   onOpenGrid: () => void;
+  statusLine?: React.ReactNode;
 }) {
   const { q, answer, status } = item;
   const style = STATUS_STYLE[status];
   const subQuestions = [...(q.subQuestions || [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
   return (
-    <div className="shrink-0 max-h-[45%] overflow-y-auto custom-scrollbar bg-white">
+    <div className="bg-white">
       {/* Header câu + điều hướng */}
       <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-white/95 backdrop-blur px-3 md:px-5 py-2.5">
         <button
@@ -695,21 +861,7 @@ function QuestionDetail({
           </div>
         )}
 
-        {/* Trạng thái định vị lời giải */}
-        <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
-          {!anchorsReady ? (
-            <>
-              <Loader2 className="h-3 w-3 animate-spin" /> Đang tìm vị trí câu trong {hasSolutionPdf ? "lời giải" : "đề"}...
-            </>
-          ) : anchor ? (
-            <>
-              <span className="h-2 w-2 rounded-full bg-amber-400" />
-              Đã chuyển tới {anchor.label} (trang {anchor.page}) trong {hasSolutionPdf ? "lời giải" : "đề"} bên dưới
-            </>
-          ) : (
-            <>Chưa tự tìm được vị trí câu này, hãy cuộn {hasSolutionPdf ? "lời giải" : "đề"} bên dưới để xem.</>
-          )}
-        </p>
+        {statusLine}
       </div>
     </div>
   );
