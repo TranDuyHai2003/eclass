@@ -31,7 +31,46 @@ export function ResultScreen({
 
   const title =
     test.title?.trim() || fallbackTitle?.trim() || (test.pdfUrl ? test.pdfUrl.split("/").pop() : "") || "Bài kiểm tra";
-  const solutionPdfUrl = test.explanation?.trim() ? test.explanation : null;
+
+  // Bảo mật: ResultReview là client component — mọi prop đều nằm trong mã nguồn trang.
+  // Chỉ gửi đáp án/lời giải/video khi giáo viên xem, hoặc học sinh đã nộp bài và đề cho phép xem đáp án.
+  const canSeeAnswers = isTeacher || (!!test.showAnswers && !!attempt.completedAt);
+
+  const sections = test.sections.map((s: any) => ({
+    id: s.id,
+    name: s.name,
+    questions: s.questions.map((q: any) => ({
+      id: q.id,
+      type: q.type,
+      points: q.points,
+      correctAnswer: canSeeAnswers ? q.correctAnswer : null,
+      explanation: canSeeAnswers ? q.explanation : null,
+      videoUrl: canSeeAnswers ? q.videoUrl : null,
+      audioUrl: canSeeAnswers ? q.audioUrl : null,
+      subQuestions: (q.subQuestions || []).map((sq: any) => ({
+        id: sq.id,
+        position: sq.position,
+        correctAnswer: canSeeAnswers ? sq.correctAnswer : "",
+      })),
+    })),
+  }));
+
+  // Chỉ các trường màn kết quả cần (không kèm question → không lộ đáp án qua câu trả lời)
+  const answers = attempt.answers.map((a: any) => ({
+    id: a.id,
+    questionId: a.questionId,
+    answerProvided: a.answerProvided,
+    isCorrect: a.isCorrect,
+    pointsAwarded: a.pointsAwarded,
+    feedback: a.feedback,
+    subAnswers: (a.subAnswers || []).map((sa: any) => ({
+      subQuestionId: sa.subQuestionId,
+      answerProvided: sa.answerProvided,
+      isCorrect: sa.isCorrect,
+    })),
+  }));
+
+  const solutionPdfUrl = canSeeAnswers && test.explanation?.trim() ? test.explanation : null;
 
   return (
     // Trừ chiều cao header của site (h-16 / sm:h-20 + viền 1px) để không phải cuộn hai lớp
@@ -65,10 +104,10 @@ export function ResultScreen({
         pdfUrl={test.pdfUrl}
         solutionPdfUrl={solutionPdfUrl}
         solutionAnchors={parseSolutionAnchors(test.solutionAnchors, solutionPdfUrl)}
-        solutionVideos={solutionVideos.filter((v) => v?.url)}
-        sections={test.sections}
-        answers={attempt.answers}
-        canSeeAnswers={test.showAnswers || isTeacher}
+        solutionVideos={canSeeAnswers ? solutionVideos.filter((v) => v?.url) : []}
+        sections={sections}
+        answers={answers}
+        canSeeAnswers={canSeeAnswers}
         isTeacher={isTeacher}
         score={Number(attempt.score || 0)}
         durationSeconds={

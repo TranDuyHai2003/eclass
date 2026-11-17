@@ -368,7 +368,8 @@ export async function saveTestMatrix(testId: string, sections: any[]) {
  * Re-calculates scores for all completed attempts of a test.
  * Used when a teacher updates the answer key or points.
  */
-export async function reCalculateAllAttempts(testId: string) {
+// Chỉ gọi nội bộ từ saveTestMatrix — không export: trong file "use server", export sẽ thành endpoint gọi được từ client
+async function reCalculateAllAttempts(testId: string) {
   const demoBlocked = await demoGuard();
   if (demoBlocked) return demoBlocked;
 

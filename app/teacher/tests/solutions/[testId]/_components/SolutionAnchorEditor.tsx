@@ -128,7 +128,7 @@ export default function SolutionAnchorEditor({
       } catch (error) {
         console.error(error);
         toast.error("Không phân tích được file PDF lời giải");
-        setData((prev) => prev ?? buildAutoAnchors({ numPages: 1, markers: [], layout: { top: 0, bottom: 100, left: 0, right: 100 } }, sectionIds, solutionPdfUrl));
+        setData((prev) => prev ?? buildAutoAnchors({ numPages: pdf.numPages, markers: [], layout: { top: 0, bottom: 100, left: 0, right: 100 } }, sectionIds, solutionPdfUrl));
       } finally {
         setAnalyzing(false);
       }
