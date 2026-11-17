@@ -702,17 +702,18 @@ export default function UnifiedTestBuilder({
     <div className="flex flex-col h-full bg-white">
       {/* Header removed per request */}
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-1/2 h-full border-r bg-slate-100 relative group">
+      {/* Mobile: đề ở trên, đáp án ở dưới; từ md trở lên chia đôi trái/phải */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+        <div className="w-full md:w-1/2 h-[42%] md:h-full shrink-0 border-b md:border-b-0 md:border-r bg-slate-100 relative group">
           {!pdfUrl ? (
-            <div className="flex h-full flex-col items-center justify-center p-12 text-center">
-              <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6">
+            <div className="flex h-full flex-col items-center justify-center p-6 md:p-12 text-center overflow-y-auto">
+              <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-3 md:mb-6">
                 <Upload className="w-8 h-8 text-slate-300" />
               </div>
               <h3 className="text-lg font-black text-slate-900">
                 Chưa có đề thi
               </h3>
-              <p className="text-sm text-slate-500 mt-2 mb-8 max-w-[280px]">
+              <p className="text-sm text-slate-500 mt-2 mb-4 md:mb-8 max-w-[280px]">
                 Tải lên file PDF chứa nội dung bài quiz để bắt đầu thiết lập.
               </p>
               <label className="cursor-pointer">
@@ -732,7 +733,7 @@ export default function UnifiedTestBuilder({
           ) : (
             <>
               <PDFViewer url={pdfUrl} />
-              <label className="absolute bottom-4 left-4 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+              <label className="absolute bottom-4 left-4 cursor-pointer md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <div className="px-4 py-2 bg-white/90 backdrop-blur border border-slate-200 rounded-xl text-xs font-bold text-slate-600 shadow-2xl flex items-center gap-2">
                   <Upload className="w-3.5 h-3.5" /> Đổi file PDF
                 </div>
@@ -748,7 +749,7 @@ export default function UnifiedTestBuilder({
           )}
         </div>
 
-        <div className="w-1/2 flex flex-col bg-white overflow-hidden">
+        <div className="w-full md:w-1/2 flex-1 md:flex-none min-h-0 flex flex-col bg-white overflow-hidden">
           <div className="flex flex-col bg-slate-50/50 border-b shrink-0">
             {/* Hàng 1: Tabs */}
             <div className="h-12 px-4 md:px-6 border-b flex gap-4 md:gap-6 overflow-x-auto no-scrollbar">
@@ -1084,9 +1085,9 @@ export default function UnifiedTestBuilder({
                 <DragDropContext onDragEnd={handleDragEnd}>
                 {sections.map((section, sIdx) => (
                   <div key={section.id || sIdx} className="space-y-4">
-                    <div className="flex items-center justify-between group/sec">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-[10px] font-black">
+                    <div className="flex items-center justify-between gap-2 group/sec">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-8 h-8 shrink-0 rounded-lg bg-slate-900 text-white flex items-center justify-center text-[10px] font-black">
                           {sIdx + 1}
                         </div>
                         <Input
@@ -1094,10 +1095,10 @@ export default function UnifiedTestBuilder({
                           onChange={(e) =>
                             handleMarkDirtySectionName(sIdx, e.target.value)
                           }
-                          className="font-black text-slate-900 uppercase tracking-tight border-none p-0 h-auto focus-visible:ring-0 shadow-none w-[200px] bg-transparent"
+                          className="font-black text-slate-900 uppercase tracking-tight border-none p-0 h-auto focus-visible:ring-0 shadow-none w-full max-w-[260px] min-w-0 bg-transparent"
                         />
                       </div>
-                      <div className="flex gap-1 items-center">
+                      <div className="flex gap-1 items-center shrink-0">
                         <Button
                           size="sm"
                           variant="ghost"

@@ -19,6 +19,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { deleteStudentAttempt } from "@/actions/test";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { getSafeAvatarUrl } from "@/lib/game-rank";
 
 export interface ScoreboardAttempt {
   id: string;
@@ -248,8 +249,7 @@ export default function ScoreboardTable({
                       <div className="w-9 h-9 rounded-full overflow-hidden border border-white shadow-sm">
                         <img
                           src={
-                            attempt.user.image ||
-                            `https://ui-avatars.com/api/?name=${encodeURIComponent(attempt.user.name || "User")}`
+                            getSafeAvatarUrl(attempt.user.name, attempt.user.image)
                           }
                           alt="Avatar"
                           className="w-full h-full object-cover"

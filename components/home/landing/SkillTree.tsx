@@ -11,9 +11,9 @@ const steps = [
 
 export function SkillTree() {
   return (
-    <section className="space-y-16 py-10">
+    <section className="space-y-16 py-10 px-4">
       <div className="text-center space-y-4">
-        <h2 className="text-4xl font-black uppercase tracking-tighter">Cây Kỹ Năng (Skill Tree)</h2>
+        <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-white">Cây Kỹ Năng (Skill Tree)</h2>
         <p className="text-gray-400 max-w-xl mx-auto">Vẽ ra lộ trình của bạn, từ số 0 đến khi trở thành chuyên gia.</p>
       </div>
 

@@ -19,7 +19,7 @@ interface StudentProgressChartProps {
 
 export const StudentProgressChart = ({ data }: StudentProgressChartProps) => {
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
       <LineChart data={data} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
         <XAxis 

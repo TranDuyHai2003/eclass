@@ -38,7 +38,7 @@ export function ComingSoon({
         </Button>
       </div>
       
-      <div className="mt-20 flex gap-12 text-gray-400 font-bold text-xs uppercase tracking-[0.2em]">
+      <div className="mt-16 flex flex-wrap justify-center gap-x-8 gap-y-2 text-gray-400 font-bold text-[10px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em]">
         <span className="animate-pulse">Loading...</span>
         <span>Coming Soon 2027</span>
         <span>thatdehoctoan</span>

@@ -51,12 +51,12 @@ export function LandingHero() {
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
           </Link>
           
-          <button className="w-full sm:w-auto flex items-center justify-center gap-3 px-6 sm:px-8 py-3 sm:py-4 rounded-2xl border-2 border-white/10 hover:border-white/30 text-white font-bold transition-all backdrop-blur-sm group">
+          <Link href="/courses" className="w-full sm:w-auto flex items-center justify-center gap-3 px-6 sm:px-8 py-3 sm:py-4 rounded-2xl border-2 border-white/10 hover:border-white/30 text-white font-bold transition-all backdrop-blur-sm group">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-blue-600 transition-colors">
               <Play className="w-3 h-3 fill-current" />
             </div>
-            <span className="text-xs sm:text-sm">Xem Demo</span>
-          </button>
+            <span className="text-xs sm:text-sm">Xem các khoá học</span>
+          </Link>
         </div>
       </div>
     </section>

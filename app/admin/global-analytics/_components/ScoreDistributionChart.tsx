@@ -41,7 +41,7 @@ export function ScoreDistributionChart({ distribution }: ScoreDistributionChartP
         </CardHeader>
         <CardContent className="pt-6">
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis 
@@ -84,7 +84,7 @@ export function ScoreDistributionChart({ distribution }: ScoreDistributionChartP
         </CardHeader>
         <CardContent className="pt-6">
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
               <PieChart>
                 <Pie
                   data={data}

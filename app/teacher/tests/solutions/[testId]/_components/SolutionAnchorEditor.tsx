@@ -102,7 +102,10 @@ export default function SolutionAnchorEditor({
   const [data, setData] = useState<SolutionAnchorsData | null>(initialAnchors);
   const [analysis, setAnalysis] = useState<PdfAnalysis | null>(null);
   const [analyzing, setAnalyzing] = useState(true);
+  // dirty = giáo viên đã tự chỉnh; autoPending = chỉ có kết quả dò tự động chưa lưu (không chặn rời trang)
   const [dirty, setDirty] = useState(false);
+  const [autoPending, setAutoPending] = useState(false);
+  const unsaved = dirty || autoPending;
   const [saving, startSaving] = useTransition();
   const [selectedId, setSelectedId] = useState<string | null>(
     initialQuestionId && rowById.has(initialQuestionId) ? initialQuestionId : null,
@@ -123,7 +126,7 @@ export default function SolutionAnchorEditor({
         setAnalysis(result);
         if (!initialAnchors) {
           setData(buildAutoAnchors(result, sectionIds, solutionPdfUrl));
-          setDirty(true); // kết quả tự động chưa được lưu
+          setAutoPending(true); // kết quả tự động chưa được lưu
         }
       } catch (error) {
         console.error(error);
@@ -270,6 +273,7 @@ export default function SolutionAnchorEditor({
       const res = await saveSolutionAnchors(testId, data);
       if (res.success) {
         setDirty(false);
+        setAutoPending(false);
         toast.success(`Đã lưu vị trí lời giải cho ${"count" in res ? res.count : 0} câu`);
       } else {
         toast.error(res.error || "Không thể lưu");
@@ -379,15 +383,15 @@ export default function SolutionAnchorEditor({
         </button>
         <button
           onClick={save}
-          disabled={!dirty || saving || !data}
+          disabled={!unsaved || saving || !data}
           className="flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-black text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
         >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : dirty ? <Save className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-          {dirty ? "Lưu" : "Đã lưu"}
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : unsaved ? <Save className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+          {unsaved ? "Lưu" : "Đã lưu"}
         </button>
       </header>
 
-      {(hadStaleAnchors || (!initialAnchors && data && dirty)) && (
+      {(hadStaleAnchors || (!initialAnchors && data && unsaved)) && (
         <div className="flex items-start gap-2 border-b bg-amber-50 px-4 py-2 text-xs font-bold text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           {hadStaleAnchors

@@ -4,6 +4,12 @@ import { demoGuard } from "@/lib/demo";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import {
+  APPROVED_PAGE_SIZE,
+  courseTitleFilter,
+  reviewOrderBy,
+  reviewSubmissionSelect,
+} from "@/lib/homework-review";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 // ----------------------------------------------------------------------
@@ -139,7 +145,7 @@ export async function submitHomework(
   });
 
   revalidatePath(`/watch/${lessonId}`);
-  return { success: true, submission };
+  return { success: true as const, submission };
 }
 
 export async function gradeHomework(
@@ -164,21 +170,12 @@ export async function gradeHomework(
       status,
       feedback,
     },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-          studentType: true,
-        },
-      },
-    },
+    // Trả đủ trường như lúc tải trang (kể cả bài học/khoá học) để thẻ bài nộp không mất thông tin sau khi chấm
+    select: reviewSubmissionSelect,
   });
 
   revalidatePath(`/watch/${submission.lessonId}`);
-  return { success: true, submission };
+  return { success: true as const, submission };
 }
 
 export async function deleteHomeworkSubmission(submissionId: string) {
@@ -199,7 +196,7 @@ export async function deleteHomeworkSubmission(submissionId: string) {
   });
 
   if (!submissionToDelete) {
-    return { success: true };
+    return { success: true as const };
   }
 
   if (
@@ -237,7 +234,30 @@ export async function deleteHomeworkSubmission(submissionId: string) {
   });
 
   revalidatePath("/teacher/homework");
-  return { success: true };
+  return { success: true as const };
+}
+
+/** Tải thêm bài "Đã đạt" cho màn Duyệt bài (phân trang theo con trỏ, có lọc theo khoá học). */
+export async function listApprovedHomework(input: { courseTitles?: string[]; cursor?: string | null }) {
+  const session = await auth();
+  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "TEACHER")) {
+    return { success: false as const, error: "Không có quyền" };
+  }
+  const courseTitles = Array.isArray(input.courseTitles)
+    ? input.courseTitles.filter((t): t is string => typeof t === "string").slice(0, 100)
+    : [];
+  const where = { status: "SATISFACTORY" as const, ...courseTitleFilter(courseTitles) };
+  const [items, total] = await Promise.all([
+    prisma.homeworkSubmission.findMany({
+      where,
+      select: reviewSubmissionSelect,
+      orderBy: reviewOrderBy,
+      take: APPROVED_PAGE_SIZE,
+      ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+    }),
+    prisma.homeworkSubmission.count({ where }),
+  ]);
+  return { success: true as const, items, total };
 }
 
 export async function getHomeworkSubmission(lessonId: string) {
