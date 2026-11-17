@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   Check,
   Crosshair,
+  Copy,
   Eraser,
   Flag,
   Loader2,
@@ -222,6 +223,18 @@ export default function SolutionAnchorEditor({
     [pickMode, selectedId, data, rowById, updateItems, chainMode, rows],
   );
 
+  const previousRow = selectedId ? rows[rows.findIndex((r) => r.id === selectedId) - 1] : undefined;
+  const previousItem = previousRow && data ? data.items[previousRow.id] : undefined;
+
+  /** Dùng chung lời giải với câu trước (các ý của cùng một câu Đúng/Sai, câu chung đề) */
+  const copyFromPrevious = () => {
+    if (!selectedId || !previousItem) return;
+    updateItems((items) => {
+      items[selectedId] = { ...previousItem, source: "manual" };
+    });
+    if (chainMode) moveSelection(1);
+  };
+
   const clearEnd = () =>
     selectedId &&
     updateItems((items) => {
@@ -274,7 +287,10 @@ export default function SolutionAnchorEditor({
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
 
-  // Phím tắt: ↑/↓ chuyển câu, B đặt bắt đầu, K đặt kết thúc, Esc huỷ
+  const copyFromPreviousRef = useRef(copyFromPrevious);
+  copyFromPreviousRef.current = copyFromPrevious;
+
+  // Phím tắt: ↑/↓ chuyển câu, B đặt bắt đầu, K đặt kết thúc, G giống câu trước, Esc huỷ
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).closest("input, textarea, select, [contenteditable=true]")) return;
@@ -287,6 +303,7 @@ export default function SolutionAnchorEditor({
         moveSelection(-1);
       } else if (e.key.toLowerCase() === "b") setPickMode("start");
       else if (e.key.toLowerCase() === "k") setPickMode("end");
+      else if (e.key.toLowerCase() === "g") copyFromPreviousRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -301,16 +318,28 @@ export default function SolutionAnchorEditor({
 
   const markers: PdfOverlayMarker[] = useMemo(() => {
     if (!data) return [];
-    const list: PdfOverlayMarker[] = rows
-      .filter((r) => data.items[r.id])
-      .map((r) => ({
-        key: r.id,
-        page: data.items[r.id].page,
-        y: data.items[r.id].y,
-        label: r.short,
-        tone: r.id === selectedId ? "active" : "default",
-        onClick: pickMode ? undefined : () => setSelectedId(r.id),
-      }));
+    // Các câu dùng chung một điểm bắt đầu (vd Đúng/Sai 4 ý nhập thành 4 câu) → gộp thành một nhãn
+    const groups = new Map<string, Row[]>();
+    for (const r of rows) {
+      const it = data.items[r.id];
+      if (!it) continue;
+      const key = `${it.page}:${it.y}`;
+      groups.set(key, [...(groups.get(key) ?? []), r]);
+    }
+    const list: PdfOverlayMarker[] = [...groups.values()].map((group) => {
+      const first = group[0];
+      const last = group[group.length - 1];
+      const it = data.items[first.id];
+      const active = group.find((r) => r.id === selectedId);
+      return {
+        key: first.id,
+        page: it.page,
+        y: it.y,
+        label: group.length > 1 ? `${first.short}–${last.number}` : first.short,
+        tone: active ? "active" : "default",
+        onClick: pickMode ? undefined : () => setSelectedId((active ?? first).id),
+      };
+    });
     if (region && selectedRow) {
       list.push({ key: "end", page: region.end.page, y: region.end.y, label: `Hết ${selectedRow.short}`, tone: "end" });
     }
@@ -393,8 +422,11 @@ export default function SolutionAnchorEditor({
             if (sectionRows.length === 0) return null;
             return (
               <div key={section.id}>
-                <p className="bg-slate-50 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  {section.name || `Phần ${si + 1}`}
+                <p className="flex items-center justify-between gap-2 bg-slate-50 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <span className="truncate">{section.name || `Phần ${si + 1}`}</span>
+                  <span className="shrink-0 normal-case tracking-normal">
+                    {section.questions.filter((q) => data?.items[q.id]).length}/{section.questions.length}
+                  </span>
                 </p>
                 {sectionRows.map((r) => {
                   const it = data?.items[r.id];
@@ -428,7 +460,7 @@ export default function SolutionAnchorEditor({
             <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> Tự động</p>
             <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Đã chỉnh tay</p>
             <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-slate-300" /> Chưa gắn</p>
-            <p className="pt-2 font-medium text-slate-400">Phím tắt: ↑/↓ chuyển câu · B đặt bắt đầu · K đặt kết thúc · Esc huỷ</p>
+            <p className="pt-2 font-medium text-slate-400">Phím tắt: ↑/↓ chuyển câu · B đặt bắt đầu · K đặt kết thúc · G giống câu trước · Esc huỷ</p>
           </div>
         </aside>
 
@@ -511,6 +543,14 @@ export default function SolutionAnchorEditor({
                     className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-2 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-40"
                   >
                     <Eraser className="h-3.5 w-3.5" /> Bỏ gắn
+                  </button>
+                  <button
+                    onClick={copyFromPrevious}
+                    disabled={!previousItem}
+                    title="Dùng chung lời giải với câu trước (vd các ý của cùng một câu Đúng/Sai)"
+                    className="col-span-2 flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-2 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Giống câu trước{previousRow ? ` (${previousRow.short})` : ""} · phím G
                   </button>
                 </div>
                 <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-500">

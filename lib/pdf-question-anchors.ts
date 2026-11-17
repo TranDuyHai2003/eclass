@@ -27,6 +27,8 @@ export interface PdfMarker extends PdfPoint {
   n: number;
   /** Nhãn gốc, vd "TDHT 5" */
   label: string;
+  /** Nhãn số trần ("5. ..."), chỉ dùng khi file không có nhãn TDHT/Câu */
+  bare?: boolean;
 }
 
 export interface PdfAnalysis {
@@ -174,7 +176,41 @@ function findMarkers(pages: TextLine[][]): PdfMarker[] {
   const baiCount = markers.filter((m) => m.kw === "bài").length;
   const kept = baiCount < markers.length * 0.5 ? markers.filter((m) => m.kw !== "bài") : markers;
 
-  return kept.map(({ kw: _kw, ...m }) => m).sort(comparePoints);
+  const result = kept.map(({ kw: _kw, ...m }) => m).sort(comparePoints);
+  return result.length > 0 ? result : findBareNumberMarkers(pages);
+}
+
+const BARE_REGEX = /^\s*(\d{1,3})\s*[.)]\s*(\S.*)$/;
+
+/**
+ * Phương án cuối cho file đánh số trần "1. Cho hàm số ...": bỏ tiêu đề viết hoa ("1. LÝ THUYẾT"),
+ * dòng toàn số/công thức, và chỉ giữ các dòng thẳng lề trái với đa số.
+ */
+function findBareNumberMarkers(pages: TextLine[][]): PdfMarker[] {
+  const candidates: (PdfMarker & { x0: number })[] = [];
+  pages.forEach((lines, i) => {
+    for (const line of lines) {
+      const match = line.text.match(BARE_REGEX);
+      if (!match) continue;
+      const letters = match[2].replace(/[^\p{L}]/gu, "");
+      if (letters.length < 4 || letters === letters.toUpperCase()) continue;
+      candidates.push({
+        n: Number(match[1]),
+        page: i + 1,
+        y: round1(clamp(line.top - 0.6, 0, 100)),
+        label: `Câu ${match[1]}`,
+        bare: true,
+        x0: line.x0,
+      });
+    }
+  });
+  if (candidates.length < 3) return [];
+  const sortedX = candidates.map((c) => c.x0).sort((a, b) => a - b);
+  const typicalX = sortedX[Math.floor(sortedX.length / 2)];
+  return candidates
+    .filter((c) => Math.abs(c.x0 - typicalX) <= 3)
+    .map(({ x0: _x0, ...m }) => m)
+    .sort(comparePoints);
 }
 
 /**
@@ -244,18 +280,64 @@ function assignRun(run: PdfMarker[], questionIds: string[], result: Record<strin
   }
 }
 
+/** Đợt đánh số "sạch": bắt đầu từ 1 và tăng đúng 1 đơn vị mỗi nhãn (không khuyết câu nào). */
+function isCleanRun(run: PdfMarker[]) {
+  return run.length > 0 && run[0].n === 1 && run.every((m, i) => i === 0 || m.n === run[i - 1].n + 1);
+}
+
+/**
+ * Mỗi câu Đúng/Sai 4 ý đôi khi được nhập thành 4 câu riêng → 1 nhãn trong PDF ứng với 4 câu.
+ * Chỉ dùng hệ số 1 (bình thường) và 4 (Đúng/Sai 4 ý).
+ */
+const EXPANSION_FACTORS = [1, 4];
+
+/**
+ * Căn mỗi phần với một hoặc vài đợt đánh số liên tiếp (đều "sạch") có tổng số nhãn × hệ số
+ * đúng bằng số câu của phần. Cho phép bỏ qua đợt thừa (ví dụ minh hoạ, phần ôn tập không có trong đề).
+ */
+function alignRunsToSections(runs: PdfMarker[][], sections: string[][], result: Record<string, AnchorItem>) {
+  const matchedSections = new Set<number>();
+  const usedRuns = new Set<number>();
+  let runPtr = 0;
+
+  sections.forEach((ids, si) => {
+    for (let start = runPtr; start < runs.length; start++) {
+      let total = 0;
+      for (let end = start; end < runs.length && isCleanRun(runs[end]); end++) {
+        total += runs[end].length;
+        const factor = EXPANSION_FACTORS.find((f) => total * f === ids.length);
+        if (factor) {
+          runs
+            .slice(start, end + 1)
+            .flat()
+            .forEach((m, j) => {
+              for (let k = 0; k < factor; k++) {
+                result[ids[j * factor + k]] = { page: m.page, y: m.y, label: m.label, source: "auto" };
+              }
+            });
+          for (let r = start; r <= end; r++) usedRuns.add(r);
+          matchedSections.add(si);
+          runPtr = end + 1;
+          return;
+        }
+        if (total > ids.length) break;
+      }
+    }
+  });
+
+  return { matchedSections, usedRuns };
+}
+
 /**
  * Ghép nhãn với câu hỏi. Chỉ ghép khi đủ chắc chắn; câu không ghép được sẽ không có mốc.
+ * Thứ tự ưu tiên: tuần tự toàn bài → căn theo độ dài từng phần → theo số câu ghi trên nhãn.
  * @param sections danh sách id câu hỏi theo từng phần, đúng thứ tự hiển thị
  */
 export function mapMarkersToQuestions(markers: PdfMarker[], sections: string[][]): Record<string, AnchorItem> {
   const result: Record<string, AnchorItem> = {};
-  const runs = splitRuns(markers);
-  if (runs.length === 0 || sections.length === 0) return result;
+  if (markers.length === 0 || sections.length === 0) return result;
 
-  const maxN = (run: PdfMarker[]) => Math.max(...run.map((m) => m.n));
-
-  // Số nhãn đúng bằng số câu và dãy số hợp lý ở từng phần → ghép tuần tự theo thứ tự đọc
+  // 1. Số nhãn đúng bằng số câu và dãy số hợp lý ở từng phần → ghép tuần tự theo thứ tự đọc
   const flatIds = sections.flat();
   if (markers.length === flatIds.length && isConsistentSequence(markers, sections)) {
     markers.forEach((m, i) => {
@@ -264,33 +346,48 @@ export function mapMarkersToQuestions(markers: PdfMarker[], sections: string[][]
     return result;
   }
 
+  // 2. Căn từng phần theo độ dài các đợt đánh số
+  const runs = splitRuns(markers);
+  const { matchedSections, usedRuns } = alignRunsToSections(runs, sections, result);
+
+  // Nhãn số trần ("1. ...") dễ nhầm với tiêu đề mục → chỉ chấp nhận khi khớp chính xác ở trên
+  if (markers.some((m) => m.bare)) return result;
+  if (matchedSections.size === sections.length) return result;
+
+  // 3. Các phần còn lại: ghép theo số câu ghi trên nhãn (chịu được câu bị khuyết do là ảnh)
+  const maxN = (run: PdfMarker[]) => Math.max(...run.map((m) => m.n));
+  const pending = sections.map((_, i) => i).filter((i) => !matchedSections.has(i));
+  const freeRuns = runs.map((_, i) => i).filter((i) => !usedRuns.has(i));
+  if (freeRuns.length === 0) return result;
+
   if (sections.length === 1) {
     // Một phần: lấy đợt đánh số dài nhất (bỏ qua các nhãn lẻ như ví dụ minh hoạ)
-    const longest = runs.reduce((a, b) => (b.length > a.length ? b : a));
+    const longest = freeRuns.map((i) => runs[i]).reduce((a, b) => (b.length > a.length ? b : a));
     assignRun(longest, sections[0], result);
     return result;
   }
 
   if (runs.length === sections.length) {
-    runs.forEach((run, i) => assignRun(run, sections[i], result));
+    pending.forEach((i) => !usedRuns.has(i) && assignRun(runs[i], sections[i], result));
     return result;
   }
 
-  if (runs.length === 1) {
+  if (runs.length === 1 && matchedSections.size === 0) {
     const run = runs[0];
     // Đánh số liên tục qua các phần → ghép theo thứ tự toàn bài
-    if (maxN(run) > sections[0].length) assignRun(run, sections.flat(), result);
+    if (maxN(run) > sections[0].length) assignRun(run, flatIds, result);
     else assignRun(run, sections[0], result);
     return result;
   }
 
-  // Số đợt khác số phần: chỉ ghép đợt nào có số câu lớn nhất trùng khớp số câu của một phần (giữ thứ tự)
+  // Đợt nào có số câu lớn nhất trùng số câu của một phần chưa ghép (giữ thứ tự)
   let sectionPtr = 0;
-  for (const run of runs) {
-    const count = maxN(run);
-    const idx = sections.findIndex((s, i) => i >= sectionPtr && s.length === count);
-    if (idx === -1) continue;
-    assignRun(run, sections[idx], result);
+  for (const ri of freeRuns) {
+    const count = maxN(runs[ri]);
+    const idx = pending.find((si) => si >= sectionPtr && !matchedSections.has(si) && sections[si].length === count);
+    if (idx === undefined) continue;
+    assignRun(runs[ri], sections[idx], result);
+    matchedSections.add(idx);
     sectionPtr = idx + 1;
   }
   return result;
