@@ -8,6 +8,7 @@ import { vi } from "date-fns/locale";
 import { CheckCircle2, XCircle, Clock, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { getSafeAvatarUrl } from "@/lib/game-rank";
 
 export default async function StudentAnalyticsPage({
   params,
@@ -41,17 +42,17 @@ export default async function StudentAnalyticsPage({
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center gap-6 bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
           <BackButton fallbackUrl={`/teacher/courses/${courseId}/analytics`} />
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="w-16 h-16 shrink-0 rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
               <img 
-                src={data.student.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.student.name || "Student")}`} 
+                src={getSafeAvatarUrl(data.student.name, data.student.image)} 
                 alt={data.student.name || "Student"} 
                 className="w-full h-full object-cover"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{data.student.name}</h1>
-              <p className="text-xs font-black uppercase text-slate-400 tracking-widest mt-1">
+              <p className="text-xs font-black uppercase text-slate-400 tracking-widest mt-1 break-all">
                 {data.student.email}
               </p>
             </div>

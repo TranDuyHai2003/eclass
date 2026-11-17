@@ -137,7 +137,7 @@ return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 relative z-10">
       {/* Chart Column */}
       <div className="lg:col-span-7 h-[400px]">
-         <ResponsiveContainer width="100%" height="100%">
+         <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
            <BarChart
              data={chartData}
              layout="vertical"

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { FileText } from "lucide-react";
+import { APPROVED_PAGE_SIZE, reviewOrderBy, reviewSubmissionSelect } from "@/lib/homework-review";
 
 export default async function HomeworkManagementPage() {
   const session = await auth();
@@ -10,47 +11,31 @@ export default async function HomeworkManagementPage() {
     redirect("/login");
   }
 
-  const isAdminOrTeacher = session.user.role === "ADMIN" || session.user.role === "TEACHER";
+  // Bài cần chấm + chưa đạt là phần việc đang làm → tải đủ; "Đã đạt" (thường rất nhiều) chỉ tải trang đầu,
+  // phần còn lại tải dần qua listApprovedHomework để trang không phải gửi hàng MB dữ liệu.
+  const [working, approved, approvedTotal, courses] = await Promise.all([
+    prisma.homeworkSubmission.findMany({
+      where: { status: { in: ["PENDING", "UNSATISFACTORY"] } },
+      select: reviewSubmissionSelect,
+      orderBy: reviewOrderBy,
+    }),
+    prisma.homeworkSubmission.findMany({
+      where: { status: "SATISFACTORY" },
+      select: reviewSubmissionSelect,
+      orderBy: reviewOrderBy,
+      take: APPROVED_PAGE_SIZE,
+    }),
+    prisma.homeworkSubmission.count({ where: { status: "SATISFACTORY" } }),
+    prisma.course.findMany({
+      where: { chapters: { some: { lessons: { some: { homeworkSubmissions: { some: {} } } } } } },
+      select: { title: true },
+      orderBy: { title: "asc" },
+    }),
+  ]);
 
-  const allSubmissions = await prisma.homeworkSubmission.findMany({
-    where: isAdminOrTeacher ? {} : {
-      lesson: {
-        chapter: {
-          course: {
-            userId: session.user.id
-          }
-        }
-      }
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-          studentType: true,
-        }
-      },
-      lesson: {
-        select: {
-          title: true,
-          chapter: {
-            select: {
-              course: {
-                select: {
-                  title: true
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    orderBy: {
-      createdAt: "desc"
-    }
-  });
+  const pendingCount = working.filter((s) => s.status === "PENDING").length;
+  const reviewedCount = working.length - pendingCount + approvedTotal;
+  const courseTitles = Array.from(new Set(courses.map((c) => c.title)));
 
   return (
     <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
@@ -70,11 +55,11 @@ export default async function HomeworkManagementPage() {
 
         <div className="flex gap-4">
           <div className="bg-slate-50 border border-slate-100 px-6 py-4 rounded-2xl flex flex-col items-center justify-center min-w-[120px]">
-            <span className="text-3xl font-black text-blue-600">{allSubmissions.filter(s => s.status === "PENDING").length}</span>
+            <span className="text-3xl font-black text-blue-600">{pendingCount}</span>
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cần chấm</span>
           </div>
           <div className="bg-slate-50 border border-slate-100 px-6 py-4 rounded-2xl flex flex-col items-center justify-center min-w-[120px]">
-            <span className="text-3xl font-black text-emerald-600">{allSubmissions.filter(s => s.status !== "PENDING").length}</span>
+            <span className="text-3xl font-black text-emerald-600">{reviewedCount}</span>
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Đã duyệt</span>
           </div>
         </div>
@@ -82,7 +67,11 @@ export default async function HomeworkManagementPage() {
 
       {/* Main Content */}
       <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] border border-blue-100 shadow-sm">
-        <TeacherHomeworkReview submissions={allSubmissions} />
+        <TeacherHomeworkReview
+          submissions={[...working, ...approved]}
+          approvedTotal={approvedTotal}
+          courseTitles={courseTitles}
+        />
       </div>
     </div>
   );

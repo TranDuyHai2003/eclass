@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  Play,
   Clock,
   BookOpen,
   Users,
@@ -183,31 +182,23 @@ export default async function CoursePage({
               </div>
             </div>
 
-            {/* Right Media Section - Video/Thumbnail Preview */}
-            <div className="lg:w-[450px] shrink-0 order-first lg:order-2">
-              <div className="relative aspect-[16/10] lg:aspect-[4/5] rounded-[3rem] overflow-hidden shadow-2xl shadow-blue-600/10 border-4 border-white/5 group animate-in fade-in zoom-in-95 duration-1000">
+            {/* Right Media Section - ảnh bìa 16:9, hiển thị trọn ảnh (không cắt chữ trên bìa) */}
+            <div className="w-full max-w-xl mx-auto lg:mx-0 lg:w-[480px] shrink-0 order-first lg:order-2 lg:self-center">
+              <div className="relative aspect-video rounded-[2rem] overflow-hidden shadow-2xl shadow-blue-600/10 border-4 border-white/5 animate-in fade-in zoom-in-95 duration-1000">
                 {c.thumbnail ? (
                   <Image
-                    src={c.thumbnail || ""}
+                    src={c.thumbnail}
                     alt={c.title}
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-1000"
+                    priority
+                    sizes="(min-width: 1024px) 480px, 100vw"
+                    className="object-cover"
                   />
                 ) : (
                   <div className="w-full h-full bg-slate-900 flex items-center justify-center">
-                    <Play className="w-16 h-16 text-white opacity-20" />
+                    <BookOpen className="w-16 h-16 text-white opacity-20" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60" />
-
-                {/* Play Button Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-20 h-20 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/20 shadow-2xl group-hover:scale-110 transition-all duration-500 cursor-pointer">
-                    <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-lg">
-                      <Play className="w-6 h-6 text-blue-600 fill-current ml-1" />
-                    </div>
-                  </div>
-                </div>
 
                 {/* Course Category Float */}
                 <div className="absolute top-6 left-6">

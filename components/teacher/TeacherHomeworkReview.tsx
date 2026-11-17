@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useTransition } from "react";
 import { 
   CheckCircle2, 
   XCircle, 
@@ -21,15 +21,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { gradeHomework, deleteHomeworkSubmission } from "@/actions/homework";
+import { gradeHomework, deleteHomeworkSubmission, listApprovedHomework } from "@/actions/homework";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 interface TeacherHomeworkReviewProps {
+  /** Toàn bộ bài cần chấm/chưa đạt + trang đầu của bài đã đạt */
   submissions: any[];
+  /** Tổng số bài đã đạt (không lọc) */
+  approvedTotal: number;
+  /** Các khoá học có bài nộp — cho bộ lọc */
+  courseTitles: string[];
 }
 
 type TabType = "PENDING" | "UNSATISFACTORY" | "SATISFACTORY";
+
+const PAGE_SIZE = 20;
 
 const tabConfig: Record<TabType, { label: string; activeColor: string; emptyIcon: typeof CheckCircle2; emptyText: string; emptyIconColor: string }> = {
   PENDING: { label: "Cần chấm", activeColor: "text-blue-600", emptyIcon: CheckCircle2, emptyIconColor: "text-emerald-300", emptyText: "Tuyệt vời! Không còn bài nào cần chấm." },
@@ -37,14 +44,52 @@ const tabConfig: Record<TabType, { label: string; activeColor: string; emptyIcon
   SATISFACTORY: { label: "Đã đạt", activeColor: "text-emerald-600", emptyIcon: CheckCircle2, emptyIconColor: "text-emerald-300", emptyText: "Chưa có bài nào đạt yêu cầu." },
 };
 
-export function TeacherHomeworkReview({ submissions: initialSubmissions }: TeacherHomeworkReviewProps) {
+export function TeacherHomeworkReview({ submissions: initialSubmissions, approvedTotal: initialApprovedTotal, courseTitles }: TeacherHomeworkReviewProps) {
   const [submissions, setSubmissions] = useState(initialSubmissions);
+  // Tổng số bài "Đã đạt" theo bộ lọc hiện tại (lấy từ server) và con trỏ để tải tiếp
+  const [approvedTotal, setApprovedTotal] = useState(initialApprovedTotal);
+  const [approvedCursor, setApprovedCursor] = useState<string | null>(
+    () => initialSubmissions.filter((s) => s.status === "SATISFACTORY").at(-1)?.id ?? null,
+  );
+  const [fetchingApproved, startFetchApproved] = useTransition();
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState<TabType>("PENDING");
   
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [courseOpen, setCourseOpen] = useState(false);
+  // Chỉ vẽ một phần danh sách mỗi lần — tab "Đã đạt" có thể lên tới hàng trăm bài
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => setVisibleCount(PAGE_SIZE), [activeTab, selectedCourses]);
+
+  const fetchApproved = (courses: string[], cursor: string | null) =>
+    startFetchApproved(async () => {
+      const res = await listApprovedHomework({ courseTitles: courses, cursor });
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+      setApprovedTotal(res.total);
+      setApprovedCursor(res.items.at(-1)?.id ?? cursor);
+      setSubmissions((prev) => {
+        // Đổi bộ lọc (cursor = null) → thay danh sách đã đạt; tải tiếp → nối thêm (bỏ trùng)
+        const base = cursor ? prev : prev.filter((s) => s.status !== "SATISFACTORY");
+        const seen = new Set(base.map((s) => s.id));
+        return [...base, ...res.items.filter((s) => !seen.has(s.id))];
+      });
+    });
+
+  // Đổi bộ lọc khoá học → tải lại trang đầu của "Đã đạt" theo bộ lọc mới (bỏ qua lần render đầu)
+  const filterKey = selectedCourses.join("\u0000");
+  const firstFilterRun = useRef(true);
+  useEffect(() => {
+    if (firstFilterRun.current) {
+      firstFilterRun.current = false;
+      return;
+    }
+    fetchApproved(selectedCourses, null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey]);
   const courseRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -73,8 +118,13 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
     try {
       const res = await gradeHomework(submissionId, status, feedback[submissionId]);
       if (res.success) {
-        setSubmissions(prev => prev.map(s => s.id === submissionId ? res.submission : s));
+        const wasApproved = sub?.status === "SATISFACTORY";
+        const nowApproved = res.submission.status === "SATISFACTORY";
+        if (wasApproved !== nowApproved) setApprovedTotal((n) => n + (nowApproved ? 1 : -1));
+        setSubmissions(prev => prev.map(s => s.id === submissionId ? { ...s, ...res.submission } : s));
         toast.success("Đã cập nhật trạng thái bài nộp");
+      } else {
+        toast.error(res.error || "Không thể cập nhật bài nộp");
       }
     } catch (error) {
       toast.error("Lỗi khi chấm bài");
@@ -90,8 +140,11 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
     try {
       const res = await deleteHomeworkSubmission(submissionId);
       if (res.success) {
+        if (submissions.find(s => s.id === submissionId)?.status === "SATISFACTORY") setApprovedTotal((n) => Math.max(0, n - 1));
         setSubmissions(prev => prev.filter(s => s.id !== submissionId));
         toast.success("Đã xóa bài nộp");
+      } else {
+        toast.error(res.error || "Không thể xoá bài nộp");
       }
     } catch (error) {
       toast.error("Lỗi khi xóa bài nộp");
@@ -100,13 +153,14 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
     }
   };
 
-  if (submissions.length === 0) {
+  if (submissions.length === 0 && approvedTotal === 0) {
     return null;
   }
 
-  const uniqueCourses = Array.from(new Set(submissions.map(s => s.lesson?.chapter?.course?.title).filter(Boolean))) as string[];
+  const uniqueCourses = courseTitles;
 
-  const allCoursesSelected = selectedCourses.length === uniqueCourses.length;
+  // Không chọn khoá nào = không lọc = tất cả
+  const allCoursesSelected = selectedCourses.length === 0 || selectedCourses.length === uniqueCourses.length;
 
   const filteredSubmissions = submissions.filter(s => {
     if (selectedCourses.length > 0 && !selectedCourses.includes(s.lesson?.chapter?.course?.title)) return false;
@@ -120,7 +174,7 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
   const tabCounts: Record<TabType, number> = {
     PENDING: pendingSubmissions.length,
     UNSATISFACTORY: unsatisfactorySubmissions.length,
-    SATISFACTORY: satisfactorySubmissions.length,
+    SATISFACTORY: Math.max(approvedTotal, satisfactorySubmissions.length),
   };
 
   const displaySubmissions = 
@@ -175,7 +229,7 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
               <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg py-2 animate-in fade-in zoom-in-95 duration-150">
                 <button
                   onClick={() => {
-                    setSelectedCourses(allCoursesSelected ? [] : [...uniqueCourses]);
+                    setSelectedCourses([]);
                   }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 border-b border-slate-100"
                 >
@@ -188,14 +242,17 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
                   <span className="text-sm font-bold text-slate-700">Tất cả</span>
                 </button>
                 {uniqueCourses.map(c => {
-                  const checked = selectedCourses.includes(c);
+                  const checked = allCoursesSelected || selectedCourses.includes(c);
                   return (
                     <button
                       key={c}
                       onClick={() => {
-                        setSelectedCourses(prev =>
-                          prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]
-                        );
+                        setSelectedCourses(prev => {
+                          const base = prev.length === 0 ? [...uniqueCourses] : prev;
+                          const next = base.includes(c) ? base.filter(x => x !== c) : [...base, c];
+                          // Bỏ hết hoặc chọn đủ → quay về "tất cả"
+                          return next.length === 0 || next.length === uniqueCourses.length ? [] : next;
+                        });
                       }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
                     >
@@ -222,7 +279,7 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
             <p className="text-slate-500 font-bold uppercase tracking-tight">{tab.emptyText}</p>
           </div>
         ) : (
-          displaySubmissions.map((sub) => {
+          displaySubmissions.slice(0, visibleCount).map((sub) => {
             const isResubmitted = sub.status === "PENDING" && sub.feedback !== null;
 
             return (
@@ -342,6 +399,24 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions }: Teach
           </div>
             )})
         )}
+        {(() => {
+          const remaining = tabCounts[activeTab] - Math.min(visibleCount, displaySubmissions.length);
+          if (remaining <= 0 || displaySubmissions.length === 0) return null;
+          const needFetch = activeTab === "SATISFACTORY" && visibleCount >= displaySubmissions.length;
+          return (
+            <button
+              disabled={fetchingApproved}
+              onClick={() => {
+                if (needFetch) fetchApproved(selectedCourses, approvedCursor);
+                setVisibleCount((n) => n + PAGE_SIZE);
+              }}
+              className="mx-auto px-6 py-3 rounded-2xl border border-blue-200 bg-white text-sm font-bold text-blue-600 hover:bg-blue-50 disabled:opacity-60 transition-colors flex items-center gap-2"
+            >
+              {fetchingApproved && <RefreshCw className="w-4 h-4 animate-spin" />}
+              Xem thêm {Math.min(PAGE_SIZE, remaining)} bài (còn {remaining})
+            </button>
+          );
+        })()}
       </div>
     </div>
   );

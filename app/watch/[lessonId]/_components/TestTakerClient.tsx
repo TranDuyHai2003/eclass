@@ -111,7 +111,7 @@ export default function TestTakerClient({
       .then((r) => r.json())
       .then(async (res) => {
         if (!res.success || !res.attempt) {
-          toast.error("Không thể bắt đầu làm bài");
+          toast.error(res?.error || "Không thể bắt đầu làm bài");
           setLoadingInitial(false);
           return;
         }

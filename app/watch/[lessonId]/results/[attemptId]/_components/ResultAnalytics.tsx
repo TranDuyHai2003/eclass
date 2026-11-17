@@ -35,7 +35,7 @@ export const ResultAnalytics = ({ data }: ResultAnalyticsProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 h-[250px] md:h-[320px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
             <PieChart>
               <Pie
                 data={chartData}
