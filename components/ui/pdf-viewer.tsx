@@ -47,6 +47,8 @@ interface PDFViewerProps {
   renderTextLayer?: boolean;
   /** Vẽ dải đánh dấu tại scrollTarget (mặc định có) */
   highlightTarget?: boolean;
+  /** Giới hạn bề rộng trang (px) để dễ đọc trên màn hình rộng */
+  maxPageWidth?: number;
 }
 
 export default function PDFViewer({
@@ -62,6 +64,7 @@ export default function PDFViewer({
   onPageClick,
   renderTextLayer = true,
   highlightTarget = true,
+  maxPageWidth,
 }: PDFViewerProps) {
   const url = normalizePdfUrl(rawUrl);
 
@@ -85,13 +88,16 @@ export default function PDFViewer({
     if (!container) return;
     const updateWidth = () => {
       // trừ padding (2×16px) + viền trang (2px) để không sinh thanh cuộn ngang
-      if (container.clientWidth > 0) setContainerWidth(container.clientWidth - 34);
+      if (container.clientWidth > 0) {
+        const available = container.clientWidth - 34;
+        setContainerWidth(maxPageWidth ? Math.min(available, maxPageWidth) : available);
+      }
     };
     updateWidth();
     const observer = new ResizeObserver(updateWidth);
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  }, [maxPageWidth]);
 
   // Lazy render: chỉ các trang gần vùng nhìn thấy
   useEffect(() => {
