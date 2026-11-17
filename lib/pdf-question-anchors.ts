@@ -1,114 +1,208 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
 /**
- * Dò vị trí từng câu trong PDF lời giải/đề (nhãn dạng "TDHT 5.", "Câu 5:", "Bài 5)")
- * để màn kết quả cuộn thẳng tới lời giải của câu đang xem.
+ * Gắn lời giải từng câu với vị trí trong PDF lời giải.
+ *
+ * - Dò tự động các nhãn "TDHT 5." / "Câu 5:" / "Bài 5)" và lề trang (header/footer, lề trái phải).
+ * - Mỗi câu lưu ĐIỂM BẮT ĐẦU; điểm kết thúc mặc định là điểm bắt đầu kế tiếp (của câu khác
+ *   hoặc một nhãn dò được nhưng chưa ghép), nên sửa một câu thì câu trước tự khớp theo.
+ * - Toạ độ y tính theo % chiều cao trang (0 = mép trên), x theo % chiều rộng.
  */
 
-export interface PdfMarker {
+export interface PdfPoint {
+  page: number;
+  y: number;
+}
+
+export interface PdfLayout {
+  /** Vùng nội dung (bỏ header/footer, lề) theo % trang */
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
+export interface PdfMarker extends PdfPoint {
   /** Số câu ghi trên nhãn */
   n: number;
-  page: number;
-  /** Vị trí mép trên của dòng nhãn, tính theo % chiều cao trang */
-  yPct: number;
   /** Nhãn gốc, vd "TDHT 5" */
   label: string;
 }
 
-export interface QuestionAnchor {
-  page: number;
-  yPct: number;
-  label: string;
+export interface PdfAnalysis {
+  numPages: number;
+  markers: PdfMarker[];
+  layout: PdfLayout;
 }
 
-const MARKER_REGEX = /^\s*(TDHT|Câu|Cau|Bài|Bai)\s*(\d{1,3})\s*[.:)]/i;
+export interface AnchorItem extends PdfPoint {
+  /** Điểm kết thúc do giáo viên đặt; không có thì tự tính */
+  end?: PdfPoint;
+  label?: string;
+  source: "auto" | "manual";
+}
 
-export async function extractQuestionMarkers(pdf: PDFDocumentProxy): Promise<PdfMarker[]> {
-  const markers: PdfMarker[] = [];
+export interface SolutionAnchorsData {
+  version: 1;
+  /** File lời giải mà các mốc này thuộc về — đổi file thì bỏ qua mốc cũ */
+  pdfUrl: string;
+  numPages: number;
+  layout: PdfLayout;
+  /** Mọi nhãn dò được (kể cả chưa ghép với câu nào) — dùng làm ranh giới kết thúc */
+  boundaries: PdfPoint[];
+  items: Record<string, AnchorItem>;
+}
+
+export interface SolutionRegion {
+  start: PdfPoint;
+  end: PdfPoint;
+  label?: string;
+}
+
+export const DEFAULT_LAYOUT: PdfLayout = { top: 0, bottom: 100, left: 0, right: 100 };
+
+const MARKER_REGEX = /^\s*(TDHT|Câu|Cau|Bài|Bai)\s*(\d{1,3})\s*[.:)]/i;
+const round1 = (v: number) => Math.round(v * 10) / 10;
+const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+
+export function comparePoints(a: PdfPoint, b: PdfPoint) {
+  return a.page - b.page || a.y - b.y;
+}
+
+// ---------------------------------------------------------------------------
+// Phân tích PDF
+// ---------------------------------------------------------------------------
+
+interface TextLine {
+  top: number;
+  bottom: number;
+  x0: number;
+  x1: number;
+  text: string;
+  key: string;
+}
+
+const lineKey = (s: string) => s.replace(/\d+/g, "#").replace(/\s+/g, " ").trim().toLowerCase();
+
+function percentile(sorted: number[], p: number) {
+  if (sorted.length === 0) return NaN;
+  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.floor(sorted.length * p)))];
+}
+
+export async function analyzePdf(pdf: PDFDocumentProxy): Promise<PdfAnalysis> {
+  const pages: TextLine[][] = [];
 
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
     const page = await pdf.getPage(pageNum);
     const viewport = page.getViewport({ scale: 1 });
     const content = await page.getTextContent();
 
-    // Gom các mảnh chữ cùng dòng (cùng toạ độ y) thành một dòng, theo thứ tự trái → phải
-    const lines = new Map<number, { x: number; y: number; h: number; str: string }[]>();
+    // Gom các mảnh chữ cùng toạ độ y thành một dòng, theo thứ tự trái → phải
+    const rows = new Map<number, { x: number; y: number; w: number; h: number; str: string }[]>();
     for (const item of content.items) {
       if (!("str" in item) || !item.str) continue;
       const [, , , , x, y] = item.transform as number[];
       const key = Math.round(y);
-      const row = lines.get(key) ?? [];
-      row.push({ x, y, h: item.height || 0, str: item.str });
-      lines.set(key, row);
+      const row = rows.get(key) ?? [];
+      row.push({ x, y, w: item.width || 0, h: item.height || 0, str: item.str });
+      rows.set(key, row);
     }
 
-    for (const row of lines.values()) {
+    const lines: TextLine[] = [];
+    for (const row of rows.values()) {
       row.sort((a, b) => a.x - b.x);
       const text = row.map((r) => r.str).join("");
-      const match = text.match(MARKER_REGEX);
-      if (!match) continue;
+      if (!text.trim()) continue;
+      // Mảnh chỉ có khoảng trắng có thể rất rộng → không dùng để đo chiều ngang
+      const inked = row.filter((r) => r.str.trim());
+      const first = inked[0];
+      const h = Math.max(...inked.map((r) => r.h));
+      const [x0, top] = viewport.convertToViewportPoint(first.x, first.y + h);
+      const [, bottom] = viewport.convertToViewportPoint(first.x, first.y);
+      const x1 = Math.max(...inked.map((r) => viewport.convertToViewportPoint(r.x + r.w, r.y)[0]));
+      lines.push({
+        top: (Math.min(top, bottom) / viewport.height) * 100,
+        bottom: (Math.max(top, bottom) / viewport.height) * 100,
+        x0: (Math.min(x0, x1) / viewport.width) * 100,
+        x1: (Math.max(x0, x1) / viewport.width) * 100,
+        text,
+        key: lineKey(text),
+      });
+    }
+    lines.sort((a, b) => a.top - b.top);
+    pages.push(lines);
+  }
 
-      const first = row[0];
-      const [, top] = viewport.convertToViewportPoint(first.x, first.y + first.h);
+  return {
+    numPages: pdf.numPages,
+    markers: findMarkers(pages),
+    layout: detectLayout(pages),
+  };
+}
+
+function findMarkers(pages: TextLine[][]): PdfMarker[] {
+  const markers: PdfMarker[] = [];
+  pages.forEach((lines, i) => {
+    for (const line of lines) {
+      const match = line.text.match(MARKER_REGEX);
+      if (!match) continue;
       markers.push({
         n: Number(match[2]),
-        page: pageNum,
-        yPct: Math.max(0, Math.min(100, (top / viewport.height) * 100)),
+        page: i + 1,
+        y: round1(clamp(line.top - 0.6, 0, 100)),
         label: `${match[1]} ${match[2]}`,
       });
     }
-  }
-
-  // Thứ tự đọc: theo trang, rồi từ trên xuống
-  return markers.sort((a, b) => a.page - b.page || a.yPct - b.yPct);
+  });
+  return markers.sort(comparePoints);
 }
-
-const CACHE_PREFIX = "pdf-question-markers:v1:";
 
 /**
- * Như extractQuestionMarkers nhưng:
- * - dùng lại kết quả đã lưu trong trình duyệt (theo fingerprint của file PDF);
- * - dò trên một worker riêng để không phải xếp hàng sau việc render các trang.
+ * Header/footer = dòng lặp lại trên ≥40% số trang và nằm ở 15% trên/dưới cùng.
+ * Vùng nội dung = khoảng chứa phần còn lại (lấy trung vị qua các trang).
  */
-export async function extractQuestionMarkersCached(pdf: PDFDocumentProxy): Promise<PdfMarker[]> {
-  const cacheKey = CACHE_PREFIX + (pdf.fingerprints?.[0] ?? "");
-  if (pdf.fingerprints?.[0]) {
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) return JSON.parse(cached) as PdfMarker[];
-    } catch {
-      // localStorage có thể bị chặn — bỏ qua
-    }
-  }
+function detectLayout(pages: TextLine[][]): PdfLayout {
+  if (pages.length === 0) return DEFAULT_LAYOUT;
 
-  let markers: PdfMarker[];
-  try {
-    const { pdfjs } = await import("react-pdf");
-    // react-pdf tự đặt workerSrc tương đối khi nạp; dùng đúng file worker như components/ui/pdf-viewer.tsx
-    pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.wrapper.js";
-    const data = await pdf.getData();
-    const worker = new pdfjs.PDFWorker();
-    const separateDoc = await pdfjs.getDocument({ data, worker }).promise;
-    try {
-      markers = await extractQuestionMarkers(separateDoc);
-    } finally {
-      await separateDoc.destroy();
-      worker.destroy();
-    }
-  } catch {
-    // Không tạo được worker riêng → dò trên tài liệu đang hiển thị
-    markers = await extractQuestionMarkers(pdf);
-  }
+  const freq = new Map<string, number>();
+  pages.forEach((lines) => new Set(lines.map((l) => l.key)).forEach((k) => freq.set(k, (freq.get(k) || 0) + 1)));
+  const minRepeat = Math.max(2, Math.ceil(pages.length * 0.4));
+  const inEdgeZone = (l: TextLine) => l.top < 15 || l.bottom > 85;
+  const isPageNumber = (l: TextLine) => /^[#\s|/.\-–]*$/.test(l.key) || /^(trang|page)\s*#/.test(l.key);
+  const isChrome = (l: TextLine) =>
+    inEdgeZone(l) && (isPageNumber(l) || (l.key.length > 3 && (freq.get(l.key) || 0) >= minRepeat));
 
-  if (pdf.fingerprints?.[0]) {
-    try {
-      localStorage.setItem(cacheKey, JSON.stringify(markers));
-    } catch {
-      // bỏ qua nếu đầy bộ nhớ hoặc bị chặn
-    }
+  const tops: number[] = [];
+  const bottoms: number[] = [];
+  const xs0: number[] = [];
+  const xs1: number[] = [];
+  for (const lines of pages) {
+    const body = lines.filter((l) => !isChrome(l));
+    if (body.length === 0) continue;
+    tops.push(Math.min(...body.map((l) => l.top)));
+    bottoms.push(Math.max(...body.map((l) => l.bottom)));
+    body.forEach((l) => {
+      xs0.push(l.x0);
+      xs1.push(l.x1);
+    });
   }
-  return markers;
+  if (tops.length === 0) return DEFAULT_LAYOUT;
+
+  xs0.sort((a, b) => a - b);
+  xs1.sort((a, b) => a - b);
+  const layout: PdfLayout = {
+    // Lấy phân vị nghiêng về phía "giữ nhiều" để không cắt mất nội dung ở chỗ nối trang
+    top: round1(clamp(percentile([...tops].sort((x, y) => x - y), 0.1) - 1.5, 0, 25)),
+    bottom: round1(clamp(percentile([...bottoms].sort((x, y) => x - y), 0.9) + 1.5, 75, 100)),
+    left: round1(clamp(percentile(xs0, 0.02) - 2, 0, 30)),
+    right: round1(clamp(percentile(xs1, 0.98) + 2, 70, 100)),
+  };
+  return layout;
 }
+
+// ---------------------------------------------------------------------------
+// Ghép nhãn với câu hỏi
+// ---------------------------------------------------------------------------
 
 /** Tách thành các "đợt" đánh số: mỗi lần số câu quay lại nhỏ hơn là bắt đầu phần mới. */
 function splitRuns(markers: PdfMarker[]): PdfMarker[][] {
@@ -121,25 +215,21 @@ function splitRuns(markers: PdfMarker[]): PdfMarker[][] {
   return runs;
 }
 
-function assignRun(run: PdfMarker[], questionIds: string[], result: Record<string, QuestionAnchor>) {
+function assignRun(run: PdfMarker[], questionIds: string[], result: Record<string, AnchorItem>) {
   for (const marker of run) {
     const id = questionIds[marker.n - 1];
     if (id && !result[id]) {
-      result[id] = { page: marker.page, yPct: marker.yPct, label: marker.label };
+      result[id] = { page: marker.page, y: marker.y, label: marker.label, source: "auto" };
     }
   }
 }
 
 /**
- * Ghép mốc với câu hỏi.
+ * Ghép nhãn với câu hỏi. Chỉ ghép khi đủ chắc chắn; câu không ghép được sẽ không có mốc.
  * @param sections danh sách id câu hỏi theo từng phần, đúng thứ tự hiển thị
- * Chỉ ghép khi đủ chắc chắn; câu không ghép được sẽ không có mốc.
  */
-export function mapMarkersToQuestions(
-  markers: PdfMarker[],
-  sections: string[][],
-): Record<string, QuestionAnchor> {
-  const result: Record<string, QuestionAnchor> = {};
+export function mapMarkersToQuestions(markers: PdfMarker[], sections: string[][]): Record<string, AnchorItem> {
+  const result: Record<string, AnchorItem> = {};
   const runs = splitRuns(markers);
   if (runs.length === 0 || sections.length === 0) return result;
 
@@ -175,4 +265,137 @@ export function mapMarkersToQuestions(
     sectionPtr = idx + 1;
   }
   return result;
+}
+
+/** Tạo bộ mốc tự động từ kết quả phân tích. */
+export function buildAutoAnchors(analysis: PdfAnalysis, sections: string[][], pdfUrl: string): SolutionAnchorsData {
+  return {
+    version: 1,
+    pdfUrl,
+    numPages: analysis.numPages,
+    layout: analysis.layout,
+    boundaries: analysis.markers.map(({ page, y }) => ({ page, y })),
+    items: mapMarkersToQuestions(analysis.markers, sections),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tính vùng lời giải của một câu
+// ---------------------------------------------------------------------------
+
+/** Khoảng tối thiểu (theo % trang) để coi là điểm bắt đầu kế tiếp, tránh trùng chính nó. */
+const MIN_GAP = 0.8;
+
+export function resolveRegion(data: SolutionAnchorsData, questionId: string): SolutionRegion | null {
+  const item = data.items[questionId];
+  if (!item) return null;
+  const { layout, numPages } = data;
+  const start: PdfPoint = { page: item.page, y: item.y };
+
+  let end: PdfPoint;
+  if (item.end && comparePoints(item.end, start) > 0) {
+    end = item.end;
+  } else {
+    const candidates = [
+      ...Object.entries(data.items)
+        .filter(([id]) => id !== questionId)
+        .map(([, it]) => ({ page: it.page, y: it.y })),
+      ...data.boundaries,
+    ].filter((p) => p.page > start.page || (p.page === start.page && p.y > start.y + MIN_GAP));
+    candidates.sort(comparePoints);
+    const next = candidates[0];
+
+    if (next) {
+      end = { page: next.page, y: next.y };
+    } else {
+      // Câu cuối: tới hết trang; nếu bắt đầu ở nửa dưới trang thì lấy thêm trang sau
+      end =
+        start.y > 55 && start.page < numPages
+          ? { page: start.page + 1, y: layout.bottom }
+          : { page: start.page, y: layout.bottom };
+    }
+  }
+
+  // Điểm kết thúc nằm sát đầu trang sau → kết thúc ở cuối trang trước cho gọn
+  if (end.page > start.page && end.y <= layout.top + MIN_GAP) {
+    end = { page: end.page - 1, y: layout.bottom };
+  }
+
+  return { start, end: { page: end.page, y: Math.min(end.y, layout.bottom) }, label: item.label };
+}
+
+/** Các đoạn cần vẽ cho một vùng (mỗi trang một đoạn), đã bỏ header/footer ở chỗ nối trang. */
+export function regionSegments(region: SolutionRegion, layout: PdfLayout) {
+  const segments: { page: number; top: number; bottom: number }[] = [];
+  for (let page = region.start.page; page <= region.end.page; page++) {
+    const top = page === region.start.page ? region.start.y : layout.top;
+    const bottom = page === region.end.page ? region.end.y : layout.bottom;
+    if (bottom - top > 0.5) segments.push({ page, top, bottom });
+  }
+  return segments;
+}
+
+// ---------------------------------------------------------------------------
+// Kiểm tra dữ liệu lưu trong DB
+// ---------------------------------------------------------------------------
+
+function isPoint(p: any): p is PdfPoint {
+  return (
+    p &&
+    Number.isInteger(p.page) &&
+    p.page >= 1 &&
+    typeof p.y === "number" &&
+    Number.isFinite(p.y) &&
+    p.y >= 0 &&
+    p.y <= 100
+  );
+}
+
+/** Trả về dữ liệu mốc hợp lệ cho đúng file lời giải hiện tại, ngược lại null. */
+export function parseSolutionAnchors(raw: unknown, currentPdfUrl: string | null | undefined): SolutionAnchorsData | null {
+  const data = raw as SolutionAnchorsData | null;
+  if (!data || data.version !== 1 || !currentPdfUrl || data.pdfUrl !== currentPdfUrl) return null;
+  if (!data.items || typeof data.items !== "object" || !Array.isArray(data.boundaries)) return null;
+  if (!data.layout || !Number.isFinite(data.numPages)) return null;
+  return data;
+}
+
+/** Làm sạch dữ liệu giáo viên gửi lên (dùng ở server action). */
+export function sanitizeSolutionAnchors(
+  raw: any,
+  allowedQuestionIds: Set<string>,
+): Omit<SolutionAnchorsData, "pdfUrl"> | null {
+  if (!raw || typeof raw !== "object") return null;
+  const numPages = Number(raw.numPages);
+  if (!Number.isInteger(numPages) || numPages < 1 || numPages > 2000) return null;
+
+  const l = raw.layout || {};
+  const layout: PdfLayout = {
+    top: round1(clamp(Number(l.top) || 0, 0, 40)),
+    bottom: round1(clamp(Number(l.bottom) || 100, 60, 100)),
+    left: round1(clamp(Number(l.left) || 0, 0, 40)),
+    right: round1(clamp(Number(l.right) || 100, 60, 100)),
+  };
+
+  const inRange = (p: PdfPoint) => isPoint(p) && p.page <= numPages;
+  const boundaries = (Array.isArray(raw.boundaries) ? raw.boundaries : [])
+    .filter(inRange)
+    .slice(0, 2000)
+    .map((p: PdfPoint) => ({ page: p.page, y: round1(p.y) }));
+
+  const items: Record<string, AnchorItem> = {};
+  for (const [id, it] of Object.entries<any>(raw.items || {})) {
+    if (!allowedQuestionIds.has(id) || !inRange(it)) continue;
+    items[id] = {
+      page: it.page,
+      y: round1(it.y),
+      ...(it.end && inRange(it.end) && comparePoints(it.end, it) > 0
+        ? { end: { page: it.end.page, y: round1(it.end.y) } }
+        : {}),
+      ...(typeof it.label === "string" ? { label: it.label.slice(0, 40) } : {}),
+      source: it.source === "manual" ? "manual" : "auto",
+    };
+  }
+
+  return { version: 1, numPages, layout, boundaries, items };
 }

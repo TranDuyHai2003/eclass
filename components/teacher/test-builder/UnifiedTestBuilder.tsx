@@ -2,6 +2,9 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { ListChecks } from "lucide-react";
+import { parseSolutionAnchors } from "@/lib/pdf-question-anchors";
 import { toast } from "sonner";
 import axios from "axios";
 import { useRouter } from "next/navigation";
@@ -1042,6 +1045,18 @@ export default function UnifiedTestBuilder({
                           <X className="w-5 h-5" />
                         </Button>
                       </div>
+                      <SolutionAnchorsCard
+                        testId={initialTest?.id}
+                        savedExplanation={initialTest?.explanation}
+                        currentExplanation={explanation}
+                        savedAnchors={initialTest?.solutionAnchors}
+                        totalQuestions={
+                          (initialTest?.sections || []).reduce(
+                            (sum: number, s: any) => sum + (s.questions?.length || 0),
+                            0,
+                          )
+                        }
+                      />
                       <div className="h-[500px] border rounded-2xl overflow-hidden bg-slate-100">
                         <PDFViewer url={explanation} />
                       </div>
@@ -1502,6 +1517,53 @@ export default function UnifiedTestBuilder({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** Thẻ dẫn tới công cụ gắn lời giải từng câu (màn kết quả của học sinh dùng dữ liệu này). */
+function SolutionAnchorsCard({
+  testId,
+  savedExplanation,
+  currentExplanation,
+  savedAnchors,
+  totalQuestions,
+}: {
+  testId?: string;
+  savedExplanation?: string | null;
+  currentExplanation: string;
+  savedAnchors: unknown;
+  totalQuestions: number;
+}) {
+  const isSaved = !!testId && savedExplanation === currentExplanation;
+  const anchors = isSaved ? parseSolutionAnchors(savedAnchors, savedExplanation) : null;
+  const anchored = anchors ? Object.keys(anchors.items).length : 0;
+
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl border border-blue-100 bg-blue-50/60">
+      <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shrink-0">
+        <ListChecks className="w-5 h-5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-black text-slate-900">Lời giải từng câu</p>
+        <p className="text-xs text-slate-500">
+          {!isSaved
+            ? "Lưu đề trước, sau đó gắn vị trí lời giải cho từng câu để học sinh xem đúng lời giải khi bấm vào câu."
+            : anchors
+              ? `Đã gắn ${anchored}/${totalQuestions} câu. Học sinh bấm vào câu sẽ thấy đúng phần lời giải.`
+              : "Chưa gắn. Hệ thống tự nhận diện các nhãn TDHT/Câu trong file, bạn chỉ cần kiểm tra và lưu."}
+        </p>
+      </div>
+      {isSaved ? (
+        <Link
+          href={`/teacher/tests/solutions/${testId}`}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shrink-0"
+        >
+          {anchors ? "Kiểm tra / chỉnh sửa" : "Gắn lời giải từng câu"}
+        </Link>
+      ) : (
+        <span className="text-[11px] font-bold text-amber-600 shrink-0">Cần lưu đề</span>
+      )}
     </div>
   );
 }

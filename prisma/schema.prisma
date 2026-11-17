@@ -279,6 +279,8 @@ model Test {
   updatedAt      DateTime         @updatedAt
   dueDate        DateTime?
   solutionVideos Json?
+  /// Vị trí lời giải từng câu trong PDF lời giải (xem lib/pdf-question-anchors.ts)
+  solutionAnchors Json?
   attempts       StudentAttempt[]
   course         Course?          @relation("CourseFinalTest", fields: [courseId], references: [id], onDelete: Cascade)
   lesson         Lesson?          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
