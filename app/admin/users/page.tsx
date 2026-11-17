@@ -9,6 +9,7 @@ import {
   updateStudentType,
   updateUserLevel,
   updateUserClass,
+  adminResetPassword,
 } from "@/actions/user";
 import { getClasses } from "@/actions/class";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,8 @@ import {
 import { cn } from "@/lib/utils";
 import {
   Trash2,
+  KeyRound,
+  Copy,
   ShieldCheck,
   ShieldAlert,
   Info,
@@ -41,11 +44,26 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+type AdminUser = Omit<User, "password">;
 
 export default function UserManagementPage() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<AdminUser[]>([]);
+  const [resetResult, setResetResult] = useState<{
+    name: string;
+    email: string;
+    tempPassword: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
 
@@ -221,6 +239,40 @@ export default function UserManagementPage() {
         toast.error(res.error);
       }
     });
+  };
+
+  const handleResetPassword = async (user: AdminUser) => {
+    if (
+      !confirm(
+        `Đặt lại mật khẩu cho ${user.name || user.email}? Mật khẩu cũ sẽ không dùng được nữa.`,
+      )
+    )
+      return;
+
+    startTransition(async () => {
+      const res = await adminResetPassword(user.id);
+      if (res.success && "tempPassword" in res && res.tempPassword) {
+        setResetResult({
+          name: user.name || "",
+          email: user.email,
+          tempPassword: res.tempPassword,
+        });
+      } else {
+        toast.error(res.error || "Không thể đặt lại mật khẩu");
+      }
+    });
+  };
+
+  const copyResetInfo = async () => {
+    if (!resetResult) return;
+    try {
+      await navigator.clipboard.writeText(
+        `Email: ${resetResult.email}\nMật khẩu tạm: ${resetResult.tempPassword}\nVui lòng đăng nhập và đổi mật khẩu trong trang Hồ sơ.`,
+      );
+      toast.success("Đã sao chép thông tin đăng nhập");
+    } catch {
+      toast.error("Không thể sao chép, vui lòng copy thủ công");
+    }
   };
 
   if (loading)
@@ -725,6 +777,17 @@ export default function UserManagementPage() {
 
                       <Button
                         size="sm"
+                        variant="outline"
+                        onClick={() => handleResetPassword(user)}
+                        disabled={isPending}
+                        title="Đặt lại mật khẩu"
+                        className="h-8 sm:h-9 w-8 sm:w-9 p-0 rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50"
+                      >
+                        <KeyRound className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </Button>
+
+                      <Button
+                        size="sm"
                         variant="destructive"
                         onClick={() => handleDelete(user.id)}
                         disabled={isPending}
@@ -762,6 +825,55 @@ export default function UserManagementPage() {
           )}
         </div>
       </div>
+
+      <Dialog
+        open={!!resetResult}
+        onOpenChange={(open) => !open && setResetResult(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Đã đặt lại mật khẩu</DialogTitle>
+            <DialogDescription>
+              Gửi thông tin này cho học sinh. Mật khẩu tạm chỉ hiển thị một
+              lần, hãy nhắc học sinh đổi mật khẩu trong trang Hồ sơ sau khi đăng
+              nhập.
+            </DialogDescription>
+          </DialogHeader>
+          {resetResult && (
+            <div className="space-y-3 rounded-2xl bg-slate-50 border border-slate-100 p-4 text-sm">
+              {resetResult.name && (
+                <div>
+                  <div className="text-xs text-slate-500">Học sinh</div>
+                  <div className="font-semibold text-slate-900">
+                    {resetResult.name}
+                  </div>
+                </div>
+              )}
+              <div>
+                <div className="text-xs text-slate-500">Email</div>
+                <div className="font-semibold text-slate-900 break-all">
+                  {resetResult.email}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500">Mật khẩu tạm</div>
+                <div className="font-mono text-lg font-bold tracking-wider text-blue-700 select-all">
+                  {resetResult.tempPassword}
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetResult(null)}>
+              Đóng
+            </Button>
+            <Button onClick={copyResetInfo}>
+              <Copy className="w-4 h-4 mr-1" />
+              Sao chép
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
