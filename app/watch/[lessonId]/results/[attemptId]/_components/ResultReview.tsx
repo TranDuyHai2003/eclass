@@ -369,6 +369,17 @@ export function ResultReview({
   const questionSegments = split ? regionSegments(split.question, layout) : null;
   const solutionSegments = split?.solution ? regionSegments(split.solution, layout) : null;
 
+  // Câu không tách riêng được → hiện toàn bộ đề gốc ngay trong thẻ câu. Nếu file đề cũng là file đã dò
+  // (không có file lời giải riêng) thì cuộn sẵn tới ngay sau câu liền trước đã tách được.
+  let paperGuess: { page: number; yPct: number; key: string; label?: string } | null = null;
+  if (selected && !questionSegments && !solutionPdfUrl && anchorsData) {
+    const idx = flat.findIndex((f) => f.q.id === selected.q.id);
+    for (let i = idx - 1; i >= 0 && !paperGuess; i--) {
+      const prev = resolveRegion(anchorsData, flat[i].q.id);
+      if (prev) paperGuess = { page: prev.end.page, yPct: Math.max(0, prev.end.y - 1), key: selected.q.id };
+    }
+  }
+
   const [showSolution, setShowSolution] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [showWholeFile, setShowWholeFile] = useState(false);
@@ -563,19 +574,36 @@ export function ResultReview({
                           zoom={focusZoom}
                           placeholder={null}
                         />
-                      ) : (
+                      ) : !pdfFailed && (!anchorsReady || !reviewPdf) ? (
                         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm font-bold text-slate-500">
-                          {pdfFailed ? (
-                            "Không tải được file lời giải."
-                          ) : !anchorsReady || !reviewPdf ? (
-                            <span className="inline-flex items-center gap-2">
-                              <Loader2 className="h-4 w-4 animate-spin text-indigo-500" /> Đang tải đề bài...
+                          <span className="inline-flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-indigo-500" /> Đang tải đề bài...
+                          </span>
+                        </div>
+                      ) : (
+                        // Không tách được câu này → cho xem luôn toàn bộ đề gốc (file đề, không chứa lời giải)
+                        // Điện thoại: tràn sát mép thẻ để trang đề rộng nhất có thể
+                        <div className="-mx-3 overflow-hidden border-y border-amber-200 bg-amber-50/50 sm:mx-0 sm:rounded-xl sm:border-x">
+                          <p className="flex items-start gap-2 px-3 py-2 text-xs font-bold text-amber-800 sm:text-sm">
+                            <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                            <span>
+                              Chưa tách riêng được câu này — dưới đây là toàn bộ đề, em tìm{" "}
+                              <b className="font-black">Câu {selected.number}</b>
+                              {sections.length > 1 && <> ({selected.sectionName})</>} nhé.
                             </span>
-                          ) : solutionPdfUrl ? (
-                            <>Chưa tách được đề của câu này khỏi file. Bấm “Xem đáp án chi tiết” để xem trong file lời giải.</>
-                          ) : (
-                            <>Chưa tách được đề của câu này. Xem đầy đủ ở tab “Đề gốc”.</>
-                          )}
+                          </p>
+                          <div className="h-[62vh] border-t border-amber-200 bg-slate-100 md:h-[68vh]">
+                            <PDFViewer
+                              url={pdfUrl}
+                              flat
+                              maxPageWidth={900}
+                              scrollTarget={paperGuess}
+                              highlightTarget={false}
+                              renderLeft={
+                                <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Toàn bộ đề</span>
+                              }
+                            />
+                          </div>
                         </div>
                       )}
 
