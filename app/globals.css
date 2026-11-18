@@ -137,13 +137,26 @@ h6 {
   --sidebar-ring: oklch(0.546 0.215 262.881);
 }
 
+/* Ảnh nền trang trí: WebP nén (36KB) thay PNG 854KB; điện thoại dùng bản 960px (14KB) */
+:root {
+  --site-bg: url("/bg.webp");
+}
+@media (max-width: 767px) {
+  :root {
+    --site-bg: url("/bg-sm.webp");
+  }
+  body {
+    background-attachment: scroll !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply text-foreground;
-    background: url("/bg.png") center/cover fixed no-repeat;
+    background: var(--site-bg) center/cover fixed no-repeat;
     background-color: var(--background);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -182,12 +195,17 @@ h6 {
         color-mix(in oklch, var(--background) 85%, transparent),
         color-mix(in oklch, var(--background) 85%, transparent)
       ),
-      url("/bg.png") !important;
+      var(--site-bg) !important;
     background-color: transparent !important;
     background-size: auto, auto, auto, cover !important;
     background-position: center, center, center, center !important;
     background-attachment: scroll, scroll, scroll, fixed !important;
     background-repeat: no-repeat, no-repeat, no-repeat, no-repeat !important;
+  }
+  @media (max-width: 767px) {
+    .page-shell {
+      background-attachment: scroll !important;
+    }
   }
 
   .card-surface {

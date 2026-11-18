@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import Image from "next/image";
 import { Check, X, User } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { canOptimizeImage } from "@/lib/image-hosts";
 
 interface EnrollmentProps {
   initialEnrollments: any[];
@@ -79,7 +80,7 @@ export function EnrollmentTable({ initialEnrollments }: EnrollmentProps) {
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center shrink-0">
                     {enrollment.user.image ? (
-                      <Image src={enrollment.user.image} alt={enrollment.user.name || "User"} width={40} height={40} className="w-full h-full object-cover" />
+                      <Image src={enrollment.user.image} alt={enrollment.user.name || "User"} width={40} height={40} unoptimized={!canOptimizeImage(enrollment.user.image)} className="w-full h-full object-cover" />
                     ) : (
                       <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                     )}

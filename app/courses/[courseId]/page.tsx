@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
+import { canOptimizeImage } from "@/lib/image-hosts";
 import Link from "next/link";
 import {
   Clock,
@@ -191,6 +192,7 @@ export default async function CoursePage({
                     alt={c.title}
                     fill
                     priority
+                    unoptimized={!canOptimizeImage(c.thumbnail)}
                     sizes="(min-width: 1024px) 480px, 100vw"
                     className="object-cover"
                   />

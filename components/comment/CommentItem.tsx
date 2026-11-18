@@ -28,6 +28,7 @@ import { updateComment, deleteComment } from "@/actions/comment";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { canOptimizeImage } from "@/lib/image-hosts";
 
 interface CommentItemProps {
   comment: any;
@@ -109,6 +110,8 @@ export function CommentItem({
               src={comment.user.image}
               alt={comment.user.name || "User"}
               fill
+              sizes="40px"
+              unoptimized={!canOptimizeImage(comment.user.image)}
               className="object-cover"
             />
           ) : (
@@ -222,8 +225,9 @@ export function CommentItem({
                       src={url}
                       alt={`Comment image ${i + 1}`}
                       fill
+                      sizes="(min-width: 640px) 200px, 45vw"
                       className="object-cover group-hover/img:scale-110 transition-transform duration-500"
-                      unoptimized
+                      unoptimized={!canOptimizeImage(url)}
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors" />
                   </div>

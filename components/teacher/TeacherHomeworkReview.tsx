@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { gradeHomework, deleteHomeworkSubmission, listApprovedHomework } from "@/actions/homework";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { getAvatarThumbUrl } from "@/lib/game-rank";
 
 interface TeacherHomeworkReviewProps {
   /** Toàn bộ bài cần chấm/chưa đạt + trang đầu của bài đã đạt */
@@ -301,7 +302,7 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions, approve
                )}
                <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden">
-                      {sub.user?.image ? <img src={sub.user.image} alt="" className="w-full h-full object-cover" /> : <User className="w-6 h-6" />}
+                      {sub.user?.image ? <img src={getAvatarThumbUrl(sub.user.name, sub.user.image)} alt="" className="w-full h-full object-cover" /> : <User className="w-6 h-6" />}
                   </div>
                   <div className="flex-1 min-w-0">
                      <div className="flex items-center gap-2 flex-wrap">

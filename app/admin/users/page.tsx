@@ -55,6 +55,8 @@ import {
 
 type AdminUser = Omit<User, "password">;
 
+const USERS_PAGE_SIZE = 30;
+
 export default function UserManagementPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -73,6 +75,8 @@ export default function UserManagementPage() {
   const [typeFilter, setTypeFilter] = useState<StudentType | "ALL">("ALL");
   const [levelFilter, setLevelFilter] = useState<Level | "ALL">("ALL");
   const [classFilter, setClassFilter] = useState<string | "ALL">("ALL");
+  // Vẽ từng phần danh sách: mỗi dòng có nhiều ô chọn, vẽ cả trăm dòng một lúc làm trang đơ ~1,5 giây
+  const [visibleCount, setVisibleCount] = useState(USERS_PAGE_SIZE);
 
   useEffect(() => {
     loadUsers();
@@ -106,6 +110,7 @@ export default function UserManagementPage() {
     }
 
     setFilteredUsers(result);
+    setVisibleCount(USERS_PAGE_SIZE);
   }, [search, roleFilter, typeFilter, levelFilter, classFilter, users]);
 
   const loadUsers = async () => {
@@ -423,7 +428,7 @@ export default function UserManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user, index) => (
+              {filteredUsers.slice(0, visibleCount).map((user, index) => (
                 <TableRow key={user.id}>
                   <TableCell className="text-center font-bold text-slate-500">
                     {index + 1}
@@ -802,6 +807,18 @@ export default function UserManagementPage() {
               ))}
             </TableBody>
           </Table>
+          {filteredUsers.length > visibleCount && (
+            <div className="flex justify-center border-t border-slate-100 p-4">
+              <Button
+                variant="outline"
+                onClick={() => setVisibleCount((n) => n + USERS_PAGE_SIZE)}
+                className="rounded-xl font-bold"
+              >
+                Xem thêm {Math.min(USERS_PAGE_SIZE, filteredUsers.length - visibleCount)} người (còn{" "}
+                {filteredUsers.length - visibleCount})
+              </Button>
+            </div>
+          )}
           {filteredUsers.length === 0 && (
             <div className="p-20 text-center space-y-3">
               <div className="text-slate-300 flex justify-center">

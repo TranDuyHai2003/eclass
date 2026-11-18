@@ -42,13 +42,9 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: [
-      { url: "/logo.png?v=1" },
-      { url: "/logo.png?v=1", sizes: "32x32", type: "image/png" },
-    ],
-    apple: [
-      { url: "/logo.png?v=1", sizes: "180x180", type: "image/png" },
-    ],
+    // Biểu tượng đúng kích thước (trước dùng logo 470×531, 256KB cho cả favicon)
+    icon: [{ url: "/icon-32.png", sizes: "32x32", type: "image/png" }],
+    apple: [{ url: "/apple-icon-180.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
     type: "website",
@@ -60,8 +56,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: "/logo.png?v=1",
-        width: 1200,
-        height: 630,
+        width: 470,
+        height: 531,
         alt: "thatdehoctoan - Luyện Thi Đại Học",
       },
     ],

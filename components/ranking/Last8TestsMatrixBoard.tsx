@@ -26,6 +26,8 @@ interface Last8TestsMatrixBoardProps {
   isTeacherView?: boolean;
 }
 
+const MATRIX_PAGE_SIZE = 20;
+
 export function Last8TestsMatrixBoard({
   leaderboard = [],
   totalStudentsInClass = 140,
@@ -74,9 +76,11 @@ export function Last8TestsMatrixBoard({
     }));
   }, [matrixList]);
 
-  const displayedList = useMemo(() => {
-    return filteredList;
-  }, [filteredList]);
+  // Danh sách đã xếp theo mức báo động (thiếu nhiều bài lên đầu) → vẽ trước 20 học sinh, bấm để xem thêm.
+  // Vẽ cả trăm dòng (×2 vì có cả bản điện thoại và bản bảng) làm trang nặng ~15.000 phần tử.
+  const [visibleCount, setVisibleCount] = useState(MATRIX_PAGE_SIZE);
+  const displayedList = useMemo(() => filteredList.slice(0, visibleCount), [filteredList, visibleCount]);
+  const remaining = filteredList.length - displayedList.length;
 
   const totalTrackedCount = matrixList[0]?.totalTracked || 8;
   const completedFullCount = matrixList.filter((s) => s.completedCountInLast8 === totalTrackedCount).length;
@@ -385,6 +389,18 @@ export function Last8TestsMatrixBoard({
           </tbody>
         </table>
       </div>
+
+      {remaining > 0 && (
+        <div className="relative z-10 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((n) => n + MATRIX_PAGE_SIZE)}
+            className="rounded-xl border border-cyan-500/40 bg-cyan-950/60 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-cyan-200 hover:bg-cyan-900/60"
+          >
+            Xem thêm {Math.min(MATRIX_PAGE_SIZE, remaining)} học sinh (còn {remaining})
+          </button>
+        </div>
+      )}
     </section>
   );
 }

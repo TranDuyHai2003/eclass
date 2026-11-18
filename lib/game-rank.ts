@@ -1,3 +1,4 @@
+import { canOptimizeImage } from "@/lib/image-hosts";
 export type GameRankType = 'SSS' | 'SS' | 'S' | 'A' | 'B' | 'C' | 'DANGER';
 
 export interface GameRankTheme {
@@ -89,6 +90,18 @@ export function getSafeAvatarUrl(name?: string | null, image?: string | null): s
     <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-size="46" font-family="sans-serif" font-weight="900">${initial}</text>
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * Ảnh đại diện cỡ nhỏ cho thẻ <img> thường (KHÔNG dùng cho next/image — nó tự tối ưu).
+ * Ảnh tải lên thường là ảnh gốc từ điện thoại (có ảnh > 4MB) nhưng chỉ hiển thị vài chục px
+ * → đi qua bộ tối ưu của Next để nhận bản WebP rộng `size`px.
+ */
+export function getAvatarThumbUrl(name?: string | null, image?: string | null, size: 64 | 128 | 256 = 128): string {
+  const src = getSafeAvatarUrl(name, image);
+  return image && canOptimizeImage(src) && !src.startsWith("/")
+    ? `/_next/image?url=${encodeURIComponent(src)}&w=${size}&q=75`
+    : src;
 }
 
 /**

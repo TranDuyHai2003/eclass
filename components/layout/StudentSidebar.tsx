@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { getAvatarThumbUrl } from "@/lib/game-rank";
 import { 
   BookOpen, 
   User, 
@@ -71,7 +72,7 @@ export function StudentSidebar({ user }: { user: any }) {
       <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 flex flex-col items-center text-center">
         <div className="w-20 h-20 rounded-full bg-blue-100 ring-4 ring-white shadow-xl flex items-center justify-center mb-4 relative overflow-hidden group">
           {user?.image ? (
-            <img src={user.image} alt={user.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+            <img src={getAvatarThumbUrl(user.name, user.image)} alt={user.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-white text-2xl font-black">
               {user?.name?.[0] || "U"}

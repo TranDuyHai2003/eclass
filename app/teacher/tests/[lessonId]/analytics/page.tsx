@@ -17,7 +17,7 @@ import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { PDFViewerClientWrapper } from "@/components/course/PDFViewerClientWrapper";
 import { BackButton } from "@/components/ui/back-button";
-import { getSafeAvatarUrl } from "@/lib/game-rank";
+import { getAvatarThumbUrl } from "@/lib/game-rank";
 import ScoreboardTable, {
   type ScoreboardAttempt,
 } from "@/components/teacher/tests/ScoreboardTable";
@@ -325,7 +325,7 @@ export default async function TestAnalyticsPage({
                       <div className="w-9 h-9 rounded-full overflow-hidden border border-white shadow-sm">
                         <img
                           src={
-                            getSafeAvatarUrl(a.user.name, a.user.image)
+                            getAvatarThumbUrl(a.user.name, a.user.image)
                           }
                           alt="Avatar"
                           className="w-full h-full object-cover"
