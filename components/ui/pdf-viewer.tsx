@@ -317,10 +317,15 @@ export default function PDFViewer({
       >
         <div className="flex justify-center min-w-fit">
           <Document
+            className="w-full"
             file={fileUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             loading={
-              <div className="flex flex-col items-center justify-center py-20 gap-3">
+              // Cao bằng một trang A4 ở bề rộng hiện tại (+ lề) → khi trang thật hiện ra không bị bung/giật
+              <div
+                className="flex w-full flex-col items-center justify-center py-20 gap-3"
+                style={{ minHeight: Math.round(pageWidth * 1.414) + 32 }}
+              >
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                 <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Đang tải tài liệu...</p>
               </div>

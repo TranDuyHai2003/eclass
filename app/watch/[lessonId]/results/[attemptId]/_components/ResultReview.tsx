@@ -368,6 +368,8 @@ export function ResultReview({
   const layout = anchorsData?.layout ?? { top: 0, bottom: 100, left: 0, right: 100 };
   const questionSegments = split ? regionSegments(split.question, layout) : null;
   const solutionSegments = split?.solution ? regionSegments(split.solution, layout) : null;
+  // Đang dò vị trí câu / tải file (chỉ ở lần mở đầu; kết quả dò được lưu lại trên trình duyệt)
+  const questionVisualLoading = !questionSegments && !pdfFailed && (!anchorsReady || !reviewPdf);
 
   // Câu không tách riêng được → hiện toàn bộ đề gốc ngay trong thẻ câu. Nếu file đề cũng là file đã dò
   // (không có file lời giải riêng) thì cuộn sẵn tới ngay sau câu liền trước đã tách được.
@@ -574,7 +576,7 @@ export function ResultReview({
                           zoom={focusZoom}
                           placeholder={null}
                         />
-                      ) : !pdfFailed && (!anchorsReady || !reviewPdf) ? (
+                      ) : questionVisualLoading ? (
                         // Giữ sẵn chỗ khi đang dò vị trí câu → nội dung bên dưới không bị đẩy xuống khi đề hiện ra (giảm giật bố cục)
                         <div className="flex min-h-[38vh] items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm font-bold text-slate-500">
                           <span className="inline-flex items-center gap-2">
@@ -609,6 +611,9 @@ export function ResultReview({
                         </div>
                       )}
 
+                      {/* Đợi đề của câu sẵn sàng rồi mới vẽ phần trả lời bên dưới: phần này xuất hiện lần đầu
+                          (không bị xô lệch) thay vì bị đẩy lên/xuống khi đề hiện ra → hết giật bố cục ở lần mở đầu */}
+                      {!questionVisualLoading && (
                       <QuestionCard
                         item={selected}
                         isTeacher={isTeacher}
@@ -691,6 +696,7 @@ export function ResultReview({
                           </div>
                         )}
                       </QuestionCard>
+                      )}
                     </div>
                   </article>
                 ) : (
