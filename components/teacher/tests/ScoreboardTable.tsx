@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Search, ArrowDown, Trash2, Bell } from "lucide-react";
+import { Search, ArrowDown, Trash2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -218,12 +218,6 @@ export default function ScoreboardTable({
                 <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap">
                   Ngày nộp
                 </th>
-                <th
-                  className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap"
-                  title="Số lần học sinh rời khỏi tab hoặc thoát khỏi màn hình bài thi"
-                >
-                  Rời khỏi
-                </th>
                 <th className="px-6 py-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap">
                   Hành động
                 </th>
@@ -287,23 +281,7 @@ export default function ScoreboardTable({
                       ? formatDateTime(attempt.completedAt)
                       : "--"}
                   </td>
-                  <td className="px-4 py-5 text-xs font-bold text-slate-600">
-                    --
-                  </td>
                   <td className="px-6 py-5 text-right flex items-center justify-end gap-2">
-                    {!attempt.completedAt && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        title="Nhắc nhở nộp bài"
-                        className="h-8 w-8 text-amber-600 border-amber-200 hover:bg-amber-50"
-                        onClick={() => {
-                          toast.success(`Đã gửi thông báo nhắc nhở đến ${attempt.user.name}`);
-                        }}
-                      >
-                        <Bell className="w-4 h-4" />
-                      </Button>
-                    )}
                     <Button
                       asChild
                       variant="ghost"
@@ -340,7 +318,7 @@ export default function ScoreboardTable({
               {sortedAttempts.length === 0 && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={7}
                     className="px-6 py-12 text-center text-sm font-bold text-slate-400"
                   >
                     Không có dữ liệu phù hợp với bộ lọc hiện tại.
