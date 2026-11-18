@@ -720,6 +720,7 @@ export function ResultReview({
                     Câu {selectedVisibleIndex + 1}
                     <span className="text-slate-400"> / {visible.length}</span>
                   </span>
+                  <span className="text-indigo-600 lg:hidden">· Chọn câu</span>
                   <span className={cn("hidden text-indigo-600", !panelOpen && "lg:inline")}>· Mở bảng kết quả</span>
                 </button>
                 <div className="flex shrink-0 items-center gap-2">
@@ -761,6 +762,21 @@ export function ResultReview({
               </aside>
             )}
 
+
+            {/* Tab dọc ở mép phải: mở bảng chọn câu (điện thoại/tablet) hoặc mở lại bảng đã thu gọn (máy tính) */}
+            <button
+              onClick={openResultPanel}
+              className={cn(
+                "fixed right-0 top-[58%] z-40 -translate-y-1/2 flex flex-col items-center gap-1 rounded-l-xl bg-indigo-600/95 px-1.5 py-3 text-white shadow-lg shadow-indigo-600/30 active:bg-indigo-700",
+                panelOpen && "lg:hidden",
+              )}
+              aria-label="Mở bảng chọn câu"
+            >
+              <LayoutGrid className="h-4 w-4" />
+              <span className="text-[10px] font-black uppercase tracking-widest [writing-mode:vertical-rl] rotate-180">
+                Chọn câu
+              </span>
+            </button>
 
             <Sheet open={gridOpen} onOpenChange={setGridOpen}>
               <SheetContent side="right" className="w-[86vw] max-w-sm gap-0 overflow-y-auto p-0">

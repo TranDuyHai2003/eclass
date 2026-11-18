@@ -16,14 +16,15 @@ export function FillViewport({
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | null>(null);
+  // Chỉ đo phần bị chiếm phía trên (vd banner demo); chiều cao để CSS tính bằng 100dvh — trên điện thoại
+  // 100dvh luôn khớp phần nhìn thấy khi thanh địa chỉ ẩn/hiện, còn window.innerHeight có thể lệch.
+  const [top, setTop] = useState<number | null>(null);
 
   useEffect(() => {
     const update = () => {
       const el = ref.current;
       if (!el) return;
-      const top = el.getBoundingClientRect().top + window.scrollY;
-      setHeight(Math.max(320, window.innerHeight - top));
+      setTop(Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY)));
     };
     update();
     window.addEventListener("resize", update);
@@ -31,7 +32,11 @@ export function FillViewport({
   }, []);
 
   return (
-    <div ref={ref} className={height === null ? `${fallbackClassName ?? ""} ${className ?? ""}` : className} style={height === null ? undefined : { height }}>
+    <div
+      ref={ref}
+      className={top === null ? `${fallbackClassName ?? ""} ${className ?? ""}` : className}
+      style={top === null ? undefined : { height: `max(320px, calc(100dvh - ${top}px))` }}
+    >
       {children}
     </div>
   );
