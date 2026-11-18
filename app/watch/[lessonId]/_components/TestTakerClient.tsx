@@ -492,6 +492,10 @@ export default function TestTakerClient({
         dangerouslySetInnerHTML={{
           __html: `
         header { display: none !important; }
+        /* Khoá cuộn cả trang khi làm bài: chỉ khung đề và phiếu trả lời được cuộn. Tránh trên điện thoại
+           kéo hết phiếu trả lời thì trình duyệt cuộn luôn cả trang (đẩy mất thanh tiêu đề, lộ dải nền ở đáy)
+           và tránh kéo-để-tải-lại vô tình giữa giờ làm bài. */
+        html, body { overflow: hidden !important; overscroll-behavior: none !important; }
       `,
         }}
       />
@@ -500,7 +504,7 @@ export default function TestTakerClient({
       <div className="flex flex-col md:flex-row flex-1 relative min-h-0 w-full max-w-full">
         {/* Left/Top: PDF */}
         {/* 3. Dùng flex-[6] trên mobile và flex-1 trên PC, thêm min-h-0 và overflow-y-auto */}
-        <div className="flex-[6] md:flex-1 min-h-0 w-full border-b md:border-b-0 md:border-r relative bg-[#E2EEFF] overflow-y-auto custom-scrollbar">
+        <div className="flex-[6] md:flex-1 min-h-0 w-full border-b md:border-b-0 md:border-r relative bg-[#E2EEFF] overflow-y-auto overscroll-contain custom-scrollbar">
           {test.pdfUrl ? (
             <div className="min-h-full w-full">
               <PDFViewer
@@ -560,7 +564,7 @@ export default function TestTakerClient({
           </div>
 
           {/* 5. Vùng chứa câu hỏi - chắc chắn sẽ cuộn được vì thẻ cha đã có flex-col và min-h-0 */}
-          <div className="flex-1 pb-28 overflow-y-auto p-2 md:p-4 space-y-4 md:space-y-6 custom-scrollbar w-full">
+          <div className="flex-1 pb-28 overflow-y-auto overscroll-contain p-2 md:p-4 space-y-4 md:space-y-6 custom-scrollbar w-full">
             {test.sections.map((section: any, sIdx: number) => (
               <div key={section.id} className="space-y-3">
                 <h3 className="font-bold text-blue-800 border-b pb-2 uppercase tracking-wide text-[10px]">

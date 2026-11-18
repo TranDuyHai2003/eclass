@@ -76,7 +76,12 @@ export function ResultScreen({
     // Chiếm đúng phần còn lại của màn hình (dưới banner demo nếu có) → không cuộn hai lớp
     <FillViewport className="flex flex-col bg-[#E2EEFF] overflow-hidden" fallbackClassName="h-dvh">
       {/* Màn chữa bài dùng toàn màn hình như màn làm bài: ẩn header chung của site */}
-      <style dangerouslySetInnerHTML={{ __html: "header { display: none !important; }" }} />
+      <style
+        dangerouslySetInnerHTML={{
+          // Khoá cuộn cả trang (chỉ các khung bên trong cuộn) → thanh công cụ không bị đẩy mất khi kéo hết trên điện thoại
+          __html: "header { display: none !important; } html, body { overflow: hidden !important; overscroll-behavior: none !important; }",
+        }}
+      />
 
       <ResultReview
         attemptId={attempt.id}

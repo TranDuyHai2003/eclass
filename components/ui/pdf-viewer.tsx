@@ -313,7 +313,7 @@ export default function PDFViewer({
       {/* PDF Content Area */}
       <div
         ref={scrollAreaRef}
-        className={cn("flex-1 relative bg-slate-300/20 overflow-auto", !noScroll ? "h-full" : "overflow-y-visible")}
+        className={cn("flex-1 relative bg-slate-300/20 overflow-auto overscroll-contain", !noScroll ? "h-full" : "overflow-y-visible")}
       >
         <div className="flex justify-center min-w-fit">
           <Document
