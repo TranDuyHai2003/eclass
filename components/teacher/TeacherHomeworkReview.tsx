@@ -285,15 +285,16 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions, approve
             return (
             <div key={sub.id} className="bg-white rounded-[2rem] border border-blue-100 shadow-sm overflow-hidden flex flex-col md:flex-row animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Left: Student Info & Files */}
-            <div className="p-6 md:p-8 flex-1 space-y-6 border-r border-slate-50">
+            <div className="p-4 sm:p-6 md:p-8 flex-1 min-w-0 space-y-6 border-r border-slate-50">
                {sub.lesson && sub.lesson.chapter && (
-                 <div className="flex items-center gap-2 mb-4 bg-blue-50 w-fit px-3 py-1.5 rounded-lg border border-blue-100">
-                    <BookOpen className="w-3.5 h-3.5 text-[#2563EB]" />
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[#2563EB] max-w-[150px] sm:max-w-[200px] truncate">
+                 // Khoá học › bài học: co lại trong bề rộng thẻ, chữ dài rút gọn bằng "…"
+                 <div className="flex items-center gap-2 mb-4 bg-blue-50 w-fit max-w-full min-w-0 px-3 py-1.5 rounded-lg border border-blue-100">
+                    <BookOpen className="w-3.5 h-3.5 shrink-0 text-[#2563EB]" />
+                    <span className="min-w-0 shrink-[2] text-[10px] font-black uppercase tracking-wider text-[#2563EB] max-w-[200px] truncate" title={sub.lesson.chapter?.course?.title || undefined}>
                       {sub.lesson.chapter?.course?.title || "Khóa học"}
                     </span>
-                    <ChevronRight className="w-3 h-3 text-blue-300" />
-                    <span className="text-[10px] font-bold text-blue-600 truncate max-w-[150px] sm:max-w-[200px]">
+                    <ChevronRight className="w-3 h-3 shrink-0 text-blue-300" />
+                    <span className="min-w-0 text-[10px] font-bold text-blue-600 truncate max-w-[260px]" title={sub.lesson.title}>
                       {sub.lesson.title}
                     </span>
                  </div>
@@ -321,7 +322,7 @@ export function TeacherHomeworkReview({ submissions: initialSubmissions, approve
                            </Badge>
                          )}
                      </div>
-                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{sub.user?.email}</p>
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate" title={sub.user?.email || undefined}>{sub.user?.email}</p>
                   </div>
                </div>
 

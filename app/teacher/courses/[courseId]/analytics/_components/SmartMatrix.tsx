@@ -100,7 +100,7 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
         <div className="flex flex-wrap gap-2">
           {[
             { id: "all", label: "Tất cả" },
@@ -125,8 +125,8 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
           ))}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-          <div className="relative w-full md:w-[200px] lg:w-[260px]">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
+          <div className="relative w-full sm:flex-1 xl:flex-none xl:w-[260px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <Input
               placeholder="Tìm học sinh..."
@@ -163,7 +163,7 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
             <TableHeader className="bg-slate-50/50">
               <TableRow>
                 {/* Rank & Student Info */}
-                <TableHead className="w-[44px] md:w-[60px] font-black uppercase text-[10px] tracking-widest text-slate-500 text-center md:sticky md:left-0 bg-slate-50 md:z-30">
+                <TableHead className="w-[44px] md:w-[60px] md:min-w-[60px] md:max-w-[60px] font-black uppercase text-[10px] tracking-widest text-slate-500 text-center md:sticky md:left-0 bg-slate-50 md:z-30">
                   #
                 </TableHead>
                 <TableHead className="min-w-[140px] md:min-w-[180px] font-black uppercase text-[10px] tracking-widest text-slate-500 sticky left-0 md:left-[60px] bg-slate-50 z-30 border-r shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
@@ -323,7 +323,7 @@ export const SmartMatrix = ({ courseId, tests, matrix }: SmartMatrixProps) => {
                     className={cn(
                       "text-center font-black md:sticky md:right-0 bg-white group-hover:bg-slate-50 md:z-20 md:border-l md:shadow-[-2px_0_5px_rgba(0,0,0,0.02)]",
                       student.missedCount > 2
-                        ? "text-blue-600 bg-blue-50/30"
+                        ? "text-blue-600 bg-blue-50"
                         : "text-slate-600",
                     )}
                   >

@@ -286,16 +286,29 @@ export function LessonEditModal({
         </DialogHeader>
 
         <Tabs defaultValue="video" className="flex-1 flex flex-col min-h-0">
-          <div className="px-6 py-2 border-b bg-gray-50 overflow-x-auto">
-            <TabsList className="w-full justify-start gap-2 bg-transparent p-0 h-auto">
-              <TabsTrigger value="video" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 rounded-md py-2 px-4">Nội dung chính</TabsTrigger>
-              <TabsTrigger value="homework-video" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 rounded-md py-2 px-4">Video thực chiến</TabsTrigger>
-              <TabsTrigger value="attachments" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 rounded-md py-2 px-4">Tài liệu đính kèm</TabsTrigger>
-              <TabsTrigger value="quiz" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 rounded-md py-2 px-4">Bài tập Quiz</TabsTrigger>
+          <div className="px-3 sm:px-6 py-2 border-b bg-gray-50">
+            {/* Điện thoại: 4 tab chia đều với nhãn ngắn; màn rộng: nhãn đầy đủ */}
+            <TabsList className="grid w-full grid-cols-4 gap-1 sm:flex sm:justify-start sm:gap-2 bg-transparent p-0 h-auto">
+              <TabsTrigger value="video" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 rounded-md py-2 px-2 sm:px-4 text-xs sm:text-sm">
+                <span className="sm:hidden">Nội dung</span>
+                <span className="hidden sm:inline">Nội dung chính</span>
+              </TabsTrigger>
+              <TabsTrigger value="homework-video" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 rounded-md py-2 px-2 sm:px-4 text-xs sm:text-sm">
+                <span className="sm:hidden">Thực chiến</span>
+                <span className="hidden sm:inline">Video thực chiến</span>
+              </TabsTrigger>
+              <TabsTrigger value="attachments" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 rounded-md py-2 px-2 sm:px-4 text-xs sm:text-sm">
+                <span className="sm:hidden">Tài liệu</span>
+                <span className="hidden sm:inline">Tài liệu đính kèm</span>
+              </TabsTrigger>
+              <TabsTrigger value="quiz" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 rounded-md py-2 px-2 sm:px-4 text-xs sm:text-sm">
+                <span className="sm:hidden">Bài tập</span>
+                <span className="hidden sm:inline">Bài tập Quiz</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
-          <TabsContent value="video" className="flex-1 p-6 overflow-y-auto space-y-6">
+          <TabsContent value="video" className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-6">
             <div className="grid grid-cols-1 gap-6">
               <div className="space-y-2">
                 <Label>Tiêu đề bài học</Label>
@@ -441,7 +454,7 @@ export function LessonEditModal({
             </div>
           </TabsContent>
 
-          <TabsContent value="homework-video" className="flex-1 p-6 overflow-y-auto space-y-6">
+          <TabsContent value="homework-video" className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-6">
             <div className="space-y-4 animate-in fade-in duration-500">
               <Label className="text-lg font-black uppercase tracking-tight">Video hướng dẫn thực chiến</Label>
               <p className="text-sm text-slate-500">Video này sẽ xuất hiện ở phần &quot;Thực chiến bài tập về nhà&quot; của bài học.</p>
@@ -529,7 +542,7 @@ export function LessonEditModal({
             </div>
           </TabsContent>
 
-          <TabsContent value="attachments" className="flex-1 p-6 overflow-y-auto space-y-6">
+          <TabsContent value="attachments" className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-6">
             <Label className="text-lg font-black uppercase tracking-tight">Tài liệu học tập</Label>
             <div className="border-2 border-dashed rounded-2xl p-10 text-center space-y-4 bg-slate-50 relative group">
               {attUploading && <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center rounded-2xl font-black text-blue-600 animate-pulse">ĐANG TẢI LÊN...</div>}

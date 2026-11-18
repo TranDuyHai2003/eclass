@@ -48,15 +48,13 @@ export default function CourseCard({ course, isLocked = false, progress }: Cours
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto rounded-2xl bg-white/80 flex items-center justify-center shadow-sm border border-slate-200/60 mb-2">
-                <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{course.title?.slice(0, 2) || "..."}</p>
-            </div>
+          // Chưa có ảnh bìa → ảnh bìa tự tạo từ tên khoá học (màu cố định theo tên)
+          <div className={`w-full h-full relative flex items-end p-5 pt-14 bg-gradient-to-br ${fallbackGradient(course.title)}`}>
+            <div className="absolute inset-0 opacity-[0.12] bg-[radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:18px_18px]" />
+            <div aria-hidden className="absolute -right-6 -bottom-8 text-[140px] font-black leading-none text-white/10 select-none">∑</div>
+            <p className="relative text-lg sm:text-xl font-black uppercase leading-tight text-white line-clamp-3 drop-shadow-sm">
+              {course.title}
+            </p>
           </div>
         )}
 
@@ -143,4 +141,18 @@ export default function CourseCard({ course, isLocked = false, progress }: Cours
       </div>
     </Link>
   );
+}
+
+const FALLBACK_GRADIENTS = [
+  "from-blue-600 to-indigo-700",
+  "from-violet-600 to-fuchsia-600",
+  "from-emerald-600 to-teal-700",
+  "from-orange-500 to-rose-600",
+  "from-sky-500 to-blue-700",
+];
+
+function fallbackGradient(title?: string | null) {
+  let h = 0;
+  for (const ch of title || "") h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return FALLBACK_GRADIENTS[h % FALLBACK_GRADIENTS.length];
 }

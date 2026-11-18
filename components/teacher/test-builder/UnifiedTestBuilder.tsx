@@ -1106,10 +1106,11 @@ export default function UnifiedTestBuilder({
                             setFastEntrySectionIdx(sIdx);
                             setIsFastEntryOpen(true);
                           }}
+                          title="Nhập nhanh đáp án"
                           className="h-8 rounded-lg gap-1.5 font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                         >
                           <Zap className="w-3.5 h-3.5" />
-                          Nhập nhanh
+                          <span className="hidden sm:inline">Nhập nhanh</span>
                         </Button>
                         <Button
                           size="icon"

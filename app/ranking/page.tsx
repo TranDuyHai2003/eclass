@@ -47,7 +47,7 @@ export default async function RankingPage() {
   return (
     <div className="page-shell min-h-screen bg-[#F8FBFF] text-slate-800">
       {/* Outer flex container: 100% full width, sidebar anchored directly to far left margin */}
-      <div className="flex w-full min-h-[calc(100vh-5rem)]">
+      <div className="flex w-full min-h-[calc(100vh-4rem)]">
         {/* Left Sidebar - Standard HomeSidebar completely unchanged */}
         <aside className="hidden lg:block w-[250px] shrink-0 border-r border-slate-200/70 bg-white/70 backdrop-blur-xl p-3">
           <div className="sticky top-24 h-[calc(100vh-7rem)]">
@@ -56,7 +56,7 @@ export default async function RankingPage() {
         </aside>
 
         {/* Right Main Content Area - 100% Full-Bleed Dark Hunter System Theme Container */}
-        <main className="flex-1 min-w-0 bg-[#060911] text-slate-100 relative overflow-hidden min-h-[calc(100vh-5rem)] border-l border-slate-800/80 shadow-2xl pb-16">
+        <main className="flex-1 min-w-0 bg-[#060911] text-slate-100 relative overflow-hidden min-h-[calc(100vh-4rem)] border-l border-slate-800/80 shadow-2xl pb-16">
           {/* Grand Overall AI Artwork Background filling 100% of main column */}
           <div
             className="absolute inset-0 bg-cover bg-top opacity-85 transition-opacity duration-700 pointer-events-none"
