@@ -478,7 +478,7 @@ export default function TestTakerClient({
 
   if (loadingInitial) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-dvh items-center justify-center">
         Đang khởi tạo bài thi...
       </div>
     );
