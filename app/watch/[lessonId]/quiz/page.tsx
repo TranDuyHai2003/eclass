@@ -69,7 +69,7 @@ export default async function QuizPage({
   const course = lesson.chapter.course;
 
   return (
-    <div className="h-screen bg-[#E2EEFF]">
+    <div className="h-dvh bg-[#E2EEFF]">
       <TestTakerClient
         test={lesson.test}
         lesson={lesson}

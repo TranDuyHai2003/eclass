@@ -39,7 +39,7 @@ export function ModernDashboard({
   }, [courses]);
 
   return (
-    <div className="h-screen flex flex-col bg-[#F4F9FF] overflow-hidden">
+    <div className="h-dvh flex flex-col bg-[#F4F9FF] overflow-hidden">
       {/* CSS Override for Global Header */}
       <style dangerouslySetInnerHTML={{ __html: `
         header:not(.dashboard-header) { display: none !important; }

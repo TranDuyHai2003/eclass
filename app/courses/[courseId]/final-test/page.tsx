@@ -61,7 +61,7 @@ export default async function CourseFinalTestPage({
   };
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col relative z-[60]">
+    <div className="h-dvh overflow-hidden flex flex-col relative z-[60]">
       {/* Hide Global Header on Final Test Page */}
       <style dangerouslySetInnerHTML={{ __html: `
         header { display: none !important; }
