@@ -38,6 +38,7 @@ export default async function Header() {
               className="flex items-center gap-3 shrink-0 group relative"
             >
               <div className="relative flex items-center justify-center  rounded-2xl">
+                <span aria-hidden className="season-hat season-hat-logo" />
                 <img
                   src="/logo-96.webp" width={85} height={96}
                   alt="thatdehoctoan"

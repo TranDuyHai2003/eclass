@@ -27,12 +27,9 @@ export function Top15Leaderboard({
   const [period, setPeriod] = useState<"ALL_TIME" | "WEEKLY" | "MONTHLY">("ALL_TIME");
 
   const activeRawList = useMemo(() => {
-    if (period === "WEEKLY") {
-      return (weeklyLeaderboard && weeklyLeaderboard.length > 0) ? weeklyLeaderboard : leaderboard;
-    }
-    if (period === "MONTHLY") {
-      return (monthlyLeaderboard && monthlyLeaderboard.length > 0) ? monthlyLeaderboard : leaderboard;
-    }
+    // Không lặng lẽ thay bằng bảng toàn khoá khi tuần/tháng chưa có ai — hiện thông báo trống thay vào đó
+    if (period === "WEEKLY") return weeklyLeaderboard ?? [];
+    if (period === "MONTHLY") return monthlyLeaderboard ?? [];
     return leaderboard;
   }, [period, leaderboard, weeklyLeaderboard, monthlyLeaderboard]);
 
@@ -46,8 +43,9 @@ export function Top15Leaderboard({
   const top2 = eligibleLeaderboard[1];
   const top3 = eligibleLeaderboard[2];
 
-  // Ranks 4 to 15 for the table
-  const tableList = eligibleLeaderboard.slice(3, 15);
+  // Đủ 3 người mới dựng bục vinh danh; ít hơn thì đưa hết vào bảng (trước đây 1–2 người đầu bị mất)
+  const hasPodium = Boolean(top1 && top2 && top3);
+  const tableList = hasPodium ? eligibleLeaderboard.slice(3, 15) : eligibleLeaderboard;
 
   const getAvatarUrl = (u: any) => {
     if (!u) return "";
@@ -115,7 +113,18 @@ export function Top15Leaderboard({
       </div>
 
       {/* Visual Monarch RPG Podium for Top 3 (Order: Top 2 - Top 1 - Top 3) */}
-      {top1 && top2 && top3 && (
+      {eligibleLeaderboard.length === 0 && (
+        <div className="relative z-10 rounded-2xl border border-dashed border-slate-700 bg-slate-950/60 px-4 py-10 text-center">
+          <p className="text-sm sm:text-base font-black text-slate-200">
+            {period === "WEEKLY" ? "Tuần này" : period === "MONTHLY" ? "Tháng này" : "Hiện"} chưa có thợ săn nào lên bảng
+          </p>
+          <p className="mt-1 text-xs sm:text-sm text-slate-400">
+            {period === "ALL_TIME" ? "Hoàn thành bài kiểm tra để xuất hiện trên bảng xếp hạng." : "Hoàn thành bài trong kỳ này để là người mở màn!"}
+          </p>
+        </div>
+      )}
+
+      {hasPodium && (
         <div className="pt-2 sm:pt-4 pb-4 sm:pb-6 relative z-10 w-full min-w-0">
           <div className="grid grid-cols-3 gap-2 sm:gap-6 lg:gap-8 items-end max-w-3xl mx-auto w-full min-w-0">
             {/* Rank 2 (Silver Monarch Warden - Left) */}
@@ -125,7 +134,10 @@ export function Top15Leaderboard({
                 <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-slate-200 to-slate-400 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center mx-auto mb-1 border-2 border-white shadow-[0_0_15px_rgba(203,213,225,0.8)] z-10 relative">
                   2
                 </div>
-                <div className="w-14 h-14 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-2xl overflow-hidden border-2 border-slate-300 bg-slate-950 shadow-[0_0_25px_rgba(203,213,225,0.4)] ring-4 ring-slate-300/40 mx-auto transition-transform duration-300 group-hover/p2:scale-105">
+                {/* Mũ Noel / hoa mai theo mùa (CSS .season-hat chỉ hiện khi đúng mùa) */}
+                <div className="relative w-fit mx-auto">
+                  <span aria-hidden className="season-hat season-hat-avatar" />
+                  <div className="w-14 h-14 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-2xl overflow-hidden border-2 border-slate-300 bg-slate-950 shadow-[0_0_25px_rgba(203,213,225,0.4)] ring-4 ring-slate-300/40 mx-auto transition-transform duration-300 group-hover/p2:scale-105">
                   <Image
                     src={getAvatarUrl(top2)}
                     alt={top2.name || "Top 2"}
@@ -133,6 +145,7 @@ export function Top15Leaderboard({
                     height={112}
                     className="w-full h-full object-cover"
                   />
+                  </div>
                 </div>
               </div>
 
@@ -169,7 +182,10 @@ export function Top15Leaderboard({
                 <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-500 text-slate-950 font-black text-xs sm:text-base flex items-center justify-center mx-auto mb-1 border-2 border-white shadow-[0_0_20px_rgba(245,158,11,0.9)] ring-4 ring-amber-500/80 z-10 relative">
                   1
                 </div>
-                <div className="w-18 h-18 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-2xl overflow-hidden border-2 border-amber-400 bg-slate-950 shadow-[0_0_35px_rgba(245,158,11,0.6)] ring-4 ring-amber-400/60 mx-auto transition-transform duration-300 group-hover/p1:scale-105">
+                {/* Mũ Noel / hoa mai theo mùa (CSS .season-hat chỉ hiện khi đúng mùa) */}
+                <div className="relative w-fit mx-auto">
+                  <span aria-hidden className="season-hat season-hat-avatar" />
+                  <div className="w-18 h-18 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-2xl overflow-hidden border-2 border-amber-400 bg-slate-950 shadow-[0_0_35px_rgba(245,158,11,0.6)] ring-4 ring-amber-400/60 mx-auto transition-transform duration-300 group-hover/p1:scale-105">
                   <Image
                     src={getAvatarUrl(top1)}
                     alt={top1.name || "Top 1"}
@@ -177,6 +193,7 @@ export function Top15Leaderboard({
                     height={128}
                     className="w-full h-full object-cover"
                   />
+                  </div>
                 </div>
               </div>
 
@@ -213,7 +230,10 @@ export function Top15Leaderboard({
                 <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-amber-600 to-amber-800 text-amber-100 font-black text-xs sm:text-sm flex items-center justify-center mx-auto mb-1 border-2 border-amber-400 shadow-[0_0_15px_rgba(217,119,6,0.8)] z-10 relative">
                   3
                 </div>
-                <div className="w-14 h-14 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-2xl overflow-hidden border-2 border-amber-600 bg-slate-950 shadow-[0_0_25px_rgba(217,119,6,0.4)] ring-4 ring-amber-600/40 mx-auto transition-transform duration-300 group-hover/p3:scale-105">
+                {/* Mũ Noel / hoa mai theo mùa (CSS .season-hat chỉ hiện khi đúng mùa) */}
+                <div className="relative w-fit mx-auto">
+                  <span aria-hidden className="season-hat season-hat-avatar" />
+                  <div className="w-14 h-14 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-2xl overflow-hidden border-2 border-amber-600 bg-slate-950 shadow-[0_0_25px_rgba(217,119,6,0.4)] ring-4 ring-amber-600/40 mx-auto transition-transform duration-300 group-hover/p3:scale-105">
                   <Image
                     src={getAvatarUrl(top3)}
                     alt={top3.name || "Top 3"}
@@ -221,6 +241,7 @@ export function Top15Leaderboard({
                     height={112}
                     className="w-full h-full object-cover"
                   />
+                  </div>
                 </div>
               </div>
 
@@ -294,9 +315,8 @@ export function Top15Leaderboard({
                     </span>
                   )}
                   {movement.direction === "new" && (
-                    <span className="whitespace-nowrap inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/50 text-cyan-300 text-[10px] font-mono font-black tracking-wider shadow-[0_0_8px_rgba(6,182,212,0.25)]">
-                      <Sparkles className="w-2.5 h-2.5 text-cyan-300 animate-pulse shrink-0" />
-                      <span>NEW</span>
+                    <span className="whitespace-nowrap inline-flex items-center px-2 py-0.5 rounded-full border border-slate-700 text-slate-500 text-[10px] font-mono font-black" title="Chưa có dữ liệu tuần trước để so sánh">
+                      —
                     </span>
                   )}
                 </div>
@@ -318,9 +338,15 @@ export function Top15Leaderboard({
                     <h5 className="font-black text-white text-xs leading-snug break-words">
                       {user.name}
                     </h5>
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold block">
-                      {completedTests} Quests hoàn thành
-                    </span>
+                    {user.isProvisional ? (
+                      <span className="text-[10px] font-mono text-amber-400 font-bold block" title={`Cần ${minRequiredTests} bài để được xếp hạng chính thức`}>
+                        Tạm tính · {completedTests}/{minRequiredTests} bài
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-mono text-emerald-400 font-bold block">
+                        {completedTests} Quests hoàn thành
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -406,9 +432,8 @@ export function Top15Leaderboard({
                       </span>
                     )}
                     {movement.direction === "new" && (
-                      <span className="whitespace-nowrap inline-flex items-center gap-1 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/50 text-cyan-300 text-xs font-black tracking-wider uppercase shadow-[0_0_12px_rgba(6,182,212,0.3)]">
-                        <Sparkles className="w-3 h-3 text-cyan-300 animate-pulse shrink-0" />
-                        <span>NEW</span>
+                      <span className="whitespace-nowrap inline-flex items-center px-3 py-1 rounded-full border border-slate-700 text-slate-500 text-xs font-black" title="Chưa có dữ liệu tuần trước để so sánh">
+                        —
                       </span>
                     )}
                   </td>
@@ -429,9 +454,15 @@ export function Top15Leaderboard({
                         <h5 className="font-black text-white text-base sm:text-lg lg:text-xl truncate group-hover/row:text-cyan-300 transition-colors" title={user.name || undefined}>
                           {user.name}
                         </h5>
-                        <p className="text-xs sm:text-base font-mono text-emerald-400 font-bold">
-                          {completedTests} Quests hoàn thành
-                        </p>
+                        {user.isProvisional ? (
+                          <p className="text-xs sm:text-sm font-mono text-amber-400 font-bold" title={`Cần ${minRequiredTests} bài để được xếp hạng chính thức`}>
+                            Tạm tính · {completedTests}/{minRequiredTests} bài
+                          </p>
+                        ) : (
+                          <p className="text-xs sm:text-base font-mono text-emerald-400 font-bold">
+                            {completedTests} Quests hoàn thành
+                          </p>
+                        )}
                       </div>
                     </div>
                   </td>

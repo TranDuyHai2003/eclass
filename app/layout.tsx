@@ -7,6 +7,8 @@ import { Providers } from "./providers";
 import AntiInspectLayout from "@/components/layout/AntiInspectLayout";
 import { WatchRouteTracker } from "@/components/layout/WatchRouteTracker";
 import "./globals.css";
+import { getSeasonalTheme } from "@/lib/seasonal-theme";
+import { SeasonalEffects } from "@/components/seasonal/SeasonalEffects";
 
 const sansFont = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -102,8 +104,11 @@ export default function RootLayout({
     "description": "Hệ thống học Toán luyện thi Đại học hàng đầu Việt Nam."
   };
 
+  // Theme theo mùa (Giáng sinh / Tết) — tự bật theo ngày giờ Việt Nam, ghi đè bằng SEASONAL_THEME
+  const season = getSeasonalTheme();
+
   return (
-    <html lang="vi">
+    <html lang="vi" data-season={season ?? undefined}>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -136,6 +141,7 @@ export default function RootLayout({
             <Toaster position="top-right" richColors toastOptions={{ className: "p-4" }} gap={12} />
             <DemoBanner />
             <Header />
+            <SeasonalEffects season={season} />
             {children}
           </AntiInspectLayout>
         </Providers>

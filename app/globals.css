@@ -337,3 +337,70 @@ h6 {
 }
 
 
+
+/* ===================== Theme theo mùa (lib/seasonal-theme.ts) ===================== */
+.season-fall > span {
+  position: absolute;
+  top: -24px;
+  animation-name: season-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+.season-snowflake {
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.9), 0 0 2px rgba(148, 163, 184, 0.9);
+}
+.season-petal {
+  background: url("/season/hoa-mai.svg") center / contain no-repeat;
+}
+@keyframes season-fall {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(calc(var(--drift, 40px) * 0.5), 55vh, 0) rotate(180deg); }
+  100% { transform: translate3d(var(--drift, 40px), 110vh, 0) rotate(360deg); }
+}
+
+/* Mũ Noel / hoa mai gắn lên logo, ảnh đại diện top 3 (chỉ hiện khi đúng mùa) */
+.season-hat { display: none; }
+[data-season="christmas"] .season-hat,
+[data-season="tet"] .season-hat {
+  display: block;
+  position: absolute;
+  pointer-events: none;
+  background: center / contain no-repeat;
+  z-index: 30;
+}
+[data-season="christmas"] .season-hat { background-image: url("/season/santa-hat.svg"); }
+[data-season="tet"] .season-hat { background-image: url("/season/hoa-mai.svg"); }
+.season-hat-logo { width: 22px; height: 19px; top: -9px; left: -6px; transform: rotate(-18deg); }
+.season-hat-avatar { width: 46%; aspect-ratio: 64 / 56; top: -18%; right: -14%; transform: rotate(16deg); }
+[data-season="tet"] .season-hat-logo { width: 16px; height: 16px; top: -6px; left: -5px; }
+[data-season="tet"] .season-hat-avatar { width: 34%; aspect-ratio: 1; top: -12%; right: -10%; }
+
+/* Dây đèn nhấp nháy */
+.season-lights {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  height: 14px;
+  background: linear-gradient(transparent 5px, rgba(30, 41, 59, 0.9) 5px, rgba(30, 41, 59, 0.9) 6px, transparent 6px);
+}
+.season-lights > i {
+  width: 8px;
+  height: 11px;
+  margin-top: 3px;
+  border-radius: 50% 50% 45% 45%;
+  animation: season-twinkle 1.6s ease-in-out infinite;
+}
+.season-lights > i:nth-child(4n + 1) { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+.season-lights > i:nth-child(4n + 2) { background: #facc15; box-shadow: 0 0 8px #facc15; animation-delay: 0.4s; }
+.season-lights > i:nth-child(4n + 3) { background: #22c55e; box-shadow: 0 0 8px #22c55e; animation-delay: 0.8s; }
+.season-lights > i:nth-child(4n + 4) { background: #38bdf8; box-shadow: 0 0 8px #38bdf8; animation-delay: 1.2s; }
+@keyframes season-twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .season-lights > i { animation: none; }
+}

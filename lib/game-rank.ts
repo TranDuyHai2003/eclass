@@ -141,7 +141,26 @@ export function determineScoreRankTier(score: number): GameRankType {
 }
 
 /**
+ * Hạng theo VỊ TRÍ trong lớp — nguồn duy nhất, khớp với "Quy tắc Rank" hiển thị cho học sinh:
+ * SSS = top 3, SS = top 5%, S = top 10%, A = top 25%, B = top 50%, C = còn lại.
+ */
+export function rankTierByPosition(position: number, totalCount: number): GameRankType {
+  if (position <= 3) return 'SSS';
+  const top5Count = Math.max(3, Math.ceil(totalCount * 0.05));
+  if (position <= top5Count) return 'SS';
+  const top10Count = Math.max(top5Count, Math.ceil(totalCount * 0.10));
+  if (position <= top10Count) return 'S';
+  const top25Count = Math.max(top10Count, Math.ceil(totalCount * 0.25));
+  if (position <= top25Count) return 'A';
+  const top50Count = Math.max(top25Count, Math.ceil(totalCount * 0.50));
+  if (position <= top50Count) return 'B';
+  return 'C';
+}
+
+/**
  * Legacy compatibility helper
+ * Hạng (rank) lấy theo vị trí khi có vị trí — trước đây lấy theo điểm TB nên cùng một học sinh
+ * hiện SSS ở thẻ chính nhưng "Rank A" ở thanh dưới / bảng giáo viên.
  */
 export function calculateGameRank(
   score: number,
@@ -151,7 +170,8 @@ export function calculateGameRank(
   minRequiredTests: number = 1
 ) {
   const { powerScore, displayPowerText } = calculateSimplePowerScore(score, completedTests);
-  const potentialRank = determineScoreRankTier(score);
+  const hasPosition = typeof rankPosition === "number" && rankPosition > 0 && completedTests > 0;
+  const potentialRank = hasPosition ? rankTierByPosition(rankPosition, Math.max(1, totalStudents)) : determineScoreRankTier(score);
   const theme = RANK_THEMES[potentialRank];
 
   return {
@@ -170,9 +190,9 @@ export function calculateGameRank(
     nextRank: potentialRank === 'SSS' ? null : potentialRank === 'SS' ? 'SSS' : potentialRank === 'S' ? 'SS' : potentialRank === 'A' ? 'S' : potentialRank === 'B' ? 'A' : 'B',
     scoreToNextRank: 0.5,
     eligibility: {
-      isEligible: true,
+      isEligible: completedTests >= minRequiredTests,
       completedTests,
-      minRequiredTests: 1,
+      minRequiredTests,
     },
   };
 }

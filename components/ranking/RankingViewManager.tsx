@@ -93,13 +93,13 @@ export function RankingViewManager({ data, currentUserId }: RankingViewManagerPr
   // Count Rank S / SSS for Teacher Stats
   const rankSCount = leaderboard.filter((u, idx) => {
     const gr = calculateGameRank(u.avgScore, u.rank || idx + 1, totalStudentsInClass, u.completedTests, minRequiredTests);
-    return gr.rank === "S" || gr.rank === "SSS";
+    return gr.rank === "S" || gr.rank === "SS" || gr.rank === "SSS"; // S trở lên (trước đây bỏ sót SS)
   }).length;
 
   return (
     <div className="space-y-6 w-full">
-      {/* Route Header Title */}
-      <div className="flex items-center justify-between px-3 sm:px-0">
+      {/* Route Header Title — màn hẹp: nút chuyển góc nhìn xuống hàng dưới thay vì bị cắt */}
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between px-3 sm:px-0">
         <div className="flex flex-col gap-1 w-full sm:w-auto">
           {/* Line 1: Icon Swords on far left + HỆ THỐNG THỢ SĂN */}
           <div className="flex items-center gap-2">

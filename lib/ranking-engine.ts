@@ -4,6 +4,7 @@ import {
   RANK_THEMES,
   calculateSimplePowerScore,
   determineScoreRankTier,
+  rankTierByPosition,
 } from "./game-rank";
 
 export interface StudentInput {
@@ -25,6 +26,8 @@ export interface HunterStudentOutput {
 
   // Status Flags
   isZeroTests: boolean;
+  /** Chưa đủ số bài tối thiểu → vị trí chỉ là tạm tính (xếp sau mọi người đã đủ bài) */
+  isProvisional: boolean;
 
   // Ranks
   rank: GameRankType | null;
@@ -75,21 +78,8 @@ function deterministicTieBreak(a: HunterStudentOutput, b: HunterStudentOutput): 
   return a.id.localeCompare(b.id);
 }
 
-/**
- * Assign Rank Tier based on Official Position & Total Count
- */
-function assignRankTierByPosition(position: number, totalCount: number): GameRankType {
-  if (position <= 3) return 'SSS';
-  const top5Count = Math.max(3, Math.ceil(totalCount * 0.05));
-  if (position <= top5Count) return 'SS';
-  const top10Count = Math.max(top5Count, Math.ceil(totalCount * 0.10));
-  if (position <= top10Count) return 'S';
-  const top25Count = Math.max(top10Count, Math.ceil(totalCount * 0.25));
-  if (position <= top25Count) return 'A';
-  const top50Count = Math.max(top25Count, Math.ceil(totalCount * 0.50));
-  if (position <= top50Count) return 'B';
-  return 'C';
-}
+/** Hạng theo vị trí — dùng chung với lib/game-rank.ts để mọi màn hiển thị cùng một hạng. */
+const assignRankTierByPosition = rankTierByPosition;
 
 /**
  * MAIN RANKING ENGINE: Process all student attempts into official Hunter Leaderboard Output
@@ -119,6 +109,7 @@ export function calculateHunterLeaderboard(
       name: s.name || "Thợ săn",
       image: s.image || "",
       isZeroTests,
+      isProvisional: true,
       rank: initialRank,
       provisionalRank: initialRank,
       theme,
@@ -134,35 +125,40 @@ export function calculateHunterLeaderboard(
       movement: {
         previousPosition: s.previousRank || null,
         delta: s.rankChange || 0,
-        direction: s.rankChange ? (s.rankChange > 0 ? "up" : s.rankChange < 0 ? "down" : "same") : "new",
-        displayDeltaText: s.rankChange ? (s.rankChange > 0 ? `↑ ${s.rankChange}` : s.rankChange < 0 ? `↓ ${Math.abs(s.rankChange)}` : "-") : "NEW",
+        // rankChange null = chưa có dữ liệu tuần trước để so (không phải "mới vào") → hiện "—"
+        direction: typeof s.rankChange === "number" ? (s.rankChange > 0 ? "up" : s.rankChange < 0 ? "down" : "same") : "new",
+        displayDeltaText: typeof s.rankChange === "number" ? (s.rankChange > 0 ? `↑ ${s.rankChange}` : s.rankChange < 0 ? `↓ ${Math.abs(s.rankChange)}` : "–") : "—",
       },
     };
   });
 
   // All active students with tests participate in leaderboard
   const activeStudents = processedList.filter((s) => !s.isZeroTests);
-  
-  // If inputs already have backend rank position, sort by backend rank (s.rank)
+
+  // Vị trí chính thức từ server (chỉ học sinh đủ số bài tối thiểu mới có). Người chưa đủ bài xếp SAU
+  // tất cả người đã đủ (theo điểm sức mạnh) và mang nhãn "Tạm tính" — trước đây hai nhóm bị trộn
+  // trong cùng một phép sắp xếp nên có thể có hai người cùng hiện "#1".
+  const backendRank = new Map<string, number>();
+  for (const s of students) {
+    const r = (s as any)?.rank;
+    if (typeof r === "number" && r > 0) backendRank.set(s.id, r);
+  }
   activeStudents.sort((a, b) => {
-    const rawA = students.find((s) => s.id === a.id);
-    const rawB = students.find((s) => s.id === b.id);
-    const rankA = (rawA as any)?.rank;
-    const rankB = (rawB as any)?.rank;
-    if (typeof rankA === "number" && typeof rankB === "number") {
-      return rankA - rankB;
-    }
+    const ra = backendRank.get(a.id);
+    const rb = backendRank.get(b.id);
+    if (ra !== undefined && rb !== undefined) return ra - rb;
+    if (ra !== undefined) return -1;
+    if (rb !== undefined) return 1;
     return deterministicTieBreak(a, b);
   });
 
   const totalCount = activeStudents.length || 1;
 
-  // Assign official Leaderboard positions & Ranks
+  // Assign official Leaderboard positions & Ranks (liên tục 1..n, không trùng)
   activeStudents.forEach((student, index) => {
-    const rawInput = students.find((s) => s.id === student.id);
-    const backendRank = (rawInput as any)?.rank;
-    const position = typeof backendRank === "number" && backendRank > 0 ? backendRank : index + 1;
+    const position = index + 1;
     student.position = position;
+    student.isProvisional = !backendRank.has(student.id);
     student.totalEligibleStudents = totalCount;
 
     const rankTier = assignRankTierByPosition(position, totalCount);

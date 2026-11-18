@@ -5,7 +5,13 @@ import { auth } from "@/auth";
 import { DEFAULT_RANKING_CONFIG, RankStatus, RankConfirmationState } from "@/lib/ranking-config";
 import { calculateRankingScore } from "@/lib/ranking-calculator";
 import { calculateActivityEngine, BUSINESS_TIMEZONE } from "@/lib/ranking/activity-engine";
-import { calculateStudentHistory, getWeekCode, DBLeaderboardSnapshot } from "@/lib/ranking/history-engine";
+import {
+  calculateStudentHistory,
+  getWeekCode,
+  getVietnamWeekStart,
+  getVietnamMonthStart,
+  DBLeaderboardSnapshot,
+} from "@/lib/ranking/history-engine";
 import { calculateGrowthEngine, SnapshotForGrowth } from "@/lib/ranking/growth-engine";
 import { calculateClassStatsEngine } from "@/lib/ranking/class-stats-engine";
 import { evaluateQuestEngine } from "@/lib/ranking/quest-engine";
@@ -61,75 +67,74 @@ export interface GetRankingOptions {
 }
 
 import { unstable_cache } from "next/cache";
+import type { Prisma } from "@prisma/client";
+
+// Số lượt làm bài tối đa lấy cho mỗi học sinh. Đủ lớn để học sinh học lâu năm không bị cắt
+// completedTests / điểm TB (trước đây 100), nhưng vẫn có trần để giới hạn bộ nhớ khi tải cả lớp/toàn trường.
+const MAX_ATTEMPTS_PER_STUDENT = 400;
+
+// Số bài tối thiểu trong kỳ (tuần/tháng) để được lên bảng xếp hạng theo kỳ — tránh 1 bài may mắn đứng top.
+const MIN_TESTS_FOR_PERIOD_BOARD = 2;
 
 const fetchRawRankingBaseData = unstable_cache(
   async (classIdKey: string) => {
     const targetClassId = classIdKey === "ALL" ? null : classIdKey;
-    let studentsInClass: any[] = [];
     let studyClassName = "Bảng Xếp Hạng Chung";
+    let classCourseIds: string[] = [];
+    const now = new Date();
 
     if (targetClassId) {
-      const cls = await prisma.studyClass.findUnique({ where: { id: targetClassId } });
-      if (cls) studyClassName = cls.name;
-
-      studentsInClass = await prisma.user.findMany({
-        where: { classId: targetClassId, role: "STUDENT" },
-        select: {
-          id: true,
-          name: true,
-          image: true,
-          attempts: {
-            where: { score: { not: null } },
-            select: {
-              score: true,
-              completedAt: true,
-              startedAt: true,
-              testId: true,
-              test: {
-                select: {
-                  title: true,
-                  lesson: { select: { title: true } },
-                },
-              },
-            },
-            orderBy: { completedAt: "desc" },
-            take: 100,
-          },
-        },
+      const cls = await prisma.studyClass.findUnique({
+        where: { id: targetClassId },
+        select: { name: true, courses: { select: { id: true } } },
       });
-    } else {
-      studentsInClass = await prisma.user.findMany({
-        where: { role: "STUDENT" },
-        select: {
-          id: true,
-          name: true,
-          image: true,
-          attempts: {
-            where: { score: { not: null } },
-            select: {
-              score: true,
-              completedAt: true,
-              startedAt: true,
-              testId: true,
-              test: {
-                select: {
-                  title: true,
-                  lesson: { select: { title: true } },
-                },
-              },
-            },
-            orderBy: { completedAt: "desc" },
-            take: 100,
-          },
-        },
-      });
+      if (cls) {
+        studyClassName = cls.name;
+        classCourseIds = cls.courses.map((c) => c.id);
+      }
     }
 
+    // Tài khoản demo (isDemo) không tham gia xếp hạng. Học sinh chưa duyệt vẫn được giữ (quyết định sản phẩm).
+    const studentsInClass: any[] = await prisma.user.findMany({
+      where: targetClassId
+        ? { classId: targetClassId, role: "STUDENT", isDemo: false }
+        : { role: "STUDENT", isDemo: false },
+      select: {
+        id: true,
+        name: true,
+        image: true,
+        attempts: {
+          where: { score: { not: null } },
+          select: {
+            score: true,
+            completedAt: true,
+            startedAt: true,
+            testId: true,
+            test: {
+              select: {
+                title: true,
+                lesson: { select: { title: true } },
+              },
+            },
+          },
+          orderBy: { completedAt: "desc" },
+          take: MAX_ATTEMPTS_PER_STUDENT,
+        },
+      },
+    });
+
+    // Snapshot chỉ được dùng cho: hạng tuần trước (W-1) và lịch sử 3 tuần trước của học sinh (W-3..W-1)
+    // → chỉ tải đúng các tuần đó (và chỉ học sinh trong lớp khi xem theo lớp), không tải toàn bộ lịch sử.
+    const historyWeekCodes = [-3, -2, -1].map((offset) => getWeekCode(now, offset));
     let dbSnapshots: DBLeaderboardSnapshot[] = [];
     try {
       if ((prisma as any).leaderboardSnapshot) {
         dbSnapshots = await (prisma as any).leaderboardSnapshot.findMany({
-          where: { snapshotType: "WEEKLY" },
+          where: {
+            snapshotType: "WEEKLY",
+            periodCode: { in: historyWeekCodes },
+            ...(targetClassId ? { userId: { in: studentsInClass.map((s) => s.id) } } : {}),
+          },
           select: {
             userId: true,
             periodCode: true,
@@ -145,66 +150,74 @@ const fetchRawRankingBaseData = unstable_cache(
       dbSnapshots = [];
     }
 
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-    // Extract all test IDs that at least 1 student IN THIS CLASS has attempted
-    const attemptedTestIdsSet = new Set<string>();
-    studentsInClass.forEach((student) => {
-      student.attempts?.forEach((att: any) => {
-        if (att.testId && att.score !== null) {
-          attemptedTestIdsSet.add(att.testId);
-        }
-      });
-    });
-    const classAttemptedTestIds = Array.from(attemptedTestIdsSet);
-
-    // 3 Filter rules for Alarm Matrix:
-    // 1. Created within the last 30 days (in current month)
-    // 2. Created at least 7 days ago (late by 1 week; current week tests excluded)
-    // 3. At least 1 student IN THIS CLASS has submitted an attempt
-    let publishedTests = await prisma.test.findMany({
-      where: {
-        id: { in: classAttemptedTestIds },
-        createdAt: {
-          gte: thirtyDaysAgo,
-          lte: sevenDaysAgo,
+    // Bài chưa tới hạn nộp (dueDate ở tương lai) không được tính là "đã bỏ lỡ" trong ma trận.
+    const notDueInFuture: Prisma.TestWhereInput = { OR: [{ dueDate: null }, { dueDate: { lte: now } }] };
+    const findMatrixTests = (where: Prisma.TestWhereInput) =>
+      prisma.test.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          title: true,
+          lessonId: true,
+          courseId: true,
+          createdAt: true,
+          dueDate: true,
+          lesson: { select: { title: true } },
         },
-      },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, title: true, lessonId: true, courseId: true, lesson: { select: { title: true } } },
-    });
+      });
 
-    // Fallback 1: If empty in [30d, 7d] window, include tests in 30d with >= 1 attempt from THIS class
-    if (publishedTests.length === 0) {
-      publishedTests = await prisma.test.findMany({
-        where: {
-          id: { in: classAttemptedTestIds },
-          createdAt: {
-            gte: thirtyDaysAgo,
+    let publishedTests: Awaited<ReturnType<typeof findMatrixTests>>;
+
+    if (classCourseIds.length > 0) {
+      // Lớp có gán khoá học → chỉ lấy bài kiểm tra thuộc các khoá đó (bài của bài học đã xuất bản,
+      // hoặc bài kiểm tra cuối khoá), đã tới hạn hoặc không có hạn; mới nhất theo (dueDate ?? createdAt).
+      const candidates = await findMatrixTests({
+        AND: [
+          notDueInFuture,
+          {
+            OR: [
+              { courseId: { in: classCourseIds } },
+              { lesson: { isPublished: true, chapter: { courseId: { in: classCourseIds } } } },
+            ],
           },
-        },
-        orderBy: { createdAt: "desc" },
-        select: { id: true, title: true, lessonId: true, courseId: true, lesson: { select: { title: true } } },
+        ],
       });
+      const effectiveTime = (t: { dueDate: Date | null; createdAt: Date }) =>
+        new Date(t.dueDate ?? t.createdAt).getTime();
+      publishedTests = candidates.sort((a, b) => effectiveTime(b) - effectiveTime(a)).slice(0, 8);
+    } else {
+      // Không có lớp (nhóm "ALL") hoặc lớp chưa gán khoá học → giữ cách cũ: bài có ít nhất 1 học sinh
+      // trong phạm vi đã nộp, nhưng vẫn loại bài chưa tới hạn.
+      const attemptedTestIdsSet = new Set<string>();
+      studentsInClass.forEach((student) => {
+        student.attempts?.forEach((att: any) => {
+          if (att.testId && att.score !== null) {
+            attemptedTestIdsSet.add(att.testId);
+          }
+        });
+      });
+      const classAttemptedTestIds = Array.from(attemptedTestIdsSet);
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      // Ưu tiên bài tạo trong khoảng [30 ngày trước, 7 ngày trước]
+      publishedTests = await findMatrixTests({
+        AND: [notDueInFuture, { id: { in: classAttemptedTestIds }, createdAt: { gte: thirtyDaysAgo, lte: sevenDaysAgo } }],
+      });
+
+      // Dự phòng: bài tạo trong 30 ngày gần nhất
+      if (publishedTests.length === 0) {
+        publishedTests = await findMatrixTests({
+          AND: [notDueInFuture, { id: { in: classAttemptedTestIds }, createdAt: { gte: thirtyDaysAgo } }],
+        });
+      }
+
+      publishedTests = publishedTests.slice(0, 8);
     }
 
-    // Fallback 2: If still empty, get overall tests with attempts from THIS class
-    if (publishedTests.length === 0) {
-      publishedTests = await prisma.test.findMany({
-        where: {
-          id: { in: classAttemptedTestIds },
-        },
-        orderBy: { createdAt: "desc" },
-        select: { id: true, title: true, lessonId: true, courseId: true, lesson: { select: { title: true } } },
-      });
-    }
-
-    // Sort chronologically (oldest to newest) for left-to-right matrix display
+    // Sắp xếp cũ → mới để hiển thị ma trận từ trái sang phải
     publishedTests = [...publishedTests].reverse();
-    if (publishedTests.length > 8) {
-      publishedTests = publishedTests.slice(publishedTests.length - 8);
-    }
 
     const totalPublishedTests = await prisma.test.count();
 
@@ -261,14 +274,23 @@ export async function getRankingData(options: GetRankingOptions = {}) {
   // Dữ liệu trong unstable_cache dùng chung → ẩn danh sau khi lấy ra, chỉ cho tài khoản demo
   const studentsInClass = await maskUsersForDemo(rawBaseData.studentsInClass, prismaBase);
 
+  // Hạng tuần trước CHỈ lấy từ snapshot thật của tuần trước (W-1). Snapshot có thể được chốt theo
+  // toàn trường hoặc theo lớp khác phạm vi đang xem → xếp lại thứ tự trong đúng phạm vi hiện tại
+  // để so "hạng với hạng" cùng thang. Không có snapshot → previousRank/rankChange = null.
+  const scopeUserIds = new Set<string>(studentsInClass.map((s) => s.id));
+  const prevWeekSnapshots = dbSnapshots
+    .filter((s) => s.periodCode === previousWeekCode && s.rank !== null && scopeUserIds.has(s.userId))
+    .sort(
+      (a, b) =>
+        (a.rank as number) - (b.rank as number) ||
+        b.rankingScore - a.rankingScore ||
+        a.userId.localeCompare(b.userId)
+    );
   const prevRankMap = new Map<string, number>();
-  dbSnapshots
-    .filter((s) => s.periodCode === previousWeekCode)
-    .forEach((snap) => {
-      if (snap.rank !== null) {
-        prevRankMap.set(snap.userId, snap.rank);
-      }
-    });
+  prevWeekSnapshots.forEach((snap, idx) => {
+    prevRankMap.set(snap.userId, idx + 1);
+  });
+  const hasPrevWeekSnapshots = prevRankMap.size > 0;
 
   const availableTests = Math.max(totalPublishedTests, 28);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -380,46 +402,15 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     return a.id.localeCompare(b.id);
   });
 
-  // Fallback simulated previous rank map if DB snapshots are missing for some/all students
-  const prevAttemptMetrics = eligibleStudents.map((student) => {
-    if (prevRankMap.has(student.id)) {
-      return { id: student.id, prevScore: student.rankingScore, dbRank: prevRankMap.get(student.id)! };
-    }
-    const rawAttempts = studentsInClass.find((s) => s.id === student.id)?.attempts || [];
-    if (rawAttempts.length >= 2) {
-      const prevAttempts = rawAttempts.slice(1);
-      let sum = 0;
-      prevAttempts.forEach((a: any) => { sum += (a.score || 0); });
-      const prevAvg = sum / prevAttempts.length;
-      return { id: student.id, prevScore: prevAvg, dbRank: null };
-    }
-    return { id: student.id, prevScore: student.rankingScore, dbRank: null };
-  });
-
-  const simulatedStudents = [...prevAttemptMetrics];
-  simulatedStudents.sort((a, b) => {
-    if (a.dbRank !== null && b.dbRank !== null) return a.dbRank - b.dbRank;
-    return b.prevScore - a.prevScore;
-  });
-
-  const effectivePrevRankMap = new Map<string, number>();
-  simulatedStudents.forEach((item, idx) => {
-    const calculatedRank = item.dbRank !== null ? item.dbRank : idx + 1;
-    effectivePrevRankMap.set(item.id, calculatedRank);
-  });
-
   const rankedEligible: RankingUser[] = eligibleStudents.map((student, index) => {
     const currentRank = index + 1;
-    const dbPrevRank = prevRankMap.get(student.id);
-    const prevRank = dbPrevRank !== undefined && dbPrevRank !== null 
-      ? dbPrevRank 
-      : (student.completedTests > 1 ? effectivePrevRankMap.get(student.id) : null);
+    const prevRank = prevRankMap.get(student.id) ?? null;
+    const rankChange = prevRank !== null ? prevRank - currentRank : null;
 
-    const rankChange = (prevRank !== undefined && prevRank !== null) ? prevRank - currentRank : null;
-
+    // Chưa có snapshot tuần trước cho cả phạm vi → trạng thái trung tính (SAME), không gắn "Mới" cho tất cả.
     let rankStatus = RankStatus.SAME;
-    if (prevRank === undefined || prevRank === null) {
-      rankStatus = RankStatus.NEW;
+    if (prevRank === null) {
+      rankStatus = hasPrevWeekSnapshots ? RankStatus.NEW : RankStatus.SAME;
     } else if (currentRank < prevRank) {
       rankStatus = RankStatus.UP;
     } else if (currentRank > prevRank) {
@@ -465,9 +456,12 @@ export async function getRankingData(options: GetRankingOptions = {}) {
   const classStats = calculateClassStatsEngine(classStatsInputs);
 
   // 3. Growth Engine
-  const snapshotsForGrowth: SnapshotForGrowth[] = dbSnapshots
-    .filter((s) => s.periodCode === previousWeekCode)
-    .map((s) => ({ userId: s.userId, score: s.score, rank: s.rank }));
+  // Dùng hạng đã xếp lại trong phạm vi hiện tại (cùng thang với hạng hiện tại)
+  const snapshotsForGrowth: SnapshotForGrowth[] = prevWeekSnapshots.map((s) => ({
+    userId: s.userId,
+    score: s.score,
+    rank: prevRankMap.get(s.userId) ?? null,
+  }));
 
   const growthEngineOutput = calculateGrowthEngine(
     rankedEligible.map((s) => ({
@@ -600,8 +594,9 @@ export async function getRankingData(options: GetRankingOptions = {}) {
     quests: questEngineOutput,
     sessionProgress,
     weeklyProgress,
-    weeklyLeaderboard: computeTimeframeLeaderboard(studentsInClass, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), currentUserId),
-    monthlyLeaderboard: computeTimeframeLeaderboard(studentsInClass, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), currentUserId),
+    // Kỳ theo lịch giờ VN: tuần từ Thứ Hai 00:00, tháng từ ngày 1 00:00
+    weeklyLeaderboard: computeTimeframeLeaderboard(studentsInClass, getVietnamWeekStart(new Date()), currentUserId),
+    monthlyLeaderboard: computeTimeframeLeaderboard(studentsInClass, getVietnamMonthStart(new Date()), currentUserId),
     teacherAnalytics: {
       gradeDistribution,
       studentsNeedingSupport,
@@ -653,14 +648,14 @@ function computeTimeframeLeaderboard(
       rankingScore: powerScore,
       powerScore,
       streak: activity.currentStreak,
-      isEligible: completedTests > 0,
+      isEligible: completedTests >= MIN_TESTS_FOR_PERIOD_BOARD,
       isCurrentUser: student.id === currentUserId,
       lastSubmitAt: validAttempts[0]?.completedAt || null,
       rankChange: 0,
     };
   });
 
-  const active = metrics.filter((s) => s.completedTests > 0);
+  const active = metrics.filter((s) => s.completedTests >= MIN_TESTS_FOR_PERIOD_BOARD);
   active.sort((a, b) => {
     if ((b.powerScore || 0) !== (a.powerScore || 0)) return (b.powerScore || 0) - (a.powerScore || 0);
     if (b.avgScore !== a.avgScore) return b.avgScore - a.avgScore;
@@ -703,19 +698,24 @@ export async function freezeWeeklySnapshot(studyClassId?: string) {
 
   const currentWeekCode = getWeekCode(new Date(), 0);
 
+  // Cùng phạm vi, ngưỡng và công thức điểm với getRankingData để hạng chốt so sánh được với hạng hiện tại
   const students = await prisma.user.findMany({
-    where: studyClassId ? { classId: studyClassId, role: "STUDENT" } : { role: "STUDENT" },
+    where: studyClassId
+      ? { classId: studyClassId, role: "STUDENT", isDemo: false }
+      : { role: "STUDENT", isDemo: false },
     select: {
       id: true,
       classId: true,
       attempts: {
         where: { score: { not: null } },
-        select: { score: true, completedAt: true, testId: true },
+        select: { score: true, completedAt: true, startedAt: true, testId: true },
+        orderBy: { completedAt: "desc" },
+        take: MAX_ATTEMPTS_PER_STUDENT,
       },
     },
   });
 
-  const MIN_REQUIRED_TESTS = 5;
+  const MIN_REQUIRED_TESTS = DEFAULT_RANKING_CONFIG.minRequiredTests;
   const calculated = students.map((s) => {
     const testScoreMap = new Map<string, number>();
     s.attempts.forEach((a) => {
@@ -730,7 +730,8 @@ export async function freezeWeeklySnapshot(studyClassId?: string) {
       total += sc;
     });
     const avgScore = completedTests > 0 ? parseFloat((total / completedTests).toFixed(1)) : 0;
-    const rankingScore = parseFloat((avgScore * 10 + completedTests * 1).toFixed(1));
+    const activity = calculateActivityEngine(s.attempts, new Date(), BUSINESS_TIMEZONE);
+    const rankingScore = calculateRankingScore(avgScore, completedTests, activity.currentStreak).totalScore;
 
     const isEligible = completedTests >= MIN_REQUIRED_TESTS;
 
@@ -745,7 +746,13 @@ export async function freezeWeeklySnapshot(studyClassId?: string) {
   });
 
   const eligible = calculated.filter((c) => c.isEligible);
-  eligible.sort((a, b) => b.rankingScore - a.rankingScore);
+  eligible.sort(
+    (a, b) =>
+      b.rankingScore - a.rankingScore ||
+      b.score - a.score ||
+      b.completedTests - a.completedTests ||
+      a.userId.localeCompare(b.userId)
+  );
 
   if (!(prisma as any).leaderboardSnapshot) {
     return { success: false, count: 0, periodCode: currentWeekCode, message: "Prisma client needs restart" };

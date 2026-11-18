@@ -5,6 +5,8 @@ import { RankingViewManager } from "@/components/ranking/RankingViewManager";
 import { ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { SeasonalBanner } from "@/components/seasonal/SeasonalBanner";
+import { getSeasonalTheme, daysUntilChristmasEve, daysUntilTet } from "@/lib/seasonal-theme";
 
 export const revalidate = 60; // Cache page for 60 seconds (revalidates in background)
 
@@ -15,6 +17,7 @@ export default async function RankingPage() {
     redirect("/login");
   }
 
+  const season = getSeasonalTheme();
   let rankingData;
   try {
     rankingData = await getRankingData();
@@ -70,6 +73,10 @@ export default async function RankingPage() {
 
           {/* Ranking Content inside 100% full-bleed theme */}
           <div className="relative z-10 px-0 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
+            <SeasonalBanner
+              season={season}
+              daysLeft={season === "christmas" ? daysUntilChristmasEve() : season === "tet" ? daysUntilTet() : null}
+            />
             <RankingViewManager data={rankingData} currentUserId={session.user.id || ""} />
           </div>
         </main>
