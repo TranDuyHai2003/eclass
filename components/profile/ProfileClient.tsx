@@ -8,6 +8,7 @@ import { signOut } from "next-auth/react";
 import axios from "axios";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { resizeImageFile } from "@/lib/resize-image";
 
 interface ProfileClientProps {
   user: {
@@ -41,10 +42,12 @@ export default function ProfileClient({ user }: ProfileClientProps) {
     setStatusMsg(null);
 
     try {
+      // Thu nhỏ trước khi tải lên: ảnh điện thoại 2–5MB → ~30–60KB (512px), tải nhanh và nhẹ cho mọi trang
+      const upload = await resizeImageFile(file, 512);
       const res = await axios.put<{ publicUrl: string }>(
-        `/api/upload/proxy?fileName=avatar_${user.id}_${Date.now()}_${encodeURIComponent(file.name)}`,
-        file,
-        { headers: { "Content-Type": file.type } }
+        `/api/upload/proxy?fileName=avatar_${user.id}_${Date.now()}_${encodeURIComponent(upload.name)}`,
+        upload,
+        { headers: { "Content-Type": upload.type } }
       );
       
       setImage(res.data.publicUrl);
