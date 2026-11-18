@@ -49,7 +49,8 @@ export function Last8TestsMatrixBoard({
         matrix,
         completedCountInLast8: completedCount,
         totalTracked: matrix.length,
-        rankPos: user.rank || idx + 1,
+        // Chỉ hiện hạng chính thức; chưa có hạng (chưa đủ bài / 0 bài) thì không gán số theo thứ tự mảng
+        rankPos: typeof user.rank === "number" && user.rank > 0 ? user.rank : null,
       };
     });
   }, [leaderboard]);
@@ -177,7 +178,7 @@ export function Last8TestsMatrixBoard({
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-xs font-black px-2 py-0.5 rounded-md bg-slate-900 border border-slate-700 text-cyan-300">
-                    #{String(displayPos).padStart(2, "0")}
+                    {displayPos ? `#${String(displayPos).padStart(2, "0")}` : "—"}
                   </span>
                   <span
                     className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
@@ -307,7 +308,7 @@ export function Last8TestsMatrixBoard({
                   {/* Position */}
                   <td className="py-2.5 px-1.5 text-center font-black sticky left-0 bg-[#080B12] group-hover/row:bg-slate-900 z-10 w-[55px] sm:w-[65px] shrink-0">
                     <span className={`text-xs sm:text-sm font-mono font-black ${isUnfinished ? "text-amber-400" : "text-slate-300"}`}>
-                      #{String(displayPos).padStart(2, "0")}
+                      {displayPos ? `#${String(displayPos).padStart(2, "0")}` : "—"}
                     </span>
                   </td>
 

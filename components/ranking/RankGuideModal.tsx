@@ -10,7 +10,7 @@ interface RankGuideModalProps {
   minRequiredTests?: number;
 }
 
-export function RankGuideModal({ isOpen, onClose }: RankGuideModalProps) {
+export function RankGuideModal({ isOpen, onClose, minRequiredTests = 5 }: RankGuideModalProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -83,6 +83,9 @@ export function RankGuideModal({ isOpen, onClose }: RankGuideModalProps) {
             </div>
             <div className="p-2.5 rounded-lg bg-red-950/80 border border-red-500/80 text-red-300 font-bold col-span-2 text-center animate-pulse">
               🚨 DANGER (BÁO ĐỘNG): Chưa làm bài thi nào
+            </div>
+            <div className="p-2.5 rounded-lg bg-amber-950/50 border border-amber-500/50 text-amber-200 font-bold col-span-2 text-center">
+              ⏳ TẠM TÍNH: Chưa đủ {minRequiredTests} bài → xếp sau những bạn đã đủ bài, chưa tính hạng chính thức
             </div>
           </div>
         </div>

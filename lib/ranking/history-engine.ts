@@ -20,16 +20,44 @@ export interface StudentHistoryOutput {
 }
 
 /**
- * Generate week code ISO format: "YYYY-Www"
+ * Múi giờ nghiệp vụ: Việt Nam (Asia/Ho_Chi_Minh) = UTC+7, không có giờ mùa hè.
+ * Server production chạy UTC nên KHÔNG được dùng getter giờ địa phương (getDate, getDay…)
+ * — mọi phép tính tuần/tháng đều quy về "giờ treo tường" Việt Nam qua offset cố định.
+ */
+export const VN_UTC_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+/** Dời mốc thời gian sang giờ VN để đọc bằng getter UTC (getUTCFullYear, getUTCDay…). */
+function toVietnamWallClock(date: Date): Date {
+  return new Date(date.getTime() + VN_UTC_OFFSET_MS);
+}
+
+/** Thứ Hai 00:00 giờ VN của tuần chứa `date` (trả về mốc UTC thật). */
+export function getVietnamWeekStart(date: Date = new Date()): Date {
+  const vn = toVietnamWallClock(date);
+  const dayNum = vn.getUTCDay() || 7; // Thứ Hai = 1 … Chủ Nhật = 7
+  const startAsVnWallClock = Date.UTC(vn.getUTCFullYear(), vn.getUTCMonth(), vn.getUTCDate() - (dayNum - 1));
+  return new Date(startAsVnWallClock - VN_UTC_OFFSET_MS);
+}
+
+/** Ngày 1 lúc 00:00 giờ VN của tháng chứa `date` (trả về mốc UTC thật). */
+export function getVietnamMonthStart(date: Date = new Date()): Date {
+  const vn = toVietnamWallClock(date);
+  return new Date(Date.UTC(vn.getUTCFullYear(), vn.getUTCMonth(), 1) - VN_UTC_OFFSET_MS);
+}
+
+/**
+ * Generate week code ISO format: "YYYY-Www" — tính theo giờ Việt Nam (tuần bắt đầu Thứ Hai 00:00 VN),
+ * độc lập với múi giờ của server.
  */
 export function getWeekCode(date: Date = new Date(), offsetWeeks: number = 0): string {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const vn = toVietnamWallClock(date);
+  const d = new Date(Date.UTC(vn.getUTCFullYear(), vn.getUTCMonth(), vn.getUTCDate()));
   d.setUTCDate(d.getUTCDate() + offsetWeeks * 7);
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getFullYear(), 0, 1));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  return `${d.getFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
 }
 
 export interface DBLeaderboardSnapshot {
