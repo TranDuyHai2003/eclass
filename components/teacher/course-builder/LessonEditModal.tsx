@@ -569,7 +569,7 @@ export function LessonEditModal({
             </div>
           </TabsContent>
 
-          <TabsContent value="quiz" className="flex-1 p-12 text-center space-y-6 animate-in zoom-in-95 duration-500">
+          <TabsContent value="quiz" className="flex-1 p-6 sm:p-12 text-center space-y-6 overflow-y-auto animate-in zoom-in-95 duration-500">
             <div className="text-6xl">📝</div>
             <div className="space-y-2">
                <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Bài tập & Quiz trực tuyến</h3>
