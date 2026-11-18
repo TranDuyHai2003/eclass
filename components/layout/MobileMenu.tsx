@@ -39,7 +39,7 @@ export function MobileMenu({ user }: MobileMenuProps) {
                
                <SheetTitle className="flex items-center gap-3 relative z-10">
                  <div className="flex items-center justify-center">
-                    <img src="/logo.png?v=1" alt="Logo" className="h-8 w-auto object-contain" />
+                    <img src="/logo-96.webp" width={85} height={96} alt="Logo" className="h-8 w-auto object-contain" />
                  </div>
                  <div className="flex flex-col items-start">
                     <span className="text-base font-black text-slate-900 uppercase tracking-tighter leading-none">

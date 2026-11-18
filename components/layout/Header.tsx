@@ -18,6 +18,7 @@ import {
 import { MobileMenu } from "./MobileMenu";
 import { SearchBar } from "./SearchBar";
 import { cn } from "@/lib/utils";
+import { getAvatarThumbUrl } from "@/lib/game-rank";
 
 export default async function Header() {
   const session = await auth();
@@ -38,7 +39,7 @@ export default async function Header() {
             >
               <div className="relative flex items-center justify-center  rounded-2xl">
                 <img
-                  src="/logo.png?v=1"
+                  src="/logo-96.webp" width={85} height={96}
                   alt="thatdehoctoan"
                   className="h-8 sm:h-9 w-auto object-contain transform group-hover:scale-110 transition-transform duration-500"
                 />
@@ -94,7 +95,7 @@ export default async function Header() {
                   >
                     {session.user.image ? (
                       <img
-                        src={session.user.image}
+                        src={getAvatarThumbUrl(session.user.name, session.user.image)}
                         alt="Avatar"
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />

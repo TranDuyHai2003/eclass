@@ -1,9 +1,12 @@
 "use client";
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BookOpen, Play, Video, ArrowRight, Star, Sparkles } from "lucide-react";
 import { cn } from '@/lib/utils';
+import { canOptimizeImage } from '@/lib/image-hosts';
+import { getAvatarThumbUrl } from "@/lib/game-rank";
 
 interface CourseCardProps {
   course: {
@@ -42,10 +45,14 @@ export default function CourseCard({ course, isLocked = false, progress }: Cours
       {/* Thumbnail area with vibrant overlay */}
       <div className="aspect-[16/10] relative overflow-hidden bg-slate-100 shrink-0">
         {course.thumbnail ? (
-          <img 
-            src={course.thumbnail} 
+          // next/image: tự thu nhỏ ảnh gốc (~1MB) về đúng cỡ thẻ, WebP/AVIF, tải lười
+          <Image
+            src={course.thumbnail}
             alt={course.title}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+            fill
+            unoptimized={!canOptimizeImage(course.thumbnail)}
+            sizes="(min-width: 1536px) 22vw, (min-width: 1024px) 30vw, (min-width: 640px) 45vw, 92vw"
+            className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
           />
         ) : (
           // Chưa có ảnh bìa → ảnh bìa tự tạo từ tên khoá học (màu cố định theo tên)
@@ -121,7 +128,7 @@ export default function CourseCard({ course, isLocked = false, progress }: Cours
           <div className="flex items-center gap-3">
             <div className="relative">
               <Avatar className="h-9 w-9 border-2 border-white shadow-sm ring-1 ring-slate-100">
-                <AvatarImage src={course.user?.image || ""} />
+                <AvatarImage src={course.user?.image ? getAvatarThumbUrl(course.user.name, course.user.image, 64) : ""} />
                 <AvatarFallback className="bg-blue-50 text-blue-600 font-black text-xs sm:text-sm">
                   {course.user?.name?.[0] || "T"}
                 </AvatarFallback>

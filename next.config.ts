@@ -1,34 +1,14 @@
 import type { NextConfig } from "next";
+import { OPTIMIZED_IMAGE_HOSTS } from "./lib/image-hosts";
 
 const nextConfig: NextConfig = {
   output: "standalone",
   images: {
+    // Ảnh trên CDN đặt tên theo mã ngẫu nhiên (đổi ảnh = đổi URL) → giữ bản đã tối ưu 7 ngày
+    minimumCacheTTL: 60 * 60 * 24 * 7,
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "eclass.b-cdn.net",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "vz-7449c6de-22c.b-cdn.net",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "cdn.teacherduc.me",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "ui-avatars.com",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-        pathname: "/**",
-      },
+      ...OPTIMIZED_IMAGE_HOSTS.map((hostname) => ({ protocol: "https" as const, hostname, pathname: "/**" })),
+      { protocol: "https", hostname: "ui-avatars.com", pathname: "/**" },
     ],
   },
 };

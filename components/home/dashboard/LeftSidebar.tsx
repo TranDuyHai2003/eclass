@@ -15,6 +15,7 @@ import {
   Trophy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getAvatarThumbUrl } from "@/lib/game-rank";
 
 export function LeftSidebar({ user }: { user: any }) {
   const pathname = usePathname();
@@ -36,7 +37,7 @@ export function LeftSidebar({ user }: { user: any }) {
       <div className="p-8 flex items-center gap-4">
         <div className="w-12 h-12 rounded-2xl bg-blue-100 flex-shrink-0 overflow-hidden ring-4 ring-blue-50 shadow-lg shadow-blue-100 flex items-center justify-center">
            {user?.image ? (
-             <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
+             <img src={getAvatarThumbUrl(user.name, user.image)} alt={user.name} className="w-full h-full object-cover" />
            ) : (
              <div className="text-blue-600 font-black text-lg uppercase">
                 {user?.name?.[0].toUpperCase() || "K"}

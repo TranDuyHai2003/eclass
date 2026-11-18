@@ -575,7 +575,8 @@ export function ResultReview({
                           placeholder={null}
                         />
                       ) : !pdfFailed && (!anchorsReady || !reviewPdf) ? (
-                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm font-bold text-slate-500">
+                        // Giữ sẵn chỗ khi đang dò vị trí câu → nội dung bên dưới không bị đẩy xuống khi đề hiện ra (giảm giật bố cục)
+                        <div className="flex min-h-[38vh] items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm font-bold text-slate-500">
                           <span className="inline-flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin text-indigo-500" /> Đang tải đề bài...
                           </span>
@@ -599,6 +600,7 @@ export function ResultReview({
                               maxPageWidth={900}
                               scrollTarget={paperGuess}
                               highlightTarget={false}
+                              renderTextLayer={false}
                               renderLeft={
                                 <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Toàn bộ đề</span>
                               }

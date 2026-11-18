@@ -10,6 +10,7 @@ import {
   Phone 
 } from "lucide-react";
 import { NotificationBell } from "@/components/notification/NotificationBell";
+import { getAvatarThumbUrl } from "@/lib/game-rank";
 
 export function DashboardHeader({ user }: { user: any }) {
   return (
@@ -18,7 +19,7 @@ export function DashboardHeader({ user }: { user: any }) {
       <div className="flex items-center gap-6 min-w-[260px]">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="flex items-center justify-center transition-transform group-hover:scale-105">
-            <img src="/logo.png" alt="thatdehoctoan" className="h-8 sm:h-10 w-auto object-contain" />
+            <img src="/logo-96.webp" width={85} height={96} alt="thatdehoctoan" className="h-8 sm:h-10 w-auto object-contain" />
           </div>
           <span className="text-lg font-black text-slate-800 tracking-tighter uppercase leading-none">
             E-Class
@@ -66,7 +67,7 @@ export function DashboardHeader({ user }: { user: any }) {
                  className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 overflow-hidden group hover:ring-2 hover:ring-blue-200 transition-all"
                >
                  {user.image ? (
-                   <img src={user.image} alt="User" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                   <img src={getAvatarThumbUrl(user.name, user.image, 64)} alt="User" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                  ) : (
                    <div className="w-full h-full flex items-center justify-center text-blue-600 font-black text-sm">
                      {user.name?.[0].toUpperCase()}

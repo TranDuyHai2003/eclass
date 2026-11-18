@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { getAvatarThumbUrl } from "@/lib/game-rank";
 
 const teachers = [
   { name: "Môn Toán", image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Math", subject: "Toán" },
@@ -46,7 +47,7 @@ export function HomeHero() {
                 {teachers.map((t) => (
                     <div key={t.name} className="flex flex-col items-center group/card cursor-pointer">
                         <div className="relative w-full aspect-[3/4] bg-white/10 rounded-2xl border border-white/20 overflow-hidden transition-all group-hover/card:bg-white/20 group-hover/card:scale-105">
-                            <img src={t.image} alt={t.name} className="w-full h-full object-cover" />
+                            <img src={getAvatarThumbUrl(t.name, t.image)} alt={t.name} className="w-full h-full object-cover" />
                             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#2563EB] to-transparent p-2 text-center">
                                 <p className="text-[10px] font-bold text-white uppercase">{t.name}</p>
                             </div>

@@ -8,7 +8,7 @@ import { vi } from "date-fns/locale";
 import { CheckCircle2, XCircle, Clock, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { getSafeAvatarUrl } from "@/lib/game-rank";
+import { getAvatarThumbUrl } from "@/lib/game-rank";
 
 export default async function StudentAnalyticsPage({
   params,
@@ -45,7 +45,7 @@ export default async function StudentAnalyticsPage({
           <div className="flex items-center gap-4 min-w-0">
             <div className="w-16 h-16 shrink-0 rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
               <img 
-                src={getSafeAvatarUrl(data.student.name, data.student.image)} 
+                src={getAvatarThumbUrl(data.student.name, data.student.image)} 
                 alt={data.student.name || "Student"} 
                 className="w-full h-full object-cover"
               />

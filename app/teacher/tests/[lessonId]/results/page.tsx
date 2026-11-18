@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Users, Clock, Eye } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
+import { getAvatarThumbUrl } from "@/lib/game-rank";
 
 export default async function TeacherTestResultsPage({ params }: { params: Promise<{ lessonId: string }> }) {
   const session = await auth();
@@ -115,7 +116,7 @@ export default async function TeacherTestResultsPage({ params }: { params: Promi
                     <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-3">
                       <div className="w-8 h-8 bg-gray-200 rounded-full overflow-hidden">
                         {attempt.user.image ? (
-                           <img src={attempt.user.image} alt="Avatar" className="w-full h-full object-cover" />
+                           <img src={getAvatarThumbUrl(attempt.user.name, attempt.user.image, 64)} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
                            <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">
                               {attempt.user.name?.charAt(0).toUpperCase() || "U"}

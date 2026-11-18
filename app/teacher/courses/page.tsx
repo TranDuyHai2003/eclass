@@ -8,6 +8,8 @@ import { CourseClassSelector } from "@/components/teacher/CourseClassSelector"
 import { getClasses } from "@/actions/class"
 import { ChevronRight } from "lucide-react"
 import { SortSelect } from "@/components/ui/SortSelect"
+import Image from "next/image";
+import { canOptimizeImage } from "@/lib/image-hosts";
 
 type TeacherCourse = {
     id: string
@@ -71,10 +73,13 @@ export default async function TeacherCoursesPage({ searchParams }: { searchParam
                                 {/* Thumbnail */}
                                 <div className="aspect-[16/10] relative bg-slate-50 overflow-hidden shrink-0 pointer-events-none">
                                     {course.thumbnail ? (
-                                        <img 
-                                            src={course.thumbnail} 
-                                            alt={course.title} 
-                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out"
+                                        <Image
+                                            src={course.thumbnail}
+                                            alt={course.title}
+                                            fill
+                                            unoptimized={!canOptimizeImage(course.thumbnail)}
+                                            sizes="(min-width: 1280px) 25vw, (min-width: 768px) 45vw, 92vw"
+                                            className="object-cover group-hover:scale-110 transition-transform duration-1000 ease-out"
                                         />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-orange-50">
