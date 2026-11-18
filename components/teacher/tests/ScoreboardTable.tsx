@@ -201,30 +201,30 @@ export default function ScoreboardTable({
                     className="h-4 w-4 rounded border-slate-300"
                   />
                 </th>
-                <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap">
                   #
                 </th>
-                <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap">
                   Họ và tên
                 </th>
-                <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap">
                   <span className="inline-flex items-center gap-2">
-                    Diem <ArrowDown className="w-3 h-3 text-slate-300" />
+                    Điểm <ArrowDown className="w-3 h-3 text-slate-300" />
                   </span>
                 </th>
-                <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap">
                   Thời lượng
                 </th>
-                <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                <th className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap">
                   Ngày nộp
                 </th>
                 <th
-                  className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest"
-                  title="So lan hoc sinh roi khoi tab hoac thoat khoi man hinh bai thi"
+                  className="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap"
+                  title="Số lần học sinh rời khỏi tab hoặc thoát khỏi màn hình bài thi"
                 >
                   Rời khỏi
                 </th>
-                <th className="px-6 py-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                <th className="px-6 py-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap">
                   Hành động
                 </th>
               </tr>
@@ -279,10 +279,10 @@ export default function ScoreboardTable({
                       {attempt.score !== null ? attempt.score.toFixed(2) : "--"}
                     </span>
                   </td>
-                  <td className="px-4 py-5 text-xs font-bold text-slate-600">
+                  <td className="px-4 py-5 text-xs font-bold text-slate-600 whitespace-nowrap">
                     {formatDuration(attempt.startedAt, attempt.completedAt)}
                   </td>
-                  <td className="px-4 py-5 text-xs font-bold text-slate-600">
+                  <td className="px-4 py-5 text-xs font-bold text-slate-600 whitespace-nowrap">
                     {attempt.completedAt
                       ? formatDateTime(attempt.completedAt)
                       : "--"}

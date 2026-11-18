@@ -76,10 +76,11 @@ export default function CourseTestListClient({
           return (
             <div
               key={t.id}
-              className="px-8 py-6 hover:bg-slate-50/50 transition-colors group"
+              className="px-4 py-5 sm:px-6 lg:px-8 lg:py-6 hover:bg-slate-50/50 transition-colors group"
             >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="flex items-start gap-4">
+              {/* Màn rộng: thông tin | số liệu + nút trên một hàng; hẹp hơn: xuống hàng, nút tự xuống dòng */}
+              <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 xl:gap-6">
+                <div className="flex items-start gap-4 min-w-0 flex-1">
                   <div
                     className={cn(
                       "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
@@ -92,7 +93,7 @@ export default function CourseTestListClient({
                       <GraduationCap className="w-6 h-6 text-blue-600" />
                     )}
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-black text-slate-900 group-hover:text-blue-600 transition-colors text-base">
                         {displayTestTitle || t.title}
@@ -139,7 +140,7 @@ export default function CourseTestListClient({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-12">
+                <div className="flex flex-wrap items-center gap-x-8 gap-y-3 shrink-0">
                   <div className="text-center">
                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">
                       Lượt nộp
@@ -156,7 +157,7 @@ export default function CourseTestListClient({
                       {avgScore.toFixed(2)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"

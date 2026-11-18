@@ -1,7 +1,7 @@
 export default function RankingLoading() {
   return (
     <div className="page-shell min-h-screen bg-[#EBF3FF] pb-24 md:pb-12">
-      <div className="flex w-full min-h-[calc(100vh-5rem)]">
+      <div className="flex w-full min-h-[calc(100vh-4rem)]">
         {/* Left Sidebar Skeleton - Flush Left */}
         <aside className="hidden lg:block w-[250px] shrink-0 border-r border-slate-200/70 bg-white/70 backdrop-blur-xl p-3">
           <div className="sticky top-24 h-[400px] bg-white rounded-3xl animate-pulse p-4" />

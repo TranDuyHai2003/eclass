@@ -308,13 +308,13 @@ export function MultiLevelMatrixTable({
               <tr>
                 <th
                   rowSpan={2}
-                  className="sticky left-0 z-50 bg-slate-50 px-4 py-3 border-b border-r text-[10px] font-black uppercase text-slate-500 w-[60px] min-w-[60px] text-center"
+                  className="md:sticky left-0 z-50 bg-slate-50 px-2 md:px-4 py-3 border-b border-r text-[10px] font-black uppercase text-slate-500 w-[44px] min-w-[44px] md:w-[60px] md:min-w-[60px] text-center"
                 >
                   STT
                 </th>
                 <th
                   rowSpan={2}
-                  className="sticky left-[60px] z-50 bg-slate-50 px-4 py-3 border-b border-r text-[10px] font-black uppercase text-slate-500 w-[240px] min-w-[240px]"
+                  className="sticky left-0 md:left-[60px] z-50 bg-slate-50 px-3 md:px-4 py-3 border-b border-r text-[10px] font-black uppercase text-slate-500 w-[150px] min-w-[150px] md:w-[240px] md:min-w-[240px]"
                 >
                   Học Sinh
                 </th>
@@ -384,7 +384,7 @@ export function MultiLevelMatrixTable({
 
                 <th
                   rowSpan={2}
-                  className="sticky right-0 z-50 bg-slate-50 px-4 py-3 border-b border-l border-slate-200 text-[10px] font-black uppercase text-indigo-600 w-[100px] min-w-[100px] text-center"
+                  className="md:sticky right-0 z-50 bg-slate-50 px-4 py-3 border-b border-l border-slate-200 text-[10px] font-black uppercase text-indigo-600 w-[100px] min-w-[100px] text-center"
                 >
                   <div className="flex items-center justify-center gap-1">
                     <TrendingUp className="w-3 h-3" /> TB Chung
@@ -442,11 +442,11 @@ export function MultiLevelMatrixTable({
                     style={{ height: '60px' }}
                     className="hover:bg-slate-50/60 transition-colors group/row"
                   >
-                    <td className="sticky left-0 z-30 bg-white group-hover/row:bg-slate-50 px-4 py-3 border-b border-r text-center text-xs font-bold text-slate-400 w-[60px] min-w-[60px] h-[60px]">
+                    <td className="md:sticky left-0 z-30 bg-white group-hover/row:bg-slate-50 px-2 md:px-4 py-3 border-b border-r text-center text-xs font-bold text-slate-400 w-[44px] min-w-[44px] md:w-[60px] md:min-w-[60px] h-[60px]">
                       {virtualRow.index + 1}
                     </td>
-                    <td className="sticky left-[60px] z-30 bg-white group-hover/row:bg-slate-50 px-4 py-3 border-b border-r w-[240px] min-w-[240px]">
-                      <div className="flex flex-col pointer-events-none">
+                    <td className="sticky left-0 md:left-[60px] z-30 bg-white group-hover/row:bg-slate-50 px-3 md:px-4 py-3 border-b border-r w-[150px] min-w-[150px] md:w-[240px] md:min-w-[240px]">
+                      <div className="flex flex-col min-w-0 max-w-[124px] md:max-w-[206px] pointer-events-none">
                         <span className="text-sm font-bold text-slate-900 truncate">
                           {student.name}
                         </span>
@@ -568,7 +568,7 @@ export function MultiLevelMatrixTable({
                       );
                     })}
 
-                    <td className="sticky right-0 z-30 bg-white group-hover/row:bg-slate-50 px-4 py-3 border-b border-l border-slate-200 text-center align-middle w-[100px] min-w-[100px]">
+                    <td className="md:sticky right-0 z-30 bg-white group-hover/row:bg-slate-50 px-4 py-3 border-b border-l border-slate-200 text-center align-middle w-[100px] min-w-[100px]">
                       <div className="inline-flex items-center justify-center min-w-[2.5rem] h-8 rounded-xl bg-indigo-50 border border-indigo-100">
                         <span className="text-sm font-black text-indigo-700 pointer-events-none">
                           {student.stats?.averageScore > 0

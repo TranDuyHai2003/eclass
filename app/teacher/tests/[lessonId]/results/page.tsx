@@ -53,16 +53,18 @@ export default async function TeacherTestResultsPage({ params }: { params: Promi
   return (
     <div className="page-shell pb-20">
       <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8 max-w-6xl">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
             <div className="flex items-center gap-3 text-sm text-gray-500 mb-2">
               <BackButton variant="ghost" className="h-auto p-0 hover:bg-transparent" size="default" fallbackUrl={backLink}>
                 <ArrowLeft className="w-4 h-4 mr-1" /> Quay lại
               </BackButton>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Kết quả bài kiểm tra: {testTitle}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+              <span className="text-slate-500 font-semibold">Kết quả bài kiểm tra:</span> {testTitle}
+            </h1>
           </div>
-          <Link href={`/teacher/tests/${lessonId}`}>
+          <Link href={`/teacher/tests/${lessonId}`} className="shrink-0">
             <Button variant="outline">Chỉnh sửa đề thi</Button>
           </Link>
         </div>
@@ -88,8 +90,8 @@ export default async function TeacherTestResultsPage({ params }: { params: Promi
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-          <table className="w-full text-left">
+        <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
+          <table className="w-full min-w-[600px] text-left">
             <thead className="bg-gray-50 border-b text-sm font-medium text-gray-500 uppercase tracking-wider">
               <tr>
                 <th className="px-6 py-4">STT</th>

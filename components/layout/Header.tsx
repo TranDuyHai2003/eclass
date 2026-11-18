@@ -27,7 +27,7 @@ export default async function Header() {
   return (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-slate-200/50 transition-all duration-300">
       <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 sm:h-20 items-center justify-between gap-4">
+        <div className="flex h-14 sm:h-16 items-center justify-between gap-3 sm:gap-4">
           {/* Left: Mobile Menu & Logo Group */}
           <div className="flex items-center gap-4 sm:gap-6 flex-1 md:flex-none">
             <MobileMenu user={session?.user} />
@@ -40,7 +40,7 @@ export default async function Header() {
                 <img
                   src="/logo.png?v=1"
                   alt="thatdehoctoan"
-                  className="h-8 sm:h-10 w-auto object-contain transform group-hover:scale-110 transition-transform duration-500"
+                  className="h-8 sm:h-9 w-auto object-contain transform group-hover:scale-110 transition-transform duration-500"
                 />
               </div>
               <div className="flex flex-col">

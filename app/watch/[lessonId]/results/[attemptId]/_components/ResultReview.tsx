@@ -484,7 +484,7 @@ export function ResultReview({
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <div className="min-w-0 flex-1 md:max-w-[38%] md:flex-none">
+          <div className="min-w-0 flex-1 lg:max-w-[38%] lg:flex-none">
             <h1 className="truncate text-sm font-black text-slate-900 md:text-base" title={title}>
               {title}
             </h1>
@@ -495,7 +495,7 @@ export function ResultReview({
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
             {/* Bảng bên phải đã có số câu đúng/sai → chỉ hiện ở thanh trên khi bảng đó không hiển thị */}
-            <div className={cn("hidden md:flex gap-1.5 text-xs font-black", tab === "review" && panelOpen && "lg:hidden")}>
+            <div className={cn("hidden xl:flex gap-1.5 text-xs font-black", tab === "review" && panelOpen && "xl:hidden")}>
               <span className="rounded-lg bg-emerald-100 px-2 py-1 text-emerald-700">Đúng {counts.correct}</span>
               <span className="rounded-lg bg-rose-100 px-2 py-1 text-rose-700">Sai {counts.wrong}</span>
               {counts.blank > 0 && <span className="rounded-lg bg-slate-100 px-2 py-1 text-slate-600">Trống {counts.blank}</span>}

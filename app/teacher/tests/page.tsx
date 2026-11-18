@@ -10,7 +10,7 @@ import {
   GraduationCap,
   Plus,
   FileUp,
-  ShieldCheck,
+
   LayoutGrid,
   Link2,
   CalendarClock,
@@ -201,7 +201,7 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
       </div>
 
       <section className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-8 py-6 border-b border-slate-100 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="px-4 sm:px-8 py-5 sm:py-6 border-b border-slate-100 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
               <LayoutGrid className="w-5 h-5 text-blue-600" />
@@ -222,16 +222,10 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
             >
               {testBank.length} đề thi
             </Badge>
-            <Button
-              variant="outline"
-              className="rounded-2xl border-slate-200 font-bold"
-            >
-              <ShieldCheck className="w-4 h-4 mr-2" /> Quy trình chuẩn
-            </Button>
           </div>
         </div>
 
-        <div className="p-8">
+        <div className="p-4 sm:p-8">
           {testBank.length > 0 ? (
             <div className="grid gap-4">
               {testBank.map((test) => (

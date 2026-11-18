@@ -57,11 +57,11 @@ export function GlobalSummaryCards({ summary }: GlobalSummaryCardsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
       {cards.map((card, idx) => (
         <div 
           key={idx}
-          className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group"
+          className="bg-white p-5 lg:p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group"
         >
           {/* Background Decoration */}
           <div className={cn(
@@ -70,7 +70,7 @@ export function GlobalSummaryCards({ summary }: GlobalSummaryCardsProps) {
             card.color === "indigo" ? "bg-indigo-600" : "bg-emerald-600"
           )} />
 
-          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start justify-between gap-3 mb-4">
             <div className={cn(
               "p-3 rounded-2xl",
               card.color === "blue" ? "bg-blue-50 text-blue-600" : 
@@ -79,7 +79,7 @@ export function GlobalSummaryCards({ summary }: GlobalSummaryCardsProps) {
               <card.icon className="w-6 h-6" />
             </div>
             {card.details && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap justify-end gap-x-3 gap-y-1 min-w-0">
                     {card.details.map((detail, dIdx) => (
                         <div key={dIdx} className="flex flex-col items-end">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter flex items-center gap-1">

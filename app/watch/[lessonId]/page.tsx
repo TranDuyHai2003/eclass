@@ -158,6 +158,9 @@ export default async function WatchPage({
     orderBy: { startedAt: "desc" },
   });
 
+  const hasPdfDocument =
+    lesson.type === "DOCUMENT" && lesson.attachments.some((a) => a.url.toLowerCase().endsWith(".pdf"));
+
   return (
     <div className="flex flex-col min-h-screen bg-[#F8FAFC] font-sans selection:bg-blue-100 selection:text-blue-900">
       {/* PREMIUM BREADCRUMB NAVIGATION */}
@@ -209,7 +212,15 @@ export default async function WatchPage({
           {/* 1. Left Area (Col 9): Player & Details */}
           <div className="xl:col-span-9 space-y-4 sm:space-y-6 min-w-0">
             {/* Aspect Ratio Player Panel */}
-            <div className="aspect-video w-full relative shadow-2xl shadow-blue-900/5 rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-950 border border-white">
+            {/* Video/PDF giữ khung 16:9; thẻ vào làm bài & thẻ giới thiệu cao theo nội dung (không bị cắt trên điện thoại) */}
+            <div
+              className={cn(
+                "w-full relative shadow-2xl shadow-blue-900/5 rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-950 border border-white",
+                activeVideoUrl || hasPdfDocument
+                  ? "aspect-video"
+                  : "min-h-[320px] sm:min-h-[420px] flex flex-col items-stretch justify-center py-4 sm:py-6",
+              )}
+            >
               {activeVideoUrl ? (
                 <VideoPlayer
                   src={activeVideoUrl}
