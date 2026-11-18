@@ -4,7 +4,8 @@
  * - Giáng sinh: 15/11 → 31/12
  * - Tết Nguyên đán: 14 ngày trước mùng 1 → hết mùng 10
  *
- * Ghi đè bằng biến môi trường SEASONAL_THEME: "auto" (mặc định) | "off" | "christmas" | "tet".
+ * Bật bằng biến môi trường SEASONAL_THEME: "off" (mặc định — đang tạm tắt, chờ chỉnh lại giao diện)
+ * | "auto" (tự bật theo ngày) | "christmas" | "tet".
  */
 export type Season = "christmas" | "tet";
 
@@ -31,8 +32,9 @@ function utcDay(y: number, m: number, d: number) {
 }
 
 export function getSeasonalTheme(now: Date = new Date()): Season | null {
-  const override = (process.env.SEASONAL_THEME || "auto").toLowerCase();
-  if (override === "off") return null;
+  // Mặc định TẮT: theme Giáng sinh đang chờ làm lại cho đẹp hơn. Bật lại: SEASONAL_THEME=auto
+  const override = (process.env.SEASONAL_THEME || "off").toLowerCase();
+  if (override !== "auto" && override !== "christmas" && override !== "tet") return null;
   if (override === "christmas" || override === "tet") return override;
 
   const { y, m, d } = vnDateParts(now);
