@@ -32,6 +32,8 @@ export default async function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-slate-200/50 transition-all duration-300">
+      {/* Dây kim tuyến theo mùa (chỉ hiện khi người dùng bật theme) */}
+      <div aria-hidden className="season-garland" />
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 sm:h-16 items-center justify-between gap-3 sm:gap-4">
           {/* Left: Mobile Menu & Logo Group */}

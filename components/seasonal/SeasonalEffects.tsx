@@ -36,16 +36,16 @@ export function SeasonalEffects({ season }: { season: Season | null }) {
     if (!season) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     // Rất thưa và chậm: chỉ gợi không khí lễ hội, gần như không tốn hiệu năng
-    const count = window.innerWidth < 640 ? 4 : 7;
+    const count = window.innerWidth < 640 ? 8 : 14;
     setFlakes(
       Array.from({ length: count }, (_, i) => ({
         // rải đều theo chiều ngang để vài bông không dồn một chỗ
         left: ((i + Math.random() * 0.8) / count) * 100,
-        size: season === "tet" ? 9 + Math.random() * 5 : 3 + Math.random() * 3,
+        size: season === "tet" ? 9 + Math.random() * 5 : 10 + Math.random() * 8,
         duration: 18 + Math.random() * 12,
         delay: -Math.random() * 30,
         drift: (Math.random() - 0.5) * 80,
-        opacity: 0.35 + Math.random() * 0.35,
+        opacity: 0.55 + Math.random() * 0.35,
       })),
     );
   }, [season]);
@@ -54,24 +54,30 @@ export function SeasonalEffects({ season }: { season: Season | null }) {
   if (FOCUS_ROUTES.some((re) => re.test(pathname))) return null;
 
   return (
-    <div aria-hidden className="season-fall pointer-events-none fixed inset-0 z-40 overflow-hidden">
-      {flakes.map((f, i) => (
-        <span
-          key={i}
-          className={season === "tet" ? "season-petal" : "season-snowflake"}
-          style={
-            {
-              left: `${f.left}%`,
-              width: f.size,
-              height: f.size,
-              opacity: f.opacity,
-              animationDuration: `${f.duration}s`,
-              animationDelay: `${f.delay}s`,
-              "--drift": `${f.drift}px`,
-            } as React.CSSProperties
-          }
-        />
-      ))}
-    </div>
+    <>
+      <div aria-hidden className="season-fall pointer-events-none fixed inset-0 z-40 overflow-hidden">
+        {flakes.map((f, i) => {
+          const style = {
+            left: `${f.left}%`,
+            opacity: f.opacity,
+            animationDuration: `${f.duration}s`,
+            animationDelay: `${f.delay}s`,
+            "--drift": `${f.drift}px`,
+          } as React.CSSProperties;
+          return season === "tet" ? (
+            <span key={i} className="season-petal" style={{ ...style, width: f.size, height: f.size }} />
+          ) : (
+            <span key={i} className="season-snowflake" style={{ ...style, fontSize: f.size }}>
+              ❄
+            </span>
+          );
+        })}
+      </div>
+      {/* Góc màn hình (máy tính): cây thông + hộp quà / cành mai */}
+      <div aria-hidden className="season-corner">
+        <i className="tree" />
+        <i className="gift" />
+      </div>
+    </>
   );
 }

@@ -40,7 +40,7 @@ export default function CourseCard({ course, isLocked = false, progress }: Cours
   return (
     <Link 
       href={targetHref}
-      className="group bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 flex flex-col h-full relative border border-slate-200/60"
+      className="group bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 flex flex-col h-full relative season-snowcap border border-slate-200/60"
     >
       {/* Thumbnail area with vibrant overlay */}
       <div className="aspect-[16/10] relative overflow-hidden bg-slate-100 shrink-0">

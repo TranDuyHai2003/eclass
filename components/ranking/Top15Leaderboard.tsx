@@ -150,7 +150,7 @@ export function Top15Leaderboard({
               </div>
 
               {/* Steel-Silver Metallic Pedestal Card */}
-              <div className="w-full bg-gradient-to-b from-[#263248]/90 via-[#151D2A]/90 to-[#0A0F17]/95 border-2 border-slate-400/80 rounded-2xl p-2 sm:p-4 text-center shadow-xl shadow-slate-900/50 space-y-1.5 min-w-0 flex flex-col justify-between backdrop-blur-md">
+              <div className="relative season-snowcap w-full bg-gradient-to-b from-[#263248]/90 via-[#151D2A]/90 to-[#0A0F17]/95 border-2 border-slate-400/80 rounded-2xl p-2 sm:p-4 text-center shadow-xl shadow-slate-900/50 space-y-1.5 min-w-0 flex flex-col justify-between backdrop-blur-md">
                 <div className="space-y-0.5">
                   <span className="text-[9px] sm:text-xs font-mono font-bold text-slate-300 uppercase tracking-wider block">
                     VƯƠNG GIẢ HẠNG 2
@@ -198,7 +198,7 @@ export function Top15Leaderboard({
               </div>
 
               {/* Monarch Gold Metallic Pedestal Card */}
-              <div className="w-full bg-gradient-to-b from-[#4A3B18]/95 via-[#2A200C]/95 to-[#140F05]/95 border-2 border-amber-400 rounded-2xl p-2.5 sm:p-5 text-center shadow-2xl shadow-amber-500/25 space-y-1.5 min-w-0 flex flex-col justify-between backdrop-blur-md">
+              <div className="relative season-snowcap w-full bg-gradient-to-b from-[#4A3B18]/95 via-[#2A200C]/95 to-[#140F05]/95 border-2 border-amber-400 rounded-2xl p-2.5 sm:p-5 text-center shadow-2xl shadow-amber-500/25 space-y-1.5 min-w-0 flex flex-col justify-between backdrop-blur-md">
                 <div className="space-y-0.5">
                   <span className="text-[9px] sm:text-xs font-mono font-black text-amber-400 uppercase tracking-widest block flex items-center justify-center gap-1">
                     <Trophy className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
@@ -246,7 +246,7 @@ export function Top15Leaderboard({
               </div>
 
               {/* Bronze Metallic Pedestal Card */}
-              <div className="w-full bg-gradient-to-b from-[#3D2517]/90 via-[#23150D]/90 to-[#0F0905]/95 border-2 border-amber-600/80 rounded-2xl p-2 sm:p-4 text-center shadow-xl shadow-amber-950/50 space-y-1.5 min-w-0 flex flex-col justify-between backdrop-blur-md">
+              <div className="relative season-snowcap w-full bg-gradient-to-b from-[#3D2517]/90 via-[#23150D]/90 to-[#0F0905]/95 border-2 border-amber-600/80 rounded-2xl p-2 sm:p-4 text-center shadow-xl shadow-amber-950/50 space-y-1.5 min-w-0 flex flex-col justify-between backdrop-blur-md">
                 <div className="space-y-0.5">
                   <span className="text-[9px] sm:text-xs font-mono font-bold text-amber-400 uppercase tracking-wider block">
                     VƯƠNG GIẢ HẠNG 3
