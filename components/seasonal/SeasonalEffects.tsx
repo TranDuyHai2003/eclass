@@ -33,7 +33,8 @@ export function SeasonalEffects({ season }: { season: Season | null }) {
   const [flakes, setFlakes] = useState<Flake[]>([]);
 
   useEffect(() => {
-    if (!season) return;
+    // Giáng sinh: không còn tuyết rơi (rối mắt) — chỉ trang trí tĩnh. Tết vẫn có vài cánh mai rơi.
+    if (season !== "tet") return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     // Rất thưa và chậm: chỉ gợi không khí lễ hội, gần như không tốn hiệu năng
     const count = window.innerWidth < 640 ? 8 : 14;
@@ -50,11 +51,12 @@ export function SeasonalEffects({ season }: { season: Season | null }) {
     );
   }, [season]);
 
-  if (!season || flakes.length === 0) return null;
+  if (!season) return null;
   if (FOCUS_ROUTES.some((re) => re.test(pathname))) return null;
 
   return (
     <>
+      {flakes.length > 0 && (
       <div aria-hidden className="season-fall pointer-events-none fixed inset-0 z-40 overflow-hidden">
         {flakes.map((f, i) => {
           const style = {
@@ -73,6 +75,7 @@ export function SeasonalEffects({ season }: { season: Season | null }) {
           );
         })}
       </div>
+      )}
       {/* Góc màn hình (máy tính): cây thông + hộp quà / cành mai */}
       <div aria-hidden className="season-corner">
         <i className="tree" />

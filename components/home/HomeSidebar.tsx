@@ -218,6 +218,17 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
             <nav className="flex flex-col gap-1">{renderLinks(adminLinks)}</nav>
           </div>
         )}
+
+        {/* Thẻ Noel cuối thanh bên (CSS chỉ hiện khi người dùng bật theme Giáng sinh) */}
+        <div aria-hidden className="season-sidebar-card">
+          <div className="season-sidebar-art">
+            <i className="tree" />
+            <i className="santa" />
+            <i className="gift" />
+          </div>
+          <p className="text-sm font-black text-rose-700">Giáng sinh an lành!</p>
+          <p className="text-xs font-medium text-slate-500">Chúc bạn một mùa lễ hội học tốt, vui vẻ 🎄</p>
+        </div>
       </div>
     </div>
   );

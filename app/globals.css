@@ -399,7 +399,59 @@ h6 {
 /* ---------- Trang trí theo mùa (chỉ hiện khi người dùng bật theme) ---------- */
 .season-garland,
 .season-holly,
-.season-corner { display: none; }
+.season-corner,
+.season-santa-hero,
+.season-santa-inline,
+.season-sidebar-card { display: none; }
+
+/* Ông già Noel vẫy tay cạnh tiêu đề mục (mọi kích thước màn hình) */
+[data-season="christmas"] .season-santa-inline {
+  display: inline-block;
+  width: 40px;
+  height: 46px;
+  margin-left: 2px;
+  vertical-align: middle;
+  background: url("/season/santa.svg") center / contain no-repeat;
+}
+
+/* Ông già Noel trên banner trang chủ — chỉ khi đủ khoảng trống giữa chữ và đồng hồ đếm ngược */
+@media (min-width: 1400px) {
+  [data-season="christmas"] .season-santa-hero {
+    display: block;
+    position: absolute;
+    bottom: 0;
+    left: calc(51% - 60px);
+    width: 112px;
+    height: 130px;
+    z-index: 5;
+    pointer-events: none;
+    background: url("/season/santa.svg") center bottom / contain no-repeat;
+    filter: drop-shadow(0 6px 10px rgba(15, 23, 42, 0.25));
+  }
+}
+
+/* Thẻ Noel cuối thanh bên trái */
+[data-season="christmas"] .season-sidebar-card {
+  display: block;
+  margin-top: 1.25rem;
+  padding: 0.9rem 1rem 1rem;
+  border-radius: 1.25rem;
+  text-align: center;
+  background: linear-gradient(160deg, #fff1f2 0%, #ffffff 55%, #f0fdf4 100%);
+  border: 1px solid #fecdd3;
+  box-shadow: 0 6px 18px rgba(225, 29, 72, 0.08);
+}
+.season-sidebar-art {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 0.4rem;
+}
+.season-sidebar-art > i { display: block; background: center bottom / contain no-repeat; }
+.season-sidebar-art > .tree { width: 46px; height: 58px; background-image: url("/season/tree.svg"); }
+.season-sidebar-art > .santa { width: 56px; height: 66px; background-image: url("/season/santa.svg"); }
+.season-sidebar-art > .gift { width: 28px; height: 28px; background-image: url("/season/gift.svg"); }
 
 /* Dây kim tuyến / dây đèn lồng dưới mép header */
 [data-season] .season-garland {
@@ -476,7 +528,7 @@ h6 {
   }
 }
 .season-corner > i { display: block; background: center / contain no-repeat; }
-.season-corner > .tree { width: 38px; height: 48px; background-image: url("/season/tree.svg"); }
-.season-corner > .gift { width: 22px; height: 22px; background-image: url("/season/gift.svg"); }
+.season-corner > .tree { width: 46px; height: 58px; background-image: url("/season/tree.svg"); }
+.season-corner > .gift { width: 26px; height: 26px; background-image: url("/season/gift.svg"); }
 [data-season="tet"] .season-corner > .tree { width: 64px; height: 48px; background-image: url("/season/mai-branch.svg"); }
 [data-season="tet"] .season-corner > .gift { display: none; }

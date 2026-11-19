@@ -10,7 +10,12 @@ export function SeasonalBanner({ season, daysLeft }: { season: Season | null; da
 
   return (
     <div className="mx-3 sm:mx-0 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-sm text-slate-200">
-      <span aria-hidden>{isXmas ? "🎄" : "🧧"}</span>
+      {isXmas ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src="/season/santa.svg" alt="" aria-hidden width={30} height={35} className="h-9 w-auto -my-1" />
+      ) : (
+        <span aria-hidden>🧧</span>
+      )}
       <span className="font-semibold">{isXmas ? "Giáng sinh an lành!" : "Chúc mừng năm mới!"}</span>
       <span className="text-slate-400 text-xs sm:text-sm">
         {isXmas ? "Giữ vững phong độ trong mùa lễ hội nhé." : "Năm mới bứt phá, giữ chuỗi học tập dịp Tết."}

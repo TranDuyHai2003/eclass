@@ -54,6 +54,7 @@ export function HomePromo() {
   return (
     <div className="relative season-snowcap w-full rounded-[2.5rem] overflow-hidden shadow-2xl group transition-all hover:shadow-blue-500/20">
       <span aria-hidden className="season-holly" />
+      <span aria-hidden className="season-santa-hero" />
       {/* Background with multiple gradients and patterns */}
       <div className="absolute inset-0 bg-[#2563EB]" />
       <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-transparent to-orange-500 opacity-50" />
