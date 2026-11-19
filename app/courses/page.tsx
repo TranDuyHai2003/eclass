@@ -97,9 +97,8 @@ export default async function CoursesPage({
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
                 <div className="space-y-2">
                   <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter flex items-center gap-3">
-                    <span className="season-accent w-2 h-8 bg-blue-600 rounded-full" />
+                    <span className="w-2 h-8 bg-blue-600 rounded-full" />
                     Lộ trình học tập
-                    <span aria-hidden className="season-santa-inline" />
                   </h2>
                   <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em]">
                     {query

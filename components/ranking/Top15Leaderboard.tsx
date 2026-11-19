@@ -134,9 +134,7 @@ export function Top15Leaderboard({
                 <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-slate-200 to-slate-400 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center mx-auto mb-1 border-2 border-white shadow-[0_0_15px_rgba(203,213,225,0.8)] z-10 relative">
                   2
                 </div>
-                {/* Mũ Noel / hoa mai theo mùa (CSS .season-hat chỉ hiện khi đúng mùa) */}
                 <div className="relative w-fit mx-auto">
-                  <span aria-hidden className="season-hat season-hat-avatar" />
                   <div className="w-14 h-14 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-2xl overflow-hidden border-2 border-slate-300 bg-slate-950 shadow-[0_0_25px_rgba(203,213,225,0.4)] ring-4 ring-slate-300/40 mx-auto transition-transform duration-300 group-hover/p2:scale-105">
                   <Image
                     src={getAvatarUrl(top2)}
@@ -150,7 +148,7 @@ export function Top15Leaderboard({
               </div>
 
               {/* Steel-Silver Metallic Pedestal Card */}
-              <div className="relative season-snowcap w-full bg-gradient-to-b from-[#263248]/90 via-[#151D2A]/90 to-[#0A0F17]/95 border-2 border-slate-400/80 rounded-2xl p-2 sm:p-4 text-center shadow-xl shadow-slate-900/50 space-y-1.5 min-w-0 flex flex-col justify-between backdrop-blur-md">
+              <div className="relative w-full bg-gradient-to-b from-[#263248]/90 via-[#151D2A]/90 to-[#0A0F17]/95 border-2 border-slate-400/80 rounded-2xl p-2 sm:p-4 text-center shadow-xl shadow-slate-900/50 space-y-1.5 min-w-0 flex flex-col justify-between backdrop-blur-md">
                 <div className="space-y-0.5">
                   <span className="text-[9px] sm:text-xs font-mono font-bold text-slate-300 uppercase tracking-wider block">
                     VƯƠNG GIẢ HẠNG 2
@@ -182,9 +180,7 @@ export function Top15Leaderboard({
                 <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-500 text-slate-950 font-black text-xs sm:text-base flex items-center justify-center mx-auto mb-1 border-2 border-white shadow-[0_0_20px_rgba(245,158,11,0.9)] ring-4 ring-amber-500/80 z-10 relative">
                   1
                 </div>
-                {/* Mũ Noel / hoa mai theo mùa (CSS .season-hat chỉ hiện khi đúng mùa) */}
                 <div className="relative w-fit mx-auto">
-                  <span aria-hidden className="season-hat season-hat-avatar" />
                   <div className="w-18 h-18 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-2xl overflow-hidden border-2 border-amber-400 bg-slate-950 shadow-[0_0_35px_rgba(245,158,11,0.6)] ring-4 ring-amber-400/60 mx-auto transition-transform duration-300 group-hover/p1:scale-105">
                   <Image
                     src={getAvatarUrl(top1)}
@@ -198,7 +194,7 @@ export function Top15Leaderboard({
               </div>
 
               {/* Monarch Gold Metallic Pedestal Card */}
-              <div className="relative season-snowcap w-full bg-gradient-to-b from-[#4A3B18]/95 via-[#2A200C]/95 to-[#140F05]/95 border-2 border-amber-400 rounded-2xl p-2.5 sm:p-5 text-center shadow-2xl shadow-amber-500/25 space-y-1.5 min-w-0 flex flex-col justify-between backdrop-blur-md">
+              <div className="relative w-full bg-gradient-to-b from-[#4A3B18]/95 via-[#2A200C]/95 to-[#140F05]/95 border-2 border-amber-400 rounded-2xl p-2.5 sm:p-5 text-center shadow-2xl shadow-amber-500/25 space-y-1.5 min-w-0 flex flex-col justify-between backdrop-blur-md">
                 <div className="space-y-0.5">
                   <span className="text-[9px] sm:text-xs font-mono font-black text-amber-400 uppercase tracking-widest block flex items-center justify-center gap-1">
                     <Trophy className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
@@ -230,9 +226,7 @@ export function Top15Leaderboard({
                 <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-amber-600 to-amber-800 text-amber-100 font-black text-xs sm:text-sm flex items-center justify-center mx-auto mb-1 border-2 border-amber-400 shadow-[0_0_15px_rgba(217,119,6,0.8)] z-10 relative">
                   3
                 </div>
-                {/* Mũ Noel / hoa mai theo mùa (CSS .season-hat chỉ hiện khi đúng mùa) */}
                 <div className="relative w-fit mx-auto">
-                  <span aria-hidden className="season-hat season-hat-avatar" />
                   <div className="w-14 h-14 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-2xl overflow-hidden border-2 border-amber-600 bg-slate-950 shadow-[0_0_25px_rgba(217,119,6,0.4)] ring-4 ring-amber-600/40 mx-auto transition-transform duration-300 group-hover/p3:scale-105">
                   <Image
                     src={getAvatarUrl(top3)}
@@ -246,7 +240,7 @@ export function Top15Leaderboard({
               </div>
 
               {/* Bronze Metallic Pedestal Card */}
-              <div className="relative season-snowcap w-full bg-gradient-to-b from-[#3D2517]/90 via-[#23150D]/90 to-[#0F0905]/95 border-2 border-amber-600/80 rounded-2xl p-2 sm:p-4 text-center shadow-xl shadow-amber-950/50 space-y-1.5 min-w-0 flex flex-col justify-between backdrop-blur-md">
+              <div className="relative w-full bg-gradient-to-b from-[#3D2517]/90 via-[#23150D]/90 to-[#0F0905]/95 border-2 border-amber-600/80 rounded-2xl p-2 sm:p-4 text-center shadow-xl shadow-amber-950/50 space-y-1.5 min-w-0 flex flex-col justify-between backdrop-blur-md">
                 <div className="space-y-0.5">
                   <span className="text-[9px] sm:text-xs font-mono font-bold text-amber-400 uppercase tracking-wider block">
                     VƯƠNG GIẢ HẠNG 3

@@ -61,9 +61,8 @@ export function Dashboard({
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-blue-100 pb-3">
               <div className="space-y-1.5">
                 <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter flex items-center gap-3">
-                  <span className="season-accent w-2 h-7 bg-[#2563EB] rounded-full" />
+                  <span className="w-2 h-7 bg-[#2563EB] rounded-full" />
                   Lộ trình học tập
-                  <span aria-hidden className="season-santa-inline" />
                 </h2>
                 <p className="text-slate-400 font-bold uppercase text-xs sm:text-sm tracking-wider">
                   Chọn mục tiêu của bạn và bắt đầu ngay

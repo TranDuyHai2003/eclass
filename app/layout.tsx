@@ -7,8 +7,6 @@ import { Providers } from "./providers";
 import AntiInspectLayout from "@/components/layout/AntiInspectLayout";
 import { WatchRouteTracker } from "@/components/layout/WatchRouteTracker";
 import "./globals.css";
-import { getActiveSeason } from "@/lib/seasonal-theme-server";
-import { SeasonalEffects } from "@/components/seasonal/SeasonalEffects";
 
 const sansFont = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -86,7 +84,7 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -104,11 +102,8 @@ export default async function RootLayout({
     "description": "Hệ thống học Toán luyện thi Đại học hàng đầu Việt Nam."
   };
 
-  // Theme theo mùa: chỉ áp dụng khi người dùng tự chọn trong menu đổi theme (mặc định theme thường)
-  const season = await getActiveSeason();
-
   return (
-    <html lang="vi" data-season={season ?? undefined}>
+    <html lang="vi">
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -141,7 +136,6 @@ export default async function RootLayout({
             <Toaster position="top-right" richColors toastOptions={{ className: "p-4" }} gap={12} />
             <DemoBanner />
             <Header />
-            <SeasonalEffects season={season} />
             {children}
           </AntiInspectLayout>
         </Providers>
