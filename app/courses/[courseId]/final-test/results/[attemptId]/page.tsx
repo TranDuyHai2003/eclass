@@ -2,6 +2,8 @@ import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
 import { loadAttemptForResult } from "@/lib/attempt-result";
 import { ResultScreen } from "@/app/watch/[lessonId]/results/[attemptId]/_components/ResultScreen";
+import { isPointsEnabled } from "@/lib/points/config";
+import { getPointsForAttempt } from "@/lib/points/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +35,15 @@ export default async function CourseFinalTestResultPage({
     redirect(`/courses/${courseId}/final-test`);
   }
 
+  const pointsEarned =
+    isPointsEnabled() && attempt.userId === session.user.id && !isTeacher
+      ? await getPointsForAttempt(session.user.id!, attempt.id).catch(() => [])
+      : [];
+
   return (
     <ResultScreen
       attempt={attempt}
+      pointsEarned={pointsEarned}
       backHref={`/courses/${courseId}/final-test`}
       fallbackTitle={attempt.test.course?.title ? `Kiểm tra cuối khoá — ${attempt.test.course.title}` : null}
       isTeacher={isTeacher}

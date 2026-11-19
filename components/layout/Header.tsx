@@ -19,11 +19,16 @@ import { MobileMenu } from "./MobileMenu";
 import { SearchBar } from "./SearchBar";
 import { cn } from "@/lib/utils";
 import { getAvatarThumbUrl } from "@/lib/game-rank";
+import { isPointsEnabled } from "@/lib/points/config";
+import { getBalance } from "@/lib/points/queries";
 
 export default async function Header() {
   const session = await auth();
   const isAdmin = session?.user?.role === "ADMIN";
   const isTeacher = session?.user?.role === "TEACHER" || isAdmin;
+  // Chip điểm thưởng: chỉ học sinh (1 truy vấn theo khoá chính)
+  const showPoints = isPointsEnabled() && session?.user?.role === "STUDENT" && !!session.user.id;
+  const pointsBalance = showPoints ? await getBalance(session!.user!.id!).catch(() => 0) : 0;
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-slate-200/50 transition-all duration-300">
@@ -85,6 +90,17 @@ export default async function Header() {
             <div className="flex items-center gap-2 sm:gap-3">
               {session ? (
                 <>
+                  {showPoints && (
+                    <Link
+                      href="/rewards"
+                      title="Điểm thưởng — đổi quà"
+                      className="h-10 sm:h-11 px-2.5 sm:px-3 inline-flex items-center gap-1.5 rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+                    >
+                      <span aria-hidden className="text-base leading-none">⭐</span>
+                      <span className="text-sm font-black tabular-nums">{pointsBalance}</span>
+                      <span className="sr-only">điểm thưởng</span>
+                    </Link>
+                  )}
                   <div className="hidden sm:block">
                     <NotificationBell />
                   </div>

@@ -1,5 +1,6 @@
 "use server";
 
+import { onHomeworkGraded, onHomeworkSubmitted } from "@/lib/points/hooks";
 import { demoGuard } from "@/lib/demo";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -144,6 +145,8 @@ export async function submitHomework(
     },
   });
 
+  await onHomeworkSubmitted({ userId: session.user.id, lessonId, submissionId: submission.id });
+
   revalidatePath(`/watch/${lessonId}`);
   return { success: true as const, submission };
 }
@@ -172,6 +175,14 @@ export async function gradeHomework(
     },
     // Trả đủ trường như lúc tải trang (kể cả bài học/khoá học) để thẻ bài nộp không mất thông tin sau khi chấm
     select: reviewSubmissionSelect,
+  });
+
+  await onHomeworkGraded({
+    userId: submission.userId,
+    lessonId: submission.lessonId,
+    submissionId: submission.id,
+    status,
+    teacherId: session.user.id!,
   });
 
   revalidatePath(`/watch/${submission.lessonId}`);

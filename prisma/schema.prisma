@@ -8,33 +8,36 @@ datasource db {
 }
 
 model User {
-  id                  String               @id @default(cuid())
-  name                String?
-  email               String               @unique
-  emailVerified       DateTime?
-  image               String?
-  password            String?
-  role                Role                 @default(STUDENT)
-  isApproved          Boolean              @default(false)
-  isDemo              Boolean              @default(false)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  studentType         StudentType          @default(ONLINE)
-  level               Level                @default(BASIC)
-  accounts            Account[]
-  comments            Comment[]
-  courses             Course[]
-  enrollments         Enrollment[]
-  homeworkSubmissions HomeworkSubmission[]
-  notifications       Notification[]
-  progress            Progress[]
-  sessions            Session[]
-  attempts            StudentAttempt[]
-  tests               Test[]
-  videoAssets         VideoAsset[]
-  classId             String?
-  studyClass          StudyClass?          @relation(fields: [classId], references: [id])
+  id                   String                @id @default(cuid())
+  name                 String?
+  email                String                @unique
+  emailVerified        DateTime?
+  image                String?
+  password             String?
+  role                 Role                  @default(STUDENT)
+  isApproved           Boolean               @default(false)
+  isDemo               Boolean               @default(false)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  studentType          StudentType           @default(ONLINE)
+  level                Level                 @default(BASIC)
+  accounts             Account[]
+  comments             Comment[]
+  courses              Course[]
+  enrollments          Enrollment[]
+  homeworkSubmissions  HomeworkSubmission[]
+  notifications        Notification[]
+  progress             Progress[]
+  sessions             Session[]
+  attempts             StudentAttempt[]
+  tests                Test[]
+  videoAssets          VideoAsset[]
+  classId              String?
+  studyClass           StudyClass?           @relation(fields: [classId], references: [id])
   leaderboardSnapshots LeaderboardSnapshot[]
+  pointLedger          PointLedger[]
+  pointWallet          PointWallet?
+  redemptions          Redemption[]
 
   @@index([classId])
 }
@@ -259,33 +262,33 @@ model VideoAsset {
 }
 
 model Test {
-  id             String           @id @default(cuid())
-  title          String?
-  subject        String?
-  description    String?
-  passScore      Float?
-  accessCode     String?
-  userId         String?
-  lessonId       String?          @unique
-  courseId       String?          @unique
-  pdfUrl         String
-  duration       Int
-  showAnswers    Boolean          @default(false)
-  type           TestType         @default(HOMEWORK)
-  explanation    String?
-  videoUrl       String?
-  audioUrl       String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  dueDate        DateTime?
-  solutionVideos Json?
+  id              String           @id @default(cuid())
+  title           String?
+  subject         String?
+  description     String?
+  passScore       Float?
+  accessCode      String?
+  userId          String?
+  lessonId        String?          @unique
+  courseId        String?          @unique
+  pdfUrl          String
+  duration        Int
+  showAnswers     Boolean          @default(false)
+  type            TestType         @default(HOMEWORK)
+  explanation     String?
+  videoUrl        String?
+  audioUrl        String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  dueDate         DateTime?
+  solutionVideos  Json?
   /// Vị trí lời giải từng câu trong PDF lời giải (xem lib/pdf-question-anchors.ts)
   solutionAnchors Json?
-  attempts       StudentAttempt[]
-  course         Course?          @relation("CourseFinalTest", fields: [courseId], references: [id], onDelete: Cascade)
-  lesson         Lesson?          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  user           User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sections       TestSection[]
+  attempts        StudentAttempt[]
+  course          Course?          @relation("CourseFinalTest", fields: [courseId], references: [id], onDelete: Cascade)
+  lesson          Lesson?          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user            User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sections        TestSection[]
 }
 
 model TestSection {
@@ -444,28 +447,29 @@ enum TestType {
 }
 
 model StudyClass {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  users     User[]
-  courses   Course[]
+  id                   String                @id @default(cuid())
+  name                 String                @unique
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  users                User[]
+  courses              Course[]
   leaderboardSnapshots LeaderboardSnapshot[]
+  rewards              Reward[]
 }
 
 model LeaderboardSnapshot {
-  id             String   @id @default(cuid())
-  userId         String
-  studyClassId   String
-  periodCode     String
-  snapshotType   String   @default("WEEKLY")
+  id           String @id @default(cuid())
+  userId       String
+  studyClassId String
+  periodCode   String
+  snapshotType String @default("WEEKLY")
 
   score          Float
   rankingScore   Float
   completedTests Int
   rank           Int?
 
-  createdAt      DateTime @default(now())
+  createdAt DateTime @default(now())
 
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   studyClass StudyClass @relation(fields: [studyClassId], references: [id], onDelete: Cascade)
@@ -476,3 +480,114 @@ model LeaderboardSnapshot {
   @@index([studyClassId])
 }
 
+// ===================== Điểm thưởng & đổi quà (lib/points) =====================
+
+enum PointSource {
+  TEST_SUBMIT
+  TEST_SCORE
+  BREAKTHROUGH
+  FINAL_TEST
+  HOMEWORK_SUBMIT
+  HOMEWORK_PASS
+  STREAK
+  MANUAL
+  REDEEM
+  REFUND
+  REVOKE
+}
+
+enum RewardKind {
+  PHYSICAL
+  VIRTUAL
+}
+
+enum RedemptionStatus {
+  PENDING
+  DELIVERED
+  CANCELLED
+  REJECTED
+  EXPIRED
+}
+
+/// Sổ điểm thưởng: mỗi dòng là một lần cộng (+) hoặc trừ (-). Không sửa/xoá dòng cũ.
+model PointLedger {
+  id          String      @id @default(cuid())
+  userId      String
+  amount      Int
+  source      PointSource
+  /// Khoá logic chống cộng trùng (vd "TEST:{testId}"): chỉ cộng khi tổng các dòng cùng khoá = 0
+  key         String?
+  /// Bài làm / bài nộp / yêu cầu đổi quà liên quan
+  refId       String?
+  reason      String?
+  /// Giáo viên thực hiện (thưởng tay, từ chối quà…)
+  createdById String?
+  createdAt   DateTime    @default(now())
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, key])
+  @@index([refId])
+}
+
+/// Số dư tính sẵn, luôn cập nhật cùng giao dịch với PointLedger (khoá dòng FOR UPDATE).
+model PointWallet {
+  userId         String   @id
+  balance        Int      @default(0)
+  /// Tổng điểm đã kiếm (không giảm khi đổi quà)
+  lifetimeEarned Int      @default(0)
+  weekStreak     Int      @default(0)
+  bestWeekStreak Int      @default(0)
+  /// Mã tuần (giờ VN, vd "2026-W47") gần nhất được tính vào chuỗi
+  lastStreakWeek String?
+  streakFreezes  Int      @default(1)
+  goalRewardId   String?
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Reward {
+  id                     String       @id @default(cuid())
+  title                  String
+  description            String?
+  emoji                  String?
+  imageUrl               String?
+  price                  Int
+  /// null = không giới hạn
+  stock                  Int?
+  /// Số lần mỗi học sinh được đổi trong một tháng; null = không giới hạn
+  perStudentMonthlyLimit Int?
+  kind                   RewardKind   @default(PHYSICAL)
+  /// Quà hiện vật nhận tại lớp → chỉ học sinh OFFLINE thấy
+  offlineOnly            Boolean      @default(true)
+  /// Chi phí thật (VNĐ) để thống kê
+  costVnd                Int?
+  isActive               Boolean      @default(true)
+  deletedAt              DateTime?
+  createdById            String?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  /// Rỗng = mọi lớp
+  classes                StudyClass[]
+  redemptions            Redemption[]
+}
+
+model Redemption {
+  id          String           @id @default(cuid())
+  userId      String
+  rewardId    String
+  /// Giá lúc đổi (giáo viên đổi giá sau không ảnh hưởng)
+  price       Int
+  status      RedemptionStatus @default(PENDING)
+  note        String?
+  handledById String?
+  handledAt   DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward      Reward           @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([rewardId])
+}

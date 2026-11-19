@@ -23,9 +23,11 @@ import {
   Youtube,
   FileText,
   Trophy,
+  Gift,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
+import { usePointsEnabled } from "@/components/points/PointsFlag";
 
 const DiscordIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 -28.5 256 256" fill="currentColor" {...props}>
@@ -49,6 +51,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
 
   const isAdmin = role === "ADMIN";
   const isTeacher = role === "TEACHER" || isAdmin;
+  const pointsEnabled = usePointsEnabled();
 
   // Render navigation links based on authentication state
   const generalLinks = [
@@ -57,6 +60,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
       : [{ icon: LogIn, label: "Đăng nhập", href: "/login" }]),
     { icon: BookOpen, label: "Khóa Học", href: "/courses" },
     { icon: Trophy, label: "Bảng xếp hạng Hunter", href: "/ranking" },
+    ...(pointsEnabled && role === "STUDENT" ? [{ icon: Gift, label: "Điểm thưởng & Đổi quà", href: "/rewards" }] : []),
     {
       icon: DiscordIcon,
       label: "Discord",
@@ -73,6 +77,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
       icon: ClipboardList,
     },
     { href: "/teacher/homework", label: "Duyệt Bài tự luận", icon: FileText },
+    ...(pointsEnabled ? [{ href: "/teacher/rewards", label: "Quà & Điểm thưởng", icon: Gift }] : []),
     { href: "/teacher/videos", label: "Thư viện Video", icon: PlaySquare },
   ];
 

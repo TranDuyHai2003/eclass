@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { commitTempFile } from "@/lib/b2";
+import { onAttemptDeleted, onEssayGraded, onTestSubmitted } from "@/lib/points/hooks";
 
 // =============================================
 // TEACHER ACTIONS
@@ -593,6 +594,7 @@ export async function deleteStudentAttempt(attemptId: string) {
   await prisma.studentAttempt.delete({
     where: { id: attemptId }
   });
+  await onAttemptDeleted({ userId: attempt.userId, testId: attempt.testId, teacherId: session.user.id! });
 
   // Revalidate relevant paths
   if (attempt.test.lessonId) {
@@ -916,6 +918,20 @@ export async function submitTestAttempt(
     return { success: true, score: attempt.score, alreadySubmitted: true };
   }
 
+  // Điểm thưởng (giao dịch riêng — lỗi tính điểm không ảnh hưởng bài đã nộp)
+  const isAnswered = (a: any) =>
+    (typeof a.answerProvided === "string" && a.answerProvided.trim() !== "") ||
+    (Array.isArray(a.subAnswersData) && a.subAnswersData.some((sa: any) => sa.answerProvided != null && String(sa.answerProvided).trim() !== ""));
+  await onTestSubmitted({
+    userId: session.user.id!,
+    attemptId,
+    test: { id: attempt.test.id, dueDate: attempt.test.dueDate, courseId: attempt.test.courseId },
+    score: finalScore,
+    answeredCount: answersData.filter(isAnswered).length,
+    questionCount: questionMap.size,
+    hasPendingEssay: answersData.some((a) => a.isCorrect === null),
+  });
+
   if (attempt.test.lessonId) {
     revalidatePath(`/watch/${attempt.test.lessonId}`);
   }
@@ -1110,6 +1126,8 @@ export async function gradeStudentAnswer(
       data: { score: finalScore },
     });
   });
+
+  await onEssayGraded(answer.attemptId);
 
   revalidatePath(`/watch/${answer.attempt.test.lessonId}/results/${answer.attemptId}`);
   return { success: true };

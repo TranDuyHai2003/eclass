@@ -10,6 +10,7 @@ import { HomeSidebar } from "../HomeSidebar";
 import { HomeCarousel } from "./HomeCarousel";
 import { RightSidebar } from "./RightSidebar";
 import { HomePromo } from "../HomePromo";
+import { PointsHomeCard, type PointsHomeCardData } from "@/components/points/PointsHomeCard";
 
 import { SortSelect } from "@/components/ui/SortSelect";
 
@@ -18,11 +19,14 @@ export function Dashboard({
   courses,
   lastLesson,
   stats,
+  points,
 }: {
   user: any;
   courses: any[];
   lastLesson: any;
   stats: any;
+  /** Điểm thưởng của học sinh (null = không hiện) */
+  points?: PointsHomeCardData | null;
 }) {
   const searchParams = useSearchParams();
   const currentSort = searchParams?.get("sort") || "default";
@@ -52,6 +56,8 @@ export function Dashboard({
         <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 space-y-10 max-w-[1600px]">
           {/* Carousel Slider (Temporarily hidden due to no data) */}
           {/* <HomeCarousel /> */}
+
+          {points && <PointsHomeCard data={points} />}
 
           {/* Countdown Target Promo */}
           <HomePromo />

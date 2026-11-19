@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import { loadAttemptForResult } from "@/lib/attempt-result";
 import { ResultScreen } from "./_components/ResultScreen";
+import { isPointsEnabled } from "@/lib/points/config";
+import { getPointsForAttempt } from "@/lib/points/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -31,9 +33,15 @@ export default async function TestResultPage({
     ? null
     : await prisma.lesson.findUnique({ where: { id: lessonId }, select: { title: true } });
 
+  const pointsEarned =
+    isPointsEnabled() && isOwner && !isTeacher
+      ? await getPointsForAttempt(session.user.id!, attempt.id).catch(() => [])
+      : [];
+
   return (
     <ResultScreen
       attempt={attempt}
+      pointsEarned={pointsEarned}
       backHref={`/watch/${lessonId}`}
       fallbackTitle={lesson?.title}
       isTeacher={isTeacher}

@@ -7,6 +7,7 @@ import { Providers } from "./providers";
 import AntiInspectLayout from "@/components/layout/AntiInspectLayout";
 import { WatchRouteTracker } from "@/components/layout/WatchRouteTracker";
 import "./globals.css";
+import { isPointsEnabled } from "@/lib/points/config";
 
 const sansFont = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -130,7 +131,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${sansFont.variable} ${headingFont.variable} antialiased text-[15px] sm:text-base leading-relaxed`}
       >
-        <Providers>
+        <Providers pointsEnabled={isPointsEnabled()}>
           <WatchRouteTracker />
           <AntiInspectLayout>
             <Toaster position="top-right" richColors toastOptions={{ className: "p-4" }} gap={12} />

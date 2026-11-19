@@ -3,6 +3,7 @@ import { parseSolutionAnchors } from "@/lib/pdf-question-anchors";
 import { ReopenAttemptButton } from "./ReopenAttemptButton";
 import { ResultReview } from "./ResultReview";
 import { FillViewport } from "@/components/layout/FillViewport";
+import { PointsEarnedToast } from "@/components/points/PointsEarnedToast";
 
 // Server (Heroku) chạy giờ UTC → định dạng thời gian theo giờ Việt Nam
 const VN_TZ = "Asia/Ho_Chi_Minh";
@@ -16,11 +17,14 @@ export function ResultScreen({
   backHref,
   fallbackTitle,
   isTeacher,
+  pointsEarned = [],
 }: {
   attempt: any;
   backHref: string;
   fallbackTitle?: string | null;
   isTeacher: boolean;
+  /** Điểm thưởng nhận được từ lượt làm này (chỉ truyền khi học sinh tự xem) */
+  pointsEarned?: { amount: number; source: string }[];
 }) {
   const test = attempt.test;
 
@@ -106,6 +110,7 @@ export function ResultScreen({
             : null
         }
       />
+      {pointsEarned.length > 0 && <PointsEarnedToast attemptId={attempt.id} entries={pointsEarned} />}
     </FillViewport>
   );
 }
