@@ -11,12 +11,17 @@ import {
 } from "@/components/ui/sheet";
 import { HomeSidebar } from "@/components/home/HomeSidebar";
 import { MobileSearchBar } from "./MobileSearchBar";
+import { MobileThemeOptions } from "@/components/seasonal/ThemeSwitcher";
+import type { Season } from "@/lib/seasonal-theme";
 
 interface MobileMenuProps {
   user?: any;
+  /** Mùa lễ đang có (để hiện tuỳ chọn đổi theme) và theme người dùng đang chọn */
+  seasonAvailable?: Season | null;
+  seasonActive?: Season | null;
 }
 
-export function MobileMenu({ user }: MobileMenuProps) {
+export function MobileMenu({ user, seasonAvailable, seasonActive }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -56,6 +61,12 @@ export function MobileMenu({ user }: MobileMenuProps) {
               <div className="px-4 mt-6">
                 <HomeSidebar user={user} onClick={() => setOpen(false)} />
               </div>
+
+              {seasonAvailable && (
+                <div className="mt-6 sm:hidden">
+                  <MobileThemeOptions available={seasonAvailable} active={seasonActive ?? null} />
+                </div>
+              )}
 
               <div className="mt-8 px-8 pb-10 space-y-6">
                 <div className="p-6 bg-gradient-to-br from-blue-600 to-orange-500 rounded-[2rem] text-white shadow-xl shadow-blue-200">

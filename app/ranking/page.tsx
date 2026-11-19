@@ -6,7 +6,8 @@ import { ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SeasonalBanner } from "@/components/seasonal/SeasonalBanner";
-import { getSeasonalTheme, daysUntilChristmasEve, daysUntilTet } from "@/lib/seasonal-theme";
+import { daysUntilChristmasEve, daysUntilTet } from "@/lib/seasonal-theme";
+import { getActiveSeason } from "@/lib/seasonal-theme-server";
 
 export const revalidate = 60; // Cache page for 60 seconds (revalidates in background)
 
@@ -17,7 +18,7 @@ export default async function RankingPage() {
     redirect("/login");
   }
 
-  const season = getSeasonalTheme();
+  const season = await getActiveSeason();
   let rankingData;
   try {
     rankingData = await getRankingData();

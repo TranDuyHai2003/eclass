@@ -7,7 +7,7 @@ import { Providers } from "./providers";
 import AntiInspectLayout from "@/components/layout/AntiInspectLayout";
 import { WatchRouteTracker } from "@/components/layout/WatchRouteTracker";
 import "./globals.css";
-import { getSeasonalTheme } from "@/lib/seasonal-theme";
+import { getActiveSeason } from "@/lib/seasonal-theme-server";
 import { SeasonalEffects } from "@/components/seasonal/SeasonalEffects";
 
 const sansFont = Plus_Jakarta_Sans({
@@ -86,7 +86,7 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -104,8 +104,8 @@ export default function RootLayout({
     "description": "Hệ thống học Toán luyện thi Đại học hàng đầu Việt Nam."
   };
 
-  // Theme theo mùa (Giáng sinh / Tết) — tự bật theo ngày giờ Việt Nam, ghi đè bằng SEASONAL_THEME
-  const season = getSeasonalTheme();
+  // Theme theo mùa: chỉ áp dụng khi người dùng tự chọn trong menu đổi theme (mặc định theme thường)
+  const season = await getActiveSeason();
 
   return (
     <html lang="vi" data-season={season ?? undefined}>

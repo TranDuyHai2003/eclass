@@ -19,11 +19,16 @@ import { MobileMenu } from "./MobileMenu";
 import { SearchBar } from "./SearchBar";
 import { cn } from "@/lib/utils";
 import { getAvatarThumbUrl } from "@/lib/game-rank";
+import { ThemeSwitcher } from "@/components/seasonal/ThemeSwitcher";
+import { getAvailableSeason } from "@/lib/seasonal-theme";
+import { getActiveSeason } from "@/lib/seasonal-theme-server";
 
 export default async function Header() {
   const session = await auth();
   const isAdmin = session?.user?.role === "ADMIN";
   const isTeacher = session?.user?.role === "TEACHER" || isAdmin;
+  const availableSeason = getAvailableSeason();
+  const activeSeason = await getActiveSeason();
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-slate-200/50 transition-all duration-300">
@@ -31,7 +36,7 @@ export default async function Header() {
         <div className="flex h-14 sm:h-16 items-center justify-between gap-3 sm:gap-4">
           {/* Left: Mobile Menu & Logo Group */}
           <div className="flex items-center gap-4 sm:gap-6 flex-1 md:flex-none">
-            <MobileMenu user={session?.user} />
+            <MobileMenu user={session?.user} seasonAvailable={availableSeason} seasonActive={activeSeason} />
 
             <Link
               href="/"
@@ -83,7 +88,14 @@ export default async function Header() {
               )}
             </nav>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Đổi theme theo mùa (chỉ hiện khi đang có mùa lễ; mặc định theme thường) */}
+              {/* Điện thoại: tuỳ chọn nằm trong menu ☰ (header không đủ chỗ) */}
+              {availableSeason && (
+                <div className="hidden sm:block">
+                  <ThemeSwitcher available={availableSeason} active={activeSeason} />
+                </div>
+              )}
               {session ? (
                 <>
                   <div className="hidden sm:block">

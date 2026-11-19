@@ -183,12 +183,12 @@ h6 {
     background-image:
       radial-gradient(
         1200px 600px at 20% -10%,
-        color-mix(in oklch, var(--primary) 14%, white) 0%,
+        var(--shell-glow-a, color-mix(in oklch, var(--primary) 14%, white)) 0%,
         transparent 60%
       ),
       radial-gradient(
         900px 480px at 100% 0%,
-        color-mix(in oklch, var(--accent) 18%, white) 0%,
+        var(--shell-glow-b, color-mix(in oklch, var(--accent) 18%, white)) 0%,
         transparent 55%
       ),
       linear-gradient(
@@ -350,7 +350,25 @@ h6 {
 .season-snowflake {
   border-radius: 9999px;
   background: #fff;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.9), 0 0 2px rgba(148, 163, 184, 0.9);
+  /* viền xám rất nhẹ để vẫn thấy được trên nền sáng */
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.9), 0 0 1.5px rgba(100, 116, 139, 0.55);
+}
+
+/* Giáng sinh: nền chỉ ngả rất nhẹ sắc đỏ / xanh lá ở hai góc trên */
+[data-season="christmas"] {
+  --shell-glow-a: rgba(239, 68, 68, 0.1);
+  --shell-glow-b: rgba(34, 197, 94, 0.1);
+}
+[data-season="christmas"] body {
+  background:
+    radial-gradient(900px 500px at 0% 0%, rgba(239, 68, 68, 0.06), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(34, 197, 94, 0.06), transparent 60%),
+    var(--site-bg) center / cover fixed no-repeat;
+  background-color: var(--background);
+}
+[data-season="tet"] {
+  --shell-glow-a: rgba(239, 68, 68, 0.1);
+  --shell-glow-b: rgba(250, 204, 21, 0.12);
 }
 .season-petal {
   background: url("/season/hoa-mai.svg") center / contain no-repeat;
@@ -378,29 +396,4 @@ h6 {
 [data-season="tet"] .season-hat-logo { width: 16px; height: 16px; top: -6px; left: -5px; }
 [data-season="tet"] .season-hat-avatar { width: 34%; aspect-ratio: 1; top: -12%; right: -10%; }
 
-/* Dây đèn nhấp nháy */
-.season-lights {
-  display: flex;
-  justify-content: space-between;
-  gap: 6px;
-  height: 14px;
-  background: linear-gradient(transparent 5px, rgba(30, 41, 59, 0.9) 5px, rgba(30, 41, 59, 0.9) 6px, transparent 6px);
-}
-.season-lights > i {
-  width: 8px;
-  height: 11px;
-  margin-top: 3px;
-  border-radius: 50% 50% 45% 45%;
-  animation: season-twinkle 1.6s ease-in-out infinite;
-}
-.season-lights > i:nth-child(4n + 1) { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
-.season-lights > i:nth-child(4n + 2) { background: #facc15; box-shadow: 0 0 8px #facc15; animation-delay: 0.4s; }
-.season-lights > i:nth-child(4n + 3) { background: #22c55e; box-shadow: 0 0 8px #22c55e; animation-delay: 0.8s; }
-.season-lights > i:nth-child(4n + 4) { background: #38bdf8; box-shadow: 0 0 8px #38bdf8; animation-delay: 1.2s; }
-@keyframes season-twinkle {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .season-lights > i { animation: none; }
-}
+

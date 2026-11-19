@@ -35,15 +35,17 @@ export function SeasonalEffects({ season }: { season: Season | null }) {
   useEffect(() => {
     if (!season) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const count = window.innerWidth < 640 ? 14 : 26;
+    // Rất thưa và chậm: chỉ gợi không khí lễ hội, gần như không tốn hiệu năng
+    const count = window.innerWidth < 640 ? 4 : 7;
     setFlakes(
-      Array.from({ length: count }, () => ({
-        left: Math.random() * 100,
-        size: season === "tet" ? 10 + Math.random() * 8 : 4 + Math.random() * 6,
-        duration: 9 + Math.random() * 10,
-        delay: -Math.random() * 18,
-        drift: (Math.random() - 0.5) * 120,
-        opacity: 0.45 + Math.random() * 0.45,
+      Array.from({ length: count }, (_, i) => ({
+        // rải đều theo chiều ngang để vài bông không dồn một chỗ
+        left: ((i + Math.random() * 0.8) / count) * 100,
+        size: season === "tet" ? 9 + Math.random() * 5 : 3 + Math.random() * 3,
+        duration: 18 + Math.random() * 12,
+        delay: -Math.random() * 30,
+        drift: (Math.random() - 0.5) * 80,
+        opacity: 0.35 + Math.random() * 0.35,
       })),
     );
   }, [season]);

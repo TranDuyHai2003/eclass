@@ -1,13 +1,22 @@
 /**
- * Theme theo mùa (tự bật theo ngày, giờ Việt Nam).
+ * Theme theo mùa — NGƯỜI DÙNG TỰ CHỌN (menu đổi theme trên header), mặc định luôn là theme thường.
  *
+ * "Mùa đang có" (getAvailableSeason, theo ngày giờ Việt Nam) chỉ quyết định có hiện tuỳ chọn hay không:
  * - Giáng sinh: 15/11 → 31/12
  * - Tết Nguyên đán: 14 ngày trước mùng 1 → hết mùng 10
+ * Theme thật sự áp dụng = mùa đang có VÀ người dùng đã chọn (cookie THEME_COOKIE) — xem seasonal-theme-server.ts.
  *
- * Bật bằng biến môi trường SEASONAL_THEME: "off" (mặc định — đang tạm tắt, chờ chỉnh lại giao diện)
- * | "auto" (tự bật theo ngày) | "christmas" | "tet".
+ * Biến môi trường SEASONAL_THEME: "auto" (mặc định, theo ngày) | "off" (ẩn hẳn tuỳ chọn) | "christmas" | "tet" (ép mùa, để thử).
  */
 export type Season = "christmas" | "tet";
+
+/** Cookie lưu lựa chọn theme của người dùng: "christmas" | "tet" | "default". */
+export const THEME_COOKIE = "site-theme";
+
+export const SEASON_LABEL: Record<Season, string> = {
+  christmas: "Giáng sinh",
+  tet: "Tết",
+};
 
 /** Mùng 1 Tết (dương lịch) các năm tới — thêm năm mới vào đây khi cần. */
 const TET_DATES: Record<number, string> = {
@@ -31,10 +40,10 @@ function utcDay(y: number, m: number, d: number) {
   return Date.UTC(y, m - 1, d);
 }
 
-export function getSeasonalTheme(now: Date = new Date()): Season | null {
-  // Mặc định TẮT: theme Giáng sinh đang chờ làm lại cho đẹp hơn. Bật lại: SEASONAL_THEME=auto
-  const override = (process.env.SEASONAL_THEME || "off").toLowerCase();
-  if (override !== "auto" && override !== "christmas" && override !== "tet") return null;
+/** Mùa đang có theo ngày (để hiện tuỳ chọn theme) — KHÔNG có nghĩa là đang áp dụng. */
+export function getAvailableSeason(now: Date = new Date()): Season | null {
+  const override = (process.env.SEASONAL_THEME || "auto").toLowerCase();
+  if (override === "off") return null;
   if (override === "christmas" || override === "tet") return override;
 
   const { y, m, d } = vnDateParts(now);
