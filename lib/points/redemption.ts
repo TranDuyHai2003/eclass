@@ -87,3 +87,82 @@ export async function expireStaleRedemptions() {
     }
   }
 }
+
+export type PointsResult = { success: true; message?: string } | { success: false; error: string };
+
+/**
+ * Học sinh đổi quà (lõi, không kiểm tra đăng nhập — actions/points.ts lo phần đó).
+ * Khoá ví → các lần bấm của cùng học sinh chạy tuần tự; trừ kho có điều kiện → nhiều bạn đổi cùng lúc không vượt số quà.
+ */
+export async function redeemInTx(tx: Tx, userId: string, rewardId: string): Promise<PointsResult> {
+  const user = await tx.user.findUnique({
+    where: { id: userId },
+    select: { role: true, isApproved: true, isDemo: true, classId: true, studentType: true },
+  });
+  if (!user || user.role !== "STUDENT" || !user.isApproved || user.isDemo) {
+    return { success: false, error: "Chỉ học sinh đã được duyệt mới đổi được quà." };
+  }
+  const wallet = await lockWallet(tx, userId);
+
+  const reward = await tx.reward.findFirst({
+    where: { id: rewardId, ...visibleRewardWhere(user) },
+    select: { id: true, title: true, price: true, stock: true, perStudentMonthlyLimit: true },
+  });
+  if (!reward) return { success: false, error: "Quà này không còn hoặc không dành cho bạn." };
+  if (wallet.balance < reward.price) {
+    return { success: false, error: `Bạn cần thêm ${reward.price - wallet.balance} điểm để đổi quà này.` };
+  }
+  if (reward.perStudentMonthlyLimit !== null) {
+    const used = await monthlyRedemptionCount(tx, userId, reward.id);
+    if (used >= reward.perStudentMonthlyLimit) {
+      return { success: false, error: `Mỗi tháng chỉ đổi được ${reward.perStudentMonthlyLimit} lần quà này.` };
+    }
+  }
+  if (reward.stock !== null) {
+    const taken = await tx.reward.updateMany({ where: { id: reward.id, stock: { gt: 0 } }, data: { stock: { decrement: 1 } } });
+    if (taken.count === 0) return { success: false, error: "Quà này vừa hết." };
+  }
+
+  const redemption = await tx.redemption.create({ data: { userId, rewardId: reward.id, price: reward.price }, select: { id: true } });
+  await writeEntry(tx, { userId, amount: -reward.price, source: "REDEEM", refId: redemption.id, reason: `Đổi quà "${reward.title}"` });
+  // Đổi xong món đang đặt làm mục tiêu → bỏ mục tiêu
+  await tx.pointWallet.updateMany({ where: { userId, goalRewardId: reward.id }, data: { goalRewardId: null } });
+  return { success: true, message: `Đã đổi "${reward.title}". Thầy sẽ trao quà ở buổi học tới.` };
+}
+
+/** Thầy đánh dấu đã trao: chỉ yêu cầu còn đang chờ mới đổi trạng thái và mới nhận thông báo. Trả về số quà đã trao. */
+export async function deliverInTx(tx: Tx, ids: string[], staffId: string): Promise<number> {
+  let done = 0;
+  for (const id of Array.from(new Set(ids))) {
+    const updated = await tx.redemption.updateMany({
+      where: { id, status: "PENDING" },
+      data: { status: "DELIVERED", handledById: staffId, handledAt: new Date() },
+    });
+    if (updated.count === 0) continue; // học sinh vừa huỷ / đã xử lý ở tab khác
+    done++;
+    const r = await tx.redemption.findUniqueOrThrow({ where: { id }, select: { userId: true, reward: { select: { title: true } } } });
+    await tx.notification.create({
+      data: { userId: r.userId, title: "Đã nhận quà 🎁", message: `Thầy đã trao quà "${r.reward.title}". Chúc mừng bạn!`, link: "/rewards", type: "SYSTEM" },
+    });
+  }
+  return done;
+}
+
+/** Thầy từ chối (bắt buộc lý do): hoàn điểm, hoàn kho, báo học sinh */
+export async function rejectInTx(tx: Tx, redemptionId: string, note: string, staffId: string): Promise<PointsResult> {
+  const reason = note?.trim();
+  if (!reason) return { success: false, error: "Nhập lý do từ chối để học sinh biết." };
+  const done = await closeWithRefund(tx, redemptionId, "REJECTED", { note: reason.slice(0, 300), handledById: staffId });
+  if (!done) return { success: false, error: "Yêu cầu đã được xử lý." };
+  const r = await tx.redemption.findUniqueOrThrow({ where: { id: redemptionId }, select: { userId: true, price: true, reward: { select: { title: true } } } });
+  await tx.notification.create({
+    data: {
+      userId: r.userId,
+      title: "Yêu cầu đổi quà bị từ chối",
+      message: `"${r.reward.title}": ${reason}. Đã hoàn ${r.price} điểm.`,
+      link: "/rewards",
+      type: "SYSTEM",
+    },
+  });
+  return { success: true, message: "Đã từ chối và hoàn điểm." };
+}

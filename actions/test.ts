@@ -929,7 +929,8 @@ export async function submitTestAttempt(
     score: finalScore,
     answeredCount: answersData.filter(isAnswered).length,
     questionCount: questionMap.size,
-    hasPendingEssay: answersData.some((a) => a.isCorrect === null),
+    // Câu tự luận bỏ trống không cần chấm → không coi là "chờ chấm"
+    hasPendingEssay: answersData.some((a) => a.isCorrect === null && isAnswered(a)),
   });
 
   if (attempt.test.lessonId) {

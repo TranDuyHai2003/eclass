@@ -1,0 +1,38 @@
+# Test
+
+Chỉ chạy với **DB local**: script tự dừng nếu `CUSTOM_DATABASE_URL` không trỏ tới `localhost`. Mọi dữ liệu thử đều tự xoá sau khi chạy.
+
+## Test logic — `npm test`
+
+Dùng test runner có sẵn của Node (`node:test`) cùng `ts-node`, không cần cài thêm gì. Chạy mất khoảng 2 giây.
+
+| File | Kiểm tra |
+|---|---|
+| `points/rules.test.ts` | Thang điểm, cân bằng điểm (học chăm cả tháng ≈ 1 gói bim bim), chuẩn hoá form quà, kiểm tra thưởng tay, mốc ngày giờ Việt Nam |
+| `points/engine.test.ts` | Cộng một lần theo khoá, thu hồi, giới hạn ngày, chạy đồng thời, ví luôn khớp sổ, lỗi không làm hỏng việc nộp bài, `POINTS_ENABLED=off` |
+| `points/hooks.test.ts` | Nộp bài đúng hạn và sau hạn, làm ít câu, bứt phá, tự luận chờ chấm hoặc bỏ trống, thi cuối khoá, xoá lượt làm, bài tập về nhà |
+| `points/streak.test.ts` | Chuỗi tuần, thẻ giữ chuỗi, mốc thưởng, kỷ lục |
+| `points/redemption.test.ts` | Ai thấy và đổi được quà nào, số dư, kho, giới hạn tháng, bấm đồng thời, huỷ / từ chối / trao / hết hạn |
+| `points/manual.test.ts` | Thầy thưởng và trừ điểm, giới hạn ngày, bỏ qua tài khoản không hợp lệ |
+| `points/queries.test.ts` | Dữ liệu trang Điểm thưởng, dải điểm trang chủ, màn kết quả, trang quản lý của thầy |
+
+## Test giao diện — `npm run test:e2e`
+
+Chạy trên Chrome headless với server thật:
+
+```bash
+npm run build && npm start               # hoặc npm run dev (cổng 3000)
+BASE_URL=http://localhost:3000 npm run test:e2e
+```
+
+Script đi qua toàn bộ luồng:
+- Thầy thêm quà, thưởng điểm (kể cả khi vượt giới hạn), từ chối và trao quà.
+- Học sinh xem thông báo điểm ở màn kết quả, chip điểm trên header, ghim quà mục tiêu, đổi và huỷ quà.
+
+Script cũng kiểm tra:
+- **Bố cục** ở các bề rộng 320 / 390 / 768 / 1366px: không tràn ngang, chip điểm không đè logo.
+- **Lỗi JavaScript** trên trình duyệt.
+
+Có thể đặt thêm:
+- `CHROME_PATH`: đường dẫn tới Chrome, nếu không tự tìm thấy.
+- `E2E_SHOTS`: thư mục lưu ảnh chụp.

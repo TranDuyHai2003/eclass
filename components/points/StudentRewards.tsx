@@ -126,14 +126,14 @@ export function StudentRewards({ data }: { data: StudentPointsPageData }) {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1.5 overflow-x-auto rounded-2xl bg-white p-1.5 shadow-sm border border-slate-200/70 no-scrollbar">
+      <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-white p-1.5 shadow-sm border border-slate-200/70 sm:flex sm:overflow-x-auto no-scrollbar">
         {tabs.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
             className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold transition-colors",
+              "flex shrink-0 items-center justify-center sm:justify-start gap-1.5 rounded-xl px-2.5 sm:px-3.5 py-2 text-[13px] sm:text-sm font-bold transition-colors",
               tab === t.key ? "bg-blue-600 text-white shadow" : "text-slate-500 hover:bg-slate-100",
             )}
           >

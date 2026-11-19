@@ -12,7 +12,7 @@ const testKey = (testId: string) => `TEST:${testId}`;
 const scoreKey = (testId: string) => `TESTSCORE:${testId}`;
 const breakKey = (testId: string) => `BREAK:${testId}`;
 
-function scoreTierPoints(score: number) {
+export function scoreTierPoints(score: number) {
   return POINTS.scoreTiers.find((t) => score >= t.min)?.points ?? 0;
 }
 
@@ -105,7 +105,10 @@ export function onEssayGraded(attemptId: string) {
     });
     if (!attempt?.completedAt || attempt.score === null) return;
     if (!(await isEligibleStudent(tx, attempt.userId))) return;
-    const ungraded = await tx.studentAnswer.count({ where: { attemptId, isCorrect: null } });
+    // Còn câu tự luận có làm mà chưa chấm → chờ (câu bỏ trống không cần chấm)
+    const ungraded = await tx.studentAnswer.count({
+      where: { attemptId, isCorrect: null, answerProvided: { not: null }, NOT: { answerProvided: "" } },
+    });
     if (ungraded > 0) return;
 
     await lockWallet(tx, attempt.userId);

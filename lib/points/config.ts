@@ -1,7 +1,7 @@
 /**
  * Cấu hình Điểm thưởng — chỉnh số ở đây, không cần đụng logic.
  *
- * Thang điểm cố ý nhỏ: học sinh chăm cả tháng (~4–5 bài/tuần, điểm khá, nộp bài tập về nhà) được ~80–100 điểm,
+ * Thang điểm cố ý nhỏ: học sinh chăm cả tháng (~5 bài/tuần điểm khá, 2 bài tập về nhà/tuần) được ~80–90 điểm,
  * vừa đủ đổi một món quà nhỏ (vd gói bim bim). Học sinh trung bình ~40 điểm/tháng.
  */
 export const POINTS_LABEL = "Điểm thưởng";
@@ -33,7 +33,7 @@ export const POINTS = {
   homeworkSubmit: 1,
   homeworkPass: 1,
   /** Tối đa điểm tự động (bài kiểm tra, bài tập) mỗi ngày — chặn bất thường */
-  dailyAutoCap: 20,
+  dailyAutoCap: 30,
   /** Chuỗi tuần học: tuần đạt khi có ít nhất `minActivities` lần nộp bài (kiểm tra hoặc bài tập về nhà) */
   streak: {
     minActivities: 2,

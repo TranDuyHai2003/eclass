@@ -11,8 +11,9 @@ import {
   grantPoints,
   rejectRedemption,
   saveReward,
-  type RewardInput,
 } from "@/actions/points";
+import type { RewardInput } from "@/lib/points/reward-input";
+import { REWARD_TEMPLATES as TEMPLATES } from "@/lib/points/templates";
 import type { TeacherRewardsPageData } from "@/lib/points/queries";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -30,18 +31,6 @@ const STATUS_LABEL: Record<string, string> = {
   REJECTED: "Từ chối",
   EXPIRED: "Hết hạn",
 };
-
-/** Mẫu quà gợi ý (thang điểm nhỏ: học chăm cả tháng ≈ 100 điểm ≈ 1 gói bim bim) */
-const TEMPLATES: Omit<RewardInput, "classIds" | "isActive">[] = [
-  { emoji: "🍬", title: "Kẹo / bánh nhỏ", price: 40, kind: "PHYSICAL", costVnd: 3000, perStudentMonthlyLimit: 2 },
-  { emoji: "🖊️", title: "Bút bi", price: 60, kind: "PHYSICAL", costVnd: 5000 },
-  { emoji: "🍿", title: "Gói bim bim", price: 100, kind: "PHYSICAL", costVnd: 6000 },
-  { emoji: "📒", title: "Vở / sổ tay", price: 150, kind: "PHYSICAL", costVnd: 12000 },
-  { emoji: "🧋", title: "Trà sữa", price: 400, kind: "PHYSICAL", costVnd: 30000, perStudentMonthlyLimit: 1 },
-  { emoji: "🪑", title: "Tự chọn chỗ ngồi 1 buổi", price: 50, kind: "PHYSICAL", costVnd: 0 },
-  { emoji: "📝", title: "Thầy chữa riêng 1 bài", price: 80, kind: "VIRTUAL", costVnd: 0, perStudentMonthlyLimit: 2 },
-  { emoji: "🏅", title: "Được tuyên dương trên nhóm lớp", price: 30, kind: "VIRTUAL", costVnd: 0, perStudentMonthlyLimit: 1 },
-];
 
 const REASONS = ["Phát biểu xây dựng bài", "Giúp đỡ bạn", "Đi học đầy đủ", "Làm bài tốt trên lớp", "Tiến bộ rõ rệt"];
 
@@ -86,14 +75,14 @@ export function TeacherRewards({ data, manualMax, manualDailyCap }: { data: Data
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1.5 overflow-x-auto rounded-2xl bg-white p-1.5 shadow-sm border border-slate-200/70 no-scrollbar">
+      <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-white p-1.5 shadow-sm border border-slate-200/70 sm:flex sm:overflow-x-auto no-scrollbar">
         {tabs.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
             className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold transition-colors",
+              "flex shrink-0 items-center justify-center sm:justify-start gap-1.5 rounded-xl px-2.5 sm:px-3.5 py-2 text-[13px] sm:text-sm font-bold transition-colors",
               tab === t.key ? "bg-blue-600 text-white shadow" : "text-slate-500 hover:bg-slate-100",
             )}
           >
@@ -363,7 +352,7 @@ function RewardsTab({ data, pending, run }: TabProps) {
         >
           <Plus className="h-4 w-4" /> Thêm quà
         </button>
-        <p className="text-xs text-slate-500">Học sinh chăm cả tháng được khoảng 80–100 điểm.</p>
+        <p className="text-xs text-slate-500">Học sinh chăm cả tháng được khoảng 80–90 điểm (≈ 1 gói bim bim).</p>
       </div>
 
       {templates.length > 0 && (

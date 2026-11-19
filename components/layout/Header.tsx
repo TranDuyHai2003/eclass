@@ -35,12 +35,12 @@ export default async function Header() {
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 sm:h-16 items-center justify-between gap-3 sm:gap-4">
           {/* Left: Mobile Menu & Logo Group */}
-          <div className="flex items-center gap-4 sm:gap-6 flex-1 md:flex-none">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-6 flex-1 md:flex-none">
             <MobileMenu user={session?.user} />
 
             <Link
               href="/"
-              className="flex items-center gap-3 shrink-0 group relative"
+              className="flex min-w-0 items-center gap-3 shrink-0 group relative"
             >
               <div className="relative flex items-center justify-center  rounded-2xl">
                 <img
@@ -49,7 +49,8 @@ export default async function Header() {
                   className="h-8 sm:h-9 w-auto object-contain transform group-hover:scale-110 transition-transform duration-500"
                 />
               </div>
-              <div className="flex flex-col">
+              {/* Màn rất hẹp (< 360px): chỉ giữ biểu tượng logo để chừa chỗ cho chip điểm thưởng */}
+              <div className="flex flex-col max-[359px]:hidden">
                 <span className="text-sm sm:text-xl font-black tracking-tighter text-blue-500 uppercase leading-none group-hover:text-blue-600 transition-colors">
                   thatdehoctoan
                 </span>

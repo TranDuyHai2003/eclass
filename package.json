@@ -7,7 +7,9 @@
     "build": "prisma generate && next build && node copy-assets.js",
     "start": "node .next/standalone/server.js",
     "lint": "eslint",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "test": "node --no-experimental-strip-types --test --test-reporter=spec -r ./tests/setup/register.cjs \"tests/**/*.test.ts\"",
+    "test:e2e": "node tests/e2e/points.e2e.mjs"
   },
   "browserslist": [
     "defaults",
