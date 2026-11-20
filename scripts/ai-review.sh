@@ -11,6 +11,7 @@
 #   2. agy          — Antigravity CLI (tài khoản Google AI Pro/Ultra cá nhân)
 #   3. gemini       — Gemini CLI (chỉ dùng được với API key / tài khoản tổ chức)
 #   4. không có CLI — tạo sẵn file nội dung để dán vào gemini.google.com
+#   REVIEW_BUNDLE_ONLY=1 — chỉ tạo file nội dung (để Claude gửi qua Gemini trên web bằng trình duyệt)
 # Biến khác: REVIEW_MODEL (xem `agy models`), REVIEW_TIMEOUT (mặc định 20m), REVIEW_NO_CLIPBOARD=1 (không chép vào clipboard).
 set -euo pipefail
 
@@ -34,21 +35,49 @@ if [[ "$kind" == "plan" ]]; then out="$dir/GEMINI_PLAN_REVIEW.md"; else out="$di
 # Không gửi các file không liên quan / quá dài
 excludes=(":(exclude)package-lock.json" ":(exclude)README.md" ":(exclude)README.vi.md" ":(exclude)docs/ai-reviews/**" ":(exclude)*.png" ":(exclude)*.jpg" ":(exclude)*.webp")
 
+# Đính kèm nội dung file (bỏ qua file không tồn tại, dừng khi chạm ngân sách dung lượng)
+ATTACH_BUDGET="${REVIEW_ATTACH_BUDGET:-80000}"
+attach_files() {
+  local used=0 skipped=()
+  echo
+  echo "================================================================ FILE LIÊN QUAN (đính kèm)"
+  for f in "$@"; do
+    [[ -f "$f" ]] || continue
+    local sz; sz=$(wc -c < "$f")
+    if (( used + sz > ATTACH_BUDGET )); then skipped+=("$f"); continue; fi
+    used=$((used + sz))
+    echo
+    echo "---------------------------------------------------------------- FILE: $f"
+    cat "$f"
+  done
+  if (( ${#skipped[@]} )); then
+    echo
+    echo "(Không đính kèm vì quá dung lượng: ${skipped[*]})"
+  fi
+}
+
 # ------------------------------------------------------------------ nội dung cần review
 {
   echo "# Yêu cầu review ($kind) — tính năng: $feature"
   echo
-  echo "Bối cảnh dự án, các bất biến cần giữ và ĐỊNH DẠNG BÁO CÁO nằm trong file GEMINI.md ở thư mục gốc — hãy đọc trước."
-  echo "Bạn chỉ được ĐỌC (đọc file, tìm kiếm). Không tạo/sửa/xoá file, không chạy lệnh làm thay đổi gì. In báo cáo ra màn hình."
+  echo "Mọi ngữ cảnh cần thiết ĐÃ ĐÍNH KÈM trong tài liệu này: GEMINI.md (bối cảnh dự án, bất biến cần giữ, ĐỊNH DẠNG BÁO CÁO), nội dung cần review, và các file mã nguồn liên quan."
+  echo "KHÔNG chạy lệnh terminal, không tạo/sửa/xoá file. Nếu thiếu file nào để kết luận, ghi vào mục 'Questions for the author' thay vì đoán."
+  echo "Trả lời bằng báo cáo theo đúng định dạng trong GEMINI.md, bằng tiếng Việt."
+  echo
+  echo "================================================================ GEMINI.md"
+  cat GEMINI.md
   echo
   if [[ "$kind" == "plan" ]]; then
     [[ -f "$dir/PLAN.md" ]] || { echo "Thiếu $dir/PLAN.md" >&2; exit 1; }
-    echo "Hãy review KẾ HOẠCH dưới đây so với code hiện có (mở các file được nhắc tới để kiểm chứng)."
+    echo "Hãy review KẾ HOẠCH dưới đây so với code hiện có (các file được nhắc tới đính kèm ở cuối)."
     echo "Tìm: chỗ không khớp kiến trúc, rủi ro dữ liệu/race condition, phân quyền, trường hợp biên còn thiếu, phần làm thừa/phức tạp không cần thiết, rủi ro giao diện (điện thoại 320px, hiệu năng, hydration)."
     echo "Không viết lại toàn bộ thiết kế; chỉ nêu các điểm cụ thể, có thể hành động."
     echo
-    echo "---------------------------------------------------------------- PLAN.md"
+    echo "================================================================ PLAN.md"
     cat "$dir/PLAN.md"
+    # File được nhắc trong kế hoạch (dạng `đường/dẫn.ts`)
+    mapfile -t related < <(grep -oE '`[][A-Za-z0-9_./()-]+\.(ts|tsx|css|mjs|cjs|prisma)`' "$dir/PLAN.md" | tr -d '`' | awk '!seen[$0]++')
+    attach_files "${related[@]}"
   else
     base="${3:-}"
     if [[ -z "$base" ]]; then
@@ -61,7 +90,7 @@ excludes=(":(exclude)package-lock.json" ":(exclude)README.md" ":(exclude)README.
       git rev-parse --verify --quiet "$base^{commit}" >/dev/null || { echo "Không tìm thấy base '$base'" >&2; exit 1; }
       range=("$base"); label="từ $base tới hiện tại"
     fi
-    echo "Hãy review CÁC THAY ĐỔI CODE dưới đây ($label). Mở thêm file xung quanh khi cần để hiểu ngữ cảnh."
+    echo "Hãy review CÁC THAY ĐỔI CODE dưới đây ($label). Nội dung đầy đủ của các file bị thay đổi đính kèm ở cuối để xem ngữ cảnh."
     echo "Chỉ báo lỗi có bằng chứng: đúng/sai logic, race condition, ranh giới transaction, phân quyền, cộng điểm trùng, đổi quà trùng, tồn kho, giao diện vỡ trên điện thoại, thiếu test cho logic rủi ro."
     echo
     echo "---------------------------------------------------------------- git diff --stat"
@@ -78,11 +107,18 @@ excludes=(":(exclude)package-lock.json" ":(exclude)README.md" ":(exclude)README.
         head -c 60000 "$f"
       done < <(git ls-files --others --exclude-standard -- . "${excludes[@]}")
     fi
+    mapfile -t related < <(git diff --name-only "${range[@]}" -- . "${excludes[@]}")
+    attach_files "${related[@]}"
   fi
 } > "$input"
 
 size=$(wc -c < "$input")
 echo "→ Đã tạo nội dung review: $input ($((size / 1024)) KB)"
+
+if [[ -n "${REVIEW_BUNDLE_ONLY:-}" ]]; then
+  echo "→ Chỉ tạo nội dung (REVIEW_BUNDLE_ONLY). Gửi file này cho Gemini trên web, lưu câu trả lời vào: $out"
+  exit 0
+fi
 
 prompt="$(cat "$input")"
 timeout="${REVIEW_TIMEOUT:-20m}"
@@ -102,7 +138,9 @@ if [[ -n "${REVIEW_CMD:-}" ]] || command -v agy >/dev/null || command -v gemini 
     read -ra cmd <<< "$REVIEW_CMD"
     "${cmd[@]}" "$prompt" > "$tmp" 2> "$errlog" && run_ok=1
   elif command -v agy >/dev/null; then
-    args=(-p "$prompt" --mode plan --output-format text --print-timeout "$timeout")
+    # --sandbox: lệnh đọc (grep, cat, git log…) chạy trong sandbox mà không cần bấm cho phép — nếu thiếu, chế độ chạy nền
+    # tự từ chối lệnh và agy dừng không có kết quả. Việc cấm ghi file do GEMINI.md + kiểm tra git status bên dưới.
+    args=(-p "$prompt" --mode plan --sandbox --output-format text --print-timeout "$timeout")
     [[ -n "${REVIEW_MODEL:-}" ]] && args+=(--model "$REVIEW_MODEL")
     agy "${args[@]}" > "$tmp" 2> "$errlog" && run_ok=1
   else
@@ -117,6 +155,9 @@ if [[ -n "${REVIEW_CMD:-}" ]] || command -v agy >/dev/null || command -v gemini 
   else
     rm -f "$tmp"
     echo "✖ Reviewer không trả kết quả. Xem $errlog" >&2
+    if grep -qi "auto-denied\|cannot prompt" "$errlog" 2>/dev/null; then
+      echo "  → Reviewer cần chạy một lệnh terminal nhưng chế độ chạy nền không xin phép được. Thử lại, hoặc thêm luật allow trong ~/.gemini/antigravity-cli/settings.json." >&2
+    fi
     if grep -qi "authentication required\|login\|sign in" "$errlog" 2>/dev/null; then
       echo "  → Có vẻ chưa đăng nhập: chạy 'agy' một lần trong terminal để đăng nhập Google." >&2
     fi

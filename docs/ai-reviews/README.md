@@ -16,6 +16,17 @@ Mỗi tính năng có một thư mục `docs/ai-reviews/<tính-năng>/`:
 
 ## Các bước
 
+Claude **tự chạy** các bước review (2 và 5) và tự xử lý báo cáo. Bạn chỉ cần đọc tóm tắt Claude báo lại.
+
+**Cách Claude gửi cho Gemini (ưu tiên theo thứ tự):**
+1. **Gemini trên web, qua trình duyệt Chrome** (model mới nhất của gói Pro, hiện là Neon):
+   - Claude tạo gói nội dung bằng `REVIEW_BUNDLE_ONLY=1 scripts/ai-review.sh plan|diff <tính-năng>`;
+   - mở gemini.google.com, đính kèm file, gửi yêu cầu;
+   - đọc câu trả lời, lưu vào `GEMINI_*_REVIEW.md` kèm phần "Claude kiểm chứng".
+2. **`agy` (Antigravity CLI):**
+   - chạy hoàn toàn trong terminal, nhưng gói của bạn chỉ có Gemini 3.8 Flash;
+   - Gemini thường tự chạy lệnh terminal để đọc code, mà chế độ chạy nền tự chặn các lệnh đó nên hay dừng không có kết quả. Gói nội dung đã đính kèm sẵn file liên quan để giảm việc này.
+
 1. **Lập kế hoạch:** nhờ Claude viết `PLAN.md`, chưa code.
 2. **Review kế hoạch:** `scripts/ai-review.sh plan <tính-năng>`
 3. **Chỉnh kế hoạch:** nói với Claude "đọc `GEMINI_PLAN_REVIEW.md`, kiểm chứng và chỉnh `PLAN.md`".

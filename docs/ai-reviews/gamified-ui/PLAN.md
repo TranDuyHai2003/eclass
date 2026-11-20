@@ -1,6 +1,6 @@
 # Kế hoạch: Điểm thưởng kiểu game nhẹ và nâng cấp giao diện trang
 
-> Tác giả: Claude Code · 20/11/2026 · Trạng thái: **chờ review** (`scripts/ai-review.sh plan gamified-ui`)
+> Tác giả: Claude Code · 20/11/2026 · Trạng thái: **đã review** (Gemini Neon, xem `GEMINI_PLAN_REVIEW.md`); đã chỉnh theo mục 11.
 > Nền tảng đã có: Điểm thưởng giai đoạn 1 (commit `34c4514`) và bộ test (`8717374`). Xem `GEMINI.md` để biết các bất biến của hệ điểm.
 
 ## 1. Mục tiêu
@@ -71,7 +71,7 @@ Học / làm bài ──► nhận điểm (thông báo "+N điểm" ở màn k�
 Trang chủ: thẻ chào
   • cấp độ + thanh kinh nghiệm (còn X điểm lên cấp)
   • ⭐ số dư · 🔥 chuỗi tuần (tuần này a/2 bài) · ✅ số bài đã học
-  • [Học tiếp: <bài gần nhất>]   (nút 3D)
+  • "Bài gần nhất: <tên>" + nút 3D [Mở lại]; chưa học bài nào → [Bắt đầu học]
   • thẻ quà mục tiêu: thanh tiến độ "còn N điểm"   →  [Đổi quà]
       │
       ▼
@@ -137,8 +137,8 @@ Mỗi giai đoạn là một commit riêng để dễ quay lại.
 
 - **Logic:** `tests/points/levels-rarity.test.ts` (đã có); thêm test cho `getPointsCard` mở rộng.
 - **E2E:**
-  - thêm bước lọc quà, kiểm tra nhãn độ hiếm và pháo giấy (phần tử tạm xuất hiện);
-  - kiểm tra trang chủ có thanh kinh nghiệm và nút "Học tiếp";
+  - thêm bước lọc quà, kiểm tra nhãn độ hiếm và thuộc tính `data-celebrated` sau khi đổi quà;
+  - kiểm tra trang chủ có thanh kinh nghiệm và khối "Bài gần nhất" / "Bắt đầu học";
   - giữ kiểm tra tràn ngang và lỗi JavaScript.
 - **Thủ công:** ảnh chụp 320/390/768/1366 cho trang chủ, `/rewards` và `/teacher/rewards`.
 
@@ -147,3 +147,20 @@ Mỗi giai đoạn là một commit riêng để dễ quay lại.
 1. Có muốn rương ngẫu nhiên không? Nếu có, nên bảo đảm "không bao giờ trượt": mỗi lần mở chắc chắn ra ít nhất một món trị giá ≥ giá mở.
 2. Có làm đồ trang trí hồ sơ không (khung ảnh, danh hiệu hiện ở bảng xếp hạng)?
 3. Linh vật: cú (mặc định) hay con vật khác?
+
+## 11. Chỉnh sau review (Gemini Neon, 20/11)
+
+Chi tiết và lý do ở cuối `GEMINI_PLAN_REVIEW.md`.
+
+1. **Bộ lọc quà:** chỉ hiện các lựa chọn có quà thực tế; nếu chỉ có một loại quà thì ẩn hẳn thanh lọc. Tránh trường hợp học sinh online bấm "Nhận tại lớp" mà thấy trống.
+2. **Chip header:** biểu tượng cấp chỉ hiện ở màn ≥ 400px. Thay `getBalance` bằng `getHeaderPoints` (vẫn 1 truy vấn theo khoá chính). E2E đo thêm cỡ 360px.
+3. **`getPointsCard`:** chạy các truy vấn song song bằng `Promise.all`.
+4. **Thẻ khoá học:** `progress={course.isEnrolled ? course.progress : undefined}`.
+5. **Khối bài gần nhất:**
+   - có bài: "Bài gần nhất: <tên>" kèm nút [Mở lại];
+   - chưa có bài nào: nút [Bắt đầu học] dẫn tới khoá học đầu tiên đã ghi danh, hoặc `/courses`.
+6. **Pháo giấy:**
+   - khung `data-testid="confetti"` luôn nằm trong DOM;
+   - CSS tắt chuyển động khi người dùng bật giảm chuyển động;
+   - E2E kiểm tra thuộc tính `data-celebrated` trên trang.
+7. **Khi tắt Điểm thưởng** (`POINTS_ENABLED=off`): `StudentHero` vẫn hiện lời chào, bài gần nhất và số bài đã học; ẩn phần điểm, cấp, chuỗi và quà mục tiêu.
