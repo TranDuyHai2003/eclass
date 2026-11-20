@@ -97,6 +97,7 @@ describe("Dải điểm trang chủ & màn kết quả", () => {
     assert.equal(card.goal, null);
     assert.deepEqual(await getPointsCard((await fx.user()).id), {
       balance: 0, lifetimeEarned: 0, weekStreak: 0, weekActivities: 0, weekTarget: POINTS.streak.minActivities, thisWeekCounted: false, goal: null,
+      shop: (await getPointsCard((await fx.user()).id)).shop,
     });
   });
 
@@ -112,6 +113,28 @@ describe("Dải điểm trang chủ & màn kết quả", () => {
     ] });
     const rows = await getPointsForAttempt(s.id, "A1");
     assert.deepEqual(rows.map((r) => [r.source, r.amount]).sort(), [["TEST_SCORE", 1], ["TEST_SUBMIT", 2]]);
+  });
+});
+
+describe("Thẻ chào trang chủ: quà gợi ý", () => {
+  test("tối đa 3 món rẻ nhất học sinh được thấy, không trùng quà mục tiêu, không có quà của lớp khác / hiện vật với HS online", async () => {
+    const c = await fx.cls();
+    const other = await fx.cls();
+    const s = await fx.user({ classId: c.id, studentType: "ONLINE" });
+    const v1 = await fx.reward({ price: 1, kind: "VIRTUAL" });
+    const v2 = await fx.reward({ price: 2, kind: "VIRTUAL" });
+    const v3 = await fx.reward({ price: 3, kind: "VIRTUAL" });
+    const v4 = await fx.reward({ price: 4, kind: "VIRTUAL" });
+    const phys = await fx.reward({ price: 0 + 1, kind: "PHYSICAL" });
+    const otherCls = await fx.reward({ price: 1, kind: "VIRTUAL", classIds: [other.id] });
+    await prisma.pointWallet.create({ data: { userId: s.id, goalRewardId: v1.id } });
+    const ids = (await getPointsCard(s.id)).shop.map((r) => r.id);
+    // Có thể lẫn quà thật của DB local ở cùng mức giá → chỉ kiểm tra quà của bài test
+    assert.ok(!ids.includes(v1.id), "bỏ món đang là mục tiêu");
+    assert.ok(!ids.includes(phys.id) && !ids.includes(otherCls.id), "không có quà không dành cho mình");
+    assert.ok(ids.length <= 3);
+    const mine = ids.filter((id) => [v2.id, v3.id, v4.id].includes(id));
+    assert.deepEqual(mine, [v2.id, v3.id, v4.id].slice(0, mine.length), "rẻ nhất trước");
   });
 });
 

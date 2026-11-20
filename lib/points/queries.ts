@@ -94,10 +94,10 @@ export async function getStudentPointsPage(userId: string) {
 
 export type StudentPointsPageData = Awaited<ReturnType<typeof getStudentPointsPage>>;
 
-/** Thẻ chào trên trang chủ học sinh: số dư, cấp (tổng đã kiếm), chuỗi tuần, tiến độ tuần, quà mục tiêu */
+/** Thẻ chào trên trang chủ học sinh: số dư, cấp (tổng đã kiếm), chuỗi tuần, tiến độ tuần, quà mục tiêu, vài món quà gợi ý */
 export async function getPointsCard(userId: string) {
-  // Ví và số lần nộp bài tuần này chạy song song; quà mục tiêu cần goalRewardId nên lấy sau
-  const [w, weekActivities] = await Promise.all([
+  // Vòng 1 (song song): ví, số lần nộp bài tuần này, lớp/loại học sinh để lọc quà
+  const [w, weekActivities, user] = await Promise.all([
     prisma.pointWallet.findUnique({
       where: { userId },
       select: { balance: true, lifetimeEarned: true, weekStreak: true, lastStreakWeek: true, streakFreezes: true, goalRewardId: true },
@@ -105,13 +105,25 @@ export async function getPointsCard(userId: string) {
     prisma.pointLedger.count({
       where: { userId, source: { in: [...STREAK_ACTIVITY_SOURCES] }, amount: { gt: 0 }, createdAt: { gte: getVietnamWeekStart() } },
     }),
+    prisma.user.findUnique({ where: { id: userId }, select: { classId: true, studentType: true } }),
   ]);
-  const goal = w?.goalRewardId
-    ? await prisma.reward.findFirst({
-        where: { id: w.goalRewardId, isActive: true, deletedAt: null },
-        select: { title: true, emoji: true, price: true },
-      })
-    : null;
+  // Vòng 2 (song song): quà mục tiêu + quà gợi ý (rẻ nhất trước, bỏ món đang là mục tiêu)
+  const [goal, cheapest] = await Promise.all([
+    w?.goalRewardId
+      ? prisma.reward.findFirst({
+          where: { id: w.goalRewardId, isActive: true, deletedAt: null },
+          select: { title: true, emoji: true, price: true },
+        })
+      : Promise.resolve(null),
+    user
+      ? prisma.reward.findMany({
+          where: { ...visibleRewardWhere(user), ...(w?.goalRewardId ? { id: { not: w.goalRewardId } } : {}) },
+          orderBy: [{ price: "asc" }, { createdAt: "asc" }],
+          take: 3,
+          select: { id: true, title: true, emoji: true, price: true },
+        })
+      : Promise.resolve([]),
+  ]);
   return {
     balance: w?.balance ?? 0,
     lifetimeEarned: w?.lifetimeEarned ?? 0,
@@ -120,6 +132,7 @@ export async function getPointsCard(userId: string) {
     weekTarget: POINTS.streak.minActivities,
     thisWeekCounted: w?.lastStreakWeek === getWeekCode(),
     goal,
+    shop: cheapest,
   };
 }
 

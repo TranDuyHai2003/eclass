@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BookOpen, ChevronRight, PlayCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLevel } from "@/lib/points/levels";
+import { rarityOf } from "@/lib/points/rarity";
 import type { PointsCardData } from "@/lib/points/queries";
 
 export interface StudentHeroProps {
@@ -94,34 +95,67 @@ export function StudentHero({ name, points, lastLesson, stats, startHref }: Stud
       </div>
 
       {points && (
-        <Link
-          href="/rewards"
-          className="group flex min-w-0 flex-col justify-between gap-3 rounded-3xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 shadow-[0_6px_0_0_#fde68a] transition-transform hover:-translate-y-0.5"
+        <div
+          data-testid="hero-shop"
+          className="flex min-w-0 flex-col gap-3 rounded-3xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-4 shadow-[0_6px_0_0_#fde68a] sm:p-5"
         >
-          <p className="text-xs font-bold uppercase tracking-widest text-amber-700">🎯 Quà mục tiêu</p>
-          {points.goal ? (
-            <div className="flex items-center gap-3">
-              <span className="group-hover-float text-5xl">{points.goal.emoji || "🎁"}</span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-black text-slate-900">{points.goal.title}</p>
-                <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-amber-100">
-                  <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style={{ width: `${Math.min(100, (points.balance / points.goal.price) * 100)}%` }} />
-                </div>
-                <p className="mt-1 text-xs font-bold text-slate-500">
-                  {points.balance >= points.goal.price ? "Đủ điểm đổi quà! 🎉" : `còn ${points.goal.price - points.balance} điểm`}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <span className="group-hover-float text-5xl">🎁</span>
-              <p className="text-sm font-semibold text-slate-600">Chọn một món quà làm mục tiêu — học chăm cả tháng là đổi được gói bim bim đấy!</p>
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-black uppercase tracking-widest text-amber-700">🎁 Tiệm quà</p>
+            <Link href="/rewards" className="inline-flex items-center text-xs font-black text-amber-700 hover:text-amber-800">
+              Xem tất cả <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+
+          {/* Quà mục tiêu */}
+          <Link href="/rewards" className="group flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-amber-200 transition hover:ring-2 hover:ring-amber-300">
+            <span className={cn("dots-bg flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-3xl", points.goal ? rarityOf(points.goal.price).art : "from-slate-50 to-slate-100")}>
+              <span className="group-hover-float">{points.goal?.emoji || "🎯"}</span>
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Mục tiêu</span>
+              {points.goal ? (
+                <>
+                  <span className="block truncate font-black text-slate-900">{points.goal.title}</span>
+                  <span className="mt-1 block h-2 overflow-hidden rounded-full bg-amber-100">
+                    <span className="block h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style={{ width: `${Math.min(100, (points.balance / points.goal.price) * 100)}%` }} />
+                  </span>
+                  <span className="mt-0.5 block text-[11px] font-bold text-slate-500">
+                    {points.balance >= points.goal.price ? "Đủ điểm đổi quà! 🎉" : `còn ${points.goal.price - points.balance} điểm`}
+                  </span>
+                </>
+              ) : (
+                <span className="block text-sm font-semibold text-slate-600">Ghim 📌 một món trong tiệm làm mục tiêu nhé!</span>
+              )}
+            </span>
+          </Link>
+
+          {/* Vài món gợi ý: đổi được ngay / sắp đổi được */}
+          {points.shop.length > 0 && (
+            <ul className="space-y-1">
+              {points.shop.map((r) => {
+                const ok = points.balance >= r.price;
+                return (
+                  <li key={r.id}>
+                    <Link href="/rewards" className="flex items-center gap-2.5 rounded-xl px-1.5 py-1.5 transition-colors hover:bg-amber-100/60">
+                      <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-lg", rarityOf(r.price).art)}>{r.emoji || "🎁"}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-bold text-slate-800">{r.title}</span>
+                        {ok ? (
+                          <span className="block text-[11px] font-black text-emerald-600">Đổi được ngay ✓</span>
+                        ) : (
+                          <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-slate-100">
+                            <span className="block h-full rounded-full bg-amber-400" style={{ width: `${Math.min(100, (points.balance / r.price) * 100)}%` }} />
+                          </span>
+                        )}
+                      </span>
+                      <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-black text-amber-800">⭐ {r.price}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           )}
-          <span className="inline-flex items-center gap-0.5 self-end text-sm font-black text-amber-700">
-            Vào tiệm quà <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </span>
-        </Link>
+        </div>
       )}
     </section>
   );

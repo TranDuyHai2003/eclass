@@ -60,7 +60,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
       : [{ icon: LogIn, label: "Đăng nhập", href: "/login" }]),
     { icon: BookOpen, label: "Khóa Học", href: "/courses" },
     { icon: Trophy, label: "Bảng xếp hạng Hunter", href: "/ranking" },
-    ...(pointsEnabled && role === "STUDENT" ? [{ icon: Gift, label: "Điểm thưởng & Đổi quà", href: "/rewards" }] : []),
+    ...(pointsEnabled && role === "STUDENT" ? [{ icon: Gift, label: "Điểm thưởng", href: "/rewards" }] : []),
     {
       icon: DiscordIcon,
       label: "Discord",

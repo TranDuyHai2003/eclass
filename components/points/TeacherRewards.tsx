@@ -76,21 +76,21 @@ export function TeacherRewards({ data, manualMax, manualDailyCap }: { data: Data
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-white p-1.5 shadow-sm border border-slate-200/70 sm:flex sm:overflow-x-auto no-scrollbar">
+      <div className="grid grid-cols-2 gap-1.5 rounded-2xl border-2 border-slate-200/80 bg-slate-100/80 p-1.5 sm:flex">
         {tabs.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
             className={cn(
-              "flex shrink-0 items-center justify-center sm:justify-start gap-1.5 rounded-xl px-2.5 sm:px-3.5 py-2 text-[13px] sm:text-sm font-bold transition-colors",
-              tab === t.key ? "bg-blue-600 text-white shadow" : "text-slate-500 hover:bg-slate-100",
+              "flex items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 text-[13px] font-black transition-all sm:flex-1 sm:text-sm",
+              tab === t.key ? "bg-white text-blue-700 shadow-[0_3px_0_0_#cbd5e1]" : "text-slate-500 hover:bg-white/60 hover:text-slate-700",
             )}
           >
             <t.icon className="h-4 w-4" />
             {t.label}
             {!!t.badge && (
-              <span className={cn("rounded-full px-1.5 text-[11px]", tab === t.key ? "bg-white/25" : "bg-amber-100 text-amber-700")}>{t.badge}</span>
+              <span className="rounded-full bg-amber-400 px-1.5 text-[11px] text-amber-950">{t.badge}</span>
             )}
           </button>
         ))}
@@ -383,7 +383,7 @@ function RewardsTab({ data, pending, run }: TabProps) {
               <div className="flex items-start gap-3">
                 <span className={cn("dots-bg flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-3xl", rarityOf(r.price).art)} style={{ "--dot": rarityOf(r.price).dot } as React.CSSProperties}>{r.emoji || "🎁"}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-black text-slate-900 line-clamp-1">{r.title}</p>
+                  <p className="font-black leading-snug text-slate-900 line-clamp-2">{r.title}</p>
                   <p className="flex flex-wrap items-center gap-1.5 text-sm font-black text-amber-600">
                     ⭐ {r.price} điểm
                     <span className={cn("rounded-full px-2 py-0.5 text-[10px] uppercase", rarityOf(r.price).chip)}>{rarityOf(r.price).label}</span>

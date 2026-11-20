@@ -54,10 +54,9 @@ export function HomePromo() {
   return (
     <div className="relative w-full rounded-3xl overflow-hidden shadow-[0_6px_0_0_#1e3a8a] group transition-all">
       {/* Background with multiple gradients and patterns */}
-      <div className="absolute inset-0 bg-[#2563EB]" />
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-transparent to-orange-500 opacity-50" />
-      <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl animate-pulse" />
-      <div className="absolute bottom-0 left-0 w-64 h-64 bg-yellow-400/10 rounded-full -ml-32 -mb-32 blur-3xl" />
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-700 via-blue-600 to-sky-500" />
+      <div aria-hidden className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl" />
+      <div aria-hidden className="absolute bottom-0 left-0 w-64 h-64 bg-yellow-300/15 rounded-full -ml-24 -mb-32 blur-3xl" />
 
       {/* Grid pattern overlay */}
       <div

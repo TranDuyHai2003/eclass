@@ -138,13 +138,13 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
         </div>
       </section>
 
-      {/* ============ Quà mục tiêu + linh vật ============ */}
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div className="min-w-0 rounded-3xl border-2 border-slate-200/80 bg-white p-4 shadow-[0_4px_0_0_#e2e8f0]">
+      {/* ============ Quà mục tiêu + linh vật (một thẻ, gọn trên điện thoại) ============ */}
+      <section className="grid grid-cols-1 gap-3 rounded-3xl border-2 border-slate-200/80 bg-white p-3 shadow-[0_4px_0_0_#e2e8f0] sm:p-4 md:grid-cols-2 md:items-center md:gap-0">
+        <div className="min-w-0 md:pr-4">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400">🎯 Quà mục tiêu</p>
           {goal ? (
             <div className="mt-2 flex items-center gap-3">
-              <span className="text-4xl">{goal.emoji || "🎁"}</span>
+              <span className={cn("dots-bg flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-2xl", rarityOf(goal.price).art)}>{goal.emoji || "🎁"}</span>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-black text-slate-900">{goal.title}</p>
                 <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-slate-100">
@@ -156,10 +156,10 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
               </div>
             </div>
           ) : (
-            <p className="mt-2 text-sm text-slate-500">Bấm 📌 trên một món quà để đặt làm mục tiêu và theo dõi còn bao nhiêu điểm nữa.</p>
+            <p className="mt-1.5 text-sm text-slate-500">Bấm 📌 trên một món quà để đặt làm mục tiêu và theo dõi còn bao nhiêu điểm nữa.</p>
           )}
         </div>
-        <div className="min-w-0 rounded-3xl border-2 border-slate-200/80 bg-gradient-to-br from-sky-50 to-white p-3 shadow-[0_4px_0_0_#e2e8f0]">
+        <div className="min-w-0 border-t border-slate-100 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
           <Mascot tips={tips} />
         </div>
       </section>
@@ -489,7 +489,7 @@ function RewardCard({
 
       <div className="flex flex-1 flex-col px-1.5 pb-1 pt-2.5">
         <p className="line-clamp-2 font-black leading-snug text-slate-900">{r.title}</p>
-        {r.description && <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{r.description}</p>}
+        {r.description && <p className="mt-0.5 line-clamp-1 text-xs text-slate-500 sm:line-clamp-2">{r.description}</p>}
         <p className="mt-1 flex flex-wrap gap-x-2 text-[11px] font-semibold text-slate-400">
           {r.stock !== null && <span>Còn {Math.max(0, r.stock)}</span>}
           {r.perStudentMonthlyLimit !== null && (
