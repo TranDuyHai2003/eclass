@@ -110,11 +110,25 @@ export async function openBrowser({ baseUrl, token, width = 1366, height = 900 }
         const vw = document.documentElement.clientWidth;
         const out = [];
         if (document.documentElement.scrollWidth > vw + 1) out.push("trang cuộn ngang: " + document.documentElement.scrollWidth + " > " + vw);
-        const clipped = (el) => { for (let p = el.parentElement; p; p = p.parentElement) { const o = getComputedStyle(p).overflowX; if (o !== "visible") return true; } return false; };
+        // Tổ tiên gần nhất có cắt nội dung (overflow-x khác visible)
+        const clipper = (el) => { for (let p = el.parentElement; p; p = p.parentElement) { const o = getComputedStyle(p).overflowX; if (o !== "visible") return p; } return null; };
+        const label = (el) => el.tagName.toLowerCase() + " '" + (el.innerText || "").trim().replace(/\s+/g, " ").slice(0, 30) + "'";
         for (const el of document.querySelectorAll("main *, header *")) {
+          const cs = getComputedStyle(el);
           const r = el.getBoundingClientRect();
-          if (!r.width || !r.height || getComputedStyle(el).visibility === "hidden") continue;
-          if ((r.right > vw + 1 || r.left < -1) && !clipped(el)) out.push("tràn: " + el.tagName.toLowerCase() + " '" + (el.innerText || "").trim().slice(0, 30) + "' right=" + Math.round(r.right));
+          if (!r.width || !r.height || cs.visibility === "hidden" || cs.display === "none") continue;
+          // Phần trang trí (absolute/fixed, aria-hidden) được phép tràn ra và bị cắt
+          if (cs.position === "absolute" || cs.position === "fixed" || el.closest("[aria-hidden=true]")) continue;
+          const c = clipper(el);
+          if (!c) {
+            if (r.right > vw + 1 || r.left < -1) out.push("tràn màn hình: " + label(el) + " right=" + Math.round(r.right));
+            continue;
+          }
+          const co = getComputedStyle(c).overflowX;
+          if (co === "auto" || co === "scroll") continue; // khung cuộn ngang có chủ đích
+          const cr = c.getBoundingClientRect();
+          // Chỉ xét phần tử có chữ (chữ bị cắt là lỗi; ô 'truncate' tự cắt bên trong nên không tính)
+          if ((el.innerText || "").trim() && (r.right > Math.min(cr.right, vw) + 1)) out.push("bị cắt: " + label(el) + " right=" + Math.round(r.right) + " > " + Math.round(Math.min(cr.right, vw)));
         }
         return [...new Set(out)].slice(0, 8);
       `),

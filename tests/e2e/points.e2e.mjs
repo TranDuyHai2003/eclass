@@ -198,6 +198,11 @@ try {
     await s.goto("/", /điểm thưởng/i);
     const chip = await s.ev(`return document.querySelector('header a[href="/rewards"]')?.innerText`);
     expect(chip && chip.includes("114"), `chip header sai: ${chip}`);
+    const hero = await s.ev(`return document.querySelector('[data-testid="student-hero"]')?.innerText || ""`);
+    expect(/Chào /.test(hero), "thiếu lời chào ở thẻ chào trang chủ");
+    expect(/Cấp \d+/.test(hero), "thẻ chào thiếu cấp độ");
+    expect(/Bắt đầu học|Bài gần nhất/i.test(hero), "thẻ chào thiếu khối học tiếp");
+    expect(/114/.test(hero), "thẻ chào thiếu số điểm");
   });
 
   await step("Học sinh: trang Điểm thưởng — số dư, chỉ thấy quà dành cho mình", async () => {
@@ -206,21 +211,35 @@ try {
     expect(txt.includes("114"), "không thấy số dư 114");
     expect(txt.includes("Kẹo / bánh nhỏ") && txt.includes("Quà đắt"), "thiếu quà");
     expect(/Còn thiếu 386 điểm/.test(txt), "quà đắt phải báo còn thiếu 386 điểm");
+    const rarity = await s.ev(`return [...document.querySelectorAll('[data-testid="reward-card"]')].map(c => c.dataset.title.replace(/^.*Quà đắt$/, "Quà đắt") + ":" + c.dataset.rarity).join(",")`);
+    expect(rarity.includes("Kẹo / bánh nhỏ:common") && rarity.includes("Quà đắt:legendary"), `độ hiếm sai: ${rarity}`);
+    expect(/Cấp \d+ · /.test(txt), "thanh trạng thái thiếu cấp độ");
+  });
+
+  await step("Học sinh: lọc quà theo loại (chỉ hiện lựa chọn có quà)", async () => {
+    await s.click(/^✨ Đặc quyền$/);
+    let titles = await s.ev(`return [...document.querySelectorAll('[data-testid="reward-card"]')].map(c => c.dataset.title).join("|")`);
+    expect(titles.includes("Quà đắt") && !titles.includes("Kẹo"), `lọc Đặc quyền sai: ${titles}`);
+    await s.click(/^🏫 Nhận tại lớp$/);
+    titles = await s.ev(`return [...document.querySelectorAll('[data-testid="reward-card"]')].map(c => c.dataset.title).join("|")`);
+    expect(titles.includes("Kẹo") && !titles.includes("Quà đắt"), `lọc Nhận tại lớp sai: ${titles}`);
+    await s.click(/^Tất cả$/);
   });
 
   await step("Học sinh: ghim quà mục tiêu", async () => {
-    const ok = await s.ev(`const card=[...document.querySelectorAll("p")].find(p=>p.innerText.includes("Quà đắt"))?.closest("div.flex.flex-col"); const b=card?.querySelector('button[title^="Ghim"]'); if(!b) return false; b.click(); return true;`);
+    const ok = await s.ev(`const b=[...document.querySelectorAll('[data-testid="reward-card"]')].find(c => c.dataset.title.endsWith("Quà đắt"))?.querySelector('[data-testid="pin"]'); if(!b) return false; b.click(); return true;`);
     expect(ok, "không thấy nút ghim");
     expect(await s.waitText(/Còn 386 điểm nữa/), "khối Quà mục tiêu không cập nhật");
   });
 
   await step("Học sinh: đổi kẹo (hộp xác nhận) → trừ điểm, hiện ở 'Quà của tôi'", async () => {
-    const opened = await s.ev(`const card=[...document.querySelectorAll("p")].find(p=>p.innerText==="Kẹo / bánh nhỏ")?.closest("div.flex.flex-col"); const b=[...(card?.querySelectorAll("button")||[])].find(x=>/⭐/.test(x.innerText)); if(!b) return false; b.click(); return true;`);
+    const opened = await s.ev(`const b=document.querySelector('[data-testid="reward-card"][data-title="Kẹo / bánh nhỏ"]')?.querySelector('[data-testid="redeem"]'); if(!b || b.disabled) return false; b.click(); return true;`);
     expect(opened, "không thấy nút đổi kẹo");
     expect(await s.waitText(/Dùng 40 điểm để đổi/), "hộp xác nhận không hiện");
     await s.click(/^Đổi quà$/, "[role=dialog] button");
     expect(await s.waitText(/Đã đổi "Kẹo \/ bánh nhỏ"/), "không thấy thông báo đổi quà");
     expect((await balanceOf(data.student.id)) === 74, "số dư sau đổi phải 74");
+    expect((await s.ev(`return document.querySelector("[data-celebrated]")?.dataset.celebrated`)) === "1", "không bắn pháo giấy khi đổi quà thành công");
     await s.click(/^Quà của tôi/);
     expect(await s.waitText(/Chờ nhận quà/), "không thấy trạng thái Chờ nhận quà");
   });
@@ -233,7 +252,7 @@ try {
 
   await step("Học sinh: đổi lại kẹo (để thầy trao)", async () => {
     await s.click(/^Đổi quà$/);
-    await s.ev(`const card=[...document.querySelectorAll("p")].find(p=>p.innerText==="Kẹo / bánh nhỏ")?.closest("div.flex.flex-col"); [...card.querySelectorAll("button")].find(x=>/⭐/.test(x.innerText)).click();`);
+    await s.ev(`document.querySelector('[data-testid="reward-card"][data-title="Kẹo / bánh nhỏ"]').querySelector('[data-testid="redeem"]').click();`);
     await sleep(800);
     await s.click(/^Đổi quà$/, "[role=dialog] button");
     expect(await s.waitText(/Đã đổi/), "đổi lại thất bại");
@@ -270,6 +289,7 @@ try {
   // -------------------------------------------------- Bố cục nhiều cỡ màn hình
   const sizes = [
     [320, 640],
+    [360, 740],
     [390, 844],
     [768, 1024],
     [1366, 900],

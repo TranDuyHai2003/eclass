@@ -27,7 +27,7 @@ export default async function RewardsPage() {
           </div>
         </aside>
         <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-5 sm:py-6 max-w-[1200px]">
-          <StudentRewards data={data} />
+          <StudentRewards data={data} user={{ name: session.user.name, image: session.user.image }} />
         </main>
       </div>
     </div>
