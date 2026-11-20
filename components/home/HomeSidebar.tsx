@@ -136,19 +136,19 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
             if (onClick) onClick();
           }}
           className={cn(
-            "flex items-center justify-between p-3 transition-all rounded-xl group",
+            "flex items-center justify-between p-2.5 transition-all rounded-2xl group border-2",
             isActive
-              ? "bg-[#FFF1F2] text-blue-600 shadow-sm"
-              : "hover:bg-[#FFF1F2]/50 text-slate-600 hover:text-blue-600",
+              ? "bg-blue-50 border-blue-200 text-blue-700 shadow-[0_3px_0_0_#bfdbfe]"
+              : "border-transparent hover:bg-slate-100/80 text-slate-600 hover:text-blue-600",
           )}
         >
           <div className="flex items-center gap-3">
             <div
               className={cn(
-                "p-1.5 rounded-lg transition-colors border",
+                "p-1.5 rounded-xl transition-colors border",
                 isActive
-                  ? "bg-white border-blue-200 text-blue-600 shadow-sm"
-                  : "bg-white border-slate-100 text-slate-400 group-hover:text-blue-600 group-hover:border-blue-100",
+                  ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                  : "bg-white border-slate-200/80 text-slate-400 group-hover:text-blue-600 group-hover:border-blue-200",
               )}
             >
               <item.icon className="w-4 h-4" />

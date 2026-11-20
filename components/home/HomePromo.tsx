@@ -18,13 +18,13 @@ const Unit = ({
       className={cn(
         "relative flex items-center justify-center bg-white rounded-2xl shadow-xl transition-transform hover:scale-105",
         primary
-          ? "w-16 h-16 sm:w-20 sm:h-20 border-4 border-[#FEE715]"
-          : "w-14 h-14 sm:w-16 sm:h-16 border-2 border-white/20 bg-white/10 backdrop-blur-md text-white",
+          ? "w-12 h-12 sm:w-16 sm:h-16 border-4 border-[#FEE715]"
+          : "w-11 h-11 sm:w-14 sm:h-14 border-2 border-white/20 bg-white/10 backdrop-blur-md text-white",
       )}
     >
       <span
         className={cn(
-          "text-2xl sm:text-4xl font-black tabular-nums italic",
+          "text-xl sm:text-3xl font-black tabular-nums italic",
           primary ? "text-[#2563EB]" : "text-white",
         )}
       >
@@ -38,7 +38,7 @@ const Unit = ({
     </div>
     <span
       className={cn(
-        "text-xs sm:text-sm font-black uppercase tracking-wider mt-2",
+        "text-[10px] sm:text-xs font-black uppercase tracking-wider mt-1.5",
         primary ? "text-[#FEE715]" : "text-white/80",
       )}
     >
@@ -52,7 +52,7 @@ export function HomePromo() {
   const { days, hours, minutes, seconds, isFinished } = useCountdown(finalDate);
 
   return (
-    <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-2xl group transition-all hover:shadow-blue-500/20">
+    <div className="relative w-full rounded-3xl overflow-hidden shadow-[0_6px_0_0_#1e3a8a] group transition-all">
       {/* Background with multiple gradients and patterns */}
       <div className="absolute inset-0 bg-[#2563EB]" />
       <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-transparent to-orange-500 opacity-50" />
@@ -69,9 +69,9 @@ export function HomePromo() {
         }}
       />
 
-      <div className="relative z-10 p-6 sm:p-10 flex flex-col lg:flex-row items-center justify-between gap-8 md:gap-12">
+      <div className="relative z-10 p-5 sm:p-7 flex flex-col lg:flex-row items-center justify-between gap-5 md:gap-8">
         {/* Text Section */}
-        <div className="text-center lg:text-left space-y-4 max-w-md">
+        <div className="text-center lg:text-left space-y-2.5 max-w-md">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full border border-white/30">
             <Timer className="w-4 h-4 text-[#FEE715]" />
             <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wider">
@@ -79,11 +79,11 @@ export function HomePromo() {
             </span>
           </div>
           <div className="space-y-1">
-            <h2 className="text-3xl sm:text-5xl font-black text-white uppercase tracking-tighter leading-[0.9]">
+            <h2 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter leading-[0.95]">
               Chinh phục <br />
               <span className="text-[#FEE715] flex items-center gap-2">
                 Kỳ thi 2027{" "}
-                <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 fill-[#FEE715]" />
+                <Sparkles className="w-5 h-5 sm:w-7 sm:h-7 fill-[#FEE715]" />
               </span>
             </h2>
             <p className="text-white/70 text-sm sm:text-base font-medium">
@@ -94,8 +94,8 @@ export function HomePromo() {
         </div>
 
         {/* Countdown Grid */}
-        <div className="bg-black/20 backdrop-blur-xl p-6 sm:p-8 rounded-[2rem] border border-white/10 shadow-inner">
-          <div className="flex gap-4 sm:gap-6">
+        <div className="bg-black/20 backdrop-blur-xl p-4 sm:p-5 rounded-2xl border border-white/10 shadow-inner">
+          <div className="flex gap-3 sm:gap-5">
             <Unit value={days} label="Ngày" primary />
             <Unit value={hours} label="Giờ" />
             <Unit value={minutes} label="Phút" />

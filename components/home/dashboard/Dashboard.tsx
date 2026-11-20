@@ -10,7 +10,8 @@ import { HomeSidebar } from "../HomeSidebar";
 import { HomeCarousel } from "./HomeCarousel";
 import { RightSidebar } from "./RightSidebar";
 import { HomePromo } from "../HomePromo";
-import { PointsHomeCard, type PointsHomeCardData } from "@/components/points/PointsHomeCard";
+import { StudentHero } from "./StudentHero";
+import type { PointsCardData } from "@/lib/points/queries";
 
 import { SortSelect } from "@/components/ui/SortSelect";
 
@@ -25,8 +26,8 @@ export function Dashboard({
   courses: any[];
   lastLesson: any;
   stats: any;
-  /** Điểm thưởng của học sinh (null = không hiện) */
-  points?: PointsHomeCardData | null;
+  /** Điểm thưởng của học sinh (null = tắt tính năng / không phải học sinh) */
+  points?: PointsCardData | null;
 }) {
   const searchParams = useSearchParams();
   const currentSort = searchParams?.get("sort") || "default";
@@ -41,6 +42,11 @@ export function Dashboard({
       return 0;
     });
   }, [courses, currentSort]);
+
+  // Chưa học bài nào → bắt đầu từ bài đầu tiên của khoá đã ghi danh, nếu không có thì trang Khoá học
+  const firstEnrolled = courses.find((c) => c.isEnrolled);
+  const firstLessonId = firstEnrolled?.chapters?.[0]?.lessons?.[0]?.id;
+  const startHref = firstLessonId ? `/watch/${firstLessonId}` : "/courses";
 
   return (
     <div className="page-shell min-h-screen bg-[#EBF3FF]">
@@ -57,7 +63,15 @@ export function Dashboard({
           {/* Carousel Slider (Temporarily hidden due to no data) */}
           {/* <HomeCarousel /> */}
 
-          {points && <PointsHomeCard data={points} />}
+          {user?.role === "STUDENT" && (
+            <StudentHero
+              name={user?.name}
+              points={points ?? null}
+              lastLesson={lastLesson}
+              stats={stats}
+              startHref={startHref}
+            />
+          )}
 
           {/* Countdown Target Promo */}
           <HomePromo />
@@ -85,7 +99,7 @@ export function Dashboard({
             {/* Courses Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               {displayCourses.map((course) => (
-                <CourseCard key={course.id} course={course} />
+                <CourseCard key={course.id} course={course} progress={course.isEnrolled ? course.progress : undefined} />
               ))}
 
               {courses.length === 0 && (

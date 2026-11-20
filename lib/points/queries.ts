@@ -14,9 +14,10 @@ const EMPTY_WALLET = {
 };
 
 /** Số dư hiển thị trên header (1 truy vấn theo khoá chính) */
-export async function getBalance(userId: string) {
-  const w = await prisma.pointWallet.findUnique({ where: { userId }, select: { balance: true } });
-  return w?.balance ?? 0;
+/** Chip điểm trên header: số dư + tổng đã kiếm (để hiện cấp) — 1 truy vấn theo khoá chính */
+export async function getHeaderPoints(userId: string) {
+  const w = await prisma.pointWallet.findUnique({ where: { userId }, select: { balance: true, lifetimeEarned: true } });
+  return { balance: w?.balance ?? 0, lifetimeEarned: w?.lifetimeEarned ?? 0 };
 }
 
 /** Chuỗi còn "sống" nếu tuần gần nhất được tính là tuần này hoặc tuần trước (hoặc trước nữa mà còn thẻ giữ chuỗi) */
@@ -93,12 +94,18 @@ export async function getStudentPointsPage(userId: string) {
 
 export type StudentPointsPageData = Awaited<ReturnType<typeof getStudentPointsPage>>;
 
-/** Thẻ nhỏ trên trang chủ: số dư, chuỗi tuần, quà mục tiêu */
+/** Thẻ chào trên trang chủ học sinh: số dư, cấp (tổng đã kiếm), chuỗi tuần, tiến độ tuần, quà mục tiêu */
 export async function getPointsCard(userId: string) {
-  const w = await prisma.pointWallet.findUnique({
-    where: { userId },
-    select: { balance: true, weekStreak: true, lastStreakWeek: true, streakFreezes: true, goalRewardId: true },
-  });
+  // Ví và số lần nộp bài tuần này chạy song song; quà mục tiêu cần goalRewardId nên lấy sau
+  const [w, weekActivities] = await Promise.all([
+    prisma.pointWallet.findUnique({
+      where: { userId },
+      select: { balance: true, lifetimeEarned: true, weekStreak: true, lastStreakWeek: true, streakFreezes: true, goalRewardId: true },
+    }),
+    prisma.pointLedger.count({
+      where: { userId, source: { in: [...STREAK_ACTIVITY_SOURCES] }, amount: { gt: 0 }, createdAt: { gte: getVietnamWeekStart() } },
+    }),
+  ]);
   const goal = w?.goalRewardId
     ? await prisma.reward.findFirst({
         where: { id: w.goalRewardId, isActive: true, deletedAt: null },
@@ -107,10 +114,16 @@ export async function getPointsCard(userId: string) {
     : null;
   return {
     balance: w?.balance ?? 0,
+    lifetimeEarned: w?.lifetimeEarned ?? 0,
     weekStreak: w ? liveStreak({ ...EMPTY_WALLET, ...w }) : 0,
+    weekActivities,
+    weekTarget: POINTS.streak.minActivities,
+    thisWeekCounted: w?.lastStreakWeek === getWeekCode(),
     goal,
   };
 }
+
+export type PointsCardData = Awaited<ReturnType<typeof getPointsCard>>;
 
 /** Điểm thưởng nhận được từ một lượt làm bài (hiện ở màn kết quả) */
 export async function getPointsForAttempt(userId: string, attemptId: string) {

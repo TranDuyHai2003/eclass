@@ -14,6 +14,7 @@ import {
 } from "@/actions/points";
 import type { RewardInput } from "@/lib/points/reward-input";
 import { REWARD_TEMPLATES as TEMPLATES } from "@/lib/points/templates";
+import { rarityOf } from "@/lib/points/rarity";
 import type { TeacherRewardsPageData } from "@/lib/points/queries";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -196,7 +197,7 @@ function RequestsTab({ data, pending, run }: TabProps) {
               type="button"
               disabled={pending || chosen.length === 0}
               onClick={() => run(() => deliverRedemptions(chosen), () => setSelected(new Set()))}
-              className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 text-sm font-black text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="btn-3d btn-3d-green h-10 px-3.5 text-sm disabled:opacity-50"
             >
               <Check className="h-4 w-4" /> Đã trao ({chosen.length})
             </button>
@@ -348,7 +349,7 @@ function RewardsTab({ data, pending, run }: TabProps) {
         <button
           type="button"
           onClick={() => setForm(emptyForm())}
-          className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700"
+          className="btn-3d btn-3d-blue h-10 px-4 text-sm"
         >
           <Plus className="h-4 w-4" /> Thêm quà
         </button>
@@ -378,12 +379,15 @@ function RewardsTab({ data, pending, run }: TabProps) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {data.rewards.map((r) => (
-            <div key={r.id} className={cn("rounded-3xl border bg-white p-4 shadow-sm", r.isActive ? "border-slate-200/70" : "border-dashed border-slate-300 opacity-70")}>
+            <div key={r.id} className={cn("rounded-3xl border-2 bg-white p-4", r.isActive ? rarityOf(r.price).card : "border-dashed border-slate-300 opacity-70")}>
               <div className="flex items-start gap-3">
-                <span className="text-4xl leading-none">{r.emoji || "🎁"}</span>
+                <span className={cn("dots-bg flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-3xl", rarityOf(r.price).art)} style={{ "--dot": rarityOf(r.price).dot } as React.CSSProperties}>{r.emoji || "🎁"}</span>
                 <div className="min-w-0 flex-1">
                   <p className="font-black text-slate-900 line-clamp-1">{r.title}</p>
-                  <p className="text-sm font-black text-amber-600">⭐ {r.price} điểm</p>
+                  <p className="flex flex-wrap items-center gap-1.5 text-sm font-black text-amber-600">
+                    ⭐ {r.price} điểm
+                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] uppercase", rarityOf(r.price).chip)}>{rarityOf(r.price).label}</span>
+                  </p>
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <button type="button" onClick={() => edit(r)} title="Sửa" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-blue-600">
@@ -678,8 +682,8 @@ function GrantTab({ data, pending, run, manualMax, manualDailyCap }: TabProps & 
           disabled={pending || chosen.length === 0 || !amount || !reason.trim()}
           onClick={() => run(() => grantPoints({ userIds: chosen, amount, reason }), () => setSelected(new Set()))}
           className={cn(
-            "inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-sm font-black text-white disabled:opacity-50",
-            amount < 0 ? "bg-rose-600 hover:bg-rose-700" : "bg-amber-500 hover:bg-amber-600",
+            "btn-3d h-11 w-full text-sm disabled:opacity-50",
+            amount < 0 ? "bg-rose-600 text-white [--btn-edge:#9f1239] hover:bg-rose-500" : "btn-3d-amber",
           )}
         >
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : amount < 0 ? <X className="h-4 w-4" /> : <Star className="h-4 w-4" />}

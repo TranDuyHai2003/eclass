@@ -5,7 +5,7 @@ import { test, describe, after } from "node:test";
 import assert from "node:assert/strict";
 import { prisma } from "@/lib/prisma";
 import { POINTS } from "@/lib/points/config";
-import { getPointsCard, getPointsForAttempt, getStudentPointsPage, getTeacherRewardsPage } from "@/lib/points/queries";
+import { getHeaderPoints, getPointsCard, getPointsForAttempt, getStudentPointsPage, getTeacherRewardsPage } from "@/lib/points/queries";
 import { redeemInTx } from "@/lib/points/redemption";
 import { getWeekCode } from "@/lib/ranking/history-engine";
 import { createFixture, disconnect } from "../helpers/fixtures";
@@ -95,7 +95,9 @@ describe("Dải điểm trang chủ & màn kết quả", () => {
     await prisma.reward.update({ where: { id: r.id }, data: { deletedAt: new Date() } });
     card = await getPointsCard(s.id);
     assert.equal(card.goal, null);
-    assert.deepEqual(await getPointsCard((await fx.user()).id), { balance: 0, weekStreak: 0, goal: null });
+    assert.deepEqual(await getPointsCard((await fx.user()).id), {
+      balance: 0, lifetimeEarned: 0, weekStreak: 0, weekActivities: 0, weekTarget: POINTS.streak.minActivities, thisWeekCounted: false, goal: null,
+    });
   });
 
   test("màn kết quả: chỉ điểm cộng của đúng lượt làm, đúng học sinh", async () => {
@@ -110,6 +112,30 @@ describe("Dải điểm trang chủ & màn kết quả", () => {
     ] });
     const rows = await getPointsForAttempt(s.id, "A1");
     assert.deepEqual(rows.map((r) => [r.source, r.amount]).sort(), [["TEST_SCORE", 1], ["TEST_SUBMIT", 2]]);
+  });
+});
+
+describe("Chip điểm trên header", () => {
+  test("số dư và tổng đã kiếm; học sinh mới = 0", async () => {
+    const s = await fx.user();
+    assert.deepEqual(await getHeaderPoints(s.id), { balance: 0, lifetimeEarned: 0 });
+    await fx.give(s.id, 30);
+    assert.deepEqual(await getHeaderPoints(s.id), { balance: 30, lifetimeEarned: 30 });
+  });
+});
+
+describe("Thẻ chào trang chủ: tiến độ tuần", () => {
+  test("đếm lần nộp bài tuần này, chưa tính chuỗi", async () => {
+    const s = await fx.user();
+    await prisma.pointLedger.createMany({ data: [
+      { userId: s.id, amount: 2, source: "TEST_SUBMIT" },
+      { userId: s.id, amount: 1, source: "HOMEWORK_SUBMIT" },
+      { userId: s.id, amount: 3, source: "TEST_SCORE" },
+      { userId: s.id, amount: 2, source: "TEST_SUBMIT", createdAt: new Date(Date.now() - 9 * 86400000) },
+    ] });
+    const card = await getPointsCard(s.id);
+    assert.equal(card.weekActivities, 2);
+    assert.equal(card.thisWeekCounted, false);
   });
 });
 

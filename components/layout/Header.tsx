@@ -20,7 +20,8 @@ import { SearchBar } from "./SearchBar";
 import { cn } from "@/lib/utils";
 import { getAvatarThumbUrl } from "@/lib/game-rank";
 import { isPointsEnabled } from "@/lib/points/config";
-import { getBalance } from "@/lib/points/queries";
+import { getHeaderPoints } from "@/lib/points/queries";
+import { getLevel } from "@/lib/points/levels";
 
 export default async function Header() {
   const session = await auth();
@@ -28,7 +29,8 @@ export default async function Header() {
   const isTeacher = session?.user?.role === "TEACHER" || isAdmin;
   // Chip điểm thưởng: chỉ học sinh (1 truy vấn theo khoá chính)
   const showPoints = isPointsEnabled() && session?.user?.role === "STUDENT" && !!session.user.id;
-  const pointsBalance = showPoints ? await getBalance(session!.user!.id!).catch(() => 0) : 0;
+  const headerPoints = showPoints ? await getHeaderPoints(session!.user!.id!).catch(() => null) : null;
+  const pointsLevel = headerPoints ? getLevel(headerPoints.lifetimeEarned) : null;
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-slate-200/50 transition-all duration-300">
@@ -91,14 +93,16 @@ export default async function Header() {
             <div className="flex items-center gap-2 sm:gap-3">
               {session ? (
                 <>
-                  {showPoints && (
+                  {showPoints && headerPoints && (
                     <Link
                       href="/rewards"
-                      title="Điểm thưởng — đổi quà"
-                      className="h-10 sm:h-11 px-2.5 sm:px-3 inline-flex items-center gap-1.5 rounded-2xl border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+                      title={`Điểm thưởng — cấp ${pointsLevel?.level} ${pointsLevel?.name} · đổi quà`}
+                      className="h-10 sm:h-11 px-2.5 sm:px-3 inline-flex items-center gap-1.5 rounded-2xl border-2 border-amber-200 bg-amber-50 text-amber-700 shadow-[0_3px_0_0_#fde68a] hover:bg-amber-100 active:translate-y-[2px] active:shadow-[0_1px_0_0_#fde68a] transition-all"
                     >
+                      {/* Biểu tượng cấp chỉ hiện từ 400px để header điện thoại nhỏ không chật */}
+                      <span aria-hidden className="hidden min-[400px]:inline text-base leading-none">{pointsLevel?.icon}</span>
                       <span aria-hidden className="text-base leading-none">⭐</span>
-                      <span className="text-sm font-black tabular-nums">{pointsBalance}</span>
+                      <span className="text-sm font-black tabular-nums">{headerPoints.balance}</span>
                       <span className="sr-only">điểm thưởng</span>
                     </Link>
                   )}
