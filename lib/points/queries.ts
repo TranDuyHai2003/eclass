@@ -107,23 +107,39 @@ export async function getPointsCard(userId: string) {
     }),
     prisma.user.findUnique({ where: { id: userId }, select: { classId: true, studentType: true } }),
   ]);
-  // Vòng 2 (song song): quà mục tiêu + quà gợi ý (rẻ nhất trước, bỏ món đang là mục tiêu)
-  const [goal, cheapest] = await Promise.all([
-    w?.goalRewardId
+  // Vòng 2 (song song): quà mục tiêu (vẫn phải dành cho học sinh — khớp với /rewards) + quà gợi ý + lượt đã đổi tháng này
+  const [goal, candidates, monthUsage] = await Promise.all([
+    user && w?.goalRewardId
       ? prisma.reward.findFirst({
-          where: { id: w.goalRewardId, isActive: true, deletedAt: null },
+          where: { ...visibleRewardWhere(user), id: w.goalRewardId },
           select: { title: true, emoji: true, price: true },
         })
       : Promise.resolve(null),
     user
       ? prisma.reward.findMany({
-          where: { ...visibleRewardWhere(user), ...(w?.goalRewardId ? { id: { not: w.goalRewardId } } : {}) },
+          // Gợi ý chỉ những món còn hàng (rẻ nhất trước, bỏ món đang là mục tiêu)
+          where: {
+            ...visibleRewardWhere(user),
+            OR: [{ stock: null }, { stock: { gt: 0 } }],
+            ...(w?.goalRewardId ? { id: { not: w.goalRewardId } } : {}),
+          },
           orderBy: [{ price: "asc" }, { createdAt: "asc" }],
-          take: 3,
-          select: { id: true, title: true, emoji: true, price: true },
+          take: 8,
+          select: { id: true, title: true, emoji: true, price: true, perStudentMonthlyLimit: true },
         })
       : Promise.resolve([]),
+    prisma.redemption.groupBy({
+      by: ["rewardId"],
+      where: { userId, status: { in: ["PENDING", "DELIVERED"] }, createdAt: { gte: getVietnamMonthStart() } },
+      _count: { _all: true },
+    }),
   ]);
+  // Bỏ món đã hết lượt đổi trong tháng → không báo "Đổi được ngay" sai
+  const used = new Map(monthUsage.map((u) => [u.rewardId, u._count._all]));
+  const cheapest = candidates
+    .filter((r) => r.perStudentMonthlyLimit === null || (used.get(r.id) ?? 0) < r.perStudentMonthlyLimit)
+    .slice(0, 3)
+    .map(({ perStudentMonthlyLimit: _limit, ...r }) => r);
   return {
     balance: w?.balance ?? 0,
     lifetimeEarned: w?.lifetimeEarned ?? 0,

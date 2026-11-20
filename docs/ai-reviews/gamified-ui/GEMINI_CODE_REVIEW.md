@@ -57,3 +57,24 @@ Phần giao diện game nhẹ cho trang chủ và trang Điểm thưởng nhìn 
 - **Chữ "THATDEHOCTOAN" ở header tràn ra khỏi khung tại 360–414px** (đúng rủi ro Gemini nêu ở vòng review kế hoạch). Đã cho chữ thương hiệu chỉ hiện từ 640px; điện thoại chỉ còn biểu tượng logo.
 
 Kết quả: `npm test` 106/106, `npm run test:e2e` 24/24 (6 cỡ màn hình).
+
+---
+
+# Review vòng 2: chỉnh giao diện (113ac45..c32d397)
+
+> Reviewer: Gemini trên web (model **Neon**), 20/11/2026. Gói gửi đi: GEMINI.md + diff + các file bị thay đổi. Dưới đây là phần tóm tắt các finding của Gemini, kèm kiểm chứng của Claude.
+
+**Tóm tắt của Gemini:** Đợt chỉnh gọn, không có lỗi bảo mật hay phân quyền, không có link lồng nhau, không gây lỗi hydration mới. Rủi ro nằm ở dữ liệu `getPointsCard` và cách `StudentHero` hiển thị trạng thái đổi quà.
+
+| # | Finding của Gemini | Mức | Claude kiểm chứng | Đã làm |
+|---|---|---|---|---|
+| 1 | Quà gợi ý báo "Đổi được ngay ✓" cả khi **hết hàng** (hoặc đã **hết lượt tháng**) | MEDIUM | **Đúng**: `visibleRewardWhere` không lọc theo tồn kho, vì `/rewards` cố ý vẫn hiện "Hết quà" | Lấy tối đa 8 món còn hàng (`stock` null hoặc > 0), bỏ món đã hết lượt tháng, giữ 3 món đầu. Thêm test hồi quy |
+| 2 | Quà mục tiêu ở trang chủ không lọc theo `visibleRewardWhere` (học sinh chuyển online hoặc đổi lớp) | MEDIUM | **Đúng**: lệch với `/rewards` | Truy vấn quà mục tiêu dùng `visibleRewardWhere(user)`. Thêm test (học sinh chuyển online, quà riêng lớp khác, so khớp với `/rewards`) |
+| 3 | Chữ "Mục tiêu" màu `slate-400` trên nền trắng dưới chuẩn WCAG AA | LOW | **Đúng** (~2,6:1) | Đổi sang `slate-500` cho nhãn này và các chữ nhỏ tương tự trong thành phần mới (Tiệm quà, thẻ quà, Cú Học) |
+| 4 | Chụp toàn trang (`cdp.mjs`) có thể truyền chiều cao số lẻ cho CDP và không khôi phục khung nhìn khi lỗi | LOW | **Đúng** | Làm tròn bằng `Math.ceil`; khôi phục khung nhìn trong `finally` |
+| 5 | Test quà gợi ý có thể đạt mà không kiểm tra gì nếu DB có sẵn quà giá thấp | LOW | **Đúng** | Quà test giá 0, gắn lớp riêng cho từng test; kiểm tra chính xác thứ tự `[v2, v3, v4]` |
+| Hỏi | `visibleRewardWhere` có cố ý giữ quà `stock = 0` không? | — | Có (để `/rewards` hiện "Hết quà") | Vì vậy lọc tồn kho riêng ở gợi ý trang chủ (#1) |
+
+**Claude sửa thêm:** dòng "KỲ THI 2027" trên banner bị lệch trái ở điện thoại trong khi tiêu đề căn giữa. Đã căn giữa trên điện thoại, căn trái từ màn `lg`.
+
+Kết quả: `npm test` 109/109, `npm run test:e2e` 24/24.

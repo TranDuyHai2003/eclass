@@ -80,7 +80,7 @@ export function HomePromo() {
           <div className="space-y-1">
             <h2 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter leading-[0.95]">
               Chinh phục <br />
-              <span className="text-[#FEE715] flex items-center gap-2">
+              <span className="text-[#FEE715] flex items-center justify-center lg:justify-start gap-2">
                 Kỳ thi 2027{" "}
                 <Sparkles className="w-5 h-5 sm:w-7 sm:h-7 fill-[#FEE715]" />
               </span>

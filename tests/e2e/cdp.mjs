@@ -82,21 +82,25 @@ export async function openBrowser({ baseUrl, token, width = 1366, height = 900 }
       await sleep(400);
     },
     async screenshot(file, { fullPage = false } = {}) {
-      let params = { format: "png" };
       let restore = null;
-      if (fullPage) {
-        // Trang có thể cuộn bên trong khung → tạm kéo cao khung nhìn bằng chiều cao thật của nội dung
-        const vp = await ev("return [innerWidth, innerHeight]");
-        const full = await ev("return Math.min(7000, Math.max(document.documentElement.scrollHeight, document.body.scrollHeight, ...[...document.querySelectorAll('main')].map(m => m.scrollHeight + m.getBoundingClientRect().top)))");
-        if (full > vp[1]) {
-          await setSize(vp[0], full);
-          await sleep(500);
-          restore = vp;
+      try {
+        if (fullPage) {
+          // Trang có thể cuộn bên trong khung → tạm kéo cao khung nhìn bằng chiều cao thật của nội dung (số nguyên cho CDP)
+          const vp = await ev("return [innerWidth, innerHeight]");
+          const full = Math.ceil(
+            await ev("return Math.min(7000, Math.max(document.documentElement.scrollHeight, document.body.scrollHeight, ...[...document.querySelectorAll('main')].map(m => m.scrollHeight + m.getBoundingClientRect().top)))"),
+          );
+          if (full > vp[1]) {
+            restore = vp;
+            await setSize(vp[0], full);
+            await sleep(500);
+          }
         }
+        const r = await send("Page.captureScreenshot", { format: "png" });
+        fs.writeFileSync(file, Buffer.from(r.result.data, "base64"));
+      } finally {
+        if (restore) await setSize(restore[0], restore[1]);
       }
-      const r = await send("Page.captureScreenshot", params);
-      fs.writeFileSync(file, Buffer.from(r.result.data, "base64"));
-      if (restore) await setSize(restore[0], restore[1]);
     },
     /** Bấm phần tử đang hiện có chữ khớp regex (không phân biệt hoa thường vì CSS có thể viết hoa) */
     async click(re, selector = "button,a,label", { optional = false } = {}) {

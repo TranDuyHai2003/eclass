@@ -17,7 +17,7 @@ export function Mascot({ tips, className }: { tips: string[]; className?: string
       <OwlSvg className="h-14 w-12 shrink-0 animate-float sm:h-16 sm:w-14" />
       <span className="relative mb-2 min-w-0 flex-1 break-words rounded-2xl rounded-bl-sm border-2 border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold leading-snug text-slate-700 shadow-[0_3px_0_0_#e2e8f0] [overflow-wrap:anywhere]">
         {tip}
-        <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-500">Cú Học · bấm để nghe tiếp</span>
+        <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-blue-600">Cú Học · bấm để nghe tiếp</span>
       </span>
     </button>
   );

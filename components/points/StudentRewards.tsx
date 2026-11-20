@@ -141,7 +141,7 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
       {/* ============ Quà mục tiêu + linh vật (một thẻ, gọn trên điện thoại) ============ */}
       <section className="grid grid-cols-1 gap-3 rounded-3xl border-2 border-slate-200/80 bg-white p-3 shadow-[0_4px_0_0_#e2e8f0] sm:p-4 md:grid-cols-2 md:items-center md:gap-0">
         <div className="min-w-0 md:pr-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">🎯 Quà mục tiêu</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-500">🎯 Quà mục tiêu</p>
           {goal ? (
             <div className="mt-2 flex items-center gap-3">
               <span className={cn("dots-bg flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-2xl", rarityOf(goal.price).art)}>{goal.emoji || "🎁"}</span>
@@ -490,7 +490,7 @@ function RewardCard({
       <div className="flex flex-1 flex-col px-1.5 pb-1 pt-2.5">
         <p className="line-clamp-2 font-black leading-snug text-slate-900">{r.title}</p>
         {r.description && <p className="mt-0.5 line-clamp-1 text-xs text-slate-500 sm:line-clamp-2">{r.description}</p>}
-        <p className="mt-1 flex flex-wrap gap-x-2 text-[11px] font-semibold text-slate-400">
+        <p className="mt-1 flex flex-wrap gap-x-2 text-[11px] font-semibold text-slate-500">
           {r.stock !== null && <span>Còn {Math.max(0, r.stock)}</span>}
           {r.perStudentMonthlyLimit !== null && (
             <span>
@@ -504,7 +504,7 @@ function RewardCard({
               <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
                 <div className="h-full rounded-full bg-amber-400" style={{ width: `${Math.min(100, (balance / r.price) * 100)}%` }} />
               </div>
-              <p className="mt-1 text-center text-[11px] font-bold text-slate-400">Còn thiếu {r.price - balance} điểm</p>
+              <p className="mt-1 text-center text-[11px] font-bold text-slate-500">Còn thiếu {r.price - balance} điểm</p>
             </div>
           )}
           <button

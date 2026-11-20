@@ -112,7 +112,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref }: Stud
               <span className="group-hover-float">{points.goal?.emoji || "🎯"}</span>
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Mục tiêu</span>
+              <span className="block text-[10px] font-black uppercase tracking-wider text-slate-500">Mục tiêu</span>
               {points.goal ? (
                 <>
                   <span className="block truncate font-black text-slate-900">{points.goal.title}</span>
