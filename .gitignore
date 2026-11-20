@@ -61,3 +61,7 @@ yarn-error.log*
 
 # Cho phép file mẫu biến môi trường
 !.env.example
+
+# Nội dung tạm gửi cho AI reviewer (scripts/ai-review.sh)
+docs/ai-reviews/**/review-input-*.md
+docs/ai-reviews/**/.review-stderr.log
