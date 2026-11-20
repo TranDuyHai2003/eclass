@@ -119,6 +119,19 @@ export async function openBrowser({ baseUrl, token, width = 1366, height = 900 }
           if (!r.width || !r.height || cs.visibility === "hidden" || cs.display === "none") continue;
           // Phần trang trí (absolute/fixed, aria-hidden) được phép tràn ra và bị cắt
           if (cs.position === "absolute" || cs.position === "fixed" || el.closest("[aria-hidden=true]")) continue;
+          // Phần tử con có chữ vượt ra khỏi khung cha (vd hàng flex không xuống dòng bị ép quá hẹp → đè lên phần tử bên cạnh).
+          // Bỏ qua con absolute/fixed (nhãn trang trí đặt chồng có chủ đích).
+          if (cs.overflowX === "visible" && cs.display !== "inline" && el.clientWidth > 0) {
+            for (const ch of el.children) {
+              const ccs = getComputedStyle(ch);
+              if (ccs.position === "absolute" || ccs.position === "fixed" || ccs.display === "none" || !(ch.innerText || "").trim()) continue;
+              const chr = ch.getBoundingClientRect();
+              if (chr.width && (chr.right > r.right + 2 || chr.left < r.left - 2)) {
+                out.push("tràn khung: " + label(ch) + " vượt khỏi " + label(el) + " (" + Math.round(chr.right) + " > " + Math.round(r.right) + ")");
+                break;
+              }
+            }
+          }
           const c = clipper(el);
           if (!c) {
             if (r.right > vw + 1 || r.left < -1) out.push("tràn màn hình: " + label(el) + " right=" + Math.round(r.right));

@@ -51,8 +51,8 @@ export default async function Header() {
                   className="h-8 sm:h-9 w-auto object-contain transform group-hover:scale-110 transition-transform duration-500"
                 />
               </div>
-              {/* Màn rất hẹp (< 360px): chỉ giữ biểu tượng logo để chừa chỗ cho chip điểm thưởng */}
-              <div className="flex flex-col max-[359px]:hidden">
+              {/* Điện thoại (< 640px): chỉ giữ biểu tượng logo để chừa chỗ cho chip điểm thưởng (chữ thương hiệu rộng ~200px) */}
+              <div className="flex flex-col max-sm:hidden">
                 <span className="text-sm sm:text-xl font-black tracking-tighter text-blue-500 uppercase leading-none group-hover:text-blue-600 transition-colors">
                   thatdehoctoan
                 </span>

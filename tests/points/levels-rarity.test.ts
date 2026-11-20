@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { LEVELS, getLevel } from "@/lib/points/levels";
 import { rarityOf, RARITY_THRESHOLDS } from "@/lib/points/rarity";
 import { REWARD_TEMPLATES } from "@/lib/points/templates";
+import { resolveKindFilter } from "@/lib/points/filters";
 
 describe("Cấp độ", () => {
   test("mốc tăng dần, bắt đầu từ 0", () => {
@@ -64,5 +65,19 @@ describe("Độ hiếm quà", () => {
   test("mẫu quà trải đủ các độ hiếm", () => {
     const kinds = new Set(REWARD_TEMPLATES.map((t) => rarityOf(t.price).key));
     for (const k of ["common", "rare", "legendary"]) assert.ok(kinds.has(k as any), k);
+  });
+});
+
+describe("Bộ lọc loại quà (hồi quy review Gemini)", () => {
+  test("chỉ một loại quà → luôn 'Tất cả'", () => {
+    assert.equal(resolveKindFilter("VIRTUAL", ["VIRTUAL"]), "ALL");
+    assert.equal(resolveKindFilter("PHYSICAL", []), "ALL");
+  });
+  test("loại đang chọn biến mất sau khi làm mới → về 'Tất cả' (không kẹt lưới trống)", () => {
+    assert.equal(resolveKindFilter("VIRTUAL", ["PHYSICAL", "OTHER"]), "ALL");
+  });
+  test("loại đang chọn còn quà → giữ nguyên", () => {
+    assert.equal(resolveKindFilter("VIRTUAL", ["PHYSICAL", "VIRTUAL"]), "VIRTUAL");
+    assert.equal(resolveKindFilter("ALL", ["PHYSICAL", "VIRTUAL"]), "ALL");
   });
 });

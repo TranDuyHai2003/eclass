@@ -377,7 +377,7 @@ function RewardsTab({ data, pending, run }: TabProps) {
       {data.rewards.length === 0 ? (
         <p className="rounded-3xl bg-white p-8 text-center text-sm text-slate-500 border border-slate-200/70">Chưa có quà nào. Thêm quà để học sinh có mục tiêu tích điểm.</p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {data.rewards.map((r) => (
             <div key={r.id} className={cn("rounded-3xl border-2 bg-white p-4", r.isActive ? rarityOf(r.price).card : "border-dashed border-slate-300 opacity-70")}>
               <div className="flex items-start gap-3">
@@ -578,7 +578,7 @@ function GrantTab({ data, pending, run, manualMax, manualDailyCap }: TabProps & 
   }
 
   return (
-    <section className="grid gap-4 lg:grid-cols-[1fr_320px]">
+    <section className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="rounded-3xl border border-slate-200/70 bg-white shadow-sm">
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-3 sm:p-4">
           <select

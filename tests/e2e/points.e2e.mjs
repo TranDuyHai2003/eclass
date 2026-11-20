@@ -286,11 +286,20 @@ try {
     expect(await t.waitText(/Chăm chỉ nhất tháng này/i), "không thấy bảng thống kê");
   });
 
+  await step("Học sinh: đổi thêm một món (để đo bố cục khi có đơn đang chờ)", async () => {
+    await s.goto("/rewards", /Điểm thưởng của bạn/i);
+    await s.ev(`document.querySelector('[data-testid="reward-card"][data-title="Kẹo / bánh nhỏ"] [data-testid="redeem"]').click();`);
+    await sleep(800);
+    await s.click(/^Đổi quà$/, "[role=dialog] button");
+    expect(await s.waitText(/Đã đổi/), "đổi thêm thất bại");
+  });
+
   // -------------------------------------------------- Bố cục nhiều cỡ màn hình
   const sizes = [
     [320, 640],
     [360, 740],
     [390, 844],
+    [414, 896],
     [768, 1024],
     [1366, 900],
   ];

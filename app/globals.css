@@ -361,8 +361,9 @@ h6 {
   .btn-3d-blue:hover:not(:disabled) { background: #3b82f6; }
   .btn-3d-white { background: #fff; color: #1d4ed8; --btn-edge: #93c5fd; }
   .btn-3d-white:hover:not(:disabled) { background: #eff6ff; }
-  .btn-3d-green { background: #10b981; color: #fff; --btn-edge: #047857; }
-  .btn-3d-green:hover:not(:disabled) { background: #34d399; }
+  /* emerald-700: chữ trắng đạt tương phản ≥ 4,5:1 (WCAG AA) */
+  .btn-3d-green { background: #047857; color: #fff; --btn-edge: #064e3b; }
+  .btn-3d-green:hover:not(:disabled) { background: #059669; }
   .btn-3d-muted { background: #f1f5f9; color: #94a3b8; --btn-edge: #e2e8f0; }
 
   /* Hoạ tiết chấm nhẹ (màu chấm qua biến --dot) */
