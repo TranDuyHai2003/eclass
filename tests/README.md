@@ -48,3 +48,7 @@ Có thể đặt thêm:
 node --no-experimental-strip-types -r ./tests/setup/register.cjs tests/tools/eval-anchors.ts [--json out.json]
 ```
 Chạy bộ cắt câu trên mọi đề có PDF lời giải trong DB local, rồi báo tỉ lệ câu cắt được, các vùng bất thường và danh sách đề tệ nhất. Chạy trước và sau mỗi lần sửa thuật toán để chắc không đề nào bị giảm.
+
+## Đo JS tải lần đầu
+
+`BASE_URL=http://localhost:3057 node tests/tools/measure-js.mjs` — chạy trên bản build (`next build && next start -p 3057`), in tổng KB (raw/gzip) các `<script>` của từng trang; tự tạo và xoá một học sinh thử (DB local).
