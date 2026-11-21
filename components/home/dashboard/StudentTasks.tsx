@@ -47,6 +47,7 @@ export function StudentTasks({
   const both = showTodo && showRecent;
   return (
     <section
+      id="bai-can-lam"
       data-testid="student-tasks"
       className={cn("grid grid-cols-1 gap-4", both && "lg:grid-cols-2")}
     >

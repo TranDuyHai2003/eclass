@@ -60,7 +60,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
       : [{ icon: LogIn, label: "Đăng nhập", href: "/login" }]),
     { icon: BookOpen, label: "Khóa Học", href: "/courses" },
     { icon: Trophy, label: "Bảng xếp hạng Hunter", href: "/ranking" },
-    ...(pointsEnabled && role === "STUDENT" ? [{ icon: Gift, label: "Điểm thưởng", href: "/rewards" }] : []),
+    ...(pointsEnabled && role === "STUDENT" ? [{ icon: Gift, label: "Tiệm quà", href: "/rewards" }] : []),
     {
       icon: DiscordIcon,
       label: "Discord",
@@ -77,7 +77,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
       icon: ClipboardList,
     },
     { href: "/teacher/homework", label: "Duyệt Bài tự luận", icon: FileText },
-    ...(pointsEnabled ? [{ href: "/teacher/rewards", label: "Quà & Điểm thưởng", icon: Gift }] : []),
+    ...(pointsEnabled ? [{ href: "/teacher/rewards", label: "Quà & Xu", icon: Gift }] : []),
     { href: "/teacher/videos", label: "Thư viện Video", icon: PlaySquare },
   ];
 

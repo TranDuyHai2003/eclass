@@ -4,15 +4,16 @@ import { TeacherRewards } from "@/components/points/TeacherRewards";
 import { isPointsEnabled, POINTS } from "@/lib/points/config";
 import { getTeacherRewardsPage } from "@/lib/points/queries";
 import { expireStaleRedemptions } from "@/lib/points/redemption";
+import { getGiftCodeBatches } from "@/lib/game/giftcode-queries";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Quà & Điểm thưởng" };
+export const metadata = { title: "Quà & Xu" };
 
 // Quyền giáo viên/admin đã kiểm tra ở app/teacher/layout.tsx
 export default async function TeacherRewardsPage() {
   if (!isPointsEnabled()) notFound();
   await expireStaleRedemptions().catch(() => {});
-  const data = await getTeacherRewardsPage();
+  const [data, giftBatches] = await Promise.all([getTeacherRewardsPage(), getGiftCodeBatches()]);
 
   return (
     <div className="space-y-5">
@@ -21,11 +22,11 @@ export default async function TeacherRewardsPage() {
           <Gift className="h-5 w-5" />
         </div>
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-black text-slate-800 uppercase tracking-tight">Quà & Điểm thưởng</h1>
-          <p className="text-xs sm:text-sm text-slate-500">Học sinh tích điểm khi học, đổi quà; thầy trao quà ở buổi học offline.</p>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-800 uppercase tracking-tight">Quà & Xu</h1>
+          <p className="text-xs sm:text-sm text-slate-500">Học sinh tích xu khi học, đổi quà; thẻ cào ngọc thầy phát trên lớp; thầy trao quà ở buổi học offline.</p>
         </div>
       </div>
-      <TeacherRewards data={data} manualMax={POINTS.manual.maxPerGrant} manualDailyCap={POINTS.manual.dailyCapPerStudent} />
+      <TeacherRewards data={data} giftBatches={giftBatches} manualMax={POINTS.manual.maxPerGrant} manualDailyCap={POINTS.manual.dailyCapPerStudent} />
     </div>
   );
 }

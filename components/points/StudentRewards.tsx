@@ -3,7 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Gift, History, Info, Loader2, Pin, PinOff, Star } from "lucide-react";
+import { ClipboardList, Gift, History, Info, Loader2, Pin, PinOff, Star, Ticket } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { cancelRedemption, redeemReward, setGoalReward } from "@/actions/points";
 import { EARNING_RULES, SOURCE_LABEL } from "@/lib/points/config";
@@ -15,6 +16,9 @@ import type { StudentPointsPageData } from "@/lib/points/queries";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Confetti } from "./Confetti";
 import { Mascot } from "./Mascot";
+import { GiftCodeDialog } from "./GiftCodeDialog";
+import { SoundToggle } from "@/components/game/SoundToggle";
+import { play } from "@/lib/sound";
 
 type Reward = StudentPointsPageData["rewards"][number];
 type TabKey = "shop" | "mine" | "history" | "rules";
@@ -33,6 +37,10 @@ const STATUS: Record<string, { label: string; cls: string; step: number }> = {
 /** Biểu tượng + màu theo nguồn điểm (tab Lịch sử) */
 const SOURCE_ICON: Record<string, { icon: string; cls: string }> = {
   TEST_SUBMIT: { icon: "📝", cls: "bg-blue-50" },
+  ON_TIME: { icon: "⏰", cls: "bg-emerald-50" },
+  GIFTCODE: { icon: "🎟️", cls: "bg-pink-50" },
+  GACHA: { icon: "🎁", cls: "bg-violet-50" },
+  ITEM: { icon: "🎨", cls: "bg-fuchsia-50" },
   TEST_SCORE: { icon: "🎯", cls: "bg-amber-50" },
   BREAKTHROUGH: { icon: "🚀", cls: "bg-violet-50" },
   FINAL_TEST: { icon: "🏁", cls: "bg-indigo-50" },
@@ -45,7 +53,7 @@ const SOURCE_ICON: Record<string, { icon: string; cls: string }> = {
   REVOKE: { icon: "⛔", cls: "bg-slate-100" },
 };
 
-const RULE_ICONS = ["📝", "🎯", "🚀", "🏁", "📒", "🔥", "👨‍🏫"];
+const RULE_ICONS = ["📝", "⏰", "🎯", "🚀", "🏁", "📒", "🔥", "👨‍🏫", "🎟️"];
 
 export function StudentRewards({ data, user }: { data: StudentPointsPageData; user: { name?: string | null; image?: string | null } }) {
   const router = useRouter();
@@ -53,6 +61,7 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
   const [kind, setKind] = useState<KindFilter>("ALL");
   const [confirm, setConfirm] = useState<Reward | null>(null);
   const [celebrated, setCelebrated] = useState(0);
+  const [codeOpen, setCodeOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const { wallet, goal } = data;
   const level = getLevel(wallet.lifetimeEarned);
@@ -79,13 +88,14 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
   const tabs: { key: TabKey; label: string; icon: typeof Gift; badge?: number }[] = [
     { key: "shop", label: "Đổi quà", icon: Gift },
     { key: "mine", label: "Quà của tôi", icon: Star, badge: pendingCount },
-    { key: "history", label: "Lịch sử điểm", icon: History },
-    { key: "rules", label: "Cách nhận điểm", icon: Info },
+    { key: "history", label: "Lịch sử xu", icon: History },
+    { key: "rules", label: "Cách kiếm xu", icon: Info },
   ];
 
   return (
     <div className="space-y-5" data-celebrated={celebrated}>
       <Confetti burst={celebrated} />
+      <GiftCodeDialog open={codeOpen} onOpenChange={setCodeOpen} canEarn={data.canEarn} />
 
       {/* ============ Thanh trạng thái người chơi ============ */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 p-4 text-white shadow-[0_6px_0_0_#1e3a8a] sm:p-6">
@@ -108,14 +118,14 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-blue-100">Điểm thưởng của bạn</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-blue-100">Tiệm quà đổi xu</p>
               <p className="truncate text-lg font-black sm:text-2xl">{user.name || "Học sinh"}</p>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-black ring-1 ring-white/25">
-                  Cấp {level.level} · {level.name}
+                  {level.icon} {level.name}
                 </span>
                 <span className="text-xs font-semibold text-blue-100">
-                  {level.next ? `Còn ${level.toNext} điểm lên ${level.next.icon} ${level.next.name}` : "Cấp cao nhất 👑"}
+                  {level.next ? `Còn ${level.toNext.toLocaleString("vi-VN")} xu lên ${level.next.icon} ${level.next.name}` : "Danh hiệu cao nhất 👑"}
                 </span>
               </div>
               <div className="mt-2 h-2.5 max-w-2xl overflow-hidden rounded-full bg-black/20 lg:mr-6 lg:max-w-none" role="progressbar" aria-valuenow={level.progress} aria-valuemin={0} aria-valuemax={100} aria-label="Kinh nghiệm">
@@ -125,8 +135,9 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
           </div>
 
           {/* Chỉ số */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <Stat value={wallet.balance} label="điểm" icon="⭐" accent="text-amber-300" testId="hud-balance" />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+            <Stat value={wallet.balance} label="xu" icon="🪙" accent="text-amber-300" testId="hud-balance" />
+            <Stat value={wallet.gems} label="ngọc" icon="💎" accent="text-pink-200" testId="hud-gems" />
             <Stat
               value={wallet.weekStreak}
               label={wallet.thisWeekCounted ? "tuần · tuần này ✓" : `tuần · ${Math.min(wallet.weekActivities, wallet.weekTarget)}/${wallet.weekTarget} bài`}
@@ -137,6 +148,18 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
           </div>
         </div>
       </section>
+
+      {/* ============ Hàng nút nhanh: nộp bài, nhập code, loa ============ */}
+      <div className="flex flex-wrap items-center gap-2" data-testid="shop-actions">
+        <Link href="/#bai-can-lam" onClick={() => play("click")} className="btn-3d btn-3d-green btn-shine px-4 py-2.5 text-sm">
+          <ClipboardList className="h-4 w-4" /> Nộp bài (+300 xu)
+        </Link>
+        <button type="button" data-testid="giftcode-open" onClick={() => { play("click"); setCodeOpen(true); }} className="btn-3d btn-shine relative bg-pink-500 px-4 py-2.5 text-sm text-white [--btn-edge:#9d174d] hover:bg-pink-400">
+          <span aria-hidden className="sparkle -left-1 -top-1" /><span aria-hidden className="sparkle sparkle-2 -right-1 top-1" />
+          <Ticket className="h-4 w-4" /> Nhập code
+        </button>
+        <SoundToggle className="ml-auto" />
+      </div>
 
       {/* ============ Quà mục tiêu + linh vật (một thẻ, gọn trên điện thoại) ============ */}
       <section className="grid grid-cols-1 gap-3 rounded-3xl border-2 border-slate-200/80 bg-white p-3 shadow-[0_4px_0_0_#e2e8f0] sm:p-4 md:grid-cols-2 md:items-center md:gap-0">
@@ -151,12 +174,12 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
                   <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style={{ width: `${Math.min(100, (wallet.balance / goal.price) * 100)}%` }} />
                 </div>
                 <p className="mt-1 text-xs font-bold text-slate-500">
-                  {wallet.balance >= goal.price ? "Đủ điểm rồi, đổi thôi! 🎉" : `Còn ${goal.price - wallet.balance} điểm nữa`}
+                  {wallet.balance >= goal.price ? "Đủ xu rồi, đổi thôi! 🎉" : `Còn ${(goal.price - wallet.balance).toLocaleString("vi-VN")} xu nữa`}
                 </p>
               </div>
             </div>
           ) : (
-            <p className="mt-1.5 text-sm text-slate-500">Bấm 📌 trên một món quà để đặt làm mục tiêu và theo dõi còn bao nhiêu điểm nữa.</p>
+            <p className="mt-1.5 text-sm text-slate-500">Bấm 📌 trên một món quà để đặt làm mục tiêu và theo dõi còn bao nhiêu xu nữa.</p>
           )}
         </div>
         <div className="min-w-0 border-t border-slate-100 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
@@ -165,7 +188,7 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
       </section>
 
       {!data.canEarn && (
-        <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Tài khoản cần được thầy duyệt để bắt đầu nhận điểm và đổi quà.</p>
+        <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Tài khoản cần được thầy duyệt để bắt đầu nhận xu và đổi quà.</p>
       )}
 
       {/* ============ Tabs ============ */}
@@ -222,7 +245,7 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
             <div className="rounded-3xl border-2 border-dashed border-slate-300 bg-white/70 p-10 text-center">
               <p className="text-5xl animate-float">🎁</p>
               <p className="mt-3 font-black text-slate-700">Thầy đang chuẩn bị quà</p>
-              <p className="text-sm text-slate-500">Cứ chăm học tích điểm, quà sẽ sớm có ở đây!</p>
+              <p className="text-sm text-slate-500">Cứ chăm học tích xu, quà sẽ sớm có ở đây!</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
@@ -300,7 +323,7 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
       {tab === "history" && (
         <section className="rounded-3xl border-2 border-slate-200/80 bg-white p-2 shadow-[0_4px_0_0_#e2e8f0] sm:p-3">
           {data.ledger.length === 0 ? (
-            <p className="p-8 text-center text-sm text-slate-500">Chưa có điểm nào. Nộp bài đầu tiên để nhận điểm thưởng nhé!</p>
+            <p className="p-8 text-center text-sm text-slate-500">Chưa có xu nào. Nộp bài đầu tiên để nhận 300 xu nhé!</p>
           ) : (
             <ol className="divide-y divide-slate-100">
               {data.ledger.map((l) => {
@@ -346,7 +369,7 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
           </div>
           <div className="rounded-3xl border-2 border-slate-200/80 bg-white p-4 shadow-[0_4px_0_0_#e2e8f0]">
             <p className="text-sm font-black text-slate-800">Cấp độ</p>
-            <p className="text-xs text-slate-500">Tính theo tổng điểm đã kiếm — đổi quà không làm tụt cấp.</p>
+            <p className="text-xs text-slate-500">Tính theo tổng xu đã kiếm từ học tập — đổi quà, mở rương không làm tụt danh hiệu.</p>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {LEVELS.map((lv, i) => (
                 <div
@@ -359,14 +382,14 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
                   <span className="text-xl">{lv.icon}</span>
                   <span className="min-w-0">
                     <span className="block text-sm font-black">{lv.name}</span>
-                    <span className="block text-[11px] font-semibold opacity-80">từ {lv.min} điểm</span>
+                    <span className="block text-[11px] font-semibold opacity-80">từ {lv.min.toLocaleString("vi-VN")} xu</span>
                   </span>
                 </div>
               ))}
             </div>
           </div>
           <p className="text-xs text-slate-500">
-            Mỗi bài chỉ được tính điểm một lần. Đổi quà xong, thầy sẽ trao ở buổi học tới; quá 30 ngày chưa nhận thì điểm tự hoàn lại.
+            Mỗi bài chỉ được tính xu một lần. Đổi quà xong, thầy sẽ trao ở buổi học tới; quá 30 ngày chưa nhận thì xu tự hoàn lại.
           </p>
         </section>
       )}
@@ -379,7 +402,7 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
             <DialogDescription>
               {confirm && (
                 <>
-                  Dùng <b>{confirm.price} điểm</b> để đổi <b>{confirm.title}</b>. Còn lại {wallet.balance - confirm.price} điểm.
+                  Dùng <b>{confirm.price.toLocaleString("vi-VN")} xu</b> để đổi <b>{confirm.title}</b>. Còn lại {(wallet.balance - confirm.price).toLocaleString("vi-VN")} xu.
                 </>
               )}
             </DialogDescription>
@@ -425,7 +448,7 @@ function Stat({ value, label, icon, accent, testId }: { value: number; label: st
         <span aria-hidden className="mr-0.5 text-base sm:text-xl">
           {icon}
         </span>
-        {value}
+        {value.toLocaleString("vi-VN")}
       </p>
       <p className="truncate text-[10px] font-bold text-blue-100 sm:text-xs">{label}</p>
     </div>
@@ -504,7 +527,7 @@ function RewardCard({
               <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
                 <div className="h-full rounded-full bg-amber-400" style={{ width: `${Math.min(100, (balance / r.price) * 100)}%` }} />
               </div>
-              <p className="mt-1 text-center text-[11px] font-bold text-slate-500">Còn thiếu {r.price - balance} điểm</p>
+              <p className="mt-1 text-center text-[11px] font-bold text-slate-500">Còn thiếu {(r.price - balance).toLocaleString("vi-VN")} xu</p>
             </div>
           )}
           <button
@@ -526,21 +549,22 @@ function RewardCard({
 function buildTips(data: StudentPointsPageData, level: LevelInfo): string[] {
   const { wallet, goal } = data;
   const tips: string[] = [];
-  if (!data.canEarn) tips.push("Tài khoản cần thầy duyệt để bắt đầu nhận điểm nhé!");
-  if (wallet.lifetimeEarned === 0) tips.push("Nộp bài đầu tiên để nhận điểm thưởng nhé! Làm ít nhất một nửa số câu là có điểm.");
+  if (!data.canEarn) tips.push("Tài khoản cần thầy duyệt để bắt đầu nhận xu nhé!");
+  if (wallet.lifetimeEarned === 0) tips.push("Nộp bài đầu tiên để nhận 300 xu nhé! Làm ít nhất một nửa số câu là có xu.");
   if (goal) {
     tips.push(
       wallet.balance >= goal.price
-        ? `Đủ điểm đổi "${goal.title}" rồi — đổi thôi! ${goal.emoji || "🎁"}`
-        : `Còn ${goal.price - wallet.balance} điểm nữa là đổi được "${goal.title}" ${goal.emoji || "🎁"}`,
+        ? `Đủ xu đổi "${goal.title}" rồi — đổi thôi! ${goal.emoji || "🎁"}`
+        : `Còn ${(goal.price - wallet.balance).toLocaleString("vi-VN")} xu nữa là đổi được "${goal.title}" ${goal.emoji || "🎁"}`,
     );
   }
   if (!wallet.thisWeekCounted) {
     const left = Math.max(0, wallet.weekTarget - wallet.weekActivities);
     tips.push(left > 0 ? `Nộp thêm ${left} bài tuần này để giữ chuỗi 🔥` : "Tuần này đủ bài rồi, chuỗi sẽ được tính 🔥");
   }
-  if (level.next) tips.push(`Thêm ${level.toNext} điểm nữa là lên cấp ${level.next.icon} ${level.next.name}.`);
-  tips.push("Đạt từ 8,5 điểm được thưởng thêm, làm tốt hơn hẳn mọi khi còn có điểm \"Bứt phá\" 🚀");
-  tips.push("Đổi quà không làm tụt cấp đâu — cấp tính theo tổng điểm đã kiếm.");
+  if (level.next) tips.push(`Thêm ${level.toNext.toLocaleString("vi-VN")} xu nữa là lên danh hiệu ${level.next.icon} ${level.next.name}.`);
+  if (wallet.gems === 0) tips.push("Được điểm 10 trên lớp, thầy phát thẻ cào — nhập code ở đây để nhận ngọc 💎");
+  tips.push("Nộp bài đúng hạn được thêm 150 xu; đạt từ 8,5 điểm được thưởng thêm, bứt phá còn có xu 🚀");
+  tips.push("Đổi quà không làm tụt danh hiệu đâu — danh hiệu tính theo tổng xu đã kiếm.");
   return tips;
 }

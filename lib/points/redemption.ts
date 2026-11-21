@@ -110,7 +110,7 @@ export async function redeemInTx(tx: Tx, userId: string, rewardId: string): Prom
   });
   if (!reward) return { success: false, error: "Quà này không còn hoặc không dành cho bạn." };
   if (wallet.balance < reward.price) {
-    return { success: false, error: `Bạn cần thêm ${reward.price - wallet.balance} điểm để đổi quà này.` };
+    return { success: false, error: `Bạn cần thêm ${(reward.price - wallet.balance).toLocaleString("vi-VN")} xu để đổi quà này.` };
   }
   if (reward.perStudentMonthlyLimit !== null) {
     const used = await monthlyRedemptionCount(tx, userId, reward.id);
@@ -159,10 +159,10 @@ export async function rejectInTx(tx: Tx, redemptionId: string, note: string, sta
     data: {
       userId: r.userId,
       title: "Yêu cầu đổi quà bị từ chối",
-      message: `"${r.reward.title}": ${reason}. Đã hoàn ${r.price} điểm.`,
+      message: `"${r.reward.title}": ${reason}. Đã hoàn ${r.price.toLocaleString("vi-VN")} xu.`,
       link: "/rewards",
       type: "SYSTEM",
     },
   });
-  return { success: true, message: "Đã từ chối và hoàn điểm." };
+  return { success: true, message: "Đã từ chối và hoàn xu." };
 }

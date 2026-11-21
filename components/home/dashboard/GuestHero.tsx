@@ -8,7 +8,7 @@ import { usePointsEnabled } from "@/components/points/PointsFlag";
 const FEATURES = [
   { icon: PlayCircle, text: "Video bài giảng theo lộ trình từng chương" },
   { icon: CheckCircle2, text: "Đề kiểm tra chấm tự động, lời giải chi tiết từng câu" },
-  { icon: Gift, text: "Học chăm tích điểm thưởng, đổi quà tại lớp", points: true },
+  { icon: Gift, text: "Học chăm tích xu, đổi quà tại lớp, trang trí nhân vật riêng", points: true },
 ];
 
 /** Trang chủ khi chưa đăng nhập: giới thiệu ngắn + mời đăng ký, đếm ngược kỳ thi gọn bên phải */

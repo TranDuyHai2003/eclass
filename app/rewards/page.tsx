@@ -7,7 +7,7 @@ import { getStudentPointsPage } from "@/lib/points/queries";
 import { expireStaleRedemptions } from "@/lib/points/redemption";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Điểm thưởng & Đổi quà" };
+export const metadata = { title: "Tiệm quà — Xu & Ngọc" };
 
 export default async function RewardsPage() {
   if (!isPointsEnabled()) notFound();

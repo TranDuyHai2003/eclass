@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { commitTempFile } from "@/lib/b2";
 import { onAttemptDeleted, onEssayGraded, onTestSubmitted } from "@/lib/points/hooks";
-import { effectiveDueDate } from "@/lib/deadline";
 
 // =============================================
 // TEACHER ACTIONS
@@ -923,19 +922,11 @@ export async function submitTestAttempt(
   const isAnswered = (a: any) =>
     (typeof a.answerProvided === "string" && a.answerProvided.trim() !== "") ||
     (Array.isArray(a.subAnswersData) && a.subAnswersData.some((sa: any) => sa.answerProvided != null && String(sa.answerProvided).trim() !== ""));
-  // Hạn hiệu lực với học sinh này: hạn riêng của lớp → hạn chung → không hạn (tính tại thời điểm nộp)
-  const [deadlines, me] = await Promise.all([
-    prisma.testDeadline.findMany({ where: { testId: attempt.test.id }, select: { classId: true, dueDate: true } }),
-    prisma.user.findUnique({ where: { id: session.user.id! }, select: { classId: true } }),
-  ]);
+  // Hạn riêng theo lớp được tra bên trong hook (giao dịch điểm riêng, lỗi không ảnh hưởng bài đã nộp)
   await onTestSubmitted({
     userId: session.user.id!,
     attemptId,
-    test: {
-      id: attempt.test.id,
-      dueDate: effectiveDueDate({ dueDate: attempt.test.dueDate, deadlines }, me?.classId),
-      courseId: attempt.test.courseId,
-    },
+    test: { id: attempt.test.id, dueDate: attempt.test.dueDate, courseId: attempt.test.courseId },
     score: finalScore,
     answeredCount: answersData.filter(isAnswered).length,
     questionCount: questionMap.size,

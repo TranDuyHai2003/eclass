@@ -63,7 +63,7 @@ describe("Không được đổi", () => {
     const r = await fx.reward({ price: 30, stock: 1 });
     const res = await redeem(s.id, r.id);
     assert.equal(res.success, false);
-    assert.match((res as any).error, /thêm 20 điểm/);
+    assert.match((res as any).error, /thêm 20 xu/);
     assert.equal(await fx.balance(s.id), 10);
     assert.equal((await prisma.reward.findUnique({ where: { id: r.id } }))!.stock, 1);
   });

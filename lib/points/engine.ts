@@ -66,6 +66,8 @@ interface EntryInput {
   createdById?: string | null;
   /** Mặc định XU */
   currency?: Currency;
+  /** Ghi đè: dòng này có tính vào lifetimeEarned không (revokeKey dùng để thu hồi đúng bản chất dòng gốc) */
+  countsAsEarning?: boolean;
 }
 
 /** Ghi một dòng sổ + cập nhật ví (ví phải đã được khoá bằng lockWallet) */
@@ -91,7 +93,7 @@ export async function writeEntry(tx: Tx, e: EntryInput) {
     return;
   }
   // Danh hiệu chỉ tính xu từ học tập (và thu hồi của nó); mã quà, gacha, mua đồ, đổi/hoàn quà không ảnh hưởng
-  const countsAsEarning = (EARNING_SOURCES as readonly string[]).includes(e.source);
+  const countsAsEarning = e.countsAsEarning ?? (EARNING_SOURCES as readonly string[]).includes(e.source);
   await tx.$executeRaw`
     UPDATE "PointWallet"
     SET "balance" = "balance" + ${e.amount},
@@ -143,11 +145,16 @@ export async function awardOnce(
   return amount;
 }
 
-/** Thu hồi tiền của một khoá (vd giáo viên xoá lượt làm, đổi bài tập từ Đạt sang Chưa đạt) — đúng loại tiền của khoá (review Gemini) */
+/**
+ * Thu hồi tiền của một khoá (vd giáo viên xoá lượt làm, đổi bài tập từ Đạt sang Chưa đạt) — đúng loại tiền của khoá.
+ * lifetimeEarned chỉ bị trừ nếu dòng gốc của khoá là nguồn học tập (review Gemini: thu hồi GIFTCODE/GACHA không được làm tụt danh hiệu).
+ */
 export async function revokeKey(tx: Tx, userId: string, key: string, reason: string, createdById?: string | null, currency: Currency = "XU") {
   const net = await netForKey(tx, userId, key, currency);
   if (net <= 0) return 0;
-  await writeEntry(tx, { userId, amount: -net, source: "REVOKE", key, reason, createdById, currency });
+  const origin = await tx.pointLedger.findFirst({ where: { userId, key, currency, amount: { gt: 0 } }, select: { source: true } });
+  const countsAsEarning = currency === "XU" && !!origin && (EARNING_SOURCES as readonly string[]).includes(origin.source);
+  await writeEntry(tx, { userId, amount: -net, source: "REVOKE", key, reason, createdById, currency, countsAsEarning });
   return net;
 }
 

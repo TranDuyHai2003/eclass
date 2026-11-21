@@ -22,6 +22,7 @@ import { getAvatarThumbUrl } from "@/lib/game-rank";
 import { isPointsEnabled } from "@/lib/points/config";
 import { getHeaderPoints } from "@/lib/points/queries";
 import { getLevel } from "@/lib/points/levels";
+import { SoundToggle } from "@/components/game/SoundToggle";
 
 export default async function Header() {
   const session = await auth();
@@ -51,7 +52,7 @@ export default async function Header() {
                   className="h-8 sm:h-9 w-auto object-contain transform group-hover:scale-110 transition-transform duration-500"
                 />
               </div>
-              {/* Điện thoại (< 640px): chỉ giữ biểu tượng logo để chừa chỗ cho chip điểm thưởng (chữ thương hiệu rộng ~200px) */}
+              {/* Điện thoại (< 640px): chỉ giữ biểu tượng logo để chừa chỗ cho chip xu (chữ thương hiệu rộng ~200px) */}
               <div className="flex flex-col max-sm:hidden">
                 <span className="text-sm sm:text-xl font-black tracking-tighter text-blue-500 uppercase leading-none group-hover:text-blue-600 transition-colors">
                   thatdehoctoan
@@ -94,17 +95,28 @@ export default async function Header() {
               {session ? (
                 <>
                   {showPoints && headerPoints && (
+                    <>
                     <Link
                       href="/rewards"
-                      title={`Điểm thưởng — cấp ${pointsLevel?.level} ${pointsLevel?.name} · đổi quà`}
+                      data-wallet-chip
+                      title={`${pointsLevel?.icon} ${pointsLevel?.name} · ${headerPoints.balance.toLocaleString("vi-VN")} xu · ${headerPoints.gems} ngọc · tiệm quà`}
                       className="h-10 sm:h-11 px-2.5 sm:px-3 inline-flex items-center gap-1.5 rounded-2xl border-2 border-amber-200 bg-amber-50 text-amber-700 shadow-[0_3px_0_0_#fde68a] hover:bg-amber-100 active:translate-y-[2px] active:shadow-[0_1px_0_0_#fde68a] transition-all"
                     >
-                      {/* Biểu tượng cấp chỉ hiện từ 400px để header điện thoại nhỏ không chật */}
+                      {/* Biểu tượng danh hiệu chỉ hiện từ 400px để header điện thoại nhỏ không chật */}
                       <span aria-hidden className="hidden min-[400px]:inline text-base leading-none">{pointsLevel?.icon}</span>
-                      <span aria-hidden className="text-base leading-none">⭐</span>
-                      <span className="text-sm font-black tabular-nums">{headerPoints.balance}</span>
-                      <span className="sr-only">điểm thưởng</span>
+                      <span aria-hidden className="text-base leading-none">🪙</span>
+                      <span className="text-sm font-black tabular-nums" data-testid="header-xu">{headerPoints.balance.toLocaleString("vi-VN")}</span>
+                      <span className="sr-only">xu</span>
+                      {headerPoints.gems > 0 && (
+                        <span className="ml-0.5 inline-flex items-center gap-0.5 rounded-full bg-pink-100 px-1.5 text-xs font-black text-pink-700" data-testid="header-gems">
+                          <span aria-hidden>💎</span>
+                          {headerPoints.gems}
+                          <span className="sr-only">ngọc</span>
+                        </span>
+                      )}
                     </Link>
+                    <SoundToggle className="hidden sm:inline-flex" />
+                    </>
                   )}
                   <div className="hidden sm:block">
                     <NotificationBell />

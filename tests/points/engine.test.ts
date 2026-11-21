@@ -112,6 +112,31 @@ describe("Hai loại tiền (xu / ngọc) — review Gemini", () => {
     assert.equal(w!.balance, 0);
     assert.equal(await fx.ledgerSum(u, "XU"), 0);
   });
+
+  test("thu hồi khoá xu từ mã quà (không phải nguồn học) không làm tụt lifetimeEarned (review Gemini)", async () => {
+    const u = (await fx.user()).id;
+    await prisma.$transaction(async (tx) => {
+      await lockWallet(tx, u);
+      await awardOnce(tx, { userId: u, amount: 300, source: "TEST_SUBMIT", key: "T9" });
+      await awardOnce(tx, { userId: u, amount: 500, source: "GIFTCODE", key: "GC9" });
+    });
+    assert.equal((await fx.wallet(u))!.lifetimeEarned, 300);
+    await prisma.$transaction(async (tx) => {
+      await lockWallet(tx, u);
+      assert.equal(await revokeKey(tx, u, "GC9", "thu hồi mã"), 500);
+    });
+    let w = await fx.wallet(u);
+    assert.equal(w!.balance, 300);
+    assert.equal(w!.lifetimeEarned, 300, "thu hồi mã quà không chạm danh hiệu");
+    await prisma.$transaction(async (tx) => {
+      await lockWallet(tx, u);
+      assert.equal(await revokeKey(tx, u, "T9", "xoá bài"), 300);
+    });
+    w = await fx.wallet(u);
+    assert.equal(w!.balance, 0);
+    assert.equal(w!.lifetimeEarned, 0, "thu hồi bài học thì trừ danh hiệu");
+    assert.equal(w!.balance, await fx.ledgerSum(u, "XU"));
+  });
 });
 
 describe("Giới hạn xu tự động mỗi ngày", () => {

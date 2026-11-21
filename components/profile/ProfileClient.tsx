@@ -150,7 +150,7 @@ export default function ProfileClient({ user, stats, children }: ProfileClientPr
               {stats.points !== undefined && stats.points !== null && (
                 <a href="/rewards" className="rounded-2xl bg-amber-50 px-3 py-2.5 hover:bg-amber-100 transition-colors">
                   <p className="text-xl font-black text-amber-700 tabular-nums">⭐ {stats.points}</p>
-                  <p className="text-xs font-bold text-amber-600">điểm thưởng</p>
+                  <p className="text-xs font-bold text-amber-600">xu</p>
                 </a>
               )}
             </div>

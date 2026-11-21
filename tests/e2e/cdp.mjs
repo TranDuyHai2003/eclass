@@ -33,6 +33,8 @@ export async function openBrowser({ baseUrl, token, width = 1366, height = 900 }
   let id = 0;
   const pending = new Map();
   const errors = [];
+  /** console.error của trang (vd lỗi React/error boundary) — để gỡ lỗi, không tính vào bước "không lỗi JS" */
+  const consoleErrors = [];
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.id && pending.has(m.id)) {
@@ -40,6 +42,9 @@ export async function openBrowser({ baseUrl, token, width = 1366, height = 900 }
       pending.delete(m.id);
     }
     if (m.method === "Runtime.exceptionThrown") errors.push(m.params.exceptionDetails.exception?.description?.split("\n")[0]);
+    if (m.method === "Runtime.consoleAPICalled" && m.params.type === "error") {
+      consoleErrors.push(m.params.args.map((x) => x.value ?? x.description ?? "").join(" ").slice(0, 400));
+    }
     // Hộp thoại (vd "Rời trang khi chưa lưu?") chặn mọi lệnh khác → tự đồng ý để test không treo
     if (m.method === "Page.javascriptDialogOpening") ws.send(JSON.stringify({ id: ++id, method: "Page.handleJavaScriptDialog", params: { accept: true } }));
   };
@@ -74,6 +79,7 @@ export async function openBrowser({ baseUrl, token, width = 1366, height = 900 }
   };
   return {
     errors,
+    consoleErrors,
     ev,
     waitText,
     setSize,

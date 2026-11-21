@@ -1,5 +1,5 @@
 import { POINTS } from "./config";
-import { dueStatus } from "@/lib/deadline";
+import { dueStatus, effectiveDueDate } from "@/lib/deadline";
 import { awardOnce, isEligibleStudent, lockWallet, revokeKey, runPointsSafely, updateWeekStreak } from "./engine";
 import type { Tx } from "./engine";
 
@@ -61,7 +61,8 @@ async function awardScoreBonus(
 
 /**
  * Học sinh nộp bài kiểm tra / bài tập trắc nghiệm / đề thi cuối khoá.
- * `test.dueDate` là hạn HIỆU LỰC với học sinh này (hạn lớp → hạn chung → null), xem lib/deadline.ts.
+ * `test.dueDate` là hạn CHUNG; hạn riêng của lớp học sinh (TestDeadline) được tra ngay trong giao dịch điểm
+ * (review Gemini: mọi truy vấn phụ nằm trong runPointsSafely → lỗi không làm hỏng việc nộp bài). Xem lib/deadline.ts.
  * Có hạn và nộp kịp → +nộp bài +đúng hạn; sau hạn → nộp bài giảm; không hạn → chỉ nộp bài.
  */
 export function onTestSubmitted(p: {
@@ -81,7 +82,15 @@ export function onTestSubmitted(p: {
     const wallet = await lockWallet(tx, p.userId);
     const now = new Date();
     const isFinal = !!p.test.courseId;
-    const status = isFinal ? "none" : dueStatus(p.test.dueDate, now);
+    let due = p.test.dueDate;
+    if (!isFinal) {
+      const [deadlines, me] = await Promise.all([
+        tx.testDeadline.findMany({ where: { testId: p.test.id }, select: { classId: true, dueDate: true } }),
+        tx.user.findUnique({ where: { id: p.userId }, select: { classId: true } }),
+      ]);
+      due = effectiveDueDate({ dueDate: p.test.dueDate, deadlines }, me?.classId);
+    }
+    const status = isFinal ? "none" : dueStatus(due, now);
     const late = status === "late";
 
     await awardOnce(tx, {

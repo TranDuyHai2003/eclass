@@ -45,7 +45,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside 
                 href="/rewards"
                 className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-black ring-1 ring-white/25 hover:bg-white/25"
               >
-                <span aria-hidden>{level.icon}</span> Cấp {level.level} · {level.name}
+                <span aria-hidden>{level.icon}</span> {level.name}
               </Link>
             )}
           </div>
@@ -54,7 +54,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside 
             <div className="max-w-2xl">
               <div className="flex justify-between gap-2 text-[11px] font-bold text-blue-100">
                 <span>Kinh nghiệm</span>
-                <span className="truncate">{level.next ? `còn ${level.toNext} điểm lên ${level.next.icon} ${level.next.name}` : "Cấp cao nhất 👑"}</span>
+                <span className="truncate">{level.next ? `còn ${level.toNext.toLocaleString("vi-VN")} xu lên ${level.next.icon} ${level.next.name}` : "Danh hiệu cao nhất 👑"}</span>
               </div>
               <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-black/20" role="progressbar" aria-valuenow={level.progress} aria-valuemin={0} aria-valuemax={100} aria-label="Kinh nghiệm">
                 <div className={cn("h-full rounded-full bg-gradient-to-r", level.bar)} style={{ width: `${Math.max(4, level.progress)}%` }} />
@@ -65,7 +65,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside 
           <div className={cn("grid gap-2", points ? "grid-cols-3" : "max-w-sm grid-cols-2")}>
             {points && (
               <>
-                <HeroStat href="/rewards" icon="⭐" value={points.balance} label="điểm thưởng" accent="text-amber-300" />
+                <HeroStat href="/rewards" icon="🪙" value={points.balance} label="xu" accent="text-amber-300" />
                 <HeroStat
                   icon="🔥"
                   value={points.weekStreak}
@@ -126,7 +126,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside 
                         <span className="block h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style={{ width: `${Math.min(100, (points.balance / points.goal.price) * 100)}%` }} />
                       </span>
                       <span className="mt-0.5 block text-[11px] font-bold text-slate-500">
-                        {points.balance >= points.goal.price ? "Đủ điểm đổi quà! 🎉" : `còn ${points.goal.price - points.balance} điểm`}
+                        {points.balance >= points.goal.price ? "Đủ xu đổi quà! 🎉" : `còn ${(points.goal.price - points.balance).toLocaleString("vi-VN")} xu`}
                       </span>
                     </>
                   ) : (
@@ -154,7 +154,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside 
                               </span>
                             )}
                           </span>
-                          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-black text-amber-800">⭐ {r.price}</span>
+                          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-black text-amber-800">🪙 {r.price.toLocaleString("vi-VN")}</span>
                         </Link>
                       </li>
                     );
@@ -176,7 +176,7 @@ function HeroStat({ icon, value, label, accent, href }: { icon: string; value: n
         <span aria-hidden className="mr-0.5 text-base">
           {icon}
         </span>
-        {value}
+        {value.toLocaleString("vi-VN")}
       </p>
       <p className="truncate text-[10px] font-bold text-blue-100 sm:text-xs">{label}</p>
     </>

@@ -54,6 +54,20 @@ describe("Nộp bài kiểm tra / bài tập trắc nghiệm", () => {
     assert.equal(await fx.balance(r.s.id), P.testSubmit + P.onTimeBonus, "nộp lại không cộng đúng hạn lần 2");
   });
 
+  test("hạn riêng theo lớp được tra trong giao dịch điểm: lớp có hạn tương lai → đúng hạn dù hạn chung đã qua; lớp khác dùng hạn chung", async () => {
+    const cls = await fx.cls();
+    const inClass = await fx.user({ classId: cls.id });
+    const other = await fx.user();
+    const t = await fx.test({ dueDate: new Date(Date.now() - 86400000) });
+    await prisma.testDeadline.create({ data: { testId: t.id, classId: cls.id, dueDate: new Date(Date.now() + 86400000) } });
+    const a1 = await fx.attempt(t.id, inClass.id, 5);
+    await submit(inClass.id, t, a1.id, 5);
+    assert.equal(await fx.balance(inClass.id), P.testSubmit + P.onTimeBonus, "lớp có hạn riêng còn hạn → đúng hạn");
+    const a2 = await fx.attempt(t.id, other.id, 5);
+    await submit(other.id, t, a2.id, 5);
+    assert.equal(await fx.balance(other.id), P.testSubmitLate, "không thuộc lớp → hạn chung đã qua → sau hạn");
+  });
+
   test("xu đúng hạn tính vào giới hạn ngày", async () => {
     await withPoints({ dailyAutoCap: P.testSubmit + 10 }, async () => {
       const r = await scenario(5, { dueDate: new Date(Date.now() + 86400000) });

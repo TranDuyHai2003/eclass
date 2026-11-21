@@ -155,5 +155,5 @@ ALTER TABLE "GachaPull" ADD CONSTRAINT "GachaPull_userId_fkey" FOREIGN KEY ("use
 
 
 -- Đoán khối từ tên lớp (vd "12A1", "Lớp 11 nâng cao"); admin có thể sửa lại ở Quản lý lớp học
-UPDATE "StudyClass" SET "grade" = CAST(substring("name" from '(?<![0-9])(1[0-2])(?![0-9])') AS INTEGER)
-WHERE "grade" IS NULL AND "name" ~ '(?<![0-9])(1[0-2])(?![0-9])';
+UPDATE "StudyClass" SET "grade" = CAST(substring("name" from '(?:^|[^0-9])(1[0-2])(?:[^0-9]|$)') AS INTEGER)
+WHERE "grade" IS NULL AND "name" ~ '(^|[^0-9])(1[0-2])([^0-9]|$)';

@@ -19,7 +19,7 @@ import { normalizeRewardInput, type RewardInput } from "@/lib/points/reward-inpu
  * Server actions của Điểm thưởng: chỉ kiểm tra quyền rồi gọi phần lõi trong lib/points (đã có test ở tests/points).
  */
 
-const DISABLED: PointsResult = { success: false, error: "Tính năng Điểm thưởng đang tạm tắt." };
+const DISABLED: PointsResult = { success: false, error: "Tính năng Xu đang tạm tắt." };
 const LOGIN: PointsResult = { success: false, error: "Vui lòng đăng nhập." };
 
 function revalidateAll() {
@@ -65,7 +65,7 @@ export async function cancelRedemption(redemptionId: string): Promise<PointsResu
   if (!r || r.userId !== userId) return { success: false, error: "Không tìm thấy yêu cầu." };
   const ok = await prisma.$transaction((tx) => closeWithRefund(tx, redemptionId, "CANCELLED", { handledById: userId }));
   revalidateAll();
-  return ok ? { success: true, message: "Đã huỷ và hoàn điểm." } : { success: false, error: "Yêu cầu đã được xử lý, không huỷ được." };
+  return ok ? { success: true, message: "Đã huỷ và hoàn xu." } : { success: false, error: "Yêu cầu đã được xử lý, không huỷ được." };
 }
 
 export async function setGoalReward(rewardId: string | null): Promise<PointsResult> {
@@ -163,10 +163,10 @@ export async function grantPoints(input: { userIds: string[]; amount: number; re
   }
   revalidateAll();
   if (done === 0) {
-    return { success: false, error: "Không áp dụng được (học sinh chưa duyệt hoặc đã đủ giới hạn điểm thưởng tay hôm nay)." };
+    return { success: false, error: "Không áp dụng được (học sinh chưa duyệt hoặc đã đủ giới hạn xu thưởng tay hôm nay)." };
   }
   return {
     success: true,
-    message: `Đã ${amount > 0 ? "thưởng" : "trừ"} điểm cho ${done} học sinh` + (skipped ? `, bỏ qua ${skipped} (chưa duyệt hoặc đủ giới hạn ngày).` : "."),
+    message: `Đã ${amount > 0 ? "thưởng" : "trừ"} xu cho ${done} học sinh` + (skipped ? `, bỏ qua ${skipped} (chưa duyệt hoặc đủ giới hạn ngày).` : "."),
   };
 }

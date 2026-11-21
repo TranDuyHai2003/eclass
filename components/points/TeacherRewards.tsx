@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { BarChart3, Check, Download, Gift, Loader2, Pencil, Plus, Star, Trash2, X } from "lucide-react";
+import { BarChart3, Check, Download, Gift, Loader2, Pencil, Plus, Star, Ticket, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   archiveReward,
@@ -17,8 +17,10 @@ import { REWARD_TEMPLATES as TEMPLATES } from "@/lib/points/templates";
 import { rarityOf } from "@/lib/points/rarity";
 import type { TeacherRewardsPageData } from "@/lib/points/queries";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { GiftCodesTab } from "./GiftCodesTab";
+import type { GiftCodeBatch } from "@/lib/game/giftcode-queries";
 
-type TabKey = "requests" | "rewards" | "grant" | "stats";
+type TabKey = "requests" | "rewards" | "grant" | "codes" | "stats";
 type Data = TeacherRewardsPageData;
 type ActionResult = { success: boolean; message?: string; error?: string };
 
@@ -39,7 +41,7 @@ const emptyForm = (): RewardInput => ({
   title: "",
   description: "",
   emoji: "🎁",
-  price: 100,
+  price: 6000,
   stock: null,
   perStudentMonthlyLimit: null,
   kind: "PHYSICAL",
@@ -48,7 +50,7 @@ const emptyForm = (): RewardInput => ({
   isActive: true,
 });
 
-export function TeacherRewards({ data, manualMax, manualDailyCap }: { data: Data; manualMax: number; manualDailyCap: number }) {
+export function TeacherRewards({ data, giftBatches, manualMax, manualDailyCap }: { data: Data; giftBatches: GiftCodeBatch[]; manualMax: number; manualDailyCap: number }) {
   const router = useRouter();
   const [tab, setTab] = useState<TabKey>(data.pending.length ? "requests" : "rewards");
   const [pending, startTransition] = useTransition();
@@ -70,7 +72,8 @@ export function TeacherRewards({ data, manualMax, manualDailyCap }: { data: Data
   const tabs: { key: TabKey; label: string; icon: typeof Gift; badge?: number }[] = [
     { key: "requests", label: "Yêu cầu đổi quà", icon: Gift, badge: data.pending.length },
     { key: "rewards", label: "Quản lý quà", icon: Star },
-    { key: "grant", label: "Thưởng điểm", icon: Plus },
+    { key: "grant", label: "Thưởng xu", icon: Plus },
+    { key: "codes", label: "Mã quà tặng", icon: Ticket },
     { key: "stats", label: "Thống kê", icon: BarChart3 },
   ];
 
@@ -99,6 +102,7 @@ export function TeacherRewards({ data, manualMax, manualDailyCap }: { data: Data
       {tab === "requests" && <RequestsTab data={data} pending={pending} run={run} />}
       {tab === "rewards" && <RewardsTab data={data} pending={pending} run={run} />}
       {tab === "grant" && <GrantTab data={data} pending={pending} run={run} manualMax={manualMax} manualDailyCap={manualDailyCap} />}
+      {tab === "codes" && <GiftCodesTab batches={giftBatches} classes={data.classes} />}
       {tab === "stats" && <StatsTab data={data} />}
     </div>
   );
@@ -227,7 +231,7 @@ function RequestsTab({ data, pending, run }: TabProps) {
                     {r.user.studyClass && <span className="ml-1.5 font-semibold text-slate-400">· {r.user.studyClass.name}</span>}
                   </p>
                   <p className="text-xs text-slate-500 line-clamp-1">
-                    {r.reward.title} · {r.price} điểm · {fmtDate(r.createdAt)}
+                    {r.reward.title} · {r.price.toLocaleString("vi-VN")} xu · {fmtDate(r.createdAt)}
                   </p>
                 </div>
                 <button
@@ -273,7 +277,7 @@ function RequestsTab({ data, pending, run }: TabProps) {
             <DialogDescription>
               {rejecting && (
                 <>
-                  {rejecting.user.name || rejecting.user.email} · {rejecting.reward.title}. Học sinh được hoàn lại {rejecting.price} điểm.
+                  {rejecting.user.name || rejecting.user.email} · {rejecting.reward.title}. Học sinh được hoàn lại {rejecting.price.toLocaleString("vi-VN")} xu.
                 </>
               )}
             </DialogDescription>
@@ -295,7 +299,7 @@ function RequestsTab({ data, pending, run }: TabProps) {
               onClick={() => rejecting && run(() => rejectRedemption(rejecting.id, rejectNote), () => setRejecting(null))}
               className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-black text-white hover:bg-rose-700 disabled:opacity-50"
             >
-              Từ chối & hoàn điểm
+              Từ chối & hoàn xu
             </button>
           </DialogFooter>
         </DialogContent>
@@ -353,7 +357,7 @@ function RewardsTab({ data, pending, run }: TabProps) {
         >
           <Plus className="h-4 w-4" /> Thêm quà
         </button>
-        <p className="text-xs text-slate-500">Học sinh chăm cả tháng được khoảng 80–90 điểm (≈ 1 gói bim bim).</p>
+        <p className="text-xs text-slate-500">Học sinh chăm cả tháng được khoảng 12 000 xu (≈ 1 gói bim bim).</p>
       </div>
 
       {templates.length > 0 && (
@@ -375,7 +379,7 @@ function RewardsTab({ data, pending, run }: TabProps) {
       )}
 
       {data.rewards.length === 0 ? (
-        <p className="rounded-3xl bg-white p-8 text-center text-sm text-slate-500 border border-slate-200/70">Chưa có quà nào. Thêm quà để học sinh có mục tiêu tích điểm.</p>
+        <p className="rounded-3xl bg-white p-8 text-center text-sm text-slate-500 border border-slate-200/70">Chưa có quà nào. Thêm quà để học sinh có mục tiêu tích xu.</p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {data.rewards.map((r) => (
@@ -385,7 +389,7 @@ function RewardsTab({ data, pending, run }: TabProps) {
                 <div className="min-w-0 flex-1">
                   <p className="font-black leading-snug text-slate-900 line-clamp-2">{r.title}</p>
                   <p className="flex flex-wrap items-center gap-1.5 text-sm font-black text-amber-600">
-                    ⭐ {r.price} điểm
+                    🪙 {r.price.toLocaleString("vi-VN")} xu
                     <span className={cn("rounded-full px-2 py-0.5 text-[10px] uppercase", rarityOf(r.price).chip)}>{rarityOf(r.price).label}</span>
                   </p>
                 </div>
@@ -422,7 +426,7 @@ function RewardsTab({ data, pending, run }: TabProps) {
         <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{form?.id ? "Sửa quà" : "Thêm quà"}</DialogTitle>
-            <DialogDescription>Giá tính bằng điểm thưởng. Để trống số lượng nếu không giới hạn.</DialogDescription>
+            <DialogDescription>Giá tính bằng xu (nộp một bài = 300 xu). Để trống số lượng nếu không giới hạn.</DialogDescription>
           </DialogHeader>
           {form && (
             <div className="space-y-3">
@@ -453,7 +457,7 @@ function RewardsTab({ data, pending, run }: TabProps) {
                 />
               </label>
               <div className="grid grid-cols-2 gap-3">
-                {numberField("price", "Giá (điểm)")}
+                {numberField("price", "Giá (xu)")}
                 {numberField("stock", "Số lượng", "Không giới hạn")}
                 {numberField("perStudentMonthlyLimit", "Mỗi HS / tháng", "Không giới hạn")}
                 {numberField("costVnd", "Chi phí thật (đ)", "Để thống kê")}
@@ -557,11 +561,11 @@ function RewardsTab({ data, pending, run }: TabProps) {
   );
 }
 
-// ---------------------------------------------------------------- Thưởng điểm
+// ---------------------------------------------------------------- Thưởng xu
 function GrantTab({ data, pending, run, manualMax, manualDailyCap }: TabProps & { manualMax: number; manualDailyCap: number }) {
   const [classId, setClassId] = useState(data.classes[0]?.id ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [amount, setAmount] = useState(1);
+  const [amount, setAmount] = useState(150);
   const [reason, setReason] = useState("");
   const [query, setQuery] = useState("");
 
@@ -629,7 +633,7 @@ function GrantTab({ data, pending, run, manualMax, manualDailyCap }: TabProps & 
               />
               <span className="min-w-0 flex-1 text-sm font-semibold text-slate-800 line-clamp-1">{s.name || s.email}</span>
               {s.studentType === "ONLINE" && <span className="text-[10px] font-bold text-sky-600">ONLINE</span>}
-              <span className="shrink-0 text-xs font-black text-amber-600 tabular-nums">⭐ {s.balance}</span>
+              <span className="shrink-0 text-xs font-black text-amber-600 tabular-nums">🪙 {s.balance.toLocaleString("vi-VN")}</span>
             </label>
           ))}
           {students.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Không có học sinh.</p>}
@@ -639,9 +643,9 @@ function GrantTab({ data, pending, run, manualMax, manualDailyCap }: TabProps & 
       <div className="h-fit space-y-3 rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm lg:sticky lg:top-24">
         <p className="text-sm font-black text-slate-800">Đã chọn {chosen.length} học sinh</p>
         <div>
-          <span className="text-xs font-bold text-slate-500">Số điểm (âm để trừ)</span>
+          <span className="text-xs font-bold text-slate-500">Số xu (âm để trừ)</span>
           <div className="mt-1 flex gap-1.5">
-            {[1, 2, 3, 5].map((v) => (
+            {[150, 300, 450, 750].map((v) => (
               <button
                 key={v}
                 type="button"
@@ -657,7 +661,7 @@ function GrantTab({ data, pending, run, manualMax, manualDailyCap }: TabProps & 
               min={-manualMax}
               max={manualMax}
               onChange={(e) => setAmount(Number(e.target.value))}
-              className="h-10 w-16 rounded-xl border border-slate-200 px-2 text-center text-sm font-black"
+              className="h-10 w-20 rounded-xl border border-slate-200 px-2 text-center text-sm font-black"
             />
           </div>
         </div>
@@ -687,10 +691,10 @@ function GrantTab({ data, pending, run, manualMax, manualDailyCap }: TabProps & 
           )}
         >
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : amount < 0 ? <X className="h-4 w-4" /> : <Star className="h-4 w-4" />}
-          {amount < 0 ? `Trừ ${-amount} điểm` : `Thưởng ${amount} điểm`}
+          {amount < 0 ? `Trừ ${(-amount).toLocaleString("vi-VN")} xu` : `Thưởng ${amount.toLocaleString("vi-VN")} xu`}
         </button>
         <p className="text-[11px] text-slate-400">
-          Mỗi lần tối đa {manualMax} điểm; mỗi học sinh nhận tối đa {manualDailyCap} điểm thưởng tay mỗi ngày. Học sinh nhận thông báo kèm lý do.
+          Mỗi lần tối đa {manualMax.toLocaleString("vi-VN")} xu; mỗi học sinh nhận tối đa {manualDailyCap.toLocaleString("vi-VN")} xu thưởng tay mỗi ngày. Học sinh nhận thông báo kèm lý do.
         </p>
       </div>
     </section>
@@ -701,8 +705,8 @@ function GrantTab({ data, pending, run, manualMax, manualDailyCap }: TabProps & 
 function StatsTab({ data }: { data: Data }) {
   const s = data.stats;
   const cards = [
-    { label: "Điểm phát ra tháng này", value: s.earnedThisMonth },
-    { label: "Điểm đã dùng đổi quà", value: s.spentThisMonth },
+    { label: "Xu phát ra tháng này", value: s.earnedThisMonth.toLocaleString("vi-VN") },
+    { label: "Xu đã dùng đổi quà", value: s.spentThisMonth.toLocaleString("vi-VN") },
     { label: "Quà đã trao tháng này", value: s.deliveredThisMonth },
     { label: "Chi phí quà tháng này", value: fmtVnd(s.costThisMonth) },
   ];
@@ -729,7 +733,7 @@ function StatsTab({ data }: { data: Data }) {
                   {t.name}
                   {t.className && <span className="text-slate-400"> · {t.className}</span>}
                 </p>
-                <span className="text-sm font-black text-amber-600 tabular-nums">+{t.points}</span>
+                <span className="text-sm font-black text-amber-600 tabular-nums">+{t.points.toLocaleString("vi-VN")}</span>
               </div>
             ))}
           </div>
