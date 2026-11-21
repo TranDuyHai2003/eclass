@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { HomeSidebar } from "@/components/home/HomeSidebar";
 import { LeaderboardView } from "@/components/game/Leaderboard";
 import { getGrades, getLeaderboard, getMyRank, type Period, type Scope } from "@/lib/game/leaderboard";
+import { isPointsEnabled } from "@/lib/points/config";
+import { notFound } from "next/navigation";
 import { maskUsersForDemo } from "@/lib/demo-privacy";
 import { prisma, prismaBase } from "@/lib/prisma";
 
@@ -11,6 +13,7 @@ export const metadata = { title: "Bảng Vàng" };
 
 /** Bảng Vàng tích luỹ theo khối ("server" 10/11/12) và lớp mình; kỳ: tích luỹ / tháng này */
 export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<{ tab?: string; period?: string }> }) {
+  if (!isPointsEnabled()) notFound();
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const sp = await searchParams;
@@ -30,7 +33,8 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
 
   const rawRows = scope ? await getLeaderboard(scope, period, 30) : [];
   // Dữ liệu trong cache dùng chung → che tên demo NGOÀI cache (review Gemini)
-  const rows = await maskUsersForDemo(rawRows, prismaBase);
+  // maskUsersForDemo nhận dạng theo trường `id` (giữ nguyên chính chủ demo) → map userId → id (review Gemini)
+  const rows = (await maskUsersForDemo(rawRows.map((r) => ({ ...r, id: r.userId })), prismaBase)).map(({ id: _id, ...r }) => r);
   const mine = scope && session.user.role === "STUDENT" ? await getMyRank(session.user.id, scope, period) : null;
 
   return (

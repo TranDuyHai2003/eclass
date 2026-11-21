@@ -41,7 +41,7 @@ export function LeaderboardView({
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-400 text-amber-950 shadow-[0_3px_0_0_#d97706]"><Crown className="h-5 w-5" /></span>
             Bảng Vàng
           </h1>
-          <p className="text-sm font-medium text-slate-500">Xu kiếm được từ học tập — mỗi khối là một "server" riêng. Đổi quà, mở rương không làm tụt hạng.</p>
+          <p className="text-sm font-medium text-slate-500">Xu kiếm được từ học tập — mỗi khối là một &quot;server&quot; riêng. Đổi quà, mở rương không làm tụt hạng.</p>
         </div>
         <div className="flex gap-1 rounded-2xl border-2 border-slate-200/80 bg-slate-100/80 p-1" role="tablist" aria-label="Kỳ">
           {(["all", "month"] as Period[]).map((p) => (
@@ -81,7 +81,7 @@ export function LeaderboardView({
                   <Link key={r.userId} href={`/profile/${r.userId}`} className={cn("group flex flex-col items-center rounded-3xl bg-gradient-to-b p-2 text-center ring-2 transition-transform hover:-translate-y-1 sm:p-4", p.bg, p.ring, p.h, r.userId === currentUserId && "outline outline-2 outline-blue-500")}>
                     <span className="text-2xl sm:text-3xl">{p.label}</span>
                     <div className="mt-1 rounded-2xl p-1" style={bg ? { background: `linear-gradient(135deg, ${bg.v}, ${bg.v2})` } : undefined}>
-                      <Chibi config={r.avatar} size={r.rank === 1 ? 96 : 80} className={cn(r.rank === 1 && "animate-float")} />
+                      <Chibi config={r.avatar} size={r.rank === 1 ? 96 : 80} className={cn("h-auto max-w-full", r.rank === 1 && "animate-float")} />
                     </div>
                     <p className="mt-1 line-clamp-2 w-full text-sm font-black text-slate-900 [overflow-wrap:anywhere]">{r.name || "Học sinh"}</p>
                     {r.equippedTitle && <p className="text-[10px] font-black text-violet-700">🏷️ {r.equippedTitle}</p>}

@@ -63,7 +63,7 @@ export default function ClassDeadlinesClient({ testId, classes, generalDueDate }
           <CalendarClock className="h-3 w-3" /> Hạn theo lớp{customCount ? ` (${customCount})` : ""}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[340px] space-y-2 rounded-2xl p-3">
+      <PopoverContent align="start" className="w-[min(340px,calc(100vw-1rem))] space-y-2 rounded-2xl p-3">
         <p className="text-xs font-black text-slate-800">Hạn nộp riêng theo lớp</p>
         <p className="text-[11px] text-slate-500">
           Lớp để trống dùng hạn chung{generalDueDate ? ` (${new Date(generalDueDate).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })})` : " — hiện chưa đặt hạn chung nên không có hạn"}.

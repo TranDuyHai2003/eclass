@@ -24,22 +24,33 @@ export async function applyTestDeadlines(testId: string, input: DeadlineInput[])
   const valid = (Array.isArray(input) ? input : []).filter((d) => d && typeof d.classId === "string" && allowed.has(d.classId));
   if (valid.length === 0) return { ok: false as const, error: "Không có lớp hợp lệ (lớp phải được gán cho khoá học của đề)." };
 
-  let saved = 0;
-  let removed = 0;
+  // Kiểm tra toàn bộ trước, ghi trong một giao dịch → không có ghi dở dang khi một dòng hỏng (review Gemini)
+  const parsed: { classId: string; due: Date | null }[] = [];
   for (const d of valid) {
     if (d.dueDate === null || d.dueDate === "") {
-      const r = await prisma.testDeadline.deleteMany({ where: { testId, classId: d.classId } });
-      removed += r.count;
+      parsed.push({ classId: d.classId, due: null });
       continue;
     }
     const due = parseVnDateTime(d.dueDate);
     if (!due) return { ok: false as const, error: "Ngày giờ không hợp lệ." };
-    await prisma.testDeadline.upsert({
-      where: { testId_classId: { testId, classId: d.classId } },
-      create: { testId, classId: d.classId, dueDate: due },
-      update: { dueDate: due },
-    });
-    saved++;
+    parsed.push({ classId: d.classId, due });
   }
+  const { saved, removed } = await prisma.$transaction(async (tx) => {
+    let saved = 0;
+    let removed = 0;
+    for (const p of parsed) {
+      if (!p.due) {
+        removed += (await tx.testDeadline.deleteMany({ where: { testId, classId: p.classId } })).count;
+      } else {
+        await tx.testDeadline.upsert({
+          where: { testId_classId: { testId, classId: p.classId } },
+          create: { testId, classId: p.classId, dueDate: p.due },
+          update: { dueDate: p.due },
+        });
+        saved++;
+      }
+    }
+    return { saved, removed };
+  });
   return { ok: true as const, saved, removed, ignored: input.length - valid.length };
 }

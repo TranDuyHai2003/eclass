@@ -49,6 +49,10 @@ describe("applyTestDeadlines", () => {
     assert.deepEqual((await prisma.testDeadline.findMany({ where: { testId } })).map((d) => d.classId), [clsB]);
     assert.equal((await applyTestDeadlines(testId, [{ classId: clsX, dueDate: null }])).ok, false);
     assert.equal((await applyTestDeadlines(testId, [{ classId: clsB, dueDate: "rác" }])).ok, false);
+    // Một dòng hỏng → không ghi dòng nào (review Gemini)
+    const before = await prisma.testDeadline.findMany({ where: { testId } });
+    assert.equal((await applyTestDeadlines(testId, [{ classId: clsA, dueDate: "2026-12-09T10:00" }, { classId: clsB, dueDate: "rác" }])).ok, false);
+    assert.deepEqual(await prisma.testDeadline.findMany({ where: { testId } }), before, "không được ghi dở dang");
     assert.equal((await applyTestDeadlines("khong-co", [])).ok, false);
   });
 });

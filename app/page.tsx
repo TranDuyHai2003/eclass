@@ -38,7 +38,13 @@ export default async function Home() {
   ]);
   // Top 3 Bảng Vàng khối mình (cache 60 giây, che tên demo ngoài cache) + câu thoại NPC (tính ở server, xác định)
   const grade = me?.studyClass?.grade ?? null;
-  const top3 = isStudent && isPointsEnabled() && grade ? await getLeaderboard({ grade }, "all", 3).then((r) => maskUsersForDemo(r, prismaBase)).catch(() => []) : [];
+  const top3 =
+    isStudent && isPointsEnabled() && grade
+      ? await getLeaderboard({ grade }, "all", 3)
+          .then((r) => maskUsersForDemo(r.map((x) => ({ ...x, id: x.userId })), prismaBase))
+          .then((r) => r.map(({ id: _id, ...x }) => x))
+          .catch(() => [])
+      : [];
   const npcLines =
     isStudent && points
       ? buildHomeNpc({

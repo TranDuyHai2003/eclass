@@ -429,7 +429,7 @@ try {
     await s.goto("/", /Tiệm quà/i);
     expect(await s.ev(`return !!document.querySelector('[data-testid="npc"]') && !!document.querySelector('[data-testid="home-top3"]')`), "trang chủ thiếu NPC hoặc top 3");
     const npc = await s.ev(`return document.querySelector('[data-testid="npc"]')?.innerText || ""`);
-    expect(/Lucky Boy/.test(npc) && !/rương/i.test(npc), `NPC sai: ${npc.slice(0, 80)}`);
+    expect(/lucky boy/i.test(npc) && !/rương/i.test(npc), `NPC sai: ${npc.slice(0, 80)}`);
   });
 
   // -------------------------------------------------- Bố cục nhiều cỡ màn hình

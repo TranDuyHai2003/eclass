@@ -20,11 +20,17 @@ export async function getAvatar(userId: string) {
 }
 
 /** Nhiều nhân vật một lúc (bảng vàng): 2 truy vấn `in` */
-export async function getAvatars(userIds: string[]) {
+/** Client tối thiểu để đọc nhân vật (prisma thường hoặc prismaBase trong unstable_cache) */
+type AvatarDb = {
+  userAvatar: { findMany(args: { where: { userId: { in: string[] } }; select: { userId: true; config: true } }): Promise<{ userId: string; config: unknown }[]> };
+  userItem: { findMany(args: { where: { userId: { in: string[] } }; select: { userId: true; itemId: true } }): Promise<{ userId: string; itemId: string }[]> };
+};
+
+export async function getAvatars(userIds: string[], client: AvatarDb = prisma) {
   if (userIds.length === 0) return new Map<string, AvatarConfig>();
   const [rows, items] = await Promise.all([
-    prisma.userAvatar.findMany({ where: { userId: { in: userIds } }, select: { userId: true, config: true } }),
-    prisma.userItem.findMany({ where: { userId: { in: userIds } }, select: { userId: true, itemId: true } }),
+    client.userAvatar.findMany({ where: { userId: { in: userIds } }, select: { userId: true, config: true } }),
+    client.userItem.findMany({ where: { userId: { in: userIds } }, select: { userId: true, itemId: true } }),
   ]);
   const ownedBy = new Map<string, string[]>();
   for (const it of items) ownedBy.set(it.userId, [...(ownedBy.get(it.userId) ?? []), it.itemId]);

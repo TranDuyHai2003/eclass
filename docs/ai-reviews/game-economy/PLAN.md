@@ -205,6 +205,13 @@ Câu thoại tính ở server theo thứ tự ưu tiên: bài quá hạn → bà
 
 Sau GĐ4: rà lại toàn bộ, Gemini review diff tổng, rồi chờ thầy duyệt deploy (buổi tối; kèm migration Điểm thưởng còn chưa deploy).
 
+## 8b. Trước khi deploy (ghi chú vận hành)
+
+- Production **chưa** có bảng Điểm thưởng (`20261119000000_add_reward_points` chưa deploy) → migration `20261121000000_game_economy` chạy nối tiếp, không cần quy đổi dữ liệu ×150 (câu hỏi review GĐ0).
+- Sau deploy: admin vào **Quản lý lớp học** kiểm tra cột **Khối** (migration tự đoán từ tên lớp, vd "12A" → 12).
+- Biến môi trường tuỳ chọn: `POINTS_ENABLED=off` tắt toàn bộ Xu; `GACHA_ENABLED=off` chỉ tắt rương.
+- Khởi động lại dev server sau khi kéo code (Prisma client mới).
+
 ## 9. Câu hỏi còn mở (không chặn, mặc định như ghi)
 
 1. Tên danh hiệu (4.3) — thầy đổi tuỳ ý trước khi deploy.

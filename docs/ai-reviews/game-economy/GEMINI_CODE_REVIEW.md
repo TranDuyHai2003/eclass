@@ -97,3 +97,72 @@ Không có câu hỏi nào; ngữ cảnh trong diff đủ để kết luận.
 | 2 | XSS khi in thẻ qua `document.write` | **Đúng** (thầy/admin tự nhập, nhưng vẫn phải escape). | Hàm `esc` áp cho mã và nhãn. |
 | 3 | Nút "In thẻ" lô vừa tạo đọc form hiện tại | **Đúng.** | `justCreated = { codes, label }` chụp lúc tạo xong. |
 | 4 | `CountUp` bỏ qua "giảm chuyển động" | **Đúng.** | `matchMedia` → hiện số cuối ngay. |
+
+---
+
+## Giai đoạn 2–4 — diff `e4e2e54..317b9fa` (21/11/2026)
+
+### Summary
+
+Nhìn chung lõi tiền ảo (gacha, mua đồ, bất biến sổ–ví, lockWallet, trần ngày, trùng đồ) được viết chặt chẽ và có bộ test khá đầy đủ. Điểm rủi ro lớn nhất nằm ở cache Bảng Vàng dùng nhầm prisma thay vì prismaBase (có thể làm rò/lỗi phiên demo trong unstable_cache), API PATCH /api/tests/[testId] thiếu demoGuard và ghi dở dang khi lưu hạn nộp theo lớp. Ngoài ra có một số lỗi hiệu năng ở getMyRank và tràn bố cục ở màn hình 320px.
+
+### Findings
+
+#### [HIGH] unstable_cache của Bảng Vàng gọi prisma (đã mở rộng cho demo) thay vì prismaBase
+- **Where:** lib/game/leaderboard.ts:2,35,44,78-85 và lib/game/inventory.ts:23-28
+- **Scenario:** loadLeaderboard chạy bên trong unstable_cache (cache dùng chung 60 giây cho mọi người xem) nhưng lại truy vấn bằng prisma từ @/lib/prisma (client đã mở rộng để che dữ liệu tài khoản demo). Nếu người đầu tiên làm miss cache là tài khoản demo, hoặc nếu extension của prisma đọc session/cookie (auth()), Next.js sẽ ném lỗi dynamic usage trong unstable_cache hoặc lưu luôn tên đã bị che vào cache chung cho học sinh thật.
+- **Why it matters:** Vi phạm cô lập cache/demo (chính lý do phải gọi maskUsersForDemo ngoài cache ở app/leaderboard/page.tsx:33), có thể làm hỏng trang Bảng Vàng hoặc trang chủ trên production.
+- **Minimal fix:** Dùng prismaBase trong loadLeaderboard và cho phép truyền client (db = prisma) vào getAvatars(userIds, prismaBase) để toàn bộ truy vấn bên trong unstable_cache không phụ thuộc session người xem.
+
+#### [MEDIUM] PATCH /api/tests/[testId] không chặn tài khoản demo (demoGuard)
+- **Where:** app/api/tests/[testId]/route.ts:79-109
+- **Scenario:** Một tài khoản có isDemo = true và role = "TEACHER" hoặc "ADMIN" gửi PATCH /api/tests/[testId] với body { deadlines: [...] }. Route chỉ kiểm tra session.user.role và requireTestAccess, không gọi demoGuard(), nên tài khoản demo ghi đè/xoá được hạn nộp của đề.
+- **Why it matters:** Vi phạm quy ước isDemo là tài khoản chỉ đọc (read-only) ở mọi thao tác ghi.
+- **Minimal fix:** Gọi const blocked = await demoGuard(); if (blocked) return new NextResponse(blocked.error, { status: 403 }); ngay đầu hàm PATCH (và nên kiểm tra tương tự ở DELETE).
+
+#### [MEDIUM] applyTestDeadlines ghi từng dòng ngoài transaction, gây ghi dở dang khi có ngày không hợp lệ
+- **Where:** lib/test-deadlines.ts:27-43
+- **Scenario:** Gửi mảng [{ classId: clsA, dueDate: "2026-12-01T20:00" }, { classId: clsB, dueDate: "rác" }]. Vòng for đã upsert xong hạn của clsA vào DB rồi mới gặp clsB lỗi parseVnDateTime và trả { ok: false } (HTTP 400).
+- **Why it matters:** API báo lỗi 400 khiến giao diện nghĩ lưu thất bại, nhưng DB thực tế đã bị thay đổi một phần.
+- **Minimal fix:** Kiểm tra và parse toàn bộ dueDate trước khi ghi DB, sau đó bọc toàn bộ deleteMany/upsert trong prisma.$transaction.
+
+#### [MEDIUM] getMyRank gọi loadLeaderboard(..., 10000) không cache và tải toàn bộ avatar/túi đồ của cả khối chỉ để lấy thứ hạng
+- **Where:** lib/game/leaderboard.ts:101-106
+- **Scenario:** Mỗi lần học sinh mở /leaderboard, getMyRank chạy loadLeaderboard(scope, period, 10000) ngoài cache: truy vấn toàn bộ user trong khối, groupBy sổ điểm (nếu kỳ tháng), rồi gọi getAvatars tải toàn bộ userAvatar và userItem của mọi học sinh trong khối chỉ để lấy { rank, total, xu } của 1 người và bỏ hết dữ liệu avatar.
+- **Why it matters:** Gây dư truy vấn nặng mỗi lần tải /leaderboard, làm mất phần lớn lợi ích của việc cache Bảng Vàng.
+- **Minimal fix:** Tách phần tính danh sách (userId, xu) đã sắp xếp ra khỏi bước gọi getAvatars, để getMyRank chỉ tính thứ hạng mà không truy vấn userAvatar/userItem.
+
+#### [LOW] Tràn ngang trên màn hình 320px ở bục Top 3 Bảng Vàng và Popover hạn theo lớp
+- **Where:** components/game/Leaderboard.tsx:75,84 và app/teacher/tests/_components/ClassDeadlinesClient.tsx:66
+- **Scenario:** Ở màn hình 320px, bục Top 3 dùng grid-cols-3 (~88px mỗi cột sau padding/gap) nhưng Chibi ở hạng 1 đặt cứng size={96} (width="96"), dễ tràn khung cột trên điện thoại nhỏ. ClassDeadlinesClient đặt PopoverContent có w-[340px], lớn hơn chiều rộng 320px.
+- **Why it matters:** Gây vỡ/tràn ngang giao diện ở ngưỡng 320–390px.
+- **Minimal fix:** Thêm max-w-full h-auto vào className của Chibi trong bục Top 3, và đổi w-[340px] thành w-[min(340px,calc(100vw-1rem))] ở ClassDeadlinesClient.
+
+#### [LOW] Nút mở rương đặt chiều cao cố định h-12 dễ bị cắt chữ khi xuống dòng ở 320px
+- **Where:** components/game/GachaScene.tsx:145,155
+- **Scenario:** Nút Mở Rương Xu (600 xu) · còn 3/3 hôm nay và Mở Rương Ngọc (3 ngọc) · không Phổ thông có h-12; ở 320px chữ xuống 2 dòng sẽ sát mép hoặc bị cắt dọc.
+- **Why it matters:** Giảm khả năng đọc và bấm trên điện thoại nhỏ.
+- **Minimal fix:** Đổi h-12 thành min-h-12 py-2.
+
+#### [LOW] Thiếu kiểm tra isPointsEnabled() ở /leaderboard và thiếu test phân quyền cho updateClassGrade
+- **Where:** app/leaderboard/page.tsx:13-15, actions/class.ts:92-106
+- **Scenario:** Khi tắt tính năng Xu (isPointsEnabled() === false), HomeSidebar ẩn mục Bảng Vàng nhưng truy cập thẳng /leaderboard vẫn mở được (khác với /rewards/gacha và /profile/avatar đều trả notFound()). Ngoài ra, updateClassGrade chưa có unit test kiểm tra chặn STUDENT/TEACHER và kiểm tra biên grade.
+- **Why it matters:** Không đồng nhất khi tắt cờ tính năng và thiếu lớp bảo vệ hồi quy cho action admin mới.
+- **Minimal fix:** Thêm if (!isPointsEnabled()) notFound(); ở đầu LeaderboardPage và bổ sung test cho updateClassGrade.
+
+### Questions for the author
+
+lib/demo-privacy.ts (maskUsersForDemo) đọc trường id hay userId? File này không đính kèm trong gói review. Trong app/profile/[userId]/page.tsx:24, bạn truyền { id: raw.id, ... }, còn trong app/leaderboard/page.tsx:33 và app/page.tsx:41, bạn truyền LeaderboardRow[] vốn dùng trường userId (không có id). Nếu maskUsersForDemo dựa vào id để giữ nguyên tên chính chủ demo hoặc tạo bí danh xác định, việc truyền userId có thể làm sai lệch việc che tên demo.
+
+### Claude kiểm chứng (GĐ2–4)
+
+| # | Finding | Kết luận | Đã làm |
+|---|---|---|---|
+| 1 | `prisma` (extension demo) trong `unstable_cache` | **Một phần.** Extension tự trả dữ liệu gốc bên trong cache (`getDemoViewerId` bắt lỗi `headers()` → null, xem lib/demo-privacy.ts) nên không lộ/không ném lỗi. Nhưng quy ước dự án (`actions/ranking.ts`) là dùng `prismaBase` trong cache. | `rankedUsers`/`loadLeaderboard`/`getGrades` dùng `prismaBase`; `getAvatars(ids, client)` nhận client. |
+| 2 | PATCH thiếu `demoGuard` | **Sai.** `middleware.ts:34` đã chặn mọi method ghi trên `/api/*` cho tài khoản demo (trả về trước khi vào route). | Không sửa. |
+| 3 | `applyTestDeadlines` ghi dở dang | **Đúng.** | Parse toàn bộ trước, ghi trong `$transaction`; test: một dòng hỏng → DB không đổi. |
+| 4 | `getMyRank` tải avatar cả khối | **Đúng.** | Tách `rankedUsers` (không avatar); `getMyRank` dùng hàm này; top N mới tải avatar. |
+| 5 | Tràn 320px: Chibi 96px, popover 340px | **Đúng.** | `h-auto max-w-full`; `w-[min(340px,calc(100vw-1rem))]`. |
+| 6 | Nút rương `h-12` cắt chữ | **Đúng.** | `min-h-12 py-2`. |
+| 7 | `/leaderboard` thiếu `isPointsEnabled`; thiếu test `updateClassGrade` | **Đúng** phần cờ tính năng. Test `updateClassGrade` bỏ qua vì server action gọi `auth()` (không chạy được trong node:test; các action khác của dự án cũng không có unit test, phân quyền kiểm tra bằng `session.user.role !== "ADMIN"`). | Thêm `notFound()` khi tắt Xu. |
+| Q | `maskUsersForDemo` dùng `id` hay `userId`? | **Đúng chỗ.** Hàm dựa vào `user.id` (giữ chính chủ demo, bí danh theo id); `LeaderboardRow` chỉ có `userId` → chính chủ demo cũng bị che và bí danh suy từ tên. | Map `id: userId` trước khi che ở `/leaderboard` và trang chủ. |

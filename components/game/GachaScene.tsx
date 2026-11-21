@@ -143,7 +143,7 @@ export function GachaScene({
           data-testid="open-xu"
           disabled={pending || phase === "shaking" || !canEarn || left === 0}
           onClick={() => open("xu")}
-          className={cn("btn-3d btn-shine relative h-12 w-full text-sm", canEarn && left > 0 ? "btn-3d-amber" : "btn-3d-muted")}
+          className={cn("btn-3d btn-shine relative min-h-12 w-full py-2 text-sm", canEarn && left > 0 ? "btn-3d-amber" : "btn-3d-muted")}
         >
           <span aria-hidden className="sparkle -left-1 -top-1" /><span aria-hidden className="sparkle sparkle-2 -right-1 top-1" />
           {pending && chest === "xu" ? <Loader2 className="h-4 w-4 animate-spin" /> : "🧰"} Mở Rương Xu (600 xu) · còn {left}/{limit} hôm nay
@@ -153,7 +153,7 @@ export function GachaScene({
           data-testid="open-gem"
           disabled={pending || phase === "shaking" || !canEarn}
           onClick={() => open("gem")}
-          className={cn("btn-3d btn-shine h-12 w-full text-sm", canEarn ? "bg-pink-500 text-white [--btn-edge:#9d174d] hover:bg-pink-400" : "btn-3d-muted")}
+          className={cn("btn-3d btn-shine min-h-12 w-full py-2 text-sm", canEarn ? "bg-pink-500 text-white [--btn-edge:#9d174d] hover:bg-pink-400" : "btn-3d-muted")}
         >
           {pending && chest === "gem" ? <Loader2 className="h-4 w-4 animate-spin" /> : "💎"} Mở Rương Ngọc (3 ngọc) · không Phổ thông
         </button>
