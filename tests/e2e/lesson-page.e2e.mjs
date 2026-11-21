@@ -67,11 +67,20 @@ const course = await prisma.course.create({
     chapters: {
       create: [
         { title: "Chương 1: Hàm số", position: 0, isPublished: true, lessons: { create: [{ title: "Bài 1: Đơn điệu", position: 0, isPublished: true, type: "DOCUMENT" }, { title: "Bài 2: Cực trị", position: 1, isPublished: true, type: "DOCUMENT" }] } },
-        { title: longChapter, position: 1, isPublished: true, lessons: { create: [{ title: "Bài 3: Khoảng tứ phân vị của mẫu số liệu ghép nhóm (rất dài để thử xuống dòng)", position: 0, isPublished: true, type: "DOCUMENT" }] } },
+        { title: longChapter, position: 1, isPublished: true, lessons: { create: [{ title: "Bài 3: Khoảng tứ phân vị của mẫu số liệu ghép nhóm (rất dài để thử xuống dòng)", position: 0, isPublished: true, type: "DOCUMENT" } ] } },
       ],
     },
   },
   include: { chapters: { orderBy: { position: "asc" }, include: { lessons: { orderBy: { position: "asc" } } } } },
+});
+// Khoá riêng có một đề còn hạn (ngày mai) → đứng đầu "Bài cần làm" ở trang chủ
+await prisma.course.create({
+  data: {
+    title: `${TAG}Khoá có đề`,
+    userId: teacher.id,
+    isPublished: true,
+    chapters: { create: [{ title: "Chương kiểm tra", position: 0, isPublished: true, lessons: { create: [{ title: "Bài 4: Kiểm tra 15 phút", position: 0, isPublished: true, type: "QUIZ", test: { create: { title: "Kiểm tra 15 phút chương 3", pdfUrl: "x.pdf", duration: 15, dueDate: new Date(Date.now() + 24 * 3600 * 1000) } } }] } }] },
+  },
 });
 const [l1, l2] = course.chapters[0].lessons;
 const [l3] = course.chapters[1].lessons;
@@ -142,6 +151,39 @@ try {
       await b.screenshot(path.join(SHOTS, `lesson-${w}.png`), { fullPage: true });
     });
   }
+
+  await step("Trang chủ học sinh: 'Bài cần làm' liệt kê đề chưa làm, bấm 'Làm bài' mở đúng bài", async () => {
+    await b.setSize(1366, 900);
+    await b.goto("/", /Bài cần làm/);
+    const tasks = await b.ev(`return document.querySelector('[data-testid="student-tasks"]')?.innerText || ""`);
+    expect(/Kiểm tra 15 phút chương 3/.test(tasks), `thiếu đề chưa làm: ${tasks.slice(0, 200)}`);
+    await b.click(/Kiểm tra 15 phút chương 3/, '[data-testid="student-tasks"] a');
+    expect(await b.waitText(/Bài 4: Kiểm tra 15 phút/, 15000), "không mở đúng bài");
+  });
+
+  for (const [w, h] of [[390, 844], [1920, 1080]]) {
+    await step(`Trang chủ ${w}px: không tràn / cắt chữ`, async () => {
+      await b.setSize(w, h);
+      await b.goto("/", /Bài cần làm/);
+      const probs = await b.layoutProblems();
+      expect(probs.length === 0, probs.join("\n    "));
+      await b.screenshot(path.join(SHOTS, `home-${w}.png`), { fullPage: true });
+    });
+  }
+
+  await step("Trang chủ khách (chưa đăng nhập): thẻ giới thiệu có nút Đăng ký / Đăng nhập, không tràn ở 390px", async () => {
+    const g = await openBrowser({ baseUrl: BASE_URL, width: 390, height: 844 });
+    try {
+      await g.goto("/", /Đăng ký học/);
+      const hero = await g.ev(`const h=document.querySelector('[data-testid="guest-hero"]'); return h ? [h.innerText, !!h.querySelector('a[href="/register"]'), !!h.querySelector('a[href="/login"]')] : null`);
+      expect(hero && hero[1] && hero[2], "thiếu thẻ giới thiệu hoặc nút đăng ký/đăng nhập");
+      const probs = await g.layoutProblems();
+      expect(probs.length === 0, probs.join("\n    "));
+      expect(g.errors.length === 0, g.errors.join("\n    "));
+    } finally {
+      await g.close();
+    }
+  });
 
   await step("Không có lỗi JavaScript", async () => {
     expect(b.errors.length === 0, b.errors.join("\n    "));

@@ -151,7 +151,7 @@ export default async function CoursesPage({
 
               {/* Courses Grid */}
               {/* 1–2 khoá: thẻ ngang lấp đủ chiều rộng; từ 3 khoá: lưới 3 cột */}
-              <div className={horizontal ? "grid grid-cols-1 2xl:grid-cols-2 gap-6" : "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6"}>
+              <div className={courses.length === 1 ? "grid grid-cols-1 gap-6" : horizontal ? "grid grid-cols-1 2xl:grid-cols-2 gap-6" : "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6"}>
                 {courses.length === 0 ? (
                   <div className="col-span-full py-40 flex flex-col items-center justify-center bg-white rounded-[4rem] border border-dashed border-slate-200 shadow-inner space-y-8">
                     <div className="w-32 h-32 bg-slate-50 rounded-full flex items-center justify-center text-6xl animate-pulse">

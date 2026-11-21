@@ -12,6 +12,9 @@ import { RightSidebar } from "./RightSidebar";
 import { HomePromo } from "../HomePromo";
 import { StudentHero } from "./StudentHero";
 import type { PointsCardData } from "@/lib/points/queries";
+import type { HomeRecentResult, HomeTodoItem } from "@/lib/home/student-home";
+import { StudentTasks } from "./StudentTasks";
+import { GuestHero } from "./GuestHero";
 
 import { SortSelect } from "@/components/ui/SortSelect";
 
@@ -21,6 +24,7 @@ export function Dashboard({
   lastLesson,
   stats,
   points,
+  extras,
 }: {
   user: any;
   courses: any[];
@@ -28,6 +32,8 @@ export function Dashboard({
   stats: any;
   /** Điểm thưởng của học sinh (null = tắt tính năng / không phải học sinh) */
   points?: PointsCardData | null;
+  /** Bài cần làm + kết quả gần đây (chỉ học sinh) */
+  extras?: { todo: HomeTodoItem[]; todoTotal: number; recent: HomeRecentResult[] } | null;
 }) {
   const searchParams = useSearchParams();
   const currentSort = searchParams?.get("sort") || "default";
@@ -74,11 +80,19 @@ export function Dashboard({
             />
           )}
 
+          {user?.role === "STUDENT" && extras && <StudentTasks todo={extras.todo} todoTotal={extras.todoTotal} recent={extras.recent} />}
+
           {/* Đếm ngược kỳ thi: học sinh đã có thẻ gọn ở cột phải thẻ chào */}
-          {user?.role !== "STUDENT" && <HomePromo />}
+          {!user && (
+            <GuestHero
+              courseCount={courses.length}
+              lessonCount={courses.reduce((n, c) => n + (c.chapters ?? []).reduce((m: number, ch: any) => m + (ch.lessons?.length ?? 0), 0), 0)}
+            />
+          )}
+          {user && user.role !== "STUDENT" && <HomePromo />}
 
           {/* Course Catalog / Learning Progress */}
-          <section className="space-y-6">
+          <section id="lo-trinh" className="space-y-6 scroll-mt-24">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-blue-100 pb-3">
               <div className="space-y-1.5">
                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
@@ -101,7 +115,9 @@ export function Dashboard({
             {/* 1–2 khoá: thẻ ngang lấp đủ chiều rộng; từ 3 khoá: lưới 3 cột */}
             <div
               className={
-                displayCourses.length > 0 && displayCourses.length <= 2
+                displayCourses.length === 1
+                  ? "grid grid-cols-1 gap-6"
+                  : displayCourses.length === 2
                   ? "grid grid-cols-1 2xl:grid-cols-2 gap-6"
                   : "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6"
               }
@@ -110,7 +126,7 @@ export function Dashboard({
                 <CourseCard
                   key={course.id}
                   course={course}
-                  progress={course.isEnrolled ? course.progress : undefined}
+                  progress={user?.role === "STUDENT" || course.isEnrolled ? course.progress : undefined}
                   layout={displayCourses.length <= 2 ? "horizontal" : "vertical"}
                 />
               ))}
