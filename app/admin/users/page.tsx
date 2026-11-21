@@ -332,7 +332,7 @@ export default function UserManagementPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Select
             value={roleFilter}
             onValueChange={(val) => setRoleFilter(val as any)}

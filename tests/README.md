@@ -21,6 +21,8 @@ Dùng test runner có sẵn của Node (`node:test`) cùng `ts-node`, không c�
 
 Gồm ba script: `points.e2e.mjs` (Điểm thưởng), `anchor-editor.e2e.mjs` (công cụ cắt lời giải từng câu: bấm đặt mốc, Shift/Alt + bấm, kéo mốc, hoàn tác, Ctrl+S lưu, điện thoại) và `lesson-page.e2e.mjs` (trang học bài: danh sách bài cột phải, Bài trước/Bài sau, hoàn thành bài, 2 tab trên điện thoại, 390–1920px).
 
+`npm run test:audit` (cũng cần server đang chạy): rà toàn trang theo vai trò khách / học sinh / giáo viên / admin ở 390 · 768 · 1366 · 1920px — mã HTTP, lỗi JavaScript, ảnh hỏng, tràn ngang / chữ bị cắt / thừa khoảng trống. Chỉ đọc, không mở trang làm bài. Tuỳ chọn `--only teacher`, `--widths 390,1366`.
+
 Chạy trên Chrome headless với server thật:
 
 ```bash

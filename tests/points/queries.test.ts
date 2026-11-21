@@ -95,9 +95,11 @@ describe("Dải điểm trang chủ & màn kết quả", () => {
     await prisma.reward.update({ where: { id: r.id }, data: { deletedAt: new Date() } });
     card = await getPointsCard(s.id);
     assert.equal(card.goal, null);
-    assert.deepEqual(await getPointsCard((await fx.user()).id), {
+    // Học sinh mới: không so "shop" (file test khác chạy song song có thể đang tạo/xoá quà → danh sách đổi giữa 2 lần gọi)
+    const { shop, ...fresh } = await getPointsCard((await fx.user()).id);
+    assert.ok(Array.isArray(shop));
+    assert.deepEqual(fresh, {
       balance: 0, lifetimeEarned: 0, weekStreak: 0, weekActivities: 0, weekTarget: POINTS.streak.minActivities, thisWeekCounted: false, goal: null,
-      shop: (await getPointsCard((await fx.user()).id)).shop,
     });
   });
 

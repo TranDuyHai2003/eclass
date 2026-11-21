@@ -32,6 +32,7 @@ if (!["localhost", "127.0.0.1", "::1", "[::1]"].includes(dbHost)) {
 }
 const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 const SHOTS = process.env.E2E_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), "points-shots-"));
+fs.mkdirSync(SHOTS, { recursive: true });
 
 const { PrismaClient } = require("@prisma/client");
 const { encode } = await import(require.resolve("@auth/core/jwt"));

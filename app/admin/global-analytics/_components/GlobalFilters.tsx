@@ -179,7 +179,7 @@ export function GlobalFilters({ courses, classes = [], children }: GlobalFilters
         </div>
 
         {/* Course, Class & Date Popovers */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="rounded-xl border-slate-200 h-10 px-3 gap-2 bg-white hover:bg-slate-50 text-[9px] font-black uppercase tracking-widest text-slate-500">

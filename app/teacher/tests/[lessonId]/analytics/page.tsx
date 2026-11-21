@@ -191,8 +191,8 @@ export default async function TestAnalyticsPage({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            <TabsList className="bg-slate-100/80 p-1 rounded-xl h-auto flex flex-wrap gap-0.5">
+          <div className="flex items-center gap-3 min-w-0 max-w-full">
+            <TabsList className="bg-slate-100/80 p-1 rounded-xl h-auto max-w-full flex flex-wrap justify-start gap-0.5">
               <TabsTrigger
                 value="scores"
                 className="rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white"

@@ -703,8 +703,8 @@ export default function UnifiedTestBuilder({
       {/* Header removed per request */}
 
       {/* Mobile: đề ở trên, đáp án ở dưới; từ md trở lên chia đôi trái/phải */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
-        <div className="w-full md:w-1/2 h-[42%] md:h-full shrink-0 border-b md:border-b-0 md:border-r bg-slate-100 relative group">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
+        <div className="w-full lg:w-1/2 h-[42%] lg:h-full shrink-0 border-b lg:border-b-0 lg:border-r bg-slate-100 relative group">
           {!pdfUrl ? (
             <div className="flex h-full flex-col items-center justify-center p-6 md:p-12 text-center overflow-y-auto">
               <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-3 md:mb-6">
@@ -749,7 +749,7 @@ export default function UnifiedTestBuilder({
           )}
         </div>
 
-        <div className="w-full md:w-1/2 flex-1 md:flex-none min-h-0 flex flex-col bg-white overflow-hidden">
+        <div className="w-full lg:w-1/2 flex-1 lg:flex-none min-h-0 flex flex-col bg-white overflow-hidden">
           <div className="flex flex-col bg-slate-50/50 border-b shrink-0">
             {/* Hàng 1: Tabs */}
             <div className="h-12 px-4 md:px-6 border-b flex gap-4 md:gap-6 overflow-x-auto no-scrollbar">
@@ -1138,7 +1138,7 @@ export default function UnifiedTestBuilder({
                                   {...provided.draggableProps}
                                   className="flex flex-col gap-3 p-4 bg-slate-50/50 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 group/q relative"
                                 >
-                                  <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                                  <div className="flex items-center gap-3 flex-wrap">
                                     <div
                                       {...provided.dragHandleProps}
                                       className="text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing"
@@ -1279,7 +1279,7 @@ export default function UnifiedTestBuilder({
                               />
                             )}
 
-                            <div className="flex items-center gap-1.5 ml-auto flex-wrap sm:flex-nowrap">
+                            <div className="flex items-center gap-1.5 ml-auto flex-wrap">
                               <button
                                 type="button"
                                 onClick={() =>
@@ -1291,7 +1291,7 @@ export default function UnifiedTestBuilder({
                                   )
                                 }
                                 className={cn(
-                                  "text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg transition-all border",
+                                  "text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg transition-all border whitespace-nowrap",
                                   q.points === 0
                                     ? "bg-amber-100 text-amber-800 border-amber-300 shadow-sm"
                                     : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100 hover:text-slate-700",

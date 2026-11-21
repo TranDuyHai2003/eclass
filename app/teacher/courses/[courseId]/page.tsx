@@ -28,7 +28,7 @@ export default async function TeacherCourseEditPage({ params }: Props) {
              <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8 max-w-5xl">
                   {/* Header & Back Button */}
                   <div className="flex flex-col gap-4 mb-8">
-                      <Button variant="ghost" asChild className="w-fit rounded-xl -ml-2 text-slate-500 hover:text-slate-900">
+                      <Button variant="ghost" asChild className="w-fit rounded-xl px-2 text-slate-500 hover:text-slate-900">
                           <Link href="/teacher/courses">
                               <ArrowLeft className="w-4 h-4 mr-2" />
                               Quay lại danh sách

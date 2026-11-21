@@ -57,16 +57,16 @@ export function LessonItem({
           >
             {/* Icon based on content */}
             {lesson.videoUrl ? (
-              <Film className="h-4 w-4 text-blue-500" />
+              <Film className="h-4 w-4 shrink-0 text-blue-500" />
             ) : (
-              <FileText className="h-4 w-4 text-gray-400" />
+              <FileText className="h-4 w-4 shrink-0 text-gray-400" />
             )}
 
-            <span className="font-medium truncate hover:text-blue-600 transition-colors">
+            <span className="font-medium min-w-0 line-clamp-2 break-words hover:text-blue-600 transition-colors">
               {lesson.title}
             </span>
 
-            <div className="ml-auto flex items-center gap-x-2">
+            <div className="ml-auto flex shrink-0 items-center gap-x-1 sm:gap-x-2">
               {lesson.isFree && (
                 <Badge variant="secondary" className="text-xs">
                   Học thử
@@ -86,7 +86,7 @@ export function LessonItem({
               {/* --- ACTION GROUP (Sửa & Xóa) --- */}
               {/* Chặn sự kiện nổi bọt (Bubbling) ngay tại container này */}
               <div
-                className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity px-2"
+                className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity px-1 sm:px-2"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Edit Button */}

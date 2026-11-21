@@ -269,9 +269,9 @@ export const CourseHeader = ({
               placeholder="Nhập tên khóa học..."
             />
           ) : (
-            <div className="flex items-center gap-2 group w-fit">
+            <div className="flex items-start gap-2 group max-w-full min-w-0">
               <h3
-                className="text-2xl font-bold text-gray-900 truncate max-w-[600px]"
+                className="text-xl sm:text-2xl font-bold text-gray-900 break-words min-w-0 max-w-[600px]"
                 title={title}
               >
                 {title || "Chưa đặt tên khóa học"}
@@ -280,7 +280,7 @@ export const CourseHeader = ({
                 onClick={enableEditing}
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-gray-400 hover:text-blue-600 transition-all cursor-pointer"
+                className="h-8 w-8 shrink-0 text-gray-400 hover:text-blue-600 transition-all cursor-pointer"
               >
                 <Pencil className="h-4 w-4" />
               </Button>

@@ -853,7 +853,7 @@ export default function SolutionAnchorEditor({
                 </button>
               ))}
             </div>
-            <p className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-500">
+            <p className="order-last min-w-0 basis-full line-clamp-2 text-xs font-semibold text-slate-500 sm:order-none sm:basis-0 sm:flex-1 sm:line-clamp-1">
               {selectedRow ? (
                 <>
                   <b className="text-slate-800">{selectedRow.sectionName} · Câu {selectedRow.number}</b> — {MODE_INFO[mode].hint}
