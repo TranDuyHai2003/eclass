@@ -160,6 +160,12 @@ export async function openBrowser({ baseUrl, token, width = 1366, height = 900 }
           // Chỉ xét phần tử có chữ (chữ bị cắt là lỗi; ô 'truncate' tự cắt bên trong nên không tính)
           if ((el.innerText || "").trim() && (r.right > Math.min(cr.right, vw) + 1)) out.push("bị cắt: " + label(el) + " right=" + Math.round(r.right) + " > " + Math.round(Math.min(cr.right, vw)));
         }
+        // Thừa khoảng trống: ở màn rộng, <main> phải dùng gần hết bề ngang vùng dành cho nó (vd đặt nhầm max-w nhỏ hơn các trang khác)
+        const main = document.querySelector("main");
+        if (main && main.parentElement && innerWidth >= 1280) {
+          const gap = main.parentElement.getBoundingClientRect().right - main.getBoundingClientRect().right;
+          if (gap > 160) out.push("thừa khoảng trống bên phải nội dung chính: " + Math.round(gap) + "px");
+        }
         return [...new Set(out)].slice(0, 8);
       `),
     async close() {

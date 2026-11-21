@@ -48,7 +48,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref }: Stud
           </div>
 
           {level && points && (
-            <div className="max-w-lg">
+            <div className="max-w-2xl">
               <div className="flex justify-between gap-2 text-[11px] font-bold text-blue-100">
                 <span>Kinh nghiệm</span>
                 <span className="truncate">{level.next ? `còn ${level.toNext} điểm lên ${level.next.icon} ${level.next.name}` : "Cấp cao nhất 👑"}</span>

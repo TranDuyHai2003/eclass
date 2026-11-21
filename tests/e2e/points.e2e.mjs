@@ -65,7 +65,18 @@ const token = (u) =>
     maxAge: 3600,
   });
 
+/** Dọn dữ liệu sót của các lần chạy trước bị dừng giữa chừng (không chạy tới bước dọn cuối) */
+async function cleanupStale() {
+  const stale = await prisma.user.findMany({ where: { email: { startsWith: "e2e-points-" } }, select: { id: true } });
+  if (stale.length) await prisma.reward.deleteMany({ where: { createdById: { in: stale.map((u) => u.id) } } });
+  await prisma.reward.deleteMany({ where: { title: { startsWith: "e2e-points-" } } });
+  await prisma.test.deleteMany({ where: { title: { startsWith: "e2e-points-" } } });
+  await prisma.user.deleteMany({ where: { email: { startsWith: "e2e-points-" } } });
+  await prisma.studyClass.deleteMany({ where: { name: { startsWith: "e2e-points-" } } });
+}
+
 async function setup() {
+  await cleanupStale();
   const cls = await prisma.studyClass.create({ data: { name: `${tag} lớp` } });
   const student = await prisma.user.create({
     data: { email: `${tag}-hs@test.local`, name: `${tag} Học sinh`, role: "STUDENT", isApproved: true, studentType: "OFFLINE", classId: cls.id },
@@ -302,6 +313,7 @@ try {
     [414, 896],
     [768, 1024],
     [1366, 900],
+    [1920, 1080],
   ];
   for (const [w, h] of sizes) {
     await step(`Bố cục ${w}px: không tràn ngang (học sinh: /rewards, trang chủ; thầy: 4 tab)`, async () => {

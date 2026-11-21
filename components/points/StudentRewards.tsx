@@ -118,7 +118,7 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
                   {level.next ? `Còn ${level.toNext} điểm lên ${level.next.icon} ${level.next.name}` : "Cấp cao nhất 👑"}
                 </span>
               </div>
-              <div className="mt-2 h-2.5 max-w-md overflow-hidden rounded-full bg-black/20" role="progressbar" aria-valuenow={level.progress} aria-valuemin={0} aria-valuemax={100} aria-label="Kinh nghiệm">
+              <div className="mt-2 h-2.5 max-w-2xl overflow-hidden rounded-full bg-black/20 lg:mr-6 lg:max-w-none" role="progressbar" aria-valuenow={level.progress} aria-valuemin={0} aria-valuemax={100} aria-label="Kinh nghiệm">
                 <div className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-700", level.bar)} style={{ width: `${Math.max(4, level.progress)}%` }} />
               </div>
             </div>
@@ -225,7 +225,7 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
               <p className="text-sm text-slate-500">Cứ chăm học tích điểm, quà sẽ sớm có ở đây!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {rewards.map((r) => (
                 <RewardCard
                   key={r.id}

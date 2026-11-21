@@ -26,7 +26,7 @@ export default async function RewardsPage() {
             <HomeSidebar user={session.user} />
           </div>
         </aside>
-        <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-5 sm:py-6 max-w-[1200px]">
+        <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-5 sm:py-6 max-w-[1600px]">
           <StudentRewards data={data} user={{ name: session.user.name, image: session.user.image }} />
         </main>
       </div>
