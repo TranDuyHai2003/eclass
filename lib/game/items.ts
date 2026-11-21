@@ -5,7 +5,7 @@
  */
 import type { Rarity } from "@/lib/points/rarity";
 
-export type Slot = "skin" | "hair" | "hairColor" | "eyes" | "outfit" | "accessory" | "frame" | "background" | "title";
+export type Slot = "skin" | "hair" | "hairColor" | "eyes" | "outfit" | "accessory" | "frame" | "background" | "title" | "pet";
 
 export const SLOTS: { key: Slot; label: string; icon: string; optional?: boolean }[] = [
   { key: "skin", label: "Màu da", icon: "🖐️" },
@@ -17,6 +17,7 @@ export const SLOTS: { key: Slot; label: string; icon: string; optional?: boolean
   { key: "frame", label: "Khung", icon: "🖼️", optional: true },
   { key: "background", label: "Nền", icon: "🌈", optional: true },
   { key: "title", label: "Danh hiệu", icon: "🏷️", optional: true },
+  { key: "pet", label: "Mèo Cún", icon: "🐱", optional: true },
 ];
 
 export interface Item {
@@ -103,6 +104,12 @@ export const ITEMS: Item[] = [
   { id: "title-pi", slot: "title", name: "Fan của số π", rarity: "rare", gachaOnly: true },
   { id: "title-boss", slot: "title", name: "Trùm cuối", rarity: "epic", gachaOnly: true },
   { id: "title-legend", slot: "title", name: "Huyền thoại lớp", rarity: "legendary", gachaOnly: true },
+  // ---- Mèo Cún đồng hành (theo mockup "Tiệm Quà Học Đường"): hiện cạnh hồ sơ, bấm vuốt ve
+  { id: "pet-bi", slot: "pet", name: "Mèo Mướp Bi", rarity: "common", free: true, v: "tabby" },
+  { id: "pet-moka", slot: "pet", name: "Mèo Vàng Moka Béo Ú", rarity: "common", price: { xu: 450 }, v: "orange" },
+  { id: "pet-peanut", slot: "pet", name: "Bé Mèo Tam Thể Peanut", rarity: "rare", price: { xu: 600 }, v: "calico" },
+  { id: "pet-shadow", slot: "pet", name: "Mèo Đen Bóng Đêm", rarity: "epic", gachaOnly: true, v: "black" },
+  { id: "pet-snow", slot: "pet", name: "Mèo Hoàng Thượng Snow", rarity: "legendary", price: { gem: 8 }, v: "snow" },
 ];
 
 export const ITEM_BY_ID: Record<string, Item> = Object.fromEntries(ITEMS.map((i) => [i.id, i]));

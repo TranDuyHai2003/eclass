@@ -237,8 +237,11 @@ try {
   });
 
   await step("Học sinh: nhập thẻ cào → +3 ngọc; nhập lại → báo đã dùng; chip header hiện ngọc", async () => {
-    await s.goto("/rewards", /Tiệm quà đổi xu/i);
-    await s.click(/^Nhập code$/, "button");
+    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.ev(`document.querySelector('[data-testid="scratch-open"]').click()`);
+    expect(await s.waitText(/Thẻ Cào & GiftCode/i), "hộp thẻ cào không mở");
+    expect(await s.ev(`return !!document.querySelector('[data-testid="scratch-canvas"]')`), "thiếu lớp nhũ bạc để cào");
+    await s.ev(`document.querySelector('[data-testid="scratch-skip"]').click()`);
     await s.fill('[data-testid="giftcode-input"]', giftCodes[0].toLowerCase());
     await s.click(/^Nhận quà$/, "[role=dialog] button");
     expect(await s.waitText(/\+3 ngọc/), "không thấy +3 ngọc");
@@ -248,13 +251,13 @@ try {
     await s.fill('[data-testid="giftcode-input"]', giftCodes[0]);
     await s.click(/^Nhận quà$/, "[role=dialog] button");
     expect(await s.waitText(/đã dùng mã này/i), "nhập lại không báo đã dùng");
-    await s.goto("/rewards", /Tiệm quà đổi xu/i);
+    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
     const gems = await s.ev(`return document.querySelector('[data-testid="header-gems"]')?.innerText || ""`);
     expect(/3/.test(gems), `chip ngọc trên header sai: ${gems}`);
   });
 
   await step("Học sinh: trang Tiệm quà — số dư, chỉ thấy quà dành cho mình", async () => {
-    await s.goto("/rewards", /Tiệm quà đổi xu/i);
+    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
     const txt = await s.text();
     expect(txt.includes("17.100"), "không thấy số dư 17.100");
     expect(txt.includes("Kẹo / bánh nhỏ") && txt.includes("Quà đắt"), "thiếu quà");
@@ -264,20 +267,38 @@ try {
     expect(/Chó rách|Nghèo rớt|Người nghèo|Tiểu thương|Phú nông|Phú ông|Đại gia|Tỷ phú/.test(txt), "thanh trạng thái thiếu danh hiệu");
   });
 
-  await step("Học sinh: lọc quà theo loại (chỉ hiện lựa chọn có quà)", async () => {
-    await s.click(/^✨ Đặc quyền$/);
+  await step("Học sinh: danh mục bên trái lọc đúng (Thẻ đặc quyền / Quà hiện vật / Mèo Cún / Hộp bí ẩn)", async () => {
+    await s.ev(`document.querySelector('[data-testid="cat-voucher"]').click()`);
+    await sleep(300);
     let titles = await s.ev(`return [...document.querySelectorAll('[data-testid="reward-card"]')].map(c => c.dataset.title).join("|")`);
-    expect(titles.includes("Quà đắt") && !titles.includes("Kẹo"), `lọc Đặc quyền sai: ${titles}`);
-    await s.click(/^🏫 Nhận tại lớp$/);
+    expect(titles.includes("Quà đắt") && !titles.includes("Kẹo"), `lọc Thẻ đặc quyền sai: ${titles}`);
+    await s.ev(`document.querySelector('[data-testid="cat-physical"]').click()`);
+    await sleep(300);
     titles = await s.ev(`return [...document.querySelectorAll('[data-testid="reward-card"]')].map(c => c.dataset.title).join("|")`);
-    expect(titles.includes("Kẹo") && !titles.includes("Quà đắt"), `lọc Nhận tại lớp sai: ${titles}`);
-    await s.click(/^Tất cả$/);
+    expect(titles.includes("Kẹo") && !titles.includes("Quà đắt"), `lọc Quà hiện vật sai: ${titles}`);
+    await s.ev(`document.querySelector('[data-testid="cat-pet"]').click()`);
+    await sleep(300);
+    const pets = await s.ev(`return [...document.querySelectorAll('[data-testid="item-card"]')].map(c => c.dataset.item).join("|")`);
+    expect(pets.includes("pet-snow") && pets.includes("pet-bi") && !pets.includes("hair-spiky"), `danh mục Mèo Cún sai: ${pets}`);
+    await s.ev(`document.querySelector('[data-testid="cat-box"]').click()`);
+    await sleep(300);
+    expect(await s.ev(`return document.querySelectorAll('[data-testid="chest-card"]').length === 2`), "Hộp bí ẩn phải có 2 hộp");
+    await s.ev(`document.querySelector('[data-testid="cat-all"]').click()`);
+    await sleep(300);
   });
 
-  await step("Học sinh: ghim quà mục tiêu", async () => {
+  await step("Học sinh: ghim quà mục tiêu; vuốt ve mèo đổi câu thoại", async () => {
     const ok = await s.ev(`const b=[...document.querySelectorAll('[data-testid="reward-card"]')].find(c => c.dataset.title.endsWith("Quà đắt"))?.querySelector('[data-testid="pin"]'); if(!b) return false; b.click(); return true;`);
     expect(ok, "không thấy nút ghim");
-    expect(await s.waitText(/Còn 32\.900 xu nữa/), "khối Quà mục tiêu không cập nhật");
+    await sleep(1500);
+    const w = await prisma.pointWallet.findUnique({ where: { userId: data.student.id } });
+    const expensive = await prisma.reward.findFirst({ where: { title: `${tag} Quà đắt` } });
+    expect(w && expensive && w.goalRewardId === expensive.id, "chưa ghim mục tiêu vào ví");
+    const before = await s.ev(`return document.querySelector('[data-testid="pet-line"]')?.innerText`);
+    await s.ev(`document.querySelector('[data-testid="pet-card"]').click()`);
+    await sleep(300);
+    const after = await s.ev(`return document.querySelector('[data-testid="pet-line"]')?.innerText`);
+    expect(before && after && before !== after, "vuốt ve mèo không đổi câu thoại");
   });
 
   await step("Học sinh: đổi kẹo (hộp xác nhận) → trừ xu, hiện ở 'Quà của tôi'", async () => {
@@ -288,8 +309,8 @@ try {
     expect(await s.waitText(/Đã đổi "Kẹo \/ bánh nhỏ"/), "không thấy thông báo đổi quà");
     expect((await balanceOf(data.student.id)) === 11100, "số dư sau đổi phải 11100");
     expect((await s.ev(`return document.querySelector("[data-celebrated]")?.dataset.celebrated`)) === "1", "không bắn pháo giấy khi đổi quà thành công");
-    await s.click(/^Quà của tôi/);
-    expect(await s.waitText(/Chờ nhận quà/), "không thấy trạng thái Chờ nhận quà");
+    await s.ev(`document.querySelector('[data-testid="bag-open"]').click()`);
+    expect(await s.waitText(/Chờ nhận quà/), "không thấy trạng thái Chờ nhận quà trong túi đồ");
   });
 
   await step("Học sinh: huỷ yêu cầu → hoàn xu", async () => {
@@ -299,7 +320,8 @@ try {
   });
 
   await step("Học sinh: đổi lại kẹo (để thầy trao)", async () => {
-    await s.click(/^Đổi quà$/);
+    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]')?.click()`);
+    await sleep(400);
     await s.ev(`document.querySelector('[data-testid="reward-card"][data-title="Kẹo / bánh nhỏ"]').querySelector('[data-testid="redeem"]').click();`);
     await sleep(800);
     await s.click(/^Đổi quà$/, "[role=dialog] button");
@@ -321,8 +343,8 @@ try {
   });
 
   await step("Học sinh: thấy 'Đã nhận' và thông báo", async () => {
-    await s.goto("/rewards", /Tiệm quà đổi xu/i);
-    await s.click(/^Quà của tôi/);
+    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.ev(`document.querySelector('[data-testid="bag-open"]').click()`);
     expect(await s.waitText(/Đã nhận/), "không thấy trạng thái Đã nhận");
     const n = await prisma.notification.count({ where: { userId: data.student.id, title: { contains: "Đã nhận quà" } } });
     expect(n === 1, "thiếu thông báo đã nhận quà");
@@ -335,18 +357,36 @@ try {
   });
 
   await step("Học sinh: đổi thêm một món (để đo bố cục khi có đơn đang chờ)", async () => {
-    await s.goto("/rewards", /Tiệm quà đổi xu/i);
+    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
     await s.ev(`document.querySelector('[data-testid="reward-card"][data-title="Kẹo / bánh nhỏ"] [data-testid="redeem"]').click();`);
     await sleep(800);
     await s.click(/^Đổi quà$/, "[role=dialog] button");
     expect(await s.waitText(/Đã đổi/), "đổi thêm thất bại");
   });
 
+  await step("Học sinh: hộp Nộp bài liệt kê bài chưa nộp; hộp Bảng Vàng Khối có tab khối 7", async () => {
+    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.ev(`document.querySelector('[data-testid="tasks-open"]').click()`);
+    expect(await s.waitText(/Nộp Bài Tập Nhận Xu/), "hộp Nộp bài không mở");
+    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
+    await sleep(400);
+    await s.ev(`document.querySelector('[data-testid="board-open"]').click()`);
+    expect(await s.waitText(/Bảng Vàng Chăm Chỉ Theo Khối/), "hộp Bảng Vàng không mở");
+    expect(await s.ev(`return !!document.querySelector('[data-testid="board-g7"]')`), "thiếu tab khối 7");
+    expect(/Học sinh/.test(await s.ev(`return document.querySelector('[data-testid="leaderboard-modal"]')?.innerText || ""`)), "bảng khối 7 không có mình");
+    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
+    await sleep(400);
+    await s.ev(`document.querySelector('[data-testid="history-open"]').click()`);
+    expect(await s.waitText(/Lịch Sử & Cách Kiếm Xu/), "hộp Lịch sử không mở");
+    expect(await s.waitText(/Nộp bài/), "lịch sử trống");
+    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
+  });
+
   // -------------------------------------------------- Nhân vật & hồ sơ
   await step("Học sinh: tiệm → lọc 'Trang trí hồ sơ' → mua tóc dựng (900 xu)", async () => {
-    await s.goto("/rewards", /Tiệm quà đổi xu/i);
-    await s.click(/^🎨 Trang trí hồ sơ$/);
-    expect(await s.waitText(/Chỉ từ rương/), "không thấy lưới đồ trang trí");
+    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.ev(`document.querySelector('[data-testid="cat-deco"]').click()`);
+    expect(await s.waitText(/Chỉ từ hộp bí ẩn/), "không thấy lưới đồ trang trí");
     const before = await balanceOf(data.student.id);
     const ok = await s.ev(`const b=document.querySelector('[data-testid="shop-buy-hair-spiky"]'); if(!b||b.disabled) return false; b.click(); return true;`);
     expect(ok, "không bấm được nút mua tóc dựng");
@@ -447,7 +487,7 @@ try {
       const problems = [];
       await s.setSize(w, h);
       for (const [p, ready, shot] of [
-        ["/rewards", /Tiệm quà đổi xu/i, "rewards"],
+        ["/rewards", /Tiệm Quà Học Đường/i, "rewards"],
         ["/", /Tiệm quà/i, "home"],
         ["/profile/avatar", /Tuỳ chỉnh nhân vật/i, "avatar"],
         [`/profile/${data.student.id}`, /Thang danh hiệu/i, "profile"],
@@ -455,8 +495,8 @@ try {
         ["/leaderboard?tab=g7&period=all", /Bảng Vàng/i, "leaderboard"],
       ]) {
         await s.goto(p, ready);
-        for (const tab of p === "/rewards" ? ["Đổi quà", "Quà của tôi", "Lịch sử xu", "Cách kiếm xu"] : [null]) {
-          if (tab) await s.click(new RegExp("^" + tab), "button");
+        for (const tab of p === "/rewards" ? ["cat-physical", "cat-voucher", "cat-deco", "cat-pet", "cat-box"] : [null]) {
+          if (tab) await s.ev(`document.querySelector('[data-testid="${tab}"]').click()`);
           for (const x of await s.layoutProblems()) problems.push(`HS ${p} ${tab ?? ""}: ${x}`);
         }
         await s.screenshot(path.join(SHOTS, `student-${shot}-${w}.png`));

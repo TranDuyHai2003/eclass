@@ -110,3 +110,14 @@ export async function getStudentHomeExtras(userId: string, courseIds: string[], 
 
   return { todo, todoTotal: pending.length, recent };
 }
+
+/** Các khoá học sinh được thấy (cùng quy tắc với trang chủ: lớp được gán, hoặc khoá không gán lớp đúng trình độ) */
+export async function getVisibleCourseIds(userId: string): Promise<string[]> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, classId: true, level: true } });
+  const where =
+    !user || user.role !== "STUDENT" || !user.classId
+      ? {}
+      : { OR: [{ classes: { some: { id: user.classId } } }, { classes: { none: {} }, level: user.level }] };
+  const rows = await prisma.course.findMany({ where: { ...where, isPublished: true }, select: { id: true } });
+  return rows.map((r) => r.id);
+}

@@ -472,3 +472,63 @@ h6 {
   .btn-shine::after, .sparkle, .animate-shake, .animate-rays, .animate-flip-in, .wallet-bounce { animation: none !important; }
   .coin-fly { display: none; }
 }
+
+/* ===================== Tiệm Quà Học Đường (mockup Gemini Canvas): gỗ, sọc kem, nút viên 3D viền nâu ===================== */
+@layer components {
+  .shop-stripes {
+    background-color: #f6efe3;
+    background-image: repeating-linear-gradient(90deg, #efe4d2 0 34px, #f8f1e6 34px 68px);
+  }
+  .shop-wood {
+    background-color: #d8a85c;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(120, 72, 20, 0.08) 0 2px, transparent 2px 9px),
+      linear-gradient(180deg, #e3b56b, #d19a4c);
+    border-bottom: 4px solid #8a5a24;
+    box-shadow: 0 4px 0 0 #6b4418;
+  }
+  .shop-card {
+    border: 2.5px solid #5b3d1e;
+    border-radius: 1.25rem;
+    box-shadow: 0 5px 0 0 #5b3d1e;
+    background: #fffaf0;
+  }
+  .btn-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: 2.5px solid #5b3d1e;
+    border-radius: 999px;
+    font-weight: 800;
+    box-shadow: 0 4px 0 0 #5b3d1e;
+    transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s ease;
+    background: #fff8ea;
+    color: #3b2a14;
+  }
+  .btn-pill:hover:not(:disabled) { filter: brightness(1.04); }
+  .btn-pill:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 0 #5b3d1e; }
+  .btn-pill:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-pill-yellow { background: linear-gradient(180deg, #ffd84d, #f5b61e); }
+  .btn-pill-blue { background: linear-gradient(180deg, #6ec6ff, #2e9be8); color: #0b2a44; }
+  .btn-pill-green { background: linear-gradient(180deg, #8fdc75, #4fb04a); color: #0e3a12; }
+  .btn-pill-red { background: linear-gradient(180deg, #ff8a6a, #e2503a); color: #fff; }
+  .btn-pill-brown { background: linear-gradient(180deg, #e2b26e, #c0893d); color: #2f1b06; }
+  .btn-pill-purple { background: linear-gradient(180deg, #c49bff, #8b5cf6); color: #fff; }
+  .shop-font { font-family: var(--font-baloo), var(--font-jakarta), sans-serif; }
+}
+@keyframes pet-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-8px) scale(1.06); }
+  60% { transform: translateY(0) scale(0.97); }
+}
+.pet-bounce { animation: pet-bounce 0.5s ease-out; }
+@keyframes heart-up {
+  0% { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translate(-50%, -48px) scale(1.2); opacity: 0; }
+}
+.heart-up { position: absolute; left: 50%; bottom: 60%; animation: heart-up 0.9s ease-out forwards; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .pet-bounce, .heart-up { animation: none !important; }
+}

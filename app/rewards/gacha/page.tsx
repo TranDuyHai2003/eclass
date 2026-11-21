@@ -11,7 +11,8 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Rương bí ẩn" };
 
-export default async function GachaRoute() {
+export default async function GachaRoute({ searchParams }: { searchParams: Promise<{ chest?: string }> }) {
+  const sp = await searchParams;
   if (!isPointsEnabled() || !isGachaEnabled()) notFound();
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -44,6 +45,7 @@ export default async function GachaRoute() {
             canEarn={!!me?.isApproved && !me?.isDemo}
             avatar={config}
             owned={owned}
+            initialChest={sp.chest === "gem" ? "gem" : "xu"}
           />
         </main>
       </div>

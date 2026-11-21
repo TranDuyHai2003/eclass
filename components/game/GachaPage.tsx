@@ -21,7 +21,7 @@ const GachaScene = dynamic(() => import("./GachaScene").then((m) => m.GachaScene
 const fmtTime = (iso: string) => new Date(iso).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export function GachaPage({
-  wallet, pity, pullsToday, history, canEarn, avatar, owned,
+  wallet, pity, pullsToday, history, canEarn, avatar, owned, initialChest = "xu",
 }: {
   wallet: { balance: number; gems: number };
   pity: number;
@@ -30,6 +30,7 @@ export function GachaPage({
   canEarn: boolean;
   avatar: AvatarConfig;
   owned: string[];
+  initialChest?: ChestId;
 }) {
   const [ratesFor, setRatesFor] = useState<ChestId | null>(null);
   return (
@@ -47,7 +48,7 @@ export function GachaPage({
         </div>
       </div>
 
-      <GachaScene wallet={wallet} pity={pity} pullsToday={pullsToday} canEarn={canEarn} avatar={avatar} owned={owned} />
+      <GachaScene wallet={wallet} pity={pity} pullsToday={pullsToday} canEarn={canEarn} avatar={avatar} owned={owned} initialChest={initialChest} />
 
       <section className="rounded-3xl border-2 border-blue-100/80 bg-white p-4 shadow-[0_4px_0_0_#e3ecff] sm:p-5">
         <h2 className="text-base font-black text-slate-900">Lịch sử mở rương</h2>

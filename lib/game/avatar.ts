@@ -34,6 +34,8 @@ export function defaultAvatar(userId: string): Required<Pick<AvatarConfig, (type
     frame: null,
     background: null,
     title: null,
+    // Ai cũng có một bé mèo miễn phí đi cùng (mockup Tiệm Quà Học Đường)
+    pet: "pet-bi",
   };
 }
 
@@ -48,7 +50,9 @@ export function sanitizeAvatar(raw: unknown, userId: string, owned: Iterable<str
   const out: AvatarConfig = { ...base };
   for (const { key } of SLOTS) {
     const v = input[key];
-    if (v === null || v === undefined || v === "") {
+    // Không có khoá (cấu hình cũ) → giữ mặc định; null/"" rõ ràng → bỏ trống ô tuỳ chọn
+    if (v === undefined) continue;
+    if (v === null || v === "") {
       if (!REQUIRED.includes(key)) out[key] = null;
       continue;
     }

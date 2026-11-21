@@ -20,7 +20,7 @@ type Phase = "idle" | "shaking" | "reveal";
 
 /** Cảnh mở rương: rương lắc → tia sáng → lật thẻ theo bậc; kết quả do server trả về */
 export function GachaScene({
-  wallet: w0, pity: pity0, pullsToday: today0, canEarn, avatar, owned: owned0,
+  wallet: w0, pity: pity0, pullsToday: today0, canEarn, avatar, owned: owned0, initialChest = "xu",
 }: {
   wallet: { balance: number; gems: number };
   pity: number;
@@ -28,6 +28,7 @@ export function GachaScene({
   canEarn: boolean;
   avatar: AvatarConfig;
   owned: string[];
+  initialChest?: ChestId;
 }) {
   const router = useRouter();
   const [wallet, setWallet] = useState(w0);
@@ -35,7 +36,7 @@ export function GachaScene({
   const [today, setToday] = useState(today0);
   const [owned, setOwned] = useState(() => new Set(owned0));
   const [phase, setPhase] = useState<Phase>("idle");
-  const [chest, setChest] = useState<ChestId>("xu");
+  const [chest, setChest] = useState<ChestId>(initialChest);
   const [result, setResult] = useState<{ outcome: Outcome; guaranteed: boolean } | null>(null);
   const [pending, start] = useTransition();
   const [burst, setBurst] = useState(0);

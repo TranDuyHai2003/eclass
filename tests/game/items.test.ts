@@ -48,6 +48,7 @@ describe("Nhân vật mặc định và làm sạch cấu hình", () => {
     const a = defaultAvatar("user-a");
     assert.deepEqual(defaultAvatar("user-a"), a);
     for (const k of ["skin", "hair", "hairColor", "eyes", "outfit"] as const) assert.ok(ITEM_BY_ID[a[k]!].free, k);
+    assert.equal(a.pet, "pet-bi", "ai cũng có mèo Bi miễn phí");
     const distinct = new Set(Array.from({ length: 20 }, (_, i) => JSON.stringify(defaultAvatar(`u${i}`))));
     assert.ok(distinct.size >= 8, "20 id cho ít nhất 8 nhân vật khác nhau");
   });
