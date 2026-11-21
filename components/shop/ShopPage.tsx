@@ -152,8 +152,12 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         setTimeout(() => play("success"), 200);
         setBurst((n) => n + 1);
         setOwned((o) => new Set([...o, item.id]));
-        if (item.slot === "pet" || item.slot === "frame" || item.slot === "background" || item.slot === "title") setAvatar((a) => ({ ...a, [item.slot]: item.id }));
         toast.success(res.message);
+        // Mua mèo / khung / nền / danh hiệu thì dùng luôn — phải LƯU lên server (buyItem chỉ thêm vào túi), không chỉ đổi ở client (review Gemini GĐ6)
+        if (item.slot === "pet" || item.slot === "frame" || item.slot === "background" || item.slot === "title") {
+          const saved = await saveAvatar({ ...avatar, [item.slot]: item.id });
+          if (saved.success && saved.config) setAvatar(saved.config);
+        }
         router.refresh();
       } else {
         play("error");
@@ -278,13 +282,15 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[170px_minmax(0,1fr)]">
             {/* ===== Danh mục ===== */}
-            <aside className="flex gap-1.5 overflow-x-auto whitespace-nowrap pb-1 md:flex-col md:overflow-visible md:whitespace-normal md:pb-0" role="tablist" aria-label="Danh mục">
+            <aside className="flex gap-1.5 overflow-x-auto whitespace-nowrap pb-1 md:flex-col md:overflow-visible md:whitespace-normal md:pb-0" aria-label="Danh mục và tiện ích">
+              <div className="contents" role="tablist" aria-label="Danh mục">
               {CATS.map((c) => (
                 <button key={c.key} type="button" role="tab" aria-selected={cat === c.key} data-testid={`cat-${c.key}`} onClick={() => { play("tick"); setCat(c.key); }} className={cn("btn-pill shrink-0 px-3 py-2 text-xs md:w-full", cat === c.key && "btn-pill-yellow")}>
                   <span aria-hidden>{c.icon}</span> {c.label}
                 </button>
               ))}
-              <span className="hidden border-t border-dashed border-[#5b3d1e]/40 md:my-1.5 md:block" />
+              </div>
+              <span aria-hidden className="hidden border-t border-dashed border-[#5b3d1e]/40 md:my-1.5 md:block" />
               <button type="button" data-testid="scratch-open" onClick={() => { play("click"); setModal("scratch"); }} className="btn-pill btn-pill-red shrink-0 px-3 py-2 text-xs md:w-full">🎟️ Thẻ cào & Code</button>
               <button type="button" data-testid="board-open" onClick={() => { play("click"); setModal("board"); }} className="btn-pill btn-pill-yellow shrink-0 px-3 py-2 text-xs md:w-full">🏆 Bảng Vàng Khối</button>
               <button type="button" data-testid="history-open" onClick={() => { play("click"); setModal("history"); }} className="btn-pill btn-pill-brown shrink-0 px-3 py-2 text-xs md:w-full">📒 Lịch sử xu</button>

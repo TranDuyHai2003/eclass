@@ -22,8 +22,8 @@ export function ShopModal({
         data-testid={testId}
         className={cn("shop-font max-h-[92dvh] overflow-visible rounded-[1.5rem] border-[3px] border-[#5b3d1e] bg-[#fffaf0] p-0 shadow-[0_8px_0_0_#5b3d1e] sm:max-w-lg", className)}
       >
-        <div className="pointer-events-none absolute -top-5 left-1/2 z-10 -translate-x-1/2">
-          <DialogTitle className="whitespace-nowrap rounded-full border-[2.5px] border-[#5b3d1e] bg-gradient-to-b from-[#ffd84d] to-[#f5b61e] px-5 py-1.5 text-[15px] font-black text-[#3b2a14] shadow-[0_4px_0_0_#5b3d1e]">
+        <div className="pointer-events-none absolute -top-5 left-1/2 z-10 max-w-[calc(100%-3.5rem)] -translate-x-1/2" data-testid="shop-modal-title">
+          <DialogTitle className="block truncate rounded-full border-[2.5px] border-[#5b3d1e] bg-gradient-to-b from-[#ffd84d] to-[#f5b61e] px-3.5 py-1.5 text-sm font-black sm:px-5 sm:text-[15px] text-[#3b2a14] shadow-[0_4px_0_0_#5b3d1e]">
             {title}
           </DialogTitle>
         </div>

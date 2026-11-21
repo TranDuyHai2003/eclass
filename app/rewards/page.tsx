@@ -35,11 +35,11 @@ export default async function RewardsPage() {
     gachaOn ? pullsToday(uid).catch(() => 0) : Promise.resolve(0),
   ]);
   const myGrade = me?.studyClass?.grade ?? null;
-  const [extras, ...boardRows] = await Promise.all([
+  const [extras, myRank, ...boardRows] = await Promise.all([
     getVisibleCourseIds(uid).then((ids) => getStudentHomeExtras(uid, ids, 6)).catch(() => ({ todo: [], todoTotal: 0, recent: [] })),
+    myGrade ? getMyRank(uid, { grade: myGrade }, "all").catch(() => null) : Promise.resolve(null),
     ...grades.map((g) => getLeaderboard({ grade: g }, "all", 5).catch(() => [])),
   ]);
-  const myRank = myGrade ? await getMyRank(uid, { grade: myGrade }, "all").catch(() => null) : null;
   // Che tên demo ngoài cache (dữ liệu Bảng Vàng dùng chung)
   const boards: BoardData[] = await Promise.all(
     grades.map(async (g, i) => {

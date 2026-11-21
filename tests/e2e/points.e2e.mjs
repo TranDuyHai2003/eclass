@@ -554,6 +554,59 @@ try {
     expect(!(await s.ev(`return !!document.querySelector('[data-testid="gacha-modal"]')`)), "Tuyệt vời! không đóng hộp thoại");
   });
 
+  await step("[review GĐ6] bấm đúp Cầu Nguyện chỉ mở 1 lượt; hết 3 lượt/ngày thì hình hộp quà và nút đều khoá", async () => {
+    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.ev(`document.querySelector('[data-testid="cat-box"]').click()`);
+    await sleep(300);
+    await s.ev(`document.querySelector('[data-testid="chest-open-xu"]').click()`);
+    expect(await s.waitText(/còn 1\/3 hôm nay/), "hộp thoại phải còn 1/3 lượt");
+    const before = await prisma.gachaPull.count({ where: { userId: data.student.id } });
+    await s.ev(`const b=document.querySelector('[data-testid="pray-xu"]'); b.click(); b.click(); document.querySelector('[data-testid="gacha-box"]')?.click();`);
+    expect(await s.waitText(/CHÚC MỪNG/, 10000), "không thấy kết quả");
+    await sleep(800);
+    expect((await prisma.gachaPull.count({ where: { userId: data.student.id } })) === before + 1, "bấm đúp mở nhiều hơn 1 lượt");
+    await s.click(/Mở tiếp/, "[role=dialog] button");
+    await sleep(300);
+    expect(await s.ev(`return document.querySelector('[data-testid="gacha-box"]')?.disabled === true && document.querySelector('[data-testid="pray-xu"]')?.disabled === true`), "hết lượt ngày mà hình hộp quà / nút vẫn bấm được");
+    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
+    await sleep(400);
+  });
+
+  await step("[review GĐ6] mua mèo trong tiệm → dùng luôn và được LƯU (tải lại vẫn là mèo mới)", async () => {
+    await s.ev(`document.querySelector('[data-testid="cat-pet"]').click()`);
+    await sleep(300);
+    // Mèo đầu tiên còn mua được bằng xu (rương có thể đã cho sẵn Moka)
+    const petId = await s.ev(`const b=[...document.querySelectorAll('[data-testid^="shop-buy-pet-"]')].find(x => !x.disabled && /Xu/.test(x.innerText)); if(!b) return null; b.click(); return b.dataset.testid.replace("shop-buy-", "");`);
+    expect(petId, "không còn mèo nào mua được bằng xu");
+    expect(await s.waitText(/Đã mua/), "không thấy thông báo đã mua");
+    await sleep(1500);
+    const row = await prisma.userAvatar.findUnique({ where: { userId: data.student.id } });
+    expect(row?.config?.pet === petId, `chưa lưu mèo mới ${petId}: ${JSON.stringify(row?.config)}`);
+    const petName = { "pet-moka": "Moka", "pet-peanut": "Peanut" }[petId] ?? petId;
+    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    expect(new RegExp(petName).test(await s.ev(`return document.querySelector('[data-testid="pet-card"]')?.innerText || ""`)), `tải lại không còn mèo ${petName}`);
+  });
+
+  await step("[review GĐ6] 320px: tiêu đề hộp thoại không đè nút đóng; tablist chỉ chứa tab; menu có nút loa", async () => {
+    await s.setSize(320, 640);
+    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    expect(await s.ev(`const t=document.querySelector('[role="tablist"][aria-label="Danh mục"]'); return !!t && [...t.children].every(c => c.getAttribute("role") === "tab")`), "tablist chứa phần tử không phải tab");
+    await s.ev(`document.querySelector('[data-testid="cat-box"]').click()`);
+    await sleep(300);
+    await s.ev(`document.querySelector('[data-testid="chest-open-gem"]').click()`);
+    expect(await s.waitText(/Cầu Nguyện Tinh Tú VIP/), "hộp thoại cầu nguyện không mở ở 320px");
+    await sleep(500);
+    const geo = await s.ev(`const t=document.querySelector('[data-testid="shop-modal-title"]').getBoundingClientRect(); const x=document.querySelector('[data-testid="shop-modal-close"]').getBoundingClientRect(); return { overlap: t.right > x.left && t.top < x.bottom, left: t.left, right: t.right, vw: innerWidth }`);
+    expect(!geo.overlap && geo.left >= 0 && geo.right <= geo.vw, `tiêu đề đè nút đóng / tràn: ${JSON.stringify(geo)}`);
+    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
+    await sleep(400);
+    await s.ev(`document.querySelector('[data-testid="menu-open"]').click()`);
+    await sleep(500);
+    expect(await s.ev(`return !!document.querySelector('[data-testid="shop-menu"] button[aria-label*="âm thanh" i], [data-testid="shop-menu"] button[title*="âm thanh" i]')`), "menu thiếu nút bật/tắt âm thanh");
+    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
+    await s.setSize(1366, 900);
+  });
+
   // -------------------------------------------------- Bố cục nhiều cỡ màn hình
   const sizes = [
     [320, 640],

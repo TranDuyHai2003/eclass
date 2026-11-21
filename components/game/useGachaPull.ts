@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { openChest } from "@/actions/gacha";
@@ -38,6 +38,10 @@ export function useGachaPull({
   const limit = CHESTS.xu.dailyLimit ?? 0;
   const left = Math.max(0, limit - today);
   const pityMax = CHESTS.xu.pity ?? 5;
+  // Khoá đồng bộ: chặn bấm đúp / bấm hộp + nút cùng lúc trước khi React kịp vẽ lại trạng thái disabled (review Gemini GĐ6)
+  const inFlight = useRef(false);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const canAfford = (id: ChestId) => {
     const c = CHESTS[id];
@@ -45,27 +49,37 @@ export function useGachaPull({
   };
 
   const open = (id: ChestId) => {
+    if (inFlight.current) return;
+    if (id === "xu" && limit > 0 && left === 0) {
+      play("error");
+      toast.error(`Hôm nay đã mở đủ ${limit} lượt Hộp Sao. Mai quay lại nhé!`);
+      return;
+    }
     if (!canAfford(id)) {
       play("error");
       toast.error("xu" in CHESTS[id].cost ? "Chưa đủ xu để mở rương." : "Chưa đủ ngọc để mở rương.");
       return;
     }
+    inFlight.current = true;
     setChest(id);
     setResult(null);
     setPhase("shaking");
     play("click");
     const ticks = [150, 350, 550, 750].map((t) => setTimeout(() => play("tick"), t));
+    timers.current.push(...ticks);
     start(async () => {
       const res = await openChest(id);
       ticks.forEach(clearTimeout);
       if (!res.success || !res.outcome) {
+        inFlight.current = false;
         setPhase("idle");
         play("error");
         toast.error(res.success ? "Không mở được rương." : res.error);
         return;
       }
       const outcome = res.outcome;
-      setTimeout(() => {
+      const reveal = setTimeout(() => {
+        inFlight.current = false;
         setResult({ outcome, guaranteed: !!res.guaranteed });
         setPhase("reveal");
         if (res.wallet) setWallet(res.wallet);
@@ -78,6 +92,7 @@ export function useGachaPull({
         onDone?.({ outcome, wallet: res.wallet });
         router.refresh();
       }, 900);
+      timers.current.push(reveal);
     });
   };
 

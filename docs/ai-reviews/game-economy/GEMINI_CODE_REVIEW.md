@@ -166,3 +166,41 @@ lib/demo-privacy.ts (maskUsersForDemo) đọc trường id hay userId? File này
 | 6 | Nút rương `h-12` cắt chữ | **Đúng.** | `min-h-12 py-2`. |
 | 7 | `/leaderboard` thiếu `isPointsEnabled`; thiếu test `updateClassGrade` | **Đúng** phần cờ tính năng. Test `updateClassGrade` bỏ qua vì server action gọi `auth()` (không chạy được trong node:test; các action khác của dự án cũng không có unit test, phân quyền kiểm tra bằng `session.user.role !== "ADMIN"`). | Thêm `notFound()` khi tắt Xu. |
 | Q | `maskUsersForDemo` dùng `id` hay `userId`? | **Đúng chỗ.** Hàm dựa vào `user.id` (giữ chính chủ demo, bí danh theo id); `LeaderboardRow` chỉ có `userId` → chính chủ demo cũng bị che và bí danh suy từ tên. | Map `id: userId` trước khi che ở `/leaderboard` và trang chủ. |
+
+## Giai đoạn 5–6 (Tiệm Quà theo hai mockup Canvas) — diff `39910d0..6ecf611` (21/11/2026)
+
+Gửi qua Gemini web (model Neon). Báo cáo tóm tắt; nguyên văn lấy bằng `innerText`.
+
+### Summary
+
+Bản làm lại Tiệm Quà giữ tốt các bất biến ví/sổ cái phía server, xử lý `prefers-reduced-motion` đầy đủ và tránh lệch HTML server/client cho thời tiết (localStorage đọc sau mount, vị trí hạt cố định) và banner thử thách tuần (tính ở server). Rủi ro nhất là luồng mở rương trong `useGachaPull`/`GachaModal` (chưa chặn bấm đúp ở mức hàm, nút hộp quà chưa khoá khi hết lượt ngày) và tiêu đề hộp thoại ở 320px.
+
+### Findings
+
+#### [MEDIUM] Chưa chặn bấm đúp trong `useGachaPull`; nút hình hộp quà không kiểm tra hết lượt ngày
+- **Where:** components/game/useGachaPull.ts:47, components/shop/GachaModal.tsx:93
+- **Scenario:** bấm đúp / bấm hộp rồi bấm nút trước khi React vẽ lại → `open()` không có cờ đồng bộ; hết 3 lượt (`g.left === 0`) thì nút `pray-xu` khoá nhưng hình hộp (`aria-label="Mở hộp"`) vẫn bấm được → lắc, phát âm thanh, gọi server rồi mới báo lỗi.
+- **Minimal fix:** `useRef` khoá đầu `open()`; nút hộp `disabled={busy || !canEarn || (g.chest === "xu" && g.left === 0)}`.
+
+#### [MEDIUM] Tiêu đề `ShopModal` dùng `whitespace-nowrap` có thể đè nút đóng ở 320px
+- **Where:** components/shop/ShopModal.tsx:25-35
+- **Minimal fix:** `max-w-[calc(100%-3.5rem)]` + `truncate`, giảm padding/cỡ chữ trên màn hẹp.
+
+#### [LOW] `getMyRank` chạy tuần tự khi tải `/rewards`
+- **Where:** app/rewards/page.tsx:38-42 — đưa vào `Promise.all` cùng các truy vấn khác.
+
+#### [LOW] `role="tablist"` chứa phần tử không phải tab; điện thoại không có nút tắt âm thanh
+- **Where:** components/shop/ShopPage.tsx:221, 277-286 — chỉ đặt `tablist` quanh 6 danh mục; thêm `SoundToggle` vào Menu.
+
+#### Câu hỏi
+Mua mèo/khung/nền/danh hiệu thì client `setAvatar` để hiện "Đang chọn 🐾" — `buyItem` phía server có lưu cấu hình trang bị không? Nếu không, tải lại sẽ mất.
+
+### Claude kiểm chứng (GĐ5–6)
+
+| # | Finding | Kết luận | Đã làm |
+|---|---|---|---|
+| 1 | Bấm đúp / hộp quà khi hết lượt | **Đúng** (phần hộp quà là lỗi thật; bấm đúp thì React thường đã khoá nút sau sự kiện rời rạc, nhưng khoá đồng bộ vẫn cần cho bấm hộp + nút cùng lúc). | `inFlight` ref + kiểm tra hết lượt trong `open()`; dọn timer khi unmount; nút hộp khoá khi hết lượt. E2E: bấm `pray-xu` 2 lần + bấm hộp → đúng 1 `GachaPull`; hết 3/3 → hộp và nút đều `disabled`. |
+| 2 | Tiêu đề đè nút đóng 320px | **Đúng** ("🌠 Đài Cầu Nguyện Hộp Bí Ẩn" ~300px > khung 288px). | `max-w-[calc(100%-3.5rem)]`, `truncate`, `px-3.5 text-sm sm:px-5 sm:text-[15px]`. E2E 320px: khung tiêu đề không giao nút đóng, không tràn. |
+| 3 | `getMyRank` tuần tự | **Đúng.** | Chạy song song trong `Promise.all`. |
+| 4 | `tablist` + loa trên điện thoại | **Đúng** (thanh gỗ ẩn loa dưới 640px, header site trên điện thoại cũng không có). | `<div role="tablist" className="contents">` chỉ bọc 6 danh mục; `SoundToggle` trong Menu Tiệm Quà. E2E kiểm tra cả hai. |
+| Q | `buyItem` có lưu trang bị? | **Đúng là lỗi:** `buyItemInTx` chỉ thêm vào túi, không đổi `UserAvatar.config` → "Đang chọn" mất sau khi tải lại. | Sau khi mua ô pet/frame/background/title, gọi `saveAvatar` để lưu thật. E2E: mua mèo → `UserAvatar.config.pet` đúng, tải lại vẫn là mèo mới. |

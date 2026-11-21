@@ -5,6 +5,7 @@ import { Backpack, Gift, Home, Medal, NotebookPen, ShoppingCart, Ticket, Trophy,
 import { cn } from "@/lib/utils";
 import { play } from "@/lib/sound";
 import { ShopModal } from "./ShopModal";
+import { SoundToggle } from "@/components/game/SoundToggle";
 import { WEATHER_LABEL, type Weather } from "./Weather";
 
 export type MenuAction = "shop" | "tasks" | "box" | "board" | "scratch" | "bag" | "titles";
@@ -41,6 +42,7 @@ export function ShopMenuModal({
       <div className="rounded-2xl border-[2.5px] border-[#5b3d1e] bg-gradient-to-b from-[#9fd3f5] to-[#cfe9fb] p-3">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[12px] font-black text-[#0b2a44]">☁️ Thời tiết hôm nay</span>
+          <SoundToggle className="ml-auto" />
           <span className="rounded-full border-2 border-[#5b3d1e] bg-white px-2 py-0.5 text-[11px] font-black text-[#3b2a14]" data-testid="weather-label">{WEATHER_LABEL[weather]}</span>
         </div>
         <div className="mt-2 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Thời tiết">

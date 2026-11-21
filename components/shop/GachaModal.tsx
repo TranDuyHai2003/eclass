@@ -90,7 +90,7 @@ export function GachaModal({
           <div className="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
             {g.phase !== "reveal" && (
               <>
-                <button type="button" disabled={busy || !canEarn} onClick={() => g.open(g.chest)} aria-label="Mở hộp" className={cn("relative rounded-full", g.phase === "shaking" && "animate-shake")}>
+                <button type="button" data-testid="gacha-box" disabled={busy || !canEarn || (g.chest === "xu" && g.left === 0)} onClick={() => g.open(g.chest)} aria-label="Mở hộp" className={cn("relative rounded-full", g.phase === "shaking" && "animate-shake")}>
                   <span aria-hidden className="gacha-halo" />
                   <GiftBoxSvg tone={g.chest === "gem" ? "blue" : "red"} size={150} open={g.phase === "shaking"} className="relative" />
                   <span aria-hidden className="sparkle -left-2 top-6" /><span aria-hidden className="sparkle sparkle-2 -right-2 top-12" /><span aria-hidden className="sparkle sparkle-3 left-12 -top-2" />
