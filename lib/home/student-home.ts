@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { effectiveDueDate } from "@/lib/deadline";
 
 export interface HomeTodoItem {
   lessonId: string;
@@ -21,12 +22,13 @@ export interface HomeRecentResult {
  * Hai khối trên trang chủ học sinh:
  * - "Bài cần làm": bài kiểm tra / bài tập (gắn với bài học) trong các khoá học sinh xem được mà chưa nộp lần nào,
  *   còn hạn (gần hạn nhất) → không có hạn (theo lộ trình) → đã quá hạn (mới quá hạn trước).
+ *   Hạn là hạn HIỆU LỰC với học sinh (hạn riêng của lớp → hạn chung), xem lib/deadline.ts.
  * - "Kết quả gần đây": các lượt đã nộp mới nhất (điểm thang 10), mở thẳng màn chữa bài.
  */
 export async function getStudentHomeExtras(userId: string, courseIds: string[], limit = 4) {
   if (courseIds.length === 0) return { todo: [] as HomeTodoItem[], todoTotal: 0, recent: [] as HomeRecentResult[] };
 
-  const [lessons, attempts] = await Promise.all([
+  const [lessons, attempts, me] = await Promise.all([
     prisma.lesson.findMany({
       where: {
         chapter: { courseId: { in: courseIds }, isHidden: false },
@@ -37,7 +39,7 @@ export async function getStudentHomeExtras(userId: string, courseIds: string[], 
         title: true,
         position: true,
         chapter: { select: { title: true, position: true, course: { select: { id: true, title: true, createdAt: true } } } },
-        test: { select: { id: true, title: true, duration: true, dueDate: true } },
+        test: { select: { id: true, title: true, duration: true, dueDate: true, deadlines: { select: { classId: true, dueDate: true } } } },
       },
     }),
     prisma.studentAttempt.findMany({
@@ -51,7 +53,10 @@ export async function getStudentHomeExtras(userId: string, courseIds: string[], 
         test: { select: { title: true, lesson: { select: { id: true, title: true } } } },
       },
     }),
+    prisma.user.findUnique({ where: { id: userId }, select: { classId: true } }),
   ]);
+  const classId = me?.classId ?? null;
+  const dueOf = (l: (typeof lessons)[number]) => (l.test ? effectiveDueDate(l.test, classId) : null);
 
   const doneTests = new Set(attempts.map((a) => a.testId));
   const order = courseIds;
@@ -62,11 +67,13 @@ export async function getStudentHomeExtras(userId: string, courseIds: string[], 
   const pending = lessons
     .filter((l) => l.test && !doneTests.has(l.test.id))
     .sort((a, b) => {
-      const ga = group(a.test?.dueDate);
-      const gb = group(b.test?.dueDate);
+      const da = dueOf(a);
+      const db = dueOf(b);
+      const ga = group(da);
+      const gb = group(db);
       if (ga !== gb) return ga - gb;
-      const ta = a.test?.dueDate?.getTime() ?? 0;
-      const tb = b.test?.dueDate?.getTime() ?? 0;
+      const ta = da?.getTime() ?? 0;
+      const tb = db?.getTime() ?? 0;
       if (ga === 0 && ta !== tb) return ta - tb;
       if (ga === 2 && ta !== tb) return tb - ta;
       const ca = order.indexOf(a.chapter.course.id);
@@ -82,7 +89,7 @@ export async function getStudentHomeExtras(userId: string, courseIds: string[], 
     chapterTitle: l.chapter.title,
     courseTitle: l.chapter.course.title,
     duration: l.test?.duration ?? 0,
-    dueDate: l.test?.dueDate ?? null,
+    dueDate: dueOf(l),
   }));
 
   // Mỗi đề chỉ lấy lượt nộp mới nhất

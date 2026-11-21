@@ -11,13 +11,14 @@ const EMPTY_WALLET = {
   lastStreakWeek: null as string | null,
   streakFreezes: 1,
   goalRewardId: null as string | null,
+  gems: 0,
+  gachaPity: 0,
 };
 
-/** Số dư hiển thị trên header (1 truy vấn theo khoá chính) */
-/** Chip điểm trên header: số dư + tổng đã kiếm (để hiện cấp) — 1 truy vấn theo khoá chính */
+/** Chip xu trên header: số dư xu, ngọc, tổng đã kiếm (để hiện danh hiệu) — 1 truy vấn theo khoá chính */
 export async function getHeaderPoints(userId: string) {
-  const w = await prisma.pointWallet.findUnique({ where: { userId }, select: { balance: true, lifetimeEarned: true } });
-  return { balance: w?.balance ?? 0, lifetimeEarned: w?.lifetimeEarned ?? 0 };
+  const w = await prisma.pointWallet.findUnique({ where: { userId }, select: { balance: true, lifetimeEarned: true, gems: true } });
+  return { balance: w?.balance ?? 0, lifetimeEarned: w?.lifetimeEarned ?? 0, gems: w?.gems ?? 0 };
 }
 
 /** Chuỗi còn "sống" nếu tuần gần nhất được tính là tuần này hoặc tuần trước (hoặc trước nữa mà còn thẻ giữ chuỗi) */
@@ -74,6 +75,8 @@ export async function getStudentPointsPage(userId: string) {
     isOffline: user.studentType === "OFFLINE",
     wallet: {
       balance: wallet.balance,
+      gems: wallet.gems,
+      gachaPity: wallet.gachaPity,
       lifetimeEarned: wallet.lifetimeEarned,
       weekStreak: liveStreak(wallet),
       bestWeekStreak: wallet.bestWeekStreak,
@@ -100,7 +103,7 @@ export async function getPointsCard(userId: string) {
   const [w, weekActivities, user] = await Promise.all([
     prisma.pointWallet.findUnique({
       where: { userId },
-      select: { balance: true, lifetimeEarned: true, weekStreak: true, lastStreakWeek: true, streakFreezes: true, goalRewardId: true },
+      select: { balance: true, gems: true, lifetimeEarned: true, weekStreak: true, lastStreakWeek: true, streakFreezes: true, goalRewardId: true },
     }),
     prisma.pointLedger.count({
       where: { userId, source: { in: [...STREAK_ACTIVITY_SOURCES] }, amount: { gt: 0 }, createdAt: { gte: getVietnamWeekStart() } },
@@ -142,6 +145,7 @@ export async function getPointsCard(userId: string) {
     .map(({ perStudentMonthlyLimit: _limit, ...r }) => r);
   return {
     balance: w?.balance ?? 0,
+    gems: w?.gems ?? 0,
     lifetimeEarned: w?.lifetimeEarned ?? 0,
     weekStreak: w ? liveStreak({ ...EMPTY_WALLET, ...w }) : 0,
     weekActivities,

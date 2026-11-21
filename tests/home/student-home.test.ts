@@ -68,6 +68,23 @@ describe("Bài cần làm", () => {
   });
 });
 
+describe("Hạn theo lớp", () => {
+  test("học sinh trong lớp có hạn riêng thấy hạn riêng; lớp khác / chưa xếp lớp thấy hạn chung", async () => {
+    const cls = await fx.cls();
+    const inClass = await fx.user({ classId: cls.id });
+    const noClass = await fx.user();
+    // B1 không hạn chung → lớp cls có hạn ngày mai → với học sinh lớp cls, B1 nhảy lên nhóm "còn hạn" trước B2 (5 ngày)
+    const due = new Date(Date.now() + 1.5 * day);
+    await prisma.testDeadline.create({ data: { testId: L.B1.testId, classId: cls.id, dueDate: due } });
+    const a = await getStudentHomeExtras(inClass.id, [courseId], 10);
+    assert.deepEqual(a.todo.slice(0, 3).map((t) => t.lessonId), [L.B3.lessonId, L.B1.lessonId, L.B2.lessonId]);
+    assert.equal(a.todo[1].dueDate?.getTime(), due.getTime());
+    const b = await getStudentHomeExtras(noClass.id, [courseId], 10);
+    assert.deepEqual(b.todo.slice(0, 3).map((t) => t.lessonId), [L.B3.lessonId, L.B2.lessonId, L.B1.lessonId]);
+    assert.equal(b.todo[2].dueDate, null);
+  });
+});
+
 describe("Kết quả gần đây", () => {
   test("mỗi đề lấy lượt nộp mới nhất, mới nhất lên trước; bỏ lượt chưa nộp và bài của bạn khác", async () => {
     const s = await fx.user();

@@ -19,7 +19,7 @@ const intOrNull = (v: unknown) => {
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
 
-export const MAX_REWARD_PRICE = 100000;
+export const MAX_REWARD_PRICE = 1_000_000;
 
 export interface NormalizedReward {
   title: string;
@@ -40,7 +40,7 @@ export function normalizeRewardInput(input: RewardInput): NormalizeRewardResult 
   const title = input.title?.trim() ?? "";
   const price = Math.floor(Number(input.price));
   if (!title) return { error: "Nhập tên quà." };
-  if (!Number.isFinite(price) || price < 1 || price > MAX_REWARD_PRICE) return { error: "Giá phải từ 1 điểm trở lên." };
+  if (!Number.isFinite(price) || price < 1 || price > MAX_REWARD_PRICE) return { error: "Giá phải từ 1 xu trở lên." };
   const limit = intOrNull(input.perStudentMonthlyLimit);
   return {
     data: {

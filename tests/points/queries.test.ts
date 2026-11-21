@@ -99,7 +99,7 @@ describe("Dải điểm trang chủ & màn kết quả", () => {
     const { shop, ...fresh } = await getPointsCard((await fx.user()).id);
     assert.ok(Array.isArray(shop));
     assert.deepEqual(fresh, {
-      balance: 0, lifetimeEarned: 0, weekStreak: 0, weekActivities: 0, weekTarget: POINTS.streak.minActivities, thisWeekCounted: false, goal: null,
+      balance: 0, gems: 0, lifetimeEarned: 0, weekStreak: 0, weekActivities: 0, weekTarget: POINTS.streak.minActivities, thisWeekCounted: false, goal: null,
     });
   });
 
@@ -170,9 +170,9 @@ describe("Thẻ chào trang chủ: quà gợi ý & quà mục tiêu", () => {
 describe("Chip điểm trên header", () => {
   test("số dư và tổng đã kiếm; học sinh mới = 0", async () => {
     const s = await fx.user();
-    assert.deepEqual(await getHeaderPoints(s.id), { balance: 0, lifetimeEarned: 0 });
+    assert.deepEqual(await getHeaderPoints(s.id), { balance: 0, lifetimeEarned: 0, gems: 0 });
     await fx.give(s.id, 30);
-    assert.deepEqual(await getHeaderPoints(s.id), { balance: 30, lifetimeEarned: 30 });
+    assert.deepEqual(await getHeaderPoints(s.id), { balance: 30, lifetimeEarned: 30, gems: 0 });
   });
 });
 

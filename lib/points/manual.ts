@@ -4,7 +4,7 @@ import { isEligibleStudent, lockWallet, vietnamDayStart, writeEntry, type Tx } f
 /** Kiểm tra đầu vào thưởng/trừ tay. Trả về lỗi (chuỗi) hoặc null nếu hợp lệ. */
 export function validateManualGrant(amount: number, reason: string | null | undefined): string | null {
   const max = POINTS.manual.maxPerGrant;
-  if (!Number.isInteger(amount) || amount === 0 || Math.abs(amount) > max) return `Số điểm từ -${max} đến ${max} (khác 0).`;
+  if (!Number.isInteger(amount) || amount === 0 || Math.abs(amount) > max) return `Số xu từ -${max.toLocaleString("vi-VN")} đến ${max.toLocaleString("vi-VN")} (khác 0).`;
   if (!reason?.trim()) return "Nhập lý do để học sinh biết vì sao được thưởng/bị trừ.";
   return null;
 }
@@ -33,7 +33,7 @@ export async function grantManualInTx(
   await tx.notification.create({
     data: {
       userId: p.userId,
-      title: value > 0 ? `Thầy thưởng ${value} điểm thưởng ⭐` : `Bị trừ ${-value} điểm thưởng`,
+      title: value > 0 ? `Thầy thưởng ${value.toLocaleString("vi-VN")} xu 🪙` : `Bị trừ ${(-value).toLocaleString("vi-VN")} xu`,
       message: reason,
       link: "/rewards",
       type: "SYSTEM",

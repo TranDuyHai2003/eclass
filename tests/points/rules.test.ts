@@ -10,11 +10,13 @@ import { vietnamDayStart } from "@/lib/points/engine";
 import { normalizeRewardInput, type RewardInput } from "@/lib/points/reward-input";
 import { validateManualGrant } from "@/lib/points/manual";
 import { REWARD_TEMPLATES } from "@/lib/points/templates";
+import { RARITY_THRESHOLDS } from "@/lib/points/rarity";
 
 describe("Thang điểm", () => {
   test("mức thưởng điểm cao đúng ngưỡng", () => {
+    const [t10, t85, t7] = POINTS.scoreTiers.map((t) => t.points);
     const cases: [number, number][] = [
-      [0, 0], [6.99, 0], [7, 1], [8.49, 1], [8.5, 2], [9.99, 2], [10, 3],
+      [0, 0], [6.99, 0], [7, t7], [8.49, t7], [8.5, t85], [9.99, t85], [10, t10],
     ];
     for (const [score, pts] of cases) assert.equal(scoreTierPoints(score), pts, `điểm ${score}`);
   });
@@ -32,13 +34,13 @@ describe("Thang điểm", () => {
     const submit = EARNING_RULES.find((r) => r.label.startsWith("Nộp bài kiểm tra"));
     assert.equal(submit?.points, `+${POINTS.testSubmit}`);
     const tiers = EARNING_RULES.find((r) => r.label === "Điểm cao");
-    assert.equal(tiers?.points, "+1 / +2 / +3");
+    assert.equal(tiers?.points, "+150 / +300 / +450");
     assert.equal(tiers?.note, "≥7 / ≥8,5 / ≥10");
     for (const r of EARNING_RULES) assert.ok(r.label && r.points, "mỗi dòng có nhãn và điểm");
   });
 });
 
-describe("Cân bằng kinh tế điểm (thang nhỏ: chăm cả tháng ≈ 1 gói bim bim)", () => {
+describe("Cân bằng kinh tế xu (chăm cả tháng ≈ 1 gói bim bim)", () => {
   // Mô phỏng một tháng (4 tuần)
   function month(p: { testsPerWeek: number; avgScore: number; homeworkPerWeek: number; homeworkPassRate: number }) {
     const perTest = POINTS.testSubmit + scoreTierPoints(p.avgScore);
@@ -61,9 +63,17 @@ describe("Cân bằng kinh tế điểm (thang nhỏ: chăm cả tháng ≈ 1 g�
     assert.ok(average >= 20, "nhưng vẫn có điểm để thấy tiến bộ");
   });
 
-  test("giới hạn ngày không chặn một ngày học bình thường (3 bài điểm 10 + 2 bài tập về nhà)", () => {
-    const busyDay = 3 * (POINTS.testSubmit + scoreTierPoints(10) + POINTS.breakthrough.points) + 2 * (POINTS.homeworkSubmit + POINTS.homeworkPass);
+  test("giới hạn ngày không chặn một ngày học bình thường (3 bài điểm 10 đúng hạn + 2 bài tập về nhà)", () => {
+    const busyDay = 3 * (POINTS.testSubmit + POINTS.onTimeBonus + scoreTierPoints(10) + POINTS.breakthrough.points) + 2 * (POINTS.homeworkSubmit + POINTS.homeworkPass);
     assert.ok(busyDay <= POINTS.dailyAutoCap, `${busyDay} ≤ ${POINTS.dailyAutoCap}`);
+  });
+
+  test("nộp bài 300 xu; bài đúng hạn điểm 10 có bứt phá ≈ 300 × 3,5; đúng hạn không lớn hơn xu nộp bài", () => {
+    assert.equal(POINTS.testSubmit, 300);
+    const best = POINTS.testSubmit + POINTS.onTimeBonus + scoreTierPoints(10) + POINTS.breakthrough.points;
+    assert.ok(best >= 300 * 3 && best <= 300 * 4, String(best));
+    assert.ok(POINTS.onTimeBonus <= POINTS.testSubmit);
+    assert.ok(POINTS.testSubmitLate < POINTS.testSubmit);
   });
 
   test("thưởng tay mỗi ngày không lấn át điểm học (≤ 1/5 quà lớn nhất trong mẫu thường dùng)", () => {
@@ -75,7 +85,7 @@ describe("Cân bằng kinh tế điểm (thang nhỏ: chăm cả tháng ≈ 1 g�
       const r = normalizeRewardInput({ ...t, classIds: [], isActive: true });
       assert.ok(!("error" in r), `mẫu "${t.title}" hợp lệ`);
     }
-    assert.ok(REWARD_TEMPLATES.some((t) => t.price <= 50), "có quà ≤ 50 điểm");
+    assert.ok(REWARD_TEMPLATES.some((t) => t.price <= RARITY_THRESHOLDS.common), "có quà Phổ thông cho học sinh trung bình");
     assert.equal(new Set(REWARD_TEMPLATES.map((t) => t.title)).size, REWARD_TEMPLATES.length, "tên mẫu không trùng");
   });
 });
@@ -102,7 +112,8 @@ describe("Chuẩn hoá form quà", () => {
     assert.ok("data" in r && r.data.kind === "PHYSICAL" && r.data.offlineOnly);
   });
 
-  test("từ chối tên trống, giá ≤ 0, giá không phải số, giá quá lớn", () => {
+  test("từ chối tên trống, giá ≤ 0, giá không phải số, giá quá lớn; quà 150 000 xu vẫn hợp lệ (review Gemini)", () => {
+    assert.ok("data" in normalizeRewardInput({ ...base, price: 150000 }));
     for (const bad of [{ title: "   " }, { price: 0 }, { price: -5 }, { price: NaN }, { price: "abc" as any }, { price: 1e9 }]) {
       assert.ok("error" in normalizeRewardInput({ ...base, ...bad }), JSON.stringify(bad));
     }

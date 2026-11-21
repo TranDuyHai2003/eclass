@@ -70,9 +70,9 @@ export function createFixture() {
     async wallet(userId: string) {
       return prisma.pointWallet.findUnique({ where: { userId } });
     },
-    /** Tổng sổ điểm — phải luôn bằng số dư ví */
-    async ledgerSum(userId: string) {
-      return (await prisma.pointLedger.aggregate({ where: { userId }, _sum: { amount: true } }))._sum.amount ?? 0;
+    /** Tổng sổ theo loại tiền — phải luôn bằng số dư ví (XU → balance, GEM → gems) */
+    async ledgerSum(userId: string, currency: "XU" | "GEM" = "XU") {
+      return (await prisma.pointLedger.aggregate({ where: { userId, currency }, _sum: { amount: true } }))._sum.amount ?? 0;
     },
     async cleanup() {
       await prisma.reward.deleteMany({ where: { title: { startsWith: tag } } });

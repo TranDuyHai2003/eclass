@@ -1,4 +1,5 @@
 import { POINTS } from "./config";
+import { dueStatus } from "@/lib/deadline";
 import { awardOnce, isEligibleStudent, lockWallet, revokeKey, runPointsSafely, updateWeekStreak } from "./engine";
 import type { Tx } from "./engine";
 
@@ -9,6 +10,7 @@ import type { Tx } from "./engine";
 
 
 const testKey = (testId: string) => `TEST:${testId}`;
+const onTimeKey = (testId: string) => `ONTIME:${testId}`;
 const scoreKey = (testId: string) => `TESTSCORE:${testId}`;
 const breakKey = (testId: string) => `BREAK:${testId}`;
 
@@ -57,7 +59,11 @@ async function awardScoreBonus(
   }
 }
 
-/** Học sinh nộp bài kiểm tra / bài tập trắc nghiệm / đề thi cuối khoá */
+/**
+ * Học sinh nộp bài kiểm tra / bài tập trắc nghiệm / đề thi cuối khoá.
+ * `test.dueDate` là hạn HIỆU LỰC với học sinh này (hạn lớp → hạn chung → null), xem lib/deadline.ts.
+ * Có hạn và nộp kịp → +nộp bài +đúng hạn; sau hạn → nộp bài giảm; không hạn → chỉ nộp bài.
+ */
 export function onTestSubmitted(p: {
   userId: string;
   attemptId: string;
@@ -75,7 +81,8 @@ export function onTestSubmitted(p: {
     const wallet = await lockWallet(tx, p.userId);
     const now = new Date();
     const isFinal = !!p.test.courseId;
-    const late = !!p.test.dueDate && now > p.test.dueDate;
+    const status = isFinal ? "none" : dueStatus(p.test.dueDate, now);
+    const late = status === "late";
 
     await awardOnce(tx, {
       userId: p.userId,
@@ -87,6 +94,19 @@ export function onTestSubmitted(p: {
       capped: !isFinal,
       now,
     });
+
+    if (status === "on-time") {
+      await awardOnce(tx, {
+        userId: p.userId,
+        amount: POINTS.onTimeBonus,
+        source: "ON_TIME",
+        key: onTimeKey(p.test.id),
+        refId: p.attemptId,
+        reason: "Nộp đúng hạn",
+        capped: true,
+        now,
+      });
+    }
 
     if (!p.hasPendingEssay) {
       await awardScoreBonus(tx, { userId: p.userId, testId: p.test.id, attemptId: p.attemptId, score: p.score, isFinal });
@@ -127,7 +147,7 @@ export function onAttemptDeleted(p: { userId: string; testId: string; teacherId:
   return runPointsSafely("onAttemptDeleted", async (tx) => {
     await lockWallet(tx, p.userId);
     const reason = "Giáo viên xoá lượt làm bài";
-    for (const key of [testKey(p.testId), scoreKey(p.testId), breakKey(p.testId)]) {
+    for (const key of [testKey(p.testId), onTimeKey(p.testId), scoreKey(p.testId), breakKey(p.testId)]) {
       await revokeKey(tx, p.userId, key, reason, p.teacherId);
     }
   });

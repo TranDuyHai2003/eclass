@@ -64,7 +64,57 @@ describe("awardOnce / revokeKey", () => {
   });
 });
 
-describe("Giới hạn điểm tự động mỗi ngày", () => {
+describe("Hai loại tiền (xu / ngọc) — review Gemini", () => {
+  test("ngọc vào gems, không vào balance/lifetimeEarned; gems = Σ GEM, balance = Σ XU", async () => {
+    const u = (await fx.user()).id;
+    await prisma.$transaction(async (tx) => {
+      await lockWallet(tx, u);
+      await writeEntry(tx, { userId: u, amount: 5, source: "GIFTCODE", currency: "GEM", key: "GC1" });
+      await writeEntry(tx, { userId: u, amount: 7, source: "TEST_SUBMIT", key: "T1" });
+      await writeEntry(tx, { userId: u, amount: -3, source: "GACHA", currency: "GEM" });
+    });
+    const w = await fx.wallet(u);
+    assert.equal(w!.gems, 2);
+    assert.equal(w!.balance, 7);
+    assert.equal(w!.lifetimeEarned, 7, "ngọc không tính vào tổng đã kiếm");
+    assert.equal(w!.gems, await fx.ledgerSum(u, "GEM"));
+    assert.equal(w!.balance, await fx.ledgerSum(u, "XU"));
+  });
+
+  test("xu từ mã quà / gacha / mua đồ / hoàn quà không làm tăng danh hiệu (lifetimeEarned)", async () => {
+    const u = (await fx.user()).id;
+    await prisma.$transaction(async (tx) => {
+      await lockWallet(tx, u);
+      await writeEntry(tx, { userId: u, amount: 100, source: "GIFTCODE", key: "GC2" });
+      await writeEntry(tx, { userId: u, amount: 50, source: "GACHA" });
+      await writeEntry(tx, { userId: u, amount: -30, source: "ITEM", key: "ITEM:x" });
+      await writeEntry(tx, { userId: u, amount: 10, source: "REFUND" });
+      await writeEntry(tx, { userId: u, amount: 300, source: "TEST_SUBMIT", key: "T2" });
+    });
+    const w = await fx.wallet(u);
+    assert.equal(w!.balance, 430);
+    assert.equal(w!.lifetimeEarned, 300);
+  });
+
+  test("awardOnce / revokeKey theo đúng loại tiền: khoá ngọc không chạm xu", async () => {
+    const u = (await fx.user()).id;
+    const run = <T,>(fn: (tx: Parameters<typeof lockWallet>[0]) => Promise<T>) =>
+      prisma.$transaction(async (tx) => {
+        await lockWallet(tx, u);
+        return fn(tx);
+      });
+    assert.equal(await run((tx) => awardOnce(tx, { userId: u, amount: 4, source: "GIFTCODE", key: "GEMKEY", currency: "GEM" })), 4);
+    assert.equal(await run((tx) => awardOnce(tx, { userId: u, amount: 4, source: "GIFTCODE", key: "GEMKEY", currency: "GEM" })), 0, "không cộng ngọc lần 2");
+    assert.equal(await run((tx) => revokeKey(tx, u, "GEMKEY", "test")), 0, "thu hồi theo XU không thấy khoá ngọc");
+    assert.equal(await run((tx) => revokeKey(tx, u, "GEMKEY", "test", null, "GEM")), 4);
+    const w = await fx.wallet(u);
+    assert.equal(w!.gems, 0);
+    assert.equal(w!.balance, 0);
+    assert.equal(await fx.ledgerSum(u, "XU"), 0);
+  });
+});
+
+describe("Giới hạn xu tự động mỗi ngày", () => {
   test("cộng phần còn lại rồi dừng; nguồn không giới hạn vẫn cộng", async () => {
     const u = (await fx.user()).id;
     await withPoints({ dailyAutoCap: 5 }, async () => {

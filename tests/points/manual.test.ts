@@ -53,10 +53,11 @@ describe("Thưởng tay", () => {
   test("trừ điểm không bị giới hạn ngày, số dư có thể âm và khi âm thì không đổi quà được", async () => {
     const s = await fx.user();
     const t = await fx.user({ role: "TEACHER" });
-    await grant(s.id, POINTS.manual.dailyCapPerStudent, t.id);
-    assert.equal(await grant(s.id, -10, t.id, "Chép bài"), -10);
-    assert.equal(await grant(s.id, -3, t.id, "Chép bài"), -3);
-    assert.equal(await fx.balance(s.id), POINTS.manual.dailyCapPerStudent - 13);
+    const cap = POINTS.manual.dailyCapPerStudent;
+    await grant(s.id, cap, t.id);
+    assert.equal(await grant(s.id, -cap, t.id, "Chép bài"), -cap);
+    assert.equal(await grant(s.id, -100, t.id, "Chép bài"), -100);
+    assert.equal(await fx.balance(s.id), -100);
     const n = await prisma.notification.findFirstOrThrow({ where: { userId: s.id, title: { contains: "trừ" } } });
     assert.match(n.title, /Bị trừ/);
     const r = await fx.reward({ price: 1, kind: "VIRTUAL" });
@@ -78,7 +79,8 @@ describe("Thưởng tay", () => {
   test("thưởng cùng lúc nhiều lần vẫn không vượt giới hạn ngày", async () => {
     const s = await fx.user();
     const t = await fx.user({ role: "TEACHER" });
-    await Promise.all(Array.from({ length: 6 }, () => grant(s.id, 3, t.id)));
+    const part = Math.ceil(POINTS.manual.dailyCapPerStudent / 2);
+    await Promise.all(Array.from({ length: 6 }, () => grant(s.id, part, t.id)));
     assert.equal(await fx.balance(s.id), POINTS.manual.dailyCapPerStudent);
   });
 });

@@ -38,6 +38,10 @@ model User {
   pointLedger          PointLedger[]
   pointWallet          PointWallet?
   redemptions          Redemption[]
+  giftCodeUses         GiftCodeUse[]
+  items                UserItem[]
+  avatar               UserAvatar?
+  gachaPulls           GachaPull[]
 
   @@index([classId])
 }
@@ -289,6 +293,8 @@ model Test {
   lesson          Lesson?          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   user            User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
   sections        TestSection[]
+  /// Hạn nộp riêng theo lớp (không có dòng → dùng dueDate chung)
+  deadlines       TestDeadline[]
 }
 
 model TestSection {
@@ -449,12 +455,31 @@ enum TestType {
 model StudyClass {
   id                   String                @id @default(cuid())
   name                 String                @unique
+  /// Khối 10 / 11 / 12 — "server" của Bảng Vàng
+  grade                Int?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
   users                User[]
   courses              Course[]
   leaderboardSnapshots LeaderboardSnapshot[]
   rewards              Reward[]
+  deadlines            TestDeadline[]
+  giftCodes            GiftCode[]
+}
+
+/// Hạn nộp riêng của một đề cho một lớp
+model TestDeadline {
+  id         String     @id @default(cuid())
+  testId     String
+  classId    String
+  dueDate    DateTime
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  test       Test       @relation(fields: [testId], references: [id], onDelete: Cascade)
+  studyClass StudyClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([testId, classId])
+  @@index([classId])
 }
 
 model LeaderboardSnapshot {
@@ -494,6 +519,22 @@ enum PointSource {
   REDEEM
   REFUND
   REVOKE
+  ON_TIME
+  GIFTCODE
+  GACHA
+  ITEM
+}
+
+/// Loại tiền: Xu (học mà có) và Ngọc (mã quà tặng thầy phát)
+enum Currency {
+  XU
+  GEM
+}
+
+enum ItemSource {
+  SHOP
+  GACHA
+  GIFT
 }
 
 enum RewardKind {
@@ -522,6 +563,7 @@ model PointLedger {
   reason      String?
   /// Giáo viên thực hiện (thưởng tay, từ chối quà…)
   createdById String?
+  currency    Currency    @default(XU)
   createdAt   DateTime    @default(now())
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -542,8 +584,84 @@ model PointWallet {
   lastStreakWeek String?
   streakFreezes  Int      @default(1)
   goalRewardId   String?
+  /// Ngọc (tiền hiếm) — bất biến: gems = tổng các dòng sổ currency = GEM
+  gems           Int      @default(0)
+  /// Số lượt Rương Xu liên tiếp chưa ra Sử thi+ (bảo hiểm gacha)
+  gachaPity      Int      @default(0)
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Mã quà tặng (thẻ cào) thầy phát
+model GiftCode {
+  id          String        @id @default(cuid())
+  code        String        @unique
+  currency    Currency      @default(GEM)
+  amount      Int
+  /// 1 = thẻ cào cá nhân; N = mã dùng chung cả lớp
+  maxUses     Int           @default(1)
+  usedCount   Int           @default(0)
+  expiresAt   DateTime?
+  /// Chỉ học sinh lớp này nhập được (null = mọi lớp)
+  classId     String?
+  note        String?
+  /// Các mã tạo cùng một lô
+  batchId     String?
+  isActive    Boolean       @default(true)
+  createdById String
+  createdAt   DateTime      @default(now())
+  studyClass  StudyClass?   @relation(fields: [classId], references: [id], onDelete: SetNull)
+  uses        GiftCodeUse[]
+
+  @@index([batchId])
+  @@index([createdById, createdAt])
+}
+
+model GiftCodeUse {
+  id         String   @id @default(cuid())
+  giftCodeId String
+  userId     String
+  createdAt  DateTime @default(now())
+  giftCode   GiftCode @relation(fields: [giftCodeId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([giftCodeId, userId])
+  @@index([userId])
+}
+
+/// Đồ trang trí học sinh sở hữu (itemId = slug trong lib/game/items.ts)
+model UserItem {
+  id        String     @id @default(cuid())
+  userId    String
+  itemId    String
+  source    ItemSource @default(SHOP)
+  createdAt DateTime   @default(now())
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+}
+
+/// Nhân vật chibi: món đang trang bị ở từng ô
+model UserAvatar {
+  userId    String   @id
+  config    Json
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Một lượt mở rương (kết quả tính ở server)
+model GachaPull {
+  id         String   @id @default(cuid())
+  userId     String
+  chest      String
+  currency   Currency
+  cost       Int
+  outcome    Json
+  pityBefore Int      @default(0)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model Reward {

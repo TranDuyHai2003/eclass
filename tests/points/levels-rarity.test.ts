@@ -42,12 +42,14 @@ describe("Cấp độ", () => {
       const l = getLevel(v);
       assert.ok(l.level >= 1 && l.progress >= 0 && l.progress <= 100, String(v));
     }
-    assert.equal(getLevel(24.9).level, 1);
+    assert.equal(getLevel(LEVELS[1].min - 0.1).level, 1);
   });
 
-  test("học chăm (~82 điểm/tháng) lên 'Xuất sắc' trong khoảng 1–2 tháng, chưa thể 'Huyền thoại' trước 4 tháng", () => {
-    assert.ok(getLevel(82 * 2).name === "Xuất sắc" || getLevel(82 * 2).level > 4);
-    assert.ok(getLevel(82 * 4).name !== "Huyền thoại");
+  test("học chăm (~12 000 xu/tháng): 'Phú nông' sau 2 tháng, chưa thể 'Đại gia' trước 4 tháng, 8 danh hiệu", () => {
+    assert.equal(LEVELS.length, 8);
+    assert.equal(getLevel(12000 * 2).name, "Phú nông");
+    assert.ok(getLevel(12000 * 4).level < LEVELS.findIndex((l) => l.name === "Đại gia") + 1);
+    assert.equal(getLevel(0).name, "Chó rách");
   });
 });
 

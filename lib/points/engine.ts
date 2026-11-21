@@ -1,7 +1,7 @@
-import type { PointSource } from "@prisma/client";
+import type { Currency, PointSource } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getVietnamWeekStart, getWeekCode, VN_UTC_OFFSET_MS } from "@/lib/ranking/history-engine";
-import { AUTO_CAPPED_SOURCES, POINTS, STREAK_ACTIVITY_SOURCES, isPointsEnabled } from "./config";
+import { AUTO_CAPPED_SOURCES, EARNING_SOURCES, POINTS, STREAK_ACTIVITY_SOURCES, isPointsEnabled } from "./config";
 
 /**
  * Lõi Điểm thưởng. Mọi thay đổi điểm đi qua các hàm ở đây:
@@ -9,6 +9,8 @@ import { AUTO_CAPPED_SOURCES, POINTS, STREAK_ACTIVITY_SOURCES, isPointsEnabled }
  * - Khoá dòng ví (SELECT … FOR UPDATE) → các thao tác của cùng một học sinh chạy tuần tự, không cộng trùng khi bấm 2 lần.
  * - "Khoá logic" (key): chỉ cộng khi tổng các dòng cùng khoá = 0 → nộp lại/mở lại bài không cộng lần nữa;
  *   thu hồi (REVOKE) đưa tổng về 0 nên nếu được chấm lại thì cộng lại được.
+ * - Hai loại tiền trên cùng một sổ (cột currency): XU → PointWallet.balance, GEM → PointWallet.gems.
+ *   Bất biến: balance = Σ amount (currency = XU), gems = Σ amount (currency = GEM).
  */
 
 /** Client trong giao dịch của prisma (client đã mở rộng ở lib/prisma) */
@@ -22,10 +24,9 @@ export interface WalletRow {
   bestWeekStreak: number;
   lastStreakWeek: string | null;
   streakFreezes: number;
+  gems: number;
+  gachaPity: number;
 }
-
-/** Các nguồn KHÔNG tính vào "tổng điểm đã kiếm" (chỉ là tiêu/hoàn) */
-const SPEND_SOURCES: PointSource[] = ["REDEEM", "REFUND"];
 
 /** 00:00 hôm nay theo giờ Việt Nam (mốc UTC thật) */
 export function vietnamDayStart(now: Date = new Date()): Date {
@@ -40,7 +41,7 @@ export async function lockWallet(tx: Tx, userId: string): Promise<WalletRow> {
     ON CONFLICT ("userId") DO NOTHING
   `;
   const rows = await tx.$queryRaw<WalletRow[]>`
-    SELECT "userId", "balance", "lifetimeEarned", "weekStreak", "bestWeekStreak", "lastStreakWeek", "streakFreezes"
+    SELECT "userId", "balance", "lifetimeEarned", "weekStreak", "bestWeekStreak", "lastStreakWeek", "streakFreezes", "gems", "gachaPity"
     FROM "PointWallet" WHERE "userId" = ${userId} FOR UPDATE
   `;
   return rows[0];
@@ -63,11 +64,14 @@ interface EntryInput {
   refId?: string | null;
   reason?: string | null;
   createdById?: string | null;
+  /** Mặc định XU */
+  currency?: Currency;
 }
 
 /** Ghi một dòng sổ + cập nhật ví (ví phải đã được khoá bằng lockWallet) */
 export async function writeEntry(tx: Tx, e: EntryInput) {
   if (e.amount === 0) return;
+  const currency: Currency = e.currency ?? "XU";
   await tx.pointLedger.create({
     data: {
       userId: e.userId,
@@ -77,9 +81,17 @@ export async function writeEntry(tx: Tx, e: EntryInput) {
       refId: e.refId ?? null,
       reason: e.reason ?? null,
       createdById: e.createdById ?? null,
+      currency,
     },
   });
-  const countsAsEarning = !SPEND_SOURCES.includes(e.source);
+  if (currency === "GEM") {
+    await tx.$executeRaw`
+      UPDATE "PointWallet" SET "gems" = "gems" + ${e.amount}, "updatedAt" = NOW() WHERE "userId" = ${e.userId}
+    `;
+    return;
+  }
+  // Danh hiệu chỉ tính xu từ học tập (và thu hồi của nó); mã quà, gacha, mua đồ, đổi/hoàn quà không ảnh hưởng
+  const countsAsEarning = (EARNING_SOURCES as readonly string[]).includes(e.source);
   await tx.$executeRaw`
     UPDATE "PointWallet"
     SET "balance" = "balance" + ${e.amount},
@@ -89,8 +101,9 @@ export async function writeEntry(tx: Tx, e: EntryInput) {
   `;
 }
 
-async function netForKey(tx: Tx, userId: string, key: string) {
-  const agg = await tx.pointLedger.aggregate({ where: { userId, key }, _sum: { amount: true } });
+/** Tổng các dòng cùng khoá, theo đúng loại tiền (một khoá chỉ dùng cho một loại tiền) */
+async function netForKey(tx: Tx, userId: string, key: string, currency: Currency = "XU") {
+  const agg = await tx.pointLedger.aggregate({ where: { userId, key, currency }, _sum: { amount: true } });
   return agg._sum.amount ?? 0;
 }
 
@@ -117,7 +130,7 @@ export async function awardOnce(
   input: Omit<EntryInput, "key"> & { key: string; capped?: boolean; now?: Date },
 ): Promise<number> {
   if (input.amount <= 0) return 0;
-  if ((await netForKey(tx, input.userId, input.key)) > 0) return 0;
+  if ((await netForKey(tx, input.userId, input.key, input.currency ?? "XU")) > 0) return 0;
 
   let amount = input.amount;
   if (input.capped) {
@@ -130,11 +143,11 @@ export async function awardOnce(
   return amount;
 }
 
-/** Thu hồi điểm của một khoá (vd giáo viên xoá lượt làm, đổi bài tập từ Đạt sang Chưa đạt) */
-export async function revokeKey(tx: Tx, userId: string, key: string, reason: string, createdById?: string | null) {
-  const net = await netForKey(tx, userId, key);
+/** Thu hồi tiền của một khoá (vd giáo viên xoá lượt làm, đổi bài tập từ Đạt sang Chưa đạt) — đúng loại tiền của khoá (review Gemini) */
+export async function revokeKey(tx: Tx, userId: string, key: string, reason: string, createdById?: string | null, currency: Currency = "XU") {
+  const net = await netForKey(tx, userId, key, currency);
   if (net <= 0) return 0;
-  await writeEntry(tx, { userId, amount: -net, source: "REVOKE", key, reason, createdById });
+  await writeEntry(tx, { userId, amount: -net, source: "REVOKE", key, reason, createdById, currency });
   return net;
 }
 
