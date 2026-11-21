@@ -25,8 +25,15 @@ export interface PdfOverlayMarker {
   /** % chiều cao trang */
   y: number;
   label?: string;
-  tone?: "active" | "default" | "end";
+  tone?: "active" | "default" | "end" | "solution";
   onClick?: () => void;
+  /** Kéo nhãn để dời mốc trong cùng trang (trả về vị trí mới, đã "hút" nếu có snapY) */
+  onDragEnd?: (page: number, y: number) => void;
+}
+
+export interface PdfClickModifiers {
+  shift: boolean;
+  alt: boolean;
 }
 
 interface PDFViewerProps {
@@ -42,8 +49,12 @@ interface PDFViewerProps {
   scrollTarget?: { page: number; yPct: number; key: string; label?: string } | null;
   /** Các vạch đánh dấu vẽ đè lên trang */
   markers?: PdfOverlayMarker[];
-  /** Bấm lên trang → trả về vị trí (trang, % chiều cao). Bật con trỏ chọn khi có. */
-  onPageClick?: (page: number, y: number) => void;
+  /** Bấm lên trang → trả về vị trí (trang, % chiều cao) + phím bổ trợ. Bật con trỏ chọn khi có. */
+  onPageClick?: (page: number, y: number, mods: PdfClickModifiers) => void;
+  /** Hiện đường dóng theo chuột với nhãn này (khi có onPageClick) */
+  hoverLabel?: string | ((mods: PdfClickModifiers) => string);
+  /** "Hút" vị trí y (% trang) về điểm gợi ý gần nhất, vd mép trên dòng chữ */
+  snapY?: (page: number, y: number) => number;
   renderTextLayer?: boolean;
   /** Vẽ dải đánh dấu tại scrollTarget (mặc định có) */
   highlightTarget?: boolean;
@@ -62,6 +73,8 @@ export default function PDFViewer({
   scrollTarget,
   markers,
   onPageClick,
+  hoverLabel,
+  snapY,
   renderTextLayer = true,
   highlightTarget = true,
   maxPageWidth,
@@ -193,15 +206,29 @@ export default function PDFViewer({
     }
   }, [scrollTarget, renderTick, containerWidth, zoom, aspects]);
 
+  /** Vị trí con trỏ trên trang → % chiều cao (đã hút về điểm gợi ý nếu có) */
+  const pointerY = useCallback(
+    (pageNum: number, el: HTMLElement, clientY: number) => {
+      const rect = el.getBoundingClientRect();
+      const raw = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100));
+      const y = snapY ? snapY(pageNum, raw) : raw;
+      return Math.round(Math.min(100, Math.max(0, y)) * 10) / 10;
+    },
+    [snapY],
+  );
+
   const handlePageClick = useCallback(
     (pageNum: number, e: React.MouseEvent<HTMLDivElement>) => {
       if (!onPageClick || rotation !== 0) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const y = ((e.clientY - rect.top) / rect.height) * 100;
-      onPageClick(pageNum, Math.round(Math.min(100, Math.max(0, y)) * 10) / 10);
+      onPageClick(pageNum, pointerY(pageNum, e.currentTarget, e.clientY), { shift: e.shiftKey, alt: e.altKey });
     },
-    [onPageClick, rotation],
+    [onPageClick, rotation, pointerY],
   );
+
+  // Đường dóng theo chuột (chỉ khi đang cho đặt mốc)
+  const [hover, setHover] = useState<{ page: number; y: number; mods: PdfClickModifiers } | null>(null);
+  // Đang kéo một mốc: vị trí tạm để vẽ
+  const [drag, setDrag] = useState<{ key: string; page: number; y: number; moved: boolean } | null>(null);
 
   if (isGoogleDriveFolder(url)) {
     return (
@@ -353,6 +380,17 @@ export default function PDFViewer({
                       ref={observePage}
                       style={{ minHeight: pageHeight(pageNum), minWidth: pageWidth }}
                       onClick={onPageClick ? (e) => handlePageClick(pageNum, e) : undefined}
+                      onMouseMove={
+                        onPageClick && hoverLabel && rotation === 0
+                          ? (e) =>
+                              setHover({
+                                page: pageNum,
+                                y: pointerY(pageNum, e.currentTarget, e.clientY),
+                                mods: { shift: e.shiftKey, alt: e.altKey },
+                              })
+                          : undefined
+                      }
+                      onMouseLeave={hoverLabel ? () => setHover(null) : undefined}
                     >
                       {visiblePages.has(pageNum) ? (
                         <Page
@@ -378,40 +416,95 @@ export default function PDFViewer({
                         />
                       )}
 
-                      {pageMarkers?.map((m) => (
-                        <button
-                          key={m.key}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            m.onClick?.();
-                          }}
-                          className={cn(
-                            "absolute left-0 right-0 z-10 flex items-center text-left",
-                            !m.onClick && "pointer-events-none",
-                          )}
-                          style={{ top: `${m.y}%` }}
-                        >
-                          <span
-                            className={cn(
-                              "-translate-y-1/2 rounded-r-md px-1.5 py-0.5 text-[10px] font-black uppercase text-white shadow",
-                              m.tone === "active" ? "bg-amber-500" : m.tone === "end" ? "bg-rose-500" : "bg-blue-500/80",
-                            )}
+                      {pageMarkers?.map((m) => {
+                        const y = drag?.key === m.key && drag.page === pageNum ? drag.y : m.y;
+                        const interactive = !!(m.onClick || m.onDragEnd);
+                        return (
+                          <div
+                            key={m.key}
+                            className="pointer-events-none absolute left-0 right-0 z-10 flex items-center"
+                            style={{ top: `${y}%` }}
                           >
-                            {m.label}
+                            <span
+                              role={interactive ? "button" : undefined}
+                              tabIndex={interactive ? 0 : undefined}
+                              title={m.onDragEnd ? "Bấm để chọn · kéo lên/xuống để dời mốc" : undefined}
+                              onClick={(e) => e.stopPropagation()}
+                              onPointerDown={
+                                interactive
+                                  ? (e) => {
+                                      e.stopPropagation();
+                                      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                                      setDrag({ key: m.key, page: pageNum, y: m.y, moved: false });
+                                    }
+                                  : undefined
+                              }
+                              onPointerMove={
+                                m.onDragEnd
+                                  ? (e) => {
+                                      if (!drag || drag.key !== m.key) return;
+                                      const pageEl = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-page]");
+                                      if (!pageEl) return;
+                                      const ny = pointerY(pageNum, pageEl, e.clientY);
+                                      const moved = drag.moved || Math.abs(ny - m.y) > 0.4;
+                                      setDrag({ ...drag, y: ny, moved });
+                                    }
+                                  : undefined
+                              }
+                              onPointerUp={
+                                interactive
+                                  ? (e) => {
+                                      e.stopPropagation();
+                                      const d = drag;
+                                      setDrag(null);
+                                      if (d?.moved && m.onDragEnd) m.onDragEnd(pageNum, d.y);
+                                      else m.onClick?.();
+                                    }
+                                  : undefined
+                              }
+                              className={cn(
+                                "-translate-y-1/2 select-none rounded-r-md px-1.5 py-0.5 text-[10px] font-black uppercase text-white shadow",
+                                interactive && "pointer-events-auto",
+                                m.onDragEnd ? "cursor-ns-resize" : m.onClick && "cursor-pointer",
+                                m.tone === "active"
+                                  ? "bg-amber-500"
+                                  : m.tone === "end"
+                                    ? "bg-rose-500"
+                                    : m.tone === "solution"
+                                      ? "bg-emerald-600"
+                                      : "bg-blue-500/80",
+                              )}
+                            >
+                              {m.label}
+                            </span>
+                            <span
+                              className={cn(
+                                "h-0 flex-1 border-t-2",
+                                m.tone === "active"
+                                  ? "border-amber-500"
+                                  : m.tone === "end"
+                                    ? "border-dashed border-rose-500"
+                                    : m.tone === "solution"
+                                      ? "border-dotted border-emerald-600"
+                                      : "border-dashed border-blue-400/70",
+                              )}
+                            />
+                          </div>
+                        );
+                      })}
+
+                      {hover && hover.page === pageNum && !drag && hoverLabel && (
+                        <div
+                          aria-hidden
+                          className="pointer-events-none absolute left-0 right-0 z-20 flex items-center"
+                          style={{ top: `${hover.y}%` }}
+                        >
+                          <span className="-translate-y-1/2 rounded-r-md bg-slate-900/85 px-1.5 py-0.5 text-[10px] font-black text-white shadow">
+                            {typeof hoverLabel === "function" ? hoverLabel(hover.mods) : hoverLabel}
                           </span>
-                          <span
-                            className={cn(
-                              "h-0 flex-1 border-t-2",
-                              m.tone === "active"
-                                ? "border-amber-500"
-                                : m.tone === "end"
-                                  ? "border-dashed border-rose-500"
-                                  : "border-dashed border-blue-400/70",
-                            )}
-                          />
-                        </button>
-                      ))}
+                          <span className="h-0 flex-1 border-t-2 border-slate-900/70" />
+                        </div>
+                      )}
 
                       {showTarget && (
                         <div

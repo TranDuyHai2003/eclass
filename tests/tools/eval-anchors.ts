@@ -16,6 +16,7 @@ import {
   analyzePdf,
   buildAutoAnchors,
   comparePoints,
+  parseSolutionAnchors,
   resolveRegion,
   regionSegments,
   type PdfAnalysis,
@@ -29,6 +30,8 @@ const opt = (name: string) => {
 const LIMIT = Number(opt("--limit") ?? 200);
 const ONLY = opt("--test");
 const JSON_OUT = opt("--json");
+/** Dùng mốc đã lưu trong DB (thầy lưu / OCR hàng loạt) khi có, thay vì chỉ đo cắt tự động */
+const USE_SAVED = args.includes("--saved");
 const CACHE = path.join(os.homedir(), ".cache", "eclass-anchor-eval");
 fs.mkdirSync(CACHE, { recursive: true });
 
@@ -79,6 +82,7 @@ async function main() {
       id: true,
       title: true,
       explanation: true,
+      solutionAnchors: true,
       sections: { orderBy: { position: "asc" }, select: { questions: { orderBy: { position: "asc" }, select: { id: true } } } },
     },
     take: LIMIT,
@@ -107,7 +111,8 @@ async function main() {
       const pdf = await getDocument({ data, isEvalSupported: false, useSystemFonts: true, verbosity: 0 }).promise;
       const analysis = await analyzePdf(pdf);
       await pdf.destroy();
-      const anchors = buildAutoAnchors(analysis, sections, t.explanation!);
+      const saved = USE_SAVED ? parseSolutionAnchors(t.solutionAnchors, t.explanation) : null;
+      const anchors = saved ?? buildAutoAnchors(analysis, sections, t.explanation!);
       row.pages = analysis.numPages;
       row.markers = analysis.markers.length;
       row.runs = runsSummary(analysis);

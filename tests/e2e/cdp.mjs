@@ -40,6 +40,8 @@ export async function openBrowser({ baseUrl, token, width = 1366, height = 900 }
       pending.delete(m.id);
     }
     if (m.method === "Runtime.exceptionThrown") errors.push(m.params.exceptionDetails.exception?.description?.split("\n")[0]);
+    // Hộp thoại (vd "Rời trang khi chưa lưu?") chặn mọi lệnh khác → tự đồng ý để test không treo
+    if (m.method === "Page.javascriptDialogOpening") ws.send(JSON.stringify({ id: ++id, method: "Page.handleJavaScriptDialog", params: { accept: true } }));
   };
   const send = (method, params = {}) =>
     new Promise((r) => {
@@ -121,6 +123,34 @@ export async function openBrowser({ baseUrl, token, width = 1366, height = 900 }
       await sleep(400);
     },
     text: () => ev("return document.body.innerText"),
+    /** Bấm chuột thật tại toạ độ màn hình (kèm Shift/Alt/Ctrl) — để thử các thao tác có phím bổ trợ */
+    async mouseClick(x, y, { shift = false, alt = false, ctrl = false } = {}) {
+      const modifiers = (alt ? 1 : 0) | (ctrl ? 2 : 0) | (shift ? 8 : 0);
+      await send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, modifiers });
+      await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1, modifiers });
+      await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1, modifiers });
+      await sleep(400);
+    },
+    /** Kéo chuột từ (x1,y1) tới (x2,y2) */
+    async mouseDrag(x1, y1, x2, y2, steps = 8) {
+      await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: x1, y: y1 });
+      await send("Input.dispatchMouseEvent", { type: "mousePressed", x: x1, y: y1, button: "left", clickCount: 1 });
+      for (let i = 1; i <= steps; i++) {
+        await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: x1 + ((x2 - x1) * i) / steps, y: y1 + ((y2 - y1) * i) / steps, button: "left", buttons: 1 });
+        await sleep(30);
+      }
+      await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: x2, y: y2, button: "left", clickCount: 1 });
+      await sleep(400);
+    },
+    /** Gõ phím (vd "z" với ctrl:true → Ctrl+Z) */
+    async press(key, { ctrl = false, shift = false } = {}) {
+      const modifiers = (ctrl ? 2 : 0) | (shift ? 8 : 0);
+      const code = key.length === 1 ? "Key" + key.toUpperCase() : key;
+      const vk = key.length === 1 ? key.toUpperCase().charCodeAt(0) : { ArrowDown: 40, ArrowUp: 38, Escape: 27 }[key];
+      await send("Input.dispatchKeyEvent", { type: "keyDown", key, code, modifiers, windowsVirtualKeyCode: vk });
+      await send("Input.dispatchKeyEvent", { type: "keyUp", key, code, modifiers, windowsVirtualKeyCode: vk });
+      await sleep(400);
+    },
     /** Phần tử tràn ra ngoài màn hình (không tính phần nằm trong khung cuộn ngang) */
     layoutProblems: () =>
       ev(`

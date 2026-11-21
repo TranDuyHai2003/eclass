@@ -153,8 +153,41 @@ export async function analyzePdf(pdf: PDFDocumentProxy): Promise<PdfAnalysis> {
     pages.push(lines);
   }
 
+  return analyzeTextLines(pages);
+}
+
+/** Một dòng chữ đã định vị (từ lớp chữ của PDF hoặc từ OCR), toạ độ theo % trang */
+export interface PositionedLine {
+  top: number;
+  bottom: number;
+  x0: number;
+  x1: number;
+  text: string;
+}
+
+/** Bỏ dấu tiếng Việt (OCR hay rớt/nhầm dấu) — chỉ dùng để so khớp mẫu */
+export function foldVietnamese(text: string) {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đĐ]/g, (c) => (c === "đ" ? "d" : "D"))
+    .replace(/Ð/g, "D");
+}
+
+/**
+ * Phân tích từ danh sách dòng của từng trang. `fold = true` (kết quả OCR): so khớp trên chữ đã bỏ dấu.
+ */
+export function analyzeTextLines(pageLines: PositionedLine[][], opts: { fold?: boolean } = {}): PdfAnalysis {
+  const pages: TextLine[][] = pageLines.map((lines) =>
+    lines
+      .map((l) => {
+        const text = opts.fold ? foldVietnamese(l.text) : l.text;
+        return { ...l, text, key: lineKey(text) };
+      })
+      .sort((a, b) => a.top - b.top),
+  );
   return {
-    numPages: pdf.numPages,
+    numPages: pages.length,
     markers: findMarkers(pages),
     layout: detectLayout(pages),
     solutionMarks: findSolutionMarks(pages),
@@ -165,11 +198,11 @@ export async function analyzePdf(pdf: PDFDocumentProxy): Promise<PdfAnalysis> {
 
 // "Dạng 3: PHỦ ĐỊNH ...", "Phần 2. Đúng sai", "Phần II: Trắc nghiệm đúng sai", "Kiểu 1: ...", "DẠNG 1: ..."
 // (kể cả biểu tượng phía trước)
-const HEADING_REGEX = /^[^\p{L}\d]{0,4}(dạng|phần|kiểu|chương)\s*(\d{1,2}|[IVX]{1,4})\s*[:.]/iu;
+const HEADING_REGEX = /^[^\p{L}\d]{0,4}(dạng|dang|phần|phan|kiểu|kieu|chương|chuong)\s*(\d{1,2}|[IVX]{1,4})\s*[:.]/iu;
 // "II. TRẮC NGHIỆM ĐÚNG SAI" — số La Mã đầu dòng + chữ in hoa (không nhầm với "I." trong lời giải)
 const ROMAN_HEADING_REGEX = /^[^\p{L}\d]{0,4}[IVX]{1,4}\s*[.:]\s*\p{Lu}{2,}[\p{Lu}\s,–-]*$/u;
 // "--- HẾT ---", "HẾT", "BẢNG ĐÁP ÁN", "ĐÁP ÁN" đứng riêng một dòng → kết thúc câu cuối
-const END_MARK_REGEX = /^[\s\-–—_.*=]*(hết|bảng đáp án|đáp án)[\s\-–—_.*=:]*$/iu;
+const END_MARK_REGEX = /^[\s\-–—_.*=]*(hết|het|bảng đáp án|bang dap an|đáp án|dap an)[\s\-–—_.*=:]*$/iu;
 
 export function isHeadingLine(text: string) {
   const t = text.trim();
@@ -191,12 +224,12 @@ function findHeadings(pages: TextLine[][]): PdfPoint[] {
 /** Dòng chỉ gồm tiêu đề "Lời giải" / "Hướng dẫn giải" / "Bài giải" (có thể kèm biểu tượng phía trước). */
 // Ví dụ: "Lời giải", "✎ Lời giải", "Lời giải (C)", "Lời giải: Chọn A", "Hướng dẫn giải"
 const SOLUTION_HEADING_REGEX =
-  /^[^\p{L}\d]{0,4}(lời giải( chi tiết)?|hướng dẫn giải|bài giải|đáp án chi tiết)\s*(\([^)]{0,15}\))?\s*[:.]?\s*(chọn\s*[a-d]\s*\.?)?\s*$/iu;
+  /^[^\p{L}\d]{0,4}(lời giải( chi tiết)?|loi giai( chi tiet)?|hướng dẫn giải|huong dan giai|bài giải|bai giai|đáp án chi tiết|dap an chi tiet)\s*(\([^)]{0,15}\))?\s*[:.]?\s*((chọn|chon)\s*[a-d]\s*\.?)?\s*$/iu;
 
 // Dòng đáp án ghi thẳng: "Chọn B", "Chọn đáp án: C", "Đáp án D (Lừa sang B)", "Đáp án đúng là A"
 // (chữ A–D phải đứng riêng → không khớp "Chọn khẳng định ...", "Đáp án dưới đây ...")
 const ANSWER_LINE_REGEX =
-  /^[^\p{L}\d]{0,4}(chọn(\s*đáp án)?|đáp án(\s*đúng)?(\s*là)?)\s*[:.]?\s*[A-D](?![\p{L}\d])/iu;
+  /^[^\p{L}\d]{0,4}(chọn(\s*đáp án)?|chon(\s*dap an)?|đáp án(\s*đúng)?(\s*là)?|dap an(\s*dung)?(\s*la)?)\s*[:.]?\s*[A-D](?![\p{L}\d])/iu;
 
 function findSolutionMarks(pages: TextLine[][]): PdfPoint[] {
   const marks: PdfPoint[] = [];

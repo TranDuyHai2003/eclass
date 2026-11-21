@@ -14,9 +14,12 @@ Dùng test runner có sẵn của Node (`node:test`) cùng `ts-node`, không c�
 | `points/streak.test.ts` | Chuỗi tuần, thẻ giữ chuỗi, mốc thưởng, kỷ lục |
 | `points/redemption.test.ts` | Ai thấy và đổi được quà nào, số dư, kho, giới hạn tháng, bấm đồng thời, huỷ / từ chối / trao / hết hạn |
 | `points/manual.test.ts` | Thầy thưởng và trừ điểm, giới hạn ngày, bỏ qua tài khoản không hợp lệ |
+| `anchors/matching.test.ts` | Bộ ghép nhãn câu ↔ câu hỏi: dãy số tăng dài nhất, nhãn khuyết/lạc, số trần, không ghép xuyên phần, Đúng/Sai 4 câu/nhãn, tiêu đề Phần I/II |
 | `points/queries.test.ts` | Dữ liệu trang Điểm thưởng, dải điểm trang chủ, màn kết quả, trang quản lý của thầy |
 
 ## Test giao diện — `npm run test:e2e`
+
+Gồm hai script: `points.e2e.mjs` (Điểm thưởng) và `anchor-editor.e2e.mjs` (công cụ cắt lời giải từng câu: bấm đặt mốc, Shift/Alt + bấm, kéo mốc, hoàn tác, Ctrl+S lưu, điện thoại).
 
 Chạy trên Chrome headless với server thật:
 
@@ -36,3 +39,10 @@ Script cũng kiểm tra:
 Có thể đặt thêm:
 - `CHROME_PATH`: đường dẫn tới Chrome, nếu không tự tìm thấy.
 - `E2E_SHOTS`: thư mục lưu ảnh chụp.
+
+## Đo chất lượng cắt câu tự động
+
+```bash
+node --no-experimental-strip-types -r ./tests/setup/register.cjs tests/tools/eval-anchors.ts [--json out.json]
+```
+Chạy bộ cắt câu trên mọi đề có PDF lời giải trong DB local, rồi báo tỉ lệ câu cắt được, các vùng bất thường và danh sách đề tệ nhất. Chạy trước và sau mỗi lần sửa thuật toán để chắc không đề nào bị giảm.
