@@ -487,6 +487,29 @@ h6 {
     border-bottom: 4px solid #8a5a24;
     box-shadow: 0 4px 0 0 #6b4418;
   }
+  /* Cả tiệm là một khung gỗ: biển gỗ (dính trên khi cuộn) + mái hiên + gian hàng sọc kem.
+     Điện thoại: tràn sát mép như cũ; từ 640px: khung bo góc nằm giữa vùng nội dung. */
+  .shop-frame { overflow: clip; }
+  @media (min-width: 640px) {
+    .shop-frame {
+      border: 4px solid #8a5a24;
+      border-radius: 28px;
+      box-shadow: 0 6px 0 0 #6b4418, 0 22px 44px -18px rgba(91, 61, 30, 0.45);
+      background: #f6efe3;
+    }
+    .shop-frame > .shop-wood { box-shadow: none; }
+  }
+  .shop-awning {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 24px;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(90deg, #e2503a 0 34px, #fff3dc 34px 68px) 0 0 / 100% 9px no-repeat,
+      radial-gradient(circle at 17px 8px, #e2503a 0 15.5px, transparent 16px) 0 0 / 68px 24px repeat-x,
+      radial-gradient(circle at 51px 8px, #fff3dc 0 15.5px, transparent 16px) 0 0 / 68px 24px repeat-x;
+    filter: drop-shadow(0 2px 0 #8a5a24) drop-shadow(0 4px 3px rgba(91, 61, 30, 0.18));
+  }
   .shop-card {
     border: 2.5px solid #5b3d1e;
     border-radius: 1.25rem;

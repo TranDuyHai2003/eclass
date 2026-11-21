@@ -21,7 +21,6 @@ import { Chibi } from "@/components/avatar/Chibi";
 import { PetSvg } from "@/components/avatar/PetSvg";
 import { Confetti } from "@/components/points/Confetti";
 import { CoinBurst } from "@/components/game/CoinBurst";
-import { SoundToggle } from "@/components/game/SoundToggle";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ProductCard } from "./ProductCard";
 import { ScratchCodeModal } from "./ScratchCodeModal";
@@ -203,13 +202,13 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   const affordable = (p: Item["price"]) => (p && "xu" in p ? wallet.balance >= p.xu : p ? wallet.gems >= p.gem : false);
 
   return (
-    <div className="shop-font -mx-4 -my-5 flex min-h-[calc(100vh-4rem)] flex-col sm:-mx-6 sm:-my-6 lg:-mx-8" data-celebrated={celebrated} data-weather={weather}>
+    <div className="shop-font shop-frame -mx-4 -my-5 flex min-h-[calc(100vh-3.5rem)] flex-col sm:mx-auto sm:my-0 sm:min-h-[calc(100vh-7rem)] sm:max-w-[1280px]" data-testid="shop-frame" data-celebrated={celebrated} data-weather={weather}>
       <Confetti burst={celebrated} />
       <CoinBurst burst={burst} />
       <WeatherLayer weather={weather} />
 
       {/* ===== Thanh gỗ ===== */}
-      <div className="shop-wood sticky top-[60px] z-30 px-3 py-2 sm:px-6">
+      <div className="shop-wood sticky top-14 z-30 px-3 py-2 sm:top-16 sm:px-5">
         <div className="mx-auto flex max-w-[1200px] items-center gap-2">
           <button type="button" title="Menu Tiệm Quà" data-testid="menu-open" onClick={() => { play("click"); setModal("menu"); }} className="btn-pill btn-pill-blue h-9 w-9 shrink-0 px-0" aria-label="Menu Tiệm Quà"><Store className="h-4 w-4" /></button>
           <button type="button" title="Túi đồ" data-testid="bag-open" onClick={() => { play("click"); setModal("bag"); }} className="btn-pill btn-pill-brown relative h-9 w-9 shrink-0 px-0" aria-label="Túi đồ">
@@ -219,7 +218,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           <h1 className="min-w-0 flex-1 truncate text-center text-base font-black text-[#3b2a14] sm:text-xl" data-testid="shop-title">Tiệm Quà Học Đường 🐾</h1>
           <span className="btn-pill hidden h-9 px-2.5 text-xs sm:inline-flex" data-testid="hud-balance">🪙 {wallet.balance.toLocaleString("vi-VN")} <span className="text-[10px] text-[#9a7a4a]">Xu</span></span>
           <span className="btn-pill hidden h-9 px-2.5 text-xs sm:inline-flex" data-testid="hud-gems">💎 {wallet.gems} <span className="text-[10px] text-[#9a7a4a]">KC</span></span>
-          <SoundToggle className="hidden sm:inline-flex" />
           <button type="button" data-testid="tasks-open" onClick={() => { play("click"); setModal("tasks"); }} className="btn-pill btn-pill-yellow btn-shine relative h-9 shrink-0 px-3 text-xs">
             <span aria-hidden className="sparkle -left-1 -top-1" /><span aria-hidden className="sparkle sparkle-2 -right-1 top-1" />
             📝 Nộp Bài +{todoTotal > 0 && <span className="ml-1 rounded-full bg-[#5b3d1e] px-1.5 text-[10px] text-white">{todoTotal}</span>}
@@ -227,7 +225,9 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         </div>
       </div>
 
-      <div className="shop-stripes flex-1 px-3 py-4 sm:px-6">
+      <div className="shop-stripes relative flex-1 px-3 pb-5 pt-8 sm:px-5 sm:pt-9">
+        {/* Mái hiên sọc nối biển gỗ với gian hàng */}
+        <div aria-hidden className="shop-awning" />
         <div className="mx-auto max-w-[1200px] space-y-4">
           {/* ===== Hồ sơ + mèo ===== */}
           <section className="shop-card grid grid-cols-1 gap-3 p-3 sm:p-4 lg:grid-cols-[minmax(0,1fr)_320px]" data-testid="shop-hud">
