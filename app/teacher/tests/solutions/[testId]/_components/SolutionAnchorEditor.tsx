@@ -204,8 +204,9 @@ export default function SolutionAnchorEditor({
       try {
         let result = await analyzePdfCached(pdf);
         let method: "text" | "ocr" = "text";
-        // File lời giải là ảnh (không có lớp chữ) → dùng kết quả OCR đã có trên máy này, nếu chưa thì mời thầy chạy OCR
-        if (await looksImageOnly(pdf).catch(() => false)) {
+        // File lời giải là ảnh (không có lớp chữ), hoặc có chữ nhưng câu hỏi là ảnh dán vào (Word) nên không thấy nhãn nào
+        // → dùng kết quả OCR đã có trên máy này, nếu chưa thì mời thầy chạy OCR
+        if (result.markers.length === 0 || (await looksImageOnly(pdf).catch(() => false))) {
           setImageOnly(true);
           const cached = getCachedOcr(pdf);
           if (cached) {
@@ -690,7 +691,7 @@ export default function SolutionAnchorEditor({
         <div className="flex flex-wrap items-center gap-2 border-b border-violet-200 bg-violet-50 px-4 py-2 text-xs font-bold text-violet-800" data-testid="ocr-banner">
           <ScanText className="h-4 w-4 shrink-0" />
           <span className="min-w-0 flex-1">
-            File lời giải là <b>ảnh</b> (không có lớp chữ) nên không dò được nhãn câu. Bấm <b>Nhận dạng chữ</b> để máy tự đọc nhãn
+            Không tìm thấy nhãn câu trong lớp chữ của file (file chụp/in thành <b>ảnh</b>, hoặc câu hỏi là ảnh dán vào). Bấm <b>Nhận dạng chữ</b> để máy tự đọc nhãn
             “Câu/TDHT” và cắt — khoảng 2–4 giây/trang, chỉ cần làm một lần rồi Lưu.
           </span>
           <button type="button" onClick={runOcr} disabled={!pdfRef.current} className="btn-3d btn-3d-blue px-3 py-1.5 text-xs">

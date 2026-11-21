@@ -1,9 +1,10 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { ANALYSIS_VERSION, analyzeTextLines, type PdfAnalysis, type PositionedLine } from "@/lib/pdf-question-anchors";
+import { analyzeTextLines, type PdfAnalysis, type PositionedLine } from "@/lib/pdf-question-anchors";
 
 // Chỉ dùng ở client (cần canvas + Web Worker). Chỉ nạp ở công cụ cắt câu của giáo viên.
 
-const CACHE_PREFIX = `pdf-ocr:v${ANALYSIS_VERSION}:`;
+// Lưu các dòng chữ đã nhận dạng (không lưu kết quả phân tích) → nâng thuật toán ghép câu không phải OCR lại
+const CACHE_PREFIX = "pdf-ocr-lines:v1:";
 /** Vẽ trang ở 2× (≈ 144 dpi) — đủ rõ cho tiếng Việt có dấu mà vẫn nhanh */
 const RENDER_SCALE = 2;
 
@@ -30,7 +31,9 @@ export function getCachedOcr(pdf: PDFDocumentProxy): PdfAnalysis | null {
   if (!fp) return null;
   try {
     const raw = localStorage.getItem(CACHE_PREFIX + fp);
-    return raw ? (JSON.parse(raw) as PdfAnalysis) : null;
+    if (!raw) return null;
+    const pages = JSON.parse(raw) as PositionedLine[][];
+    return Array.isArray(pages) ? analyzeTextLines(pages, { fold: true }) : null;
   } catch {
     return null;
   }
@@ -90,7 +93,7 @@ export async function analyzePdfWithOcr(
     const fp = pdf.fingerprints?.[0];
     if (fp) {
       try {
-        localStorage.setItem(CACHE_PREFIX + fp, JSON.stringify(analysis));
+        localStorage.setItem(CACHE_PREFIX + fp, JSON.stringify(pages));
       } catch {
         // đầy bộ nhớ / bị chặn — bỏ qua
       }

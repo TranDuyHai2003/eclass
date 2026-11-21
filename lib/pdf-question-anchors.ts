@@ -51,7 +51,7 @@ export interface AnchorItem extends PdfPoint {
 }
 
 /** Tăng khi đổi cách phân tích/ghép → bộ nhớ đệm phân tích trong trình duyệt tự làm mới */
-export const ANALYSIS_VERSION = 10;
+export const ANALYSIS_VERSION = 11;
 
 export interface SolutionAnchorsData {
   version: 1;
@@ -222,9 +222,9 @@ function findHeadings(pages: TextLine[][]): PdfPoint[] {
 }
 
 /** Dòng chỉ gồm tiêu đề "Lời giải" / "Hướng dẫn giải" / "Bài giải" (có thể kèm biểu tượng phía trước). */
-// Ví dụ: "Lời giải", "✎ Lời giải", "Lời giải (C)", "Lời giải: Chọn A", "Hướng dẫn giải"
+// Ví dụ: "Lời giải", "✎ Lời giải", "Lời giải (C)", "Lời giải: Chọn A", "Hướng dẫn giải", "Giải" (đứng riêng một dòng)
 const SOLUTION_HEADING_REGEX =
-  /^[^\p{L}\d]{0,4}(lời giải( chi tiết)?|loi giai( chi tiet)?|hướng dẫn giải|huong dan giai|bài giải|bai giai|đáp án chi tiết|dap an chi tiet)\s*(\([^)]{0,15}\))?\s*[:.]?\s*((chọn|chon)\s*[a-d]\s*\.?)?\s*$/iu;
+  /^[^\p{L}\d]{0,4}(lời giải( chi tiết)?|loi giai( chi tiet)?|hướng dẫn giải|huong dan giai|bài giải|bai giai|giải|giai|đáp án chi tiết|dap an chi tiet)\s*(\([^)]{0,15}\))?\s*[:.]?\s*((chọn|chon)\s*[a-d]\s*\.?)?\s*$/iu;
 
 // Dòng đáp án ghi thẳng: "Chọn B", "Chọn đáp án: C", "Đáp án D (Lừa sang B)", "Đáp án đúng là A"
 // (chữ A–D phải đứng riêng → không khớp "Chọn khẳng định ...", "Đáp án dưới đây ...")

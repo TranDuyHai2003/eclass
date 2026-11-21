@@ -54,13 +54,19 @@ for (const t of tests) {
   await b.goto(`/teacher/tests/solutions/${t.id}`, /Cắt lời giải từng câu/i);
   // Chờ phân tích xong rồi xem có phải file ảnh không
   let banner = false;
-  for (let i = 0; i < 40; i++) {
+  // Kiểm tra "file ảnh" chạy sau khi tải PDF (file lớn mất vài giây) → chờ thêm ~10 s sau khi phân tích xong
+  let analyzedAt = -1;
+  for (let i = 0; i < 90; i++) {
     banner = await b.ev(`return !!document.querySelector('[data-testid="ocr-banner"]')`);
     const analyzed = await b.ev(`return /\\d+\\/\\d+ câu/.test(document.querySelector('[data-testid="anchor-progress"]')?.innerText || "") && !document.body.innerText.includes("Đang phân tích")`);
-    if (banner || (analyzed && i > 6)) break;
+    if (analyzed && analyzedAt < 0) analyzedAt = i;
+    if (banner || (analyzedAt >= 0 && i - analyzedAt > 20)) break;
     await sleep(500);
   }
-  if (!banner) continue; // file có chữ → không cần OCR
+  if (!banner) {
+    console.log(`bỏ qua (PDF có chữ) · ${t.title?.slice(0, 50)} · ${t.id}`);
+    continue;
+  }
   const before = await b.ev(`return document.querySelector('[data-testid="anchor-progress"]')?.innerText`);
   const t0 = Date.now();
   await b.ev(`document.querySelector('[data-testid="ocr-run"]').click()`);

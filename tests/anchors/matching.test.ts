@@ -4,6 +4,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
+  analyzeTextLines,
   isHeadingLine,
   lisCoverageOk,
   longestIncreasingByNumber,
@@ -129,5 +130,21 @@ describe("Ranh giới (tiêu đề phần, kết thúc)", () => {
   test("không nhầm dòng lời giải / đáp án thường", () => {
     for (const t of ["I. Cho hàm số y = f(x) có đồ thị", "Đáp án đúng là A", "Phần lớn học sinh", "Hết thời gian thì nộp bài", "Chọn B"])
       assert.equal(isHeadingLine(t), false, t);
+  });
+});
+
+describe("Mốc tách lời giải", () => {
+  const line = (top: number, text: string) => ({ top, bottom: top + 2, x0: 10, x1: 90, text });
+  test("dòng chỉ có chữ 'Giải' (đề tổng ôn, OCR) là tiêu đề lời giải", () => {
+    const a = analyzeTextLines([[line(10, "Câu 1: Cho hàm số y = x ln x"), line(16, "A. 0. B. 1. C. e. D. e+1."), line(22, "Giải"), line(28, "Ta có y' = ln x + 1"), line(50, "Câu 2: Tính đạo hàm")]]);
+    assert.deepEqual((a.solutionMarks ?? []).map((m) => m.y), [21.4]);
+  });
+  test("bản OCR rớt dấu: 'Giai' / 'Giải:' cũng nhận", () => {
+    const a = analyzeTextLines([[line(10, "Cau 1: abc"), line(20, "Giai:"), line(50, "Cau 2: xyz"), line(60, "Giải.")]], { fold: true });
+    assert.equal((a.solutionMarks ?? []).length, 2);
+  });
+  test("không nhầm câu hỏi bắt đầu bằng 'Giải ...'", () => {
+    const a = analyzeTextLines([[line(10, "Câu 1: abc"), line(20, "Giải phương trình x^2 = 1"), line(30, "Giải bất phương trình sau")]]);
+    assert.equal((a.solutionMarks ?? []).length, 0);
   });
 });
