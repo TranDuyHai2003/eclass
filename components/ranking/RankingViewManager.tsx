@@ -103,25 +103,25 @@ export function RankingViewManager({ data, currentUserId }: RankingViewManagerPr
         <div className="flex flex-col gap-1 w-full sm:w-auto">
           {/* Line 1: Icon Swords on far left + HỆ THỐNG THỢ SĂN */}
           <div className="flex items-center gap-2">
-            <Swords className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-400 shrink-0" />
-            <h1 className="text-base sm:text-2xl lg:text-3xl font-black text-white tracking-tight uppercase">
+            <Swords className="w-6 h-6 sm:w-8 sm:h-8 text-blue-700 shrink-0" />
+            <h1 className="text-base sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight uppercase">
               HỆ THỐNG THỢ SĂN
             </h1>
           </div>
 
           {/* Line 2: DUNGEON LỚP HỌC · MÙA 2026-2027 + Info ! Button on the right */}
           <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="text-slate-300 font-bold text-xs sm:text-lg lg:text-xl font-mono">
+            <span className="text-slate-600 font-bold text-xs sm:text-lg lg:text-xl tabular-nums">
               DUNGEON LỚP HỌC · MÙA 2026-2027
             </span>
 
             {/* Info Button ! for Rank Rules Modal */}
             <button
               onClick={() => setIsGuideOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/60 text-cyan-300 hover:bg-cyan-900/90 hover:text-white hover:border-cyan-400 transition-all shadow-[0_0_12px_rgba(6,182,212,0.35)] text-xs font-black font-mono shrink-0"
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 hover:text-slate-900 hover:border-blue-300 transition-all text-xs font-black tabular-nums shrink-0"
               title="Xem quy tắc xếp hạng Thợ săn"
             >
-              <span className="w-4 h-4 rounded-full bg-cyan-400 text-slate-950 font-black text-xs flex items-center justify-center">!</span>
+              <span className="w-4 h-4 rounded-full bg-blue-500 text-white font-black text-xs flex items-center justify-center">!</span>
               <span className="text-[11px] sm:text-xs">Quy tắc Rank</span>
             </button>
           </div>
@@ -138,10 +138,10 @@ export function RankingViewManager({ data, currentUserId }: RankingViewManagerPr
       </div>
 
       {/* Slogan Banner */}
-      <div className="bg-[#0D121D]/90 border border-cyan-500/40 rounded-xl p-3 sm:p-4 text-cyan-200 text-xs sm:text-sm font-medium flex items-center gap-3 shadow-lg backdrop-blur-md">
+      <div className="bg-white border border-blue-200 rounded-xl p-3 sm:p-4 text-blue-700 text-xs sm:text-sm font-medium flex items-center gap-3 shadow-lg backdrop-blur-md">
         <span className="text-base sm:text-xl shrink-0">🎯</span>
         <p className="leading-relaxed">
-          <strong className="text-white font-bold text-xl">Không phải ai đạt điểm cao một lần cũng là người mạnh nhất</strong> — Rank thuộc về người chứng minh được năng lực của mình qua thời gian.
+          <strong className="text-slate-900 font-bold text-sm sm:text-lg">Không phải ai đạt điểm cao một lần cũng là người mạnh nhất</strong> — Rank thuộc về người chứng minh được năng lực của mình qua thời gian.
         </p>
       </div>
 

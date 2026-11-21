@@ -45,7 +45,7 @@ export default async function RankingPage() {
   }
 
   return (
-    <div className="page-shell min-h-screen bg-[#F8FBFF] text-slate-800">
+    <div className="page-shell min-h-screen bg-[#EBF3FF] text-slate-800">
       {/* Outer flex container: 100% full width, sidebar anchored directly to far left margin */}
       <div className="flex w-full min-h-[calc(100vh-4rem)]">
         {/* Left Sidebar - Standard HomeSidebar completely unchanged */}
@@ -55,21 +55,9 @@ export default async function RankingPage() {
           </div>
         </aside>
 
-        {/* Right Main Content Area - 100% Full-Bleed Dark Hunter System Theme Container */}
-        <main className="flex-1 min-w-0 bg-[#060911] text-slate-100 relative overflow-hidden min-h-[calc(100vh-4rem)] border-l border-slate-800/80 shadow-2xl pb-16">
-          {/* Grand Overall AI Artwork Background filling 100% of main column */}
-          <div
-            className="absolute inset-0 bg-cover bg-top opacity-85 transition-opacity duration-700 pointer-events-none"
-            style={{ backgroundImage: "url('/ranking-overall-bg.webp')" }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#060911]/30 via-[#060911]/65 to-[#060911]/90 pointer-events-none" />
-
-          {/* Ambient Glowing Rune Auras */}
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
-
-          {/* Ranking Content inside 100% full-bleed theme */}
-          <div className="relative z-10 px-0 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
+        {/* Nội dung chính: nền sáng đồng bộ các trang học sinh (Gemini góp ý: bỏ nền tối "RPG") */}
+        <main className="flex-1 min-w-0 pb-16">
+          <div className="px-0 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-6 max-w-[1600px]">
             <RankingViewManager data={rankingData} currentUserId={session.user.id || ""} />
           </div>
         </main>

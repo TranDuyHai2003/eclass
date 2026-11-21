@@ -33,14 +33,14 @@ export function ActionPanel({ studentsNeedingSupport = [], topProgressingStudent
   };
 
   return (
-    <section className="rounded-none sm:rounded-3xl border-y sm:border border-slate-800/80 bg-[#0D121D]/90 backdrop-blur-xl shadow-2xl p-4 sm:p-6 space-y-4 text-slate-100">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
-        <div className="flex items-center gap-1 p-1 bg-slate-950/80 rounded-2xl border border-slate-800">
+    <section className="rounded-none sm:rounded-3xl border-y sm:border border-slate-200 bg-white shadow-[0_4px_0_0_#e3ecff] p-4 sm:p-6 space-y-4 text-slate-900">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+        <div className="flex items-center gap-1 p-1 bg-slate-50 rounded-2xl border border-slate-200">
           <button
             onClick={() => switchTab("needSupport")}
             className={cn(
               "flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-black transition",
-              activeTab === "needSupport" ? "bg-rose-600 text-white shadow-md" : "text-slate-400 hover:text-white",
+              activeTab === "needSupport" ? "bg-rose-600 text-white shadow-md" : "text-slate-500 hover:text-slate-900",
             )}
           >
             <ShieldAlert className="w-4 h-4" />
@@ -50,18 +50,18 @@ export function ActionPanel({ studentsNeedingSupport = [], topProgressingStudent
             onClick={() => switchTab("topProgress")}
             className={cn(
               "flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-black transition",
-              activeTab === "topProgress" ? "bg-amber-400 text-slate-950 shadow-md" : "text-slate-400 hover:text-white",
+              activeTab === "topProgress" ? "bg-amber-400 text-white shadow-md" : "text-slate-500 hover:text-slate-900",
             )}
           >
             <Sparkles className="w-4 h-4" />
             Bứt phá ({topProgressingStudents.length})
           </button>
         </div>
-        <span className="text-xs font-bold text-slate-400">Bảng hành động cho giáo viên</span>
+        <span className="text-xs font-bold text-slate-500">Bảng hành động cho giáo viên</span>
       </div>
 
       {shown.length === 0 ? (
-        <div className="p-6 text-center text-sm font-bold text-slate-300 bg-slate-950/50 border border-slate-800 rounded-2xl">
+        <div className="p-6 text-center text-sm font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-2xl">
           {activeTab === "needSupport"
             ? "🎉 Không có học sinh nào thuộc diện báo động."
             : "🚀 Chưa có dữ liệu tăng hạng (cần dữ liệu xếp hạng tuần trước để so sánh)."}
@@ -72,18 +72,18 @@ export function ActionPanel({ studentsNeedingSupport = [], topProgressingStudent
             const score = num(item.avgScore, item.currentScore, item.score);
             if (activeTab === "needSupport") {
               return (
-                <div key={item.id || idx} className="bg-rose-500/[0.07] border border-rose-500/30 rounded-2xl p-3.5 flex items-start gap-3">
-                  <div className="p-2 bg-rose-500/15 text-rose-300 rounded-xl shrink-0">
+                <div key={item.id || idx} className="bg-rose-500/[0.07] border border-rose-200 rounded-2xl p-3.5 flex items-start gap-3">
+                  <div className="p-2 bg-rose-50 text-rose-600 rounded-xl shrink-0">
                     <AlertTriangle className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <div className="font-bold text-slate-100 text-sm flex flex-wrap items-center gap-2">
+                    <div className="font-bold text-slate-900 text-sm flex flex-wrap items-center gap-2">
                       <span className="truncate">{item.name || "Học sinh"}</span>
                       {score !== null && (
-                        <span className="text-xs font-mono font-black text-rose-200 bg-rose-500/20 px-2 py-0.5 rounded-md">{score.toFixed(1)}đ</span>
+                        <span className="text-xs tabular-nums font-black text-rose-600 bg-rose-100 px-2 py-0.5 rounded-md">{score.toFixed(1)}đ</span>
                       )}
                     </div>
-                    <p className="text-xs text-rose-200/80 font-medium mt-0.5">{item.reason || "Cần theo dõi và hỗ trợ làm bài"}</p>
+                    <p className="text-xs text-rose-600 font-medium mt-0.5">{item.reason || "Cần theo dõi và hỗ trợ làm bài"}</p>
                   </div>
                 </div>
               );
@@ -91,21 +91,21 @@ export function ActionPanel({ studentsNeedingSupport = [], topProgressingStudent
             const boost = num(item.scoreBoost, item.scoreGrowth);
             const rankUp = num(item.rankIncreased, item.rankChange);
             return (
-              <div key={item.id || idx} className="bg-amber-500/[0.07] border border-amber-500/30 rounded-2xl p-3.5 flex items-start gap-3">
-                <div className="p-2 bg-amber-500/15 text-amber-300 rounded-xl shrink-0">
+              <div key={item.id || idx} className="bg-amber-500/[0.07] border border-amber-200 rounded-2xl p-3.5 flex items-start gap-3">
+                <div className="p-2 bg-amber-50 text-amber-700 rounded-xl shrink-0">
                   <TrendingUp className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <div className="font-bold text-slate-100 text-sm flex flex-wrap items-center gap-2">
+                  <div className="font-bold text-slate-900 text-sm flex flex-wrap items-center gap-2">
                     <span className="truncate">{item.name || "Học sinh"}</span>
                     {score !== null && (
-                      <span className="text-xs font-mono font-black text-amber-200 bg-amber-500/20 px-2 py-0.5 rounded-md">{score.toFixed(1)}đ</span>
+                      <span className="text-xs tabular-nums font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">{score.toFixed(1)}đ</span>
                     )}
                   </div>
-                  <p className="text-xs text-amber-100/80 font-medium mt-0.5">
-                    {rankUp !== null && <>Thăng <strong className="text-emerald-300">+{rankUp} bậc</strong></>}
+                  <p className="text-xs text-amber-700 font-medium mt-0.5">
+                    {rankUp !== null && <>Thăng <strong className="text-emerald-700">+{rankUp} bậc</strong></>}
                     {rankUp !== null && boost !== null && " · "}
-                    {boost !== null && <>Tăng <strong className="text-emerald-300">+{boost.toFixed(1)}đ</strong></>}
+                    {boost !== null && <>Tăng <strong className="text-emerald-700">+{boost.toFixed(1)}đ</strong></>}
                   </p>
                 </div>
               </div>
@@ -118,7 +118,7 @@ export function ActionPanel({ studentsNeedingSupport = [], topProgressingStudent
         <div className="flex justify-center">
           <button
             onClick={() => setVisible((n) => n + PAGE_SIZE)}
-            className="rounded-xl border border-slate-700 bg-slate-950/60 px-5 py-2 text-xs font-black text-slate-200 hover:border-slate-500"
+            className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-2 text-xs font-black text-slate-800 hover:border-slate-300"
           >
             Xem thêm {Math.min(PAGE_SIZE, list.length - visible)} (còn {list.length - visible})
           </button>

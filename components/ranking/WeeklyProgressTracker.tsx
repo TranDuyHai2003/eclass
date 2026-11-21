@@ -25,12 +25,12 @@ export function WeeklyProgressTracker({
 
   if (status === "NO_DATA" || sessions.length === 0) {
     return (
-      <div className="rounded-none sm:rounded-2xl bg-[#0D121D]/90 backdrop-blur-xl border-y sm:border border-slate-800 p-6 text-center text-slate-400 space-y-2">
-        <Castle className="w-8 h-8 text-cyan-400 mx-auto opacity-60" />
-        <h3 className="text-base font-extrabold text-slate-200 uppercase tracking-widest">
+      <div className="rounded-none sm:rounded-2xl bg-white border-y sm:border border-slate-200 p-6 text-center text-slate-500 space-y-2">
+        <Castle className="w-8 h-8 text-blue-700 mx-auto opacity-60" />
+        <h3 className="text-base font-extrabold text-slate-800 uppercase tracking-widest">
           4 BÀI GẦN NHẤT CỦA BẠN
         </h3>
-        <p className="text-xs font-semibold text-slate-400">
+        <p className="text-xs font-semibold text-slate-500">
           Chưa có dữ liệu tiến bộ tuần này. Hãy hoàn thành bài kiểm tra đầu tiên để bắt đầu!
         </p>
       </div>
@@ -38,37 +38,31 @@ export function WeeklyProgressTracker({
   }
 
   return (
-    <div className="rounded-none sm:rounded-2xl bg-[#0D121D]/90 backdrop-blur-xl border-y sm:border border-slate-800/80 p-3.5 sm:p-6 shadow-2xl text-slate-100 space-y-4 relative overflow-hidden group w-full min-w-0 max-w-full">
-      {/* Background AI Artwork Backdrop */}
-      <div
-        className="absolute inset-0 bg-cover bg-center opacity-75 transition-opacity duration-500 pointer-events-none"
-        style={{ backgroundImage: "url('/dungeon-floors-bg.webp')" }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0D121D] via-[#0D121D]/70 to-[#0D121D]/50 pointer-events-none" />
+    <div className="rounded-none sm:rounded-2xl bg-white border-y sm:border border-slate-200 p-3.5 sm:p-6 shadow-[0_4px_0_0_#e3ecff] text-slate-900 space-y-4 relative overflow-hidden group w-full min-w-0 max-w-full">
 
       {/* Header with Weekly Progress Badge */}
       <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="font-black text-sm sm:text-lg lg:text-xl tracking-widest text-slate-200 uppercase flex items-center gap-2">
-            <Castle className="w-5 h-5 text-cyan-400 shrink-0" />
+          <h3 className="font-black text-sm sm:text-lg lg:text-xl tracking-widest text-slate-800 uppercase flex items-center gap-2">
+            <Castle className="w-5 h-5 text-blue-700 shrink-0" />
             <span>4 BÀI GẦN NHẤT CỦA BẠN</span>
           </h3>
-          <p className="text-xs sm:text-sm text-slate-400 font-mono mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 tabular-nums mt-0.5">
             Quỹ đạo thay đổi vị trí tương đối và điểm số của bạn qua 4 bài thi gần nhất
           </p>
         </div>
 
         {/* Weekly Growth Badge */}
         {weeklyGrowth !== null ? (
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-emerald-950/90 border border-emerald-500/60 text-xs sm:text-sm font-black text-emerald-300 font-mono shadow-lg shrink-0">
-            <TrendingUp className="w-4 h-4 text-emerald-400 animate-pulse" />
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-emerald-50 border border-emerald-200 text-xs sm:text-sm font-black text-emerald-700 tabular-nums shadow-lg shrink-0">
+            <TrendingUp className="w-4 h-4 text-emerald-700 animate-pulse" />
             <span>
               {weeklyGrowth >= 0 ? `↑ +${weeklyGrowth}% TIẾN BỘ GẦN ĐÂY` : `↓ ${weeklyGrowth}% SO VỚI BÀI ĐẦU`}
             </span>
           </div>
         ) : (
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-cyan-950/90 border border-cyan-500/60 text-xs sm:text-sm font-black text-cyan-300 font-mono shadow-lg shrink-0">
-            <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-blue-50 border border-blue-200 text-xs sm:text-sm font-black text-blue-700 tabular-nums shadow-lg shrink-0">
+            <Sparkles className="w-4 h-4 text-blue-700 animate-pulse" />
             <span>ĐANG TÍCH LŨY ({completedCount}/{totalSessions} BUỔI)</span>
           </div>
         )}
@@ -86,17 +80,17 @@ export function WeeklyProgressTracker({
           const cardContent = (
             <div
               className={`rounded-xl p-4 sm:p-4.5 transition-all duration-300 border flex flex-col justify-between space-y-3 min-w-0 h-full ${
-                targetUrl ? "cursor-pointer hover:border-cyan-400/90 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(6,182,212,0.3)]" : ""
+                targetUrl ? "cursor-pointer hover:border-blue-300 hover:scale-[1.02] " : ""
               } ${isCurrent
-                ? "bg-[#091522] border-cyan-500/80 shadow-[0_0_15px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400/50"
+                ? "bg-blue-50 border-blue-200 ring-1 ring-blue-200"
                 : isCompleted
-                  ? "bg-[#080B12]/90 border-emerald-500/40 text-slate-200"
-                  : "bg-[#080B12]/80 border-slate-800/90 text-slate-400"
+                  ? "bg-slate-50 border-emerald-200 text-slate-800"
+                  : "bg-slate-50 border-slate-200 text-slate-500"
                 }`}
             >
               {/* Header: Session Title & Stage Icon */}
               <div className="flex items-start justify-between gap-2 min-w-0">
-                <span className="text-xs sm:text-base font-black tracking-wider uppercase text-slate-200 truncate group-hover:text-cyan-300 transition-colors" title={sess.sessionName}>
+                <span className="text-xs sm:text-sm font-black uppercase leading-snug text-slate-800 line-clamp-2 break-words group-hover:text-blue-700 transition-colors" title={sess.sessionName}>
                   {sess.sessionName}
                 </span>
 
@@ -104,23 +98,23 @@ export function WeeklyProgressTracker({
                   <span
                     className={`p-1.5 rounded-lg border flex items-center justify-center shrink-0 ${
                       sess.scoreDelta !== null && sess.scoreDelta < 0
-                        ? "bg-rose-950/80 border-rose-500/50 text-rose-400"
-                        : "bg-emerald-950/80 border-emerald-500/50 text-emerald-400"
+                        ? "bg-rose-50 border-rose-200 text-rose-600"
+                        : "bg-emerald-50 border-emerald-200 text-emerald-700"
                     }`}
                     title={sess.scoreDelta !== null && sess.scoreDelta < 0 ? "Điểm giảm" : "Điểm tăng"}
                   >
                     {sess.scoreDelta !== null && sess.scoreDelta < 0 ? (
-                      <TrendingDown className="w-4 h-4 text-rose-400" />
+                      <TrendingDown className="w-4 h-4 text-rose-600" />
                     ) : (
-                      <TrendingUp className="w-4 h-4 text-emerald-400" />
+                      <TrendingUp className="w-4 h-4 text-emerald-700" />
                     )}
                   </span>
                 ) : isCurrent ? (
-                  <span className="p-1.5 rounded-lg bg-cyan-950/80 border border-cyan-500/50 text-cyan-400 flex items-center justify-center shrink-0">
-                    <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
+                  <span className="p-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4 text-blue-700 animate-pulse" />
                   </span>
                 ) : (
-                  <span className="p-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-500 flex items-center justify-center shrink-0">
+                  <span className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 flex items-center justify-center shrink-0">
                     <Lock className="w-4 h-4 text-slate-500" />
                   </span>
                 )}
@@ -128,30 +122,30 @@ export function WeeklyProgressTracker({
 
               {/* Supremacy % Text & HigherThan Info */}
               <div className="space-y-1 min-w-0">
-                <div className="text-xs sm:text-lg font-mono text-cyan-300 font-black truncate">
+                <div className="text-xs sm:text-lg tabular-nums text-blue-700 font-black truncate">
                   {sess.positionPercentile !== null
                     ? `Top ${sess.positionPercentile}% toàn khóa`
                     : "Chưa nộp bài"}
                 </div>
                 {sess.higherThanPercent !== null && (
-                  <p className="text-[11px] sm:text-base text-slate-300 font-bold truncate">
+                  <p className="text-[11px] sm:text-base text-slate-600 font-bold truncate">
                     Cao hơn {sess.higherThanPercent}% bạn học
                   </p>
                 )}
               </div>
 
               {/* Footer: Rank & Score + Growth Indicator */}
-              <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-xs sm:text-base font-mono font-bold text-slate-400 min-w-0">
-                <span className={isCurrent ? "text-amber-400 font-black" : "text-slate-300"}>
+              <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs sm:text-base tabular-nums font-bold text-slate-500 min-w-0">
+                <span className={isCurrent ? "text-amber-700 font-black" : "text-slate-600"}>
                   {sess.rankText}
                 </span>
                 <div className="flex items-center gap-1 shrink-0">
-                  <span className="text-cyan-400 font-black">
+                  <span className="text-blue-700 font-black">
                     {sess.score !== null ? `${sess.score}đ` : "—"}
                   </span>
                   {sess.scoreDelta !== null && (
                     <span
-                      className={`text-[10px] sm:text-sm font-black ${sess.scoreDelta >= 0 ? "text-emerald-400" : "text-rose-400"
+                      className={`text-[10px] sm:text-sm font-black ${sess.scoreDelta >= 0 ? "text-emerald-700" : "text-rose-600"
                         }`}
                     >
                       ({sess.scoreDelta >= 0 ? `+${sess.scoreDelta}` : sess.scoreDelta}đ)
