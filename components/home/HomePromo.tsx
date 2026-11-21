@@ -47,9 +47,53 @@ const Unit = ({
   </div>
 );
 
-export function HomePromo() {
-  const finalDate = new Date("2027-06-11T08:00:00");
-  const { days, hours, minutes, seconds, isFinished } = useCountdown(finalDate);
+const EXAM_DATE = new Date("2027-06-11T08:00:00");
+
+/**
+ * Đếm ngược kỳ thi.
+ * - "banner": dải lớn (trang chủ khách / giáo viên)
+ * - "card": thẻ trắng gọn ở cột phải trang chủ học sinh — không tranh chỗ với thẻ chào
+ */
+export function HomePromo({ variant = "banner" }: { variant?: "banner" | "card" }) {
+  const { days, hours, minutes, seconds } = useCountdown(EXAM_DATE);
+
+  if (variant === "card") {
+    const units = [
+      { v: days, l: "Ngày" },
+      { v: hours, l: "Giờ" },
+      { v: minutes, l: "Phút" },
+      { v: seconds, l: "Giây" },
+    ];
+    return (
+      <div data-testid="exam-countdown" className="min-w-0 rounded-3xl border-2 border-blue-100 bg-white p-4 shadow-[0_4px_0_0_#dbeafe]">
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex min-w-0 items-center gap-2 text-sm font-black text-slate-900">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
+              <Timer className="h-4 w-4" />
+            </span>
+            <span className="truncate">Kỳ thi THPT 2027</span>
+          </p>
+          <span className="shrink-0 text-xs font-bold text-slate-400">11/06/2027</span>
+        </div>
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {units.map((u, i) => (
+            <div
+              key={u.l}
+              className={cn(
+                "flex min-w-0 flex-col items-center rounded-2xl py-2",
+                i === 0 ? "bg-blue-600 text-white shadow-[0_3px_0_0_#1e3a8a]" : "bg-blue-50 text-blue-700",
+              )}
+            >
+              <span suppressHydrationWarning className="text-xl font-black tabular-nums leading-tight sm:text-2xl">
+                {i === 0 ? u.v : u.v.toString().padStart(2, "0")}
+              </span>
+              <span className={cn("text-[11px] font-bold", i === 0 ? "text-blue-100" : "text-blue-500")}>{u.l}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full rounded-3xl overflow-hidden shadow-[0_6px_0_0_#1e3a8a] group transition-all">

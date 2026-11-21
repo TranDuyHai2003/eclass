@@ -14,6 +14,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
 
 export default async function CoursesPage({
   searchParams,
@@ -27,6 +28,29 @@ export default async function CoursesPage({
   const userLevel = session?.user && (session.user as any).level;
   const courses = await getCourses({ search: query });
 
+  // Tiến độ của học sinh trên từng khoá (thẻ khoá hiện thanh tiến độ)
+  const progressByCourse = new Map<string, number>();
+  if (session?.user?.id && session.user.role === "STUDENT") {
+    const lessonCourse = new Map<string, string>();
+    for (const c of courses) for (const ch of c.chapters ?? []) for (const l of ch.lessons ?? []) lessonCourse.set(l.id, c.id);
+    const done = lessonCourse.size
+      ? await prisma.progress.findMany({
+          where: { userId: session.user.id, isCompleted: true, lessonId: { in: [...lessonCourse.keys()] } },
+          select: { lessonId: true },
+        })
+      : [];
+    const doneCount = new Map<string, number>();
+    for (const d of done) {
+      const cid = lessonCourse.get(d.lessonId)!;
+      doneCount.set(cid, (doneCount.get(cid) ?? 0) + 1);
+    }
+    for (const c of courses) {
+      const total = (c.chapters ?? []).reduce((n, ch) => n + (ch.lessons?.length ?? 0), 0);
+      progressByCourse.set(c.id, total ? Math.round(((doneCount.get(c.id) ?? 0) / total) * 100) : 0);
+    }
+  }
+  const horizontal = courses.length > 0 && courses.length <= 2;
+
   return (
     <div className="page-shell min-h-screen bg-[#EBF3FF]">
       <div className="flex w-full min-h-[calc(100vh-4rem)]">
@@ -38,7 +62,7 @@ export default async function CoursesPage({
         </aside>
 
         {/* Right Content Area */}
-        <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 space-y-10 sm:space-y-14 max-w-[1600px]">
+        <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 space-y-8 max-w-[1600px]">
             {/* <div className="relative rounded-[3rem] overflow-hidden">
               <div className="absolute inset-0 bg-white shadow-xl shadow-slate-200/50 border border-slate-100" />
               <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-blue-50/50 to-transparent pointer-events-none" />
@@ -93,14 +117,14 @@ export default async function CoursesPage({
             </div> */}
 
             {/* 3. Courses Section */}
-            <div className="space-y-8">
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-blue-100 pb-3">
                 <div className="space-y-2">
-                  <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
                     <span className="w-2 h-8 bg-blue-600 rounded-full" />
-                    Lộ trình học tập
-                  </h2>
-                  <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em]">
+                    Khoá học
+                  </h1>
+                  <p className="text-slate-500 font-medium text-sm">
                     {query
                       ? `Tìm thấy ${courses.length} khóa học cho "${query}"`
                       : "Chọn mục tiêu của bạn và bắt đầu ngay"}
@@ -126,23 +150,24 @@ export default async function CoursesPage({
               </div>
 
               {/* Courses Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-10">
+              {/* 1–2 khoá: thẻ ngang lấp đủ chiều rộng; từ 3 khoá: lưới 3 cột */}
+              <div className={horizontal ? "grid grid-cols-1 2xl:grid-cols-2 gap-6" : "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6"}>
                 {courses.length === 0 ? (
                   <div className="col-span-full py-40 flex flex-col items-center justify-center bg-white rounded-[4rem] border border-dashed border-slate-200 shadow-inner space-y-8">
                     <div className="w-32 h-32 bg-slate-50 rounded-full flex items-center justify-center text-6xl animate-pulse">
                       🔭
                     </div>
                     <div className="text-center space-y-3 px-6">
-                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
+                      <h3 className="text-2xl font-black text-slate-900 tracking-tight">
                         Tìm kiếm không có kết quả
                       </h3>
-                      <p className="text-slate-400 font-medium uppercase text-[11px] tracking-[0.2em] max-w-xs mx-auto">
+                      <p className="text-slate-500 font-medium text-sm max-w-xs mx-auto">
                         Đừng lo, hãy thử sử dụng các từ khóa khác hoặc xóa bộ
                         lọc để xem toàn bộ danh mục nhé!
                       </p>
                       <Link
                         href="/courses"
-                        className="inline-flex mt-4 px-8 py-3 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-900 transition-all shadow-xl shadow-blue-200"
+                        className="btn-3d btn-3d-blue mt-4 px-6 py-3 text-sm"
                       >
                         Xem tất cả khóa học
                       </Link>
@@ -150,7 +175,12 @@ export default async function CoursesPage({
                   </div>
                 ) : (
                   courses.map((course) => (
-                    <CourseCard key={course.id} course={course} />
+                    <CourseCard
+                      key={course.id}
+                      course={course}
+                      progress={progressByCourse.get(course.id)}
+                      layout={horizontal ? "horizontal" : "vertical"}
+                    />
                   ))
                 )}
               </div>

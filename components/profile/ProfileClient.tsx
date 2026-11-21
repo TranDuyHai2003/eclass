@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { updateProfile } from "@/actions/user";
-import { Camera, Check, User, Mail, Sparkles, Loader2, RefreshCw, Upload, X } from "lucide-react";
+import { Camera, Check, User, Mail, Loader2, Upload, X, Lock, LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
 import axios from "axios";
 import { cn } from "@/lib/utils";
@@ -17,9 +17,17 @@ interface ProfileClientProps {
     email: string | null;
     image: string | null;
   };
+  /** Số liệu học tập (học sinh): bài đã học, điểm thưởng & cấp độ (null khi tắt Điểm thưởng) */
+  stats?: {
+    completedLessons: number;
+    points?: number | null;
+    level?: { icon: string; level: number; name: string } | null;
+  };
+  /** Khối thêm ở cột phải (vd thẻ đổi mật khẩu) */
+  children?: React.ReactNode;
 }
 
-export default function ProfileClient({ user }: ProfileClientProps) {
+export default function ProfileClient({ user, stats, children }: ProfileClientProps) {
   const router = useRouter();
   const [name, setName] = useState(user.name || "");
   const [image, setImage] = useState(user.image || "");
@@ -86,181 +94,178 @@ export default function ProfileClient({ user }: ProfileClientProps) {
     }
   };
 
+  const card = "bg-white rounded-3xl border-2 border-blue-100/80 shadow-[0_4px_0_0_#e3ecff]";
+  const labelClass = "text-xs font-bold text-slate-600 flex items-center gap-1.5";
+  const dirty = name.trim() !== (user.name || "").trim() || image !== (user.image || "");
+
   return (
-    <div className="card-surface bg-white rounded-[2.5rem] p-8 sm:p-10 space-y-8 shadow-md border border-slate-100/60">
-      {/* Header */}
-      <div className="space-y-2 border-b border-blue-50 pb-6">
-        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest border border-blue-100">
-          <Sparkles className="w-2.5 h-2.5 animate-pulse" />
-          Cá nhân
-        </div>
-        <h1 className="text-3xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter leading-none">
+    <div className="max-w-[1100px] mx-auto space-y-5">
+      <div className="space-y-1">
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+          <span className="w-2 h-8 bg-blue-600 rounded-full" />
           Hồ sơ của bạn
         </h1>
-        <p className="text-slate-500 font-medium uppercase text-xs tracking-widest">
-          Quản lý thông tin tài khoản, ảnh đại diện và tùy chọn cá nhân hóa của bạn.
-        </p>
+        <p className="text-slate-500 font-medium text-sm">Quản lý tên hiển thị, ảnh đại diện và mật khẩu.</p>
       </div>
 
-      {/* Profile Form Content */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        
-        {/* Left Side: Interactive Avatar Editor */}
-        <div className="md:col-span-4 flex flex-col items-center space-y-4">
-          <div className="relative group/avatar">
-            <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden bg-slate-50 ring-4 ring-white shadow-xl flex items-center justify-center border border-blue-100/50">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Cột trái: thẻ tóm tắt tài khoản */}
+        <aside data-testid="profile-summary" className={cn(card, "lg:col-span-4 p-5 sm:p-6 flex flex-col items-center text-center")}>
+          <div className="relative">
+            <div className="w-28 h-28 rounded-[2rem] overflow-hidden bg-slate-50 ring-4 ring-white shadow-lg border-2 border-blue-100">
               <Avatar className="w-full h-full rounded-none">
                 <AvatarImage src={image} className="object-cover" />
-                <AvatarFallback className="bg-gradient-to-br from-blue-600 to-orange-500 text-white text-3xl font-black rounded-none">
+                <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-500 text-white text-4xl font-black rounded-none">
                   {name?.[0]?.toUpperCase() || "T"}
                 </AvatarFallback>
               </Avatar>
             </div>
-            
-            {/* Hover overlay camera click */}
             <button
+              type="button"
               onClick={() => setShowAvatarSelector(!showAvatarSelector)}
-              className="absolute inset-0 bg-slate-900/60 rounded-[2.5rem] opacity-0 group-hover/avatar:opacity-100 transition-opacity flex flex-col items-center justify-center text-white space-y-1"
+              aria-label="Đổi ảnh đại diện"
+              className="absolute -bottom-1 -right-1 w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center border-4 border-white shadow-[0_3px_0_0_#1e3a8a] hover:bg-blue-500 transition-colors"
             >
-              <Camera className="w-6 h-6 animate-bounce" />
-              <span className="text-[9px] font-black uppercase tracking-widest">Đổi ảnh</span>
+              <Camera className="w-4 h-4" />
             </button>
           </div>
 
-          <button
-            onClick={() => setShowAvatarSelector(!showAvatarSelector)}
-            className="px-4 py-2 bg-slate-50 border border-slate-100 hover:border-blue-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-[#2563EB] transition-all flex items-center gap-2"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Thay đổi ảnh đại diện
-          </button>
-        </div>
+          <p className="mt-4 text-lg font-black text-slate-900 break-words max-w-full">{name || "Học sinh"}</p>
+          {stats?.level && (
+            <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-800 ring-1 ring-amber-200">
+              <span aria-hidden>{stats.level.icon}</span> Cấp {stats.level.level} · {stats.level.name}
+            </span>
+          )}
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500 max-w-full min-w-0">
+            <Mail className="w-4 h-4 shrink-0" />
+            <span className="truncate">{user.email || "Chưa có email"}</span>
+          </p>
 
-        {/* Right Side: Account Form */}
-        <div className="md:col-span-8 space-y-6">
-          {/* Avatar Selector Panel (Slide down inline) */}
-          {showAvatarSelector && (
-            <div className="p-5 bg-slate-50 rounded-[2rem] border border-slate-200/50 space-y-4 animate-in slide-in-from-top-4 duration-300">
-              <div className="flex justify-between items-center">
-                <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Thay đổi ảnh đại diện</h4>
-                <button 
-                  onClick={() => setShowAvatarSelector(false)}
-                  className="text-[9px] font-black uppercase tracking-widest text-[#2563EB] hover:underline"
-                >
-                  Đóng lại
-                </button>
+          {stats && (
+            <div className={cn("mt-5 grid w-full gap-2", stats.points !== undefined && stats.points !== null ? "grid-cols-2" : "grid-cols-1")}>
+              <div className="rounded-2xl bg-blue-50 px-3 py-2.5">
+                <p className="text-xl font-black text-blue-700 tabular-nums">{stats.completedLessons}</p>
+                <p className="text-xs font-bold text-blue-500">bài đã học</p>
               </div>
+              {stats.points !== undefined && stats.points !== null && (
+                <a href="/rewards" className="rounded-2xl bg-amber-50 px-3 py-2.5 hover:bg-amber-100 transition-colors">
+                  <p className="text-xl font-black text-amber-700 tabular-nums">⭐ {stats.points}</p>
+                  <p className="text-xs font-bold text-amber-600">điểm thưởng</p>
+                </a>
+              )}
+            </div>
+          )}
 
-              {/* Upload from Device Section */}
-              <div className="space-y-2">
+          <div className="mt-5 w-full border-t border-slate-100 pt-4">
+            <button
+              type="button"
+              onClick={async () => {
+                await signOut({ redirect: false });
+                window.location.href = "/login";
+              }}
+              className="inline-flex items-center justify-center gap-2 w-full h-10 rounded-2xl border-2 border-red-100 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Đăng xuất
+            </button>
+          </div>
+        </aside>
+
+        {/* Cột phải: thông tin + mật khẩu */}
+        <div className="lg:col-span-8 space-y-5 min-w-0">
+          <section className={cn(card, "p-5 sm:p-7 space-y-5")}>
+            <div className="space-y-1.5 border-b border-blue-50 pb-4">
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <User className="w-5 h-5 text-[#2563EB]" />
+                Thông tin cá nhân
+              </h2>
+              <p className="text-sm font-medium text-slate-500">
+                Bạn có thể tự đổi tên hiển thị và ảnh đại diện. Cần hỗ trợ tài khoản, hãy liên hệ giáo viên.
+              </p>
+            </div>
+
+            {showAvatarSelector && (
+              <div className="p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 space-y-3 animate-in slide-in-from-top-4 duration-300">
+                <div className="flex justify-between items-center gap-2">
+                  <h4 className="text-sm font-bold text-slate-900">Thay ảnh đại diện</h4>
+                  <button
+                    type="button"
+                    onClick={() => setShowAvatarSelector(false)}
+                    className="inline-flex items-center gap-1 text-sm font-bold text-[#2563EB] hover:underline"
+                  >
+                    <X className="w-4 h-4" /> Đóng
+                  </button>
+                </div>
                 <label className="block w-full cursor-pointer">
-                  <div className={cn(
-                    "flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-200 rounded-2xl bg-white hover:border-[#2563EB] hover:bg-blue-50/30 transition-all group",
-                    isUploadingAvatar && "opacity-50 cursor-not-allowed"
-                  )}>
+                  <div
+                    className={cn(
+                      "flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-200 rounded-2xl bg-white hover:border-[#2563EB] hover:bg-blue-50/30 transition-all group",
+                      isUploadingAvatar && "opacity-50 cursor-not-allowed",
+                    )}
+                  >
                     {isUploadingAvatar ? (
                       <Loader2 className="w-4 h-4 text-[#2563EB] animate-spin" />
                     ) : (
                       <Upload className="w-4 h-4 text-slate-400 group-hover:text-[#2563EB] transition-colors" />
                     )}
-                    <span className="text-xs font-bold text-slate-500 group-hover:text-[#2563EB] transition-colors">
-                      {isUploadingAvatar ? "Đang tải lên..." : "Chọn ảnh từ máy tính"}
+                    <span className="text-sm font-bold text-slate-500 group-hover:text-[#2563EB] transition-colors">
+                      {isUploadingAvatar ? "Đang tải lên..." : "Chọn ảnh từ máy"}
                     </span>
                   </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleAvatarUpload}
-                    disabled={isUploadingAvatar}
-                  />
+                  <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={isUploadingAvatar} />
                 </label>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Form Fields */}
-          <div className="grid grid-cols-1 gap-5">
-            {/* Full Name */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-[#2563EB]" />
-                Họ và tên học sinh
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-5 py-4 bg-slate-50 border border-slate-100 focus:bg-white focus:border-blue-100 rounded-2xl text-sm font-black text-slate-900 tracking-tight transition-all focus:outline-none uppercase"
-                placeholder="Nhập họ và tên của bạn..."
-              />
-            </div>
-
-            {/* Email (Read Only) */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-slate-400" />
-                Địa chỉ Email (Không thể thay đổi)
-              </label>
-              <div className="w-full px-5 py-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-500 tracking-tight select-none">
-                {user.email}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label htmlFor="profile-name" className={labelClass}>
+                  <User className="w-3.5 h-3.5 text-[#2563EB]" />
+                  Họ và tên
+                </label>
+                <input
+                  id="profile-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 focus:bg-white focus:border-blue-300 rounded-2xl text-sm font-bold text-slate-900 transition-all focus:outline-none"
+                  placeholder="Nhập họ và tên của bạn..."
+                />
+              </div>
+              <div className="space-y-2">
+                <span className={labelClass}>
+                  <Lock className="w-3.5 h-3.5 text-slate-400" />
+                  Email (không đổi được)
+                </span>
+                <div className="w-full px-4 py-3 bg-slate-100/70 border-2 border-slate-100 rounded-2xl text-sm font-semibold text-slate-500 truncate select-none">
+                  {user.email || "Chưa cập nhật email"}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Status Messages */}
-      {statusMsg && (
-        <div className={`p-4 rounded-2xl text-xs font-black uppercase tracking-wider text-center border animate-in fade-in duration-300 ${statusMsg.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-blue-50 border-blue-100 text-[#2563EB]'}`}>
-          {statusMsg.text}
-        </div>
-      )}
-
-      {/* Footer / Buttons Area */}
-      <div className="pt-6 border-t border-blue-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-6">
-        <div className="flex items-center gap-3.5 max-w-md">
-          <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0 border border-amber-100 text-lg shadow-sm">
-            💡
-          </div>
-          <p className="text-[9px] font-black text-slate-400 leading-relaxed uppercase tracking-wider">
-            Bạn có thể tự do thay đổi tên đại diện và ảnh cá nhân. Mọi thắc mắc về cấp quyền vui lòng liên hệ giáo viên.
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-          {/* Save Changes Button */}
-          <button
-            onClick={handleSave}
-            disabled={isLoading}
-            className="group relative inline-flex items-center justify-center px-8 py-4 rounded-2xl bg-[#2563EB] text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 transition-all shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-75 disabled:pointer-events-none"
-          >
-            {isLoading ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Đang lưu dữ liệu...
-              </span>
-            ) : (
-              <>
-                <span className="relative z-10 flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5" />
-                  Lưu thay đổi
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
-              </>
+            {statusMsg && (
+              <div
+                role="status"
+                className={`p-3 rounded-2xl text-sm font-bold text-center border animate-in fade-in duration-300 ${statusMsg.type === "success" ? "bg-emerald-50 border-emerald-100 text-emerald-700" : "bg-red-50 border-red-100 text-red-600"}`}
+              >
+                {statusMsg.text}
+              </div>
             )}
-          </button>
 
-          {/* Log Out Button */}
-          <button
-            onClick={async () => {
-              await signOut({ redirect: false });
-              window.location.href = "/login";
-            }}
-            className="px-6 py-4 bg-slate-950 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all"
-          >
-            Đăng xuất hệ thống
-          </button>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isLoading || !dirty}
+                className={cn("btn-3d h-11 px-6 text-sm", dirty ? "btn-3d-blue" : "btn-3d-muted")}
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                {isLoading ? "Đang lưu..." : "Lưu thay đổi"}
+              </button>
+            </div>
+          </section>
+
+          {children}
         </div>
       </div>
     </div>

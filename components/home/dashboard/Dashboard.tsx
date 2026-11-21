@@ -59,7 +59,7 @@ export function Dashboard({
         </aside>
 
         {/* 2. Primary Column & Widgets Wrapper */}
-        <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 space-y-10 max-w-[1600px]">
+        <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 space-y-8 max-w-[1600px]">
           {/* Carousel Slider (Temporarily hidden due to no data) */}
           {/* <HomeCarousel /> */}
 
@@ -70,21 +70,22 @@ export function Dashboard({
               lastLesson={lastLesson}
               stats={stats}
               startHref={startHref}
+              aside={<HomePromo variant="card" />}
             />
           )}
 
-          {/* Countdown Target Promo */}
-          <HomePromo />
+          {/* Đếm ngược kỳ thi: học sinh đã có thẻ gọn ở cột phải thẻ chào */}
+          {user?.role !== "STUDENT" && <HomePromo />}
 
           {/* Course Catalog / Learning Progress */}
           <section className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-blue-100 pb-3">
               <div className="space-y-1.5">
-                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter flex items-center gap-3">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
                   <span className="w-2 h-7 bg-[#2563EB] rounded-full" />
                   Lộ trình học tập
                 </h2>
-                <p className="text-slate-400 font-bold uppercase text-xs sm:text-sm tracking-wider">
+                <p className="text-slate-500 font-medium text-sm">
                   Chọn mục tiêu của bạn và bắt đầu ngay
                 </p>
               </div>
@@ -97,9 +98,21 @@ export function Dashboard({
             </div>
 
             {/* Courses Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* 1–2 khoá: thẻ ngang lấp đủ chiều rộng; từ 3 khoá: lưới 3 cột */}
+            <div
+              className={
+                displayCourses.length > 0 && displayCourses.length <= 2
+                  ? "grid grid-cols-1 2xl:grid-cols-2 gap-6"
+                  : "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6"
+              }
+            >
               {displayCourses.map((course) => (
-                <CourseCard key={course.id} course={course} progress={course.isEnrolled ? course.progress : undefined} />
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  progress={course.isEnrolled ? course.progress : undefined}
+                  layout={displayCourses.length <= 2 ? "horizontal" : "vertical"}
+                />
               ))}
 
               {courses.length === 0 && (
@@ -107,7 +120,7 @@ export function Dashboard({
                   <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
                     <BookOpen className="w-8 h-8 text-blue-600/30" />
                   </div>
-                  <p className="text-slate-500 font-bold uppercase tracking-tight">
+                  <p className="text-slate-500 font-bold">
                     Không tìm thấy khóa học nào
                   </p>
                 </div>
