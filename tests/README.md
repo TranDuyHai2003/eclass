@@ -19,7 +19,7 @@ Dùng test runner có sẵn của Node (`node:test`) cùng `ts-node`, không c�
 
 ## Test giao diện — `npm run test:e2e`
 
-Gồm hai script: `points.e2e.mjs` (Điểm thưởng) và `anchor-editor.e2e.mjs` (công cụ cắt lời giải từng câu: bấm đặt mốc, Shift/Alt + bấm, kéo mốc, hoàn tác, Ctrl+S lưu, điện thoại).
+Gồm ba script: `points.e2e.mjs` (Điểm thưởng), `anchor-editor.e2e.mjs` (công cụ cắt lời giải từng câu: bấm đặt mốc, Shift/Alt + bấm, kéo mốc, hoàn tác, Ctrl+S lưu, điện thoại) và `lesson-page.e2e.mjs` (trang học bài: danh sách bài cột phải, Bài trước/Bài sau, hoàn thành bài, 2 tab trên điện thoại, 390–1920px).
 
 Chạy trên Chrome headless với server thật:
 

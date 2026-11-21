@@ -73,6 +73,9 @@ type CourseSidebarProps = {
   course: Course;
   currentLessonId: string;
   progress?: number;
+  /** Số bài đã hoàn thành / tổng số bài (hiện cạnh thanh tiến độ) */
+  completedCount?: number;
+  totalCount?: number;
   isEnrolled?: boolean;
   className?: string;
 };
@@ -81,6 +84,8 @@ export default function CourseSidebar({
   course,
   currentLessonId,
   progress = 0,
+  completedCount,
+  totalCount,
   isEnrolled = true,
   className,
 }: CourseSidebarProps) {
@@ -275,70 +280,112 @@ export default function CourseSidebar({
         className,
       )}
     >
-      {/* Sidebar Header - Enhanced Typography */}
-      <div className="p-4 sm:p-5 border-b border-slate-50/60">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-100">
-            <Layout className="w-4 h-4" />
-          </div>
-          <h3 className="font-black text-slate-900 text-xs uppercase tracking-widest">
-            Học phần khóa học
-          </h3>
-        </div>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
-            <span className="text-slate-400">Tiến độ hoàn thành</span>
-            <span className="text-blue-600 font-black">
-              {progress}%
+      {/* Tiêu đề + tiến độ khoá học */}
+      <div className="px-4 pt-4 pb-3 sm:px-5 border-b border-blue-50 shrink-0">
+        <div className="flex items-center justify-between gap-3 mb-2.5">
+          <h3 className="font-extrabold text-slate-900 text-[15px] flex items-center gap-2 min-w-0">
+            <span className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center text-white shrink-0">
+              <Layout className="w-3.5 h-3.5" />
             </span>
-          </div>
-          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner">
-            <div
-              className="bg-blue-600 h-full rounded-full transition-all duration-1000"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+            <span className="truncate">Nội dung khoá học</span>
+          </h3>
+          <span className="text-xs font-bold text-slate-500 shrink-0 whitespace-nowrap">
+            {totalCount !== undefined && completedCount !== undefined && (
+              <>
+                {completedCount}/{totalCount} bài ·{" "}
+              </>
+            )}
+            <span className="text-blue-600 font-black">{progress}%</span>
+          </span>
+        </div>
+        <div
+          className="w-full bg-blue-50 rounded-full h-2 overflow-hidden"
+          role="progressbar"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Tiến độ khoá học"
+        >
+          <div className="bg-blue-600 h-full rounded-full transition-all duration-1000" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
       {/* Course Curriculum - Refined Items */}
-      <div className="overflow-y-auto flex-1 custom-scrollbar p-4 space-y-4">
-        {course.chapters.map((chapter) => (
+      <div className="overflow-y-auto flex-1 min-h-0 custom-scrollbar p-3 sm:p-4 space-y-2">
+        {course.chapters.map((chapter) => {
+          const isOpen = !!openChapters[chapter.id];
+          const doneInChapter = chapter.lessons.filter((l) => l.isCompleted).length;
+          const chapterDone = chapter.lessons.length > 0 && doneInChapter === chapter.lessons.length;
+          const isCurrentChapter = chapter.lessons.some((l) => l.id === currentLessonId);
+          return (
           <div
             key={chapter.id}
             className="group/chapter"
           >
             <button
+              type="button"
               onClick={() => toggleChapter(chapter.id)}
+              aria-expanded={isOpen}
+              data-current-chapter={isCurrentChapter || undefined}
               className={cn(
-                "w-full flex items-center justify-between py-4 px-5 rounded-[1.5rem] transition-all border border-transparent",
-                openChapters[chapter.id]
-                  ? "bg-slate-900 text-white shadow-xl shadow-slate-200"
-                  : "bg-slate-50 text-slate-700 hover:bg-slate-100",
+                "w-full flex items-center justify-between gap-3 py-3 px-3.5 rounded-2xl transition-all border-2 text-left",
+                isOpen
+                  ? "bg-blue-600 border-blue-600 text-white shadow-[0_3px_0_0_#1e3a8a]"
+                  : isCurrentChapter
+                    ? "bg-blue-50 border-blue-200 text-slate-900 hover:border-blue-300"
+                    : "bg-slate-50 border-transparent text-slate-700 hover:bg-blue-50/60",
               )}
             >
-              <div className="flex items-center gap-3">
-                 <div className={cn(
-                   "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black",
-                   openChapters[chapter.id] ? "bg-white/20 text-white" : "bg-slate-200 text-slate-500"
-                 )}>
-                   {chapter.position + 1}
-                 </div>
-                 <span className="font-black text-xs uppercase tracking-tight text-left line-clamp-1">
-                  {chapter.title || `Chương ${chapter.position + 1}`}
-                </span>
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={cn(
+                    "w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0",
+                    isOpen
+                      ? "bg-white/20 text-white"
+                      : chapterDone
+                        ? "bg-emerald-500 text-white"
+                        : isCurrentChapter
+                          ? "bg-blue-600 text-white"
+                          : "bg-white text-slate-500 border border-slate-200",
+                  )}
+                >
+                  {chapterDone && !isOpen ? <CheckCircle className="w-4 h-4" /> : chapter.position + 1}
+                </div>
+                <div className="min-w-0">
+                  <span className="block font-bold text-[13px] leading-snug line-clamp-2 break-words">
+                    {chapter.title || `Chương ${chapter.position + 1}`}
+                  </span>
+                  <span
+                    className={cn(
+                      "flex items-center gap-1.5 text-[11px] font-semibold mt-0.5",
+                      isOpen ? "text-blue-100" : "text-slate-400",
+                    )}
+                  >
+                    {doneInChapter}/{chapter.lessons.length} bài
+                    {isCurrentChapter && (
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[10px] font-bold",
+                          isOpen ? "bg-white/20 text-white" : "bg-blue-600 text-white",
+                        )}
+                      >
+                        Đang học
+                      </span>
+                    )}
+                  </span>
+                </div>
               </div>
               <ChevronDown
                 className={cn(
-                  "w-4 h-4 transition-transform duration-500 opacity-60",
-                  openChapters[chapter.id] && "transform rotate-180 opacity-100",
+                  "w-4 h-4 shrink-0 transition-transform duration-300 opacity-60",
+                  isOpen && "transform rotate-180 opacity-100",
                 )}
               />
             </button>
 
             {/* Lessons List */}
-            {openChapters[chapter.id] && (
-              <div className="mt-2 ml-2 pl-4 border-l-2 border-slate-100 space-y-1 py-1 animate-in slide-in-from-left-2 duration-300">
+            {isOpen && (
+              <div className="mt-2 ml-2 pl-3 border-l-2 border-blue-100 space-y-1 py-1 animate-in slide-in-from-left-2 duration-300">
                 {chapter.lessons.map((lesson) => {
                   const isActive = lesson.id === currentLessonId;
                   const isLocked = !isEnrolled && !lesson.isFree;
@@ -359,7 +406,7 @@ export default function CourseSidebar({
                         className={cn(
                           "flex items-center group rounded-2xl transition-all",
                           isMainVideoActive
-                            ? "bg-blue-50/50 shadow-sm"
+                            ? "bg-blue-50 shadow-[inset_3px_0_0_0_#2563eb]"
                             : "hover:bg-slate-50",
                         )}
                       >
@@ -376,7 +423,7 @@ export default function CourseSidebar({
                             }
                           }}
                           className={cn(
-                            "flex-1 flex items-center gap-x-3.5 py-3.5 px-4 text-sm transition-all",
+                            "flex-1 min-w-0 flex items-center gap-x-3 py-2.5 px-3 text-sm transition-all",
                             isMainVideoActive ? "text-blue-700" : "text-slate-600",
                             isLocked && "opacity-60 cursor-not-allowed",
                           )}
@@ -406,7 +453,7 @@ export default function CourseSidebar({
                           <div className="flex-1 min-w-0">
                             <p
                               className={cn(
-                                "font-bold text-[13px] line-clamp-1 leading-tight tracking-tight",
+                                "font-bold text-[13px] line-clamp-2 leading-snug",
                                 isMainVideoActive
                                   ? "text-slate-900"
                                   : "text-slate-600 group-hover:text-slate-900",
@@ -415,11 +462,11 @@ export default function CourseSidebar({
                               {lesson.title}
                             </p>
                             <div className="flex items-center gap-2 mt-1">
-                               <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                 {lesson.type === "QUIZ" ? "Quiz" : lesson.type === "DOCUMENT" ? "PDF" : "Bài giảng"}
+                               <span className="text-[11px] font-semibold text-slate-400">
+                                 {lesson.type === "QUIZ" ? "Kiểm tra" : lesson.type === "DOCUMENT" ? "Tài liệu PDF" : "Bài giảng"}
                                </span>
                                {lesson.isFree && !isEnrolled && (
-                                 <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase">Free</span>
+                                 <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Free</span>
                                )}
                             </div>
                           </div>
@@ -465,7 +512,7 @@ export default function CourseSidebar({
                               <div className="w-7 h-7 bg-slate-50 text-slate-500 rounded-lg flex items-center justify-center shrink-0 group-hover/sub:bg-slate-900 group-hover/sub:text-white transition-colors">
                                 <FileText className="w-3.5 h-3.5" />
                               </div>
-                              <span className="text-[11px] font-black uppercase tracking-tight truncate text-slate-600 group-hover/sub:text-slate-900">
+                              <span className="text-[11px] font-bold truncate text-slate-600 group-hover/sub:text-slate-900">
                                 File tài liệu bài học
                               </span>
                               <Download className="w-3 h-3 text-slate-300 ml-auto group-hover/sub:text-blue-600" />
@@ -490,7 +537,7 @@ export default function CourseSidebar({
                                 <Video className="w-3.5 h-3.5" />
                               </div>
                               <span className={cn(
-                                "text-[11px] font-black uppercase tracking-tight",
+                                "text-[11px] font-bold",
                                 isTutorialActive ? "text-blue-700" : "text-slate-600 group-hover/sub:text-slate-900"
                               )}>
                                 Thực chiến bài tập về nhà
@@ -508,10 +555,10 @@ export default function CourseSidebar({
                                 <BookOpen className="w-3.5 h-3.5" />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-[11px] font-black uppercase tracking-tight text-slate-600 group-hover/sub:text-slate-900 truncate">
+                                <span className="text-[11px] font-bold text-slate-600 group-hover/sub:text-slate-900 truncate">
                                   {lesson.test.title || "Nộp bài tập & Chấm điểm"}
                                 </span>
-                                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider">
+                                <span className="text-[11px] font-bold text-blue-600">
                                   {lesson.test.title ? "Làm bài tập & Chấm điểm" : "Bài kiểm tra"}
                                 </span>
                               </div>
@@ -552,13 +599,13 @@ export default function CourseSidebar({
                                 )}>
                                   <Upload className="w-3.5 h-3.5" />
                                 </div>
-                                <span className="text-[11px] font-black uppercase tracking-tight flex-1 text-left text-slate-600 group-hover/sub:text-slate-900">
+                                <span className="text-[11px] font-bold flex-1 text-left text-slate-600 group-hover/sub:text-slate-900">
                                   Nộp lại bài chữa (Tự luận)
                                 </span>
 
                                 {lesson.homeworkSubmission && (
                                    <div className={cn(
-                                     "px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border shrink-0",
+                                     "px-2 py-0.5 rounded-md text-[10px] font-black border shrink-0",
                                      homeworkStatusConfig[lesson.homeworkSubmission.status as keyof typeof homeworkStatusConfig].bg,
                                      homeworkStatusConfig[lesson.homeworkSubmission.status as keyof typeof homeworkStatusConfig].color,
                                      homeworkStatusConfig[lesson.homeworkSubmission.status as keyof typeof homeworkStatusConfig].border
@@ -574,7 +621,7 @@ export default function CourseSidebar({
                                   {/* Giáo viên nhận xét */}
                                   {lesson.homeworkSubmission?.feedback && (
                                     <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-1.5">
-                                      <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Nhận xét từ giáo viên:</p>
+                                      <p className="text-[11px] font-black text-blue-600">Nhận xét từ giáo viên:</p>
                                       <p className="text-xs font-medium text-slate-600 italic leading-relaxed">&ldquo;{lesson.homeworkSubmission.feedback}&rdquo;</p>
                                     </div>
                                   )}
@@ -595,7 +642,7 @@ export default function CourseSidebar({
                                             <div className="flex-1 min-w-0">
                                               <span className="font-bold text-slate-700 truncate block">{file.name}</span>
                                               <span className={cn(
-                                                "text-[8px] font-black uppercase",
+                                                "text-[10px] font-black",
                                                 isExisting ? "text-slate-400" : "text-blue-500"
                                               )}>
                                                 {isExisting ? "Đã nộp" : "Mới thêm"}
@@ -636,7 +683,7 @@ export default function CourseSidebar({
                                                       style={{ width: `${uploadProgress}%` }}
                                                     />
                                                   </div>
-                                                  <span className="text-[9px] font-black text-blue-600 tabular-nums">
+                                                  <span className="text-[11px] font-black text-blue-600 tabular-nums">
                                                     {uploadProgress}%
                                                   </span>
                                                 </div>
@@ -644,7 +691,7 @@ export default function CourseSidebar({
                                             ) : (
                                               <Upload className="w-3.5 h-3.5 text-blue-400" />
                                             )}
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">
+                                            <span className="text-[10px] font-black text-slate-500">
                                               {isUploading ? "Đang tải..." : "Chọn file"}
                                             </span>
                                           </div>
@@ -661,7 +708,7 @@ export default function CourseSidebar({
                                         <button
                                           onClick={() => handleInlineSubmit(lesson.id)}
                                           disabled={isSubmitting || isUploading || inlineAttachments.length === 0}
-                                          className="px-4 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest flex items-center gap-1.5 disabled:opacity-50 shadow-lg shadow-blue-100"
+                                          className="px-4 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs tracking-widest flex items-center gap-1.5 disabled:opacity-50 shadow-lg shadow-blue-100"
                                         >
                                           {isSubmitting ? (
                                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -674,8 +721,8 @@ export default function CourseSidebar({
                                     </div>
                                   ) : (
                                     <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-center">
-                                       <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Bài làm đã được duyệt</p>
-                                       <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Không thể chỉnh sửa tệp đã nộp</p>
+                                       <p className="text-[11px] font-black text-blue-600">Bài làm đã được duyệt</p>
+                                       <p className="text-[10px] font-bold text-slate-400 mt-1">Không thể chỉnh sửa tệp đã nộp</p>
                                     </div>
                                   )}
                                 </div>
@@ -690,7 +737,8 @@ export default function CourseSidebar({
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

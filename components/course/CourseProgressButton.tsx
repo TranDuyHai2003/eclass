@@ -51,31 +51,24 @@ export function CourseProgressButton({
 
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={isLoading}
-      className={`
-        relative overflow-hidden group flex items-center gap-3 px-6 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 shadow-xl
-        ${isCompleted 
-          ? "bg-slate-900 text-white shadow-slate-200" 
-          : "bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700"}
-      `}
+      data-testid="lesson-complete"
+      aria-pressed={!!isCompleted}
+      title={isCompleted ? "Bấm lần nữa để bỏ đánh dấu hoàn thành" : undefined}
+      className={
+        isCompleted
+          ? "btn-3d w-full h-11 px-4 sm:px-5 text-sm whitespace-nowrap border-2 border-emerald-500 bg-emerald-50 text-emerald-700 [--btn-edge:#86efac] hover:bg-emerald-100 disabled:opacity-60"
+          : "btn-3d btn-3d-blue w-full h-11 px-4 sm:px-5 text-sm whitespace-nowrap disabled:opacity-60"
+      }
     >
-      {/* Glow Effect */}
-      <div className={`absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity bg-white`} />
-      
       {isLoading ? (
         <Loader2 className="w-4 h-4 animate-spin" />
       ) : (
-        <div className={`
-          w-6 h-6 rounded-lg flex items-center justify-center transition-all
-          ${isCompleted ? "bg-emerald-500 text-white" : "bg-white/20 text-white"}
-        `}>
-          <CheckCircle className={`w-3.5 h-3.5 ${isCompleted ? "fill-current" : ""}`} />
-        </div>
+        <CheckCircle className={`w-4 h-4 shrink-0 ${isCompleted ? "text-emerald-600" : ""}`} />
       )}
-      <span className="relative z-10">
-        {isCompleted ? "Đã hoàn thành" : "Hoàn thành bài"}
-      </span>
+      <span>{isCompleted ? "Đã hoàn thành" : "Hoàn thành bài"}</span>
     </button>
   );
 }
