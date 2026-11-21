@@ -92,6 +92,27 @@ describe("Ghép nhãn với câu", () => {
     }
   });
 
+  test("KHÔNG ghép xuyên phần khi cả hai phần đều thiếu nhãn (Gemini review diff #1): phần 1 có 1–5, phần 2 có 1–11", () => {
+    const markers = [...mk([1, 2, 3, 4, 5]), ...mk(Array.from({ length: 11 }, (_, i) => i + 1), { startIndex: 9 })];
+    const r = mapMarkersToQuestions(markers, [ids("a", 12), ids("b", 12)]);
+    // Phần 2 lấy nhãn 1–11 của chính nó (từ trang 2)
+    for (let i = 1; i <= 11; i++) assert.ok(r[`b${i}`] && r[`b${i}`].page >= 2, `b${i} phải thuộc phần 2`);
+    assert.equal(r.b12, undefined);
+    // Phần 1 không được lấy nhãn của phần 2; nếu ghép thì chỉ bằng nhãn 1–5 của nó, đúng số
+    for (let i = 1; i <= 12; i++) {
+      const it = r[`a${i}`];
+      assert.ok(!it || (it.page === 1 && labelOf(r, markers, `a${i}`) === i), `a${i} ghép sai`);
+    }
+  });
+
+  test("khối nhiễu ngắn trước khối thật vẫn bị bỏ qua (một phần)", () => {
+    const markers = [...mk([7, 8]), ...mk(Array.from({ length: 14 }, (_, i) => i + 1), { startIndex: 9 })];
+    const r = mapMarkersToQuestions(markers, [ids("q", 16)]);
+    assert.equal(labelOf(r, markers, "q1"), 1);
+    assert.equal(labelOf(r, markers, "q14"), 14);
+    assert.ok(r.q1.page >= 2, "câu 1 phải lấy nhãn ở khối thật");
+  });
+
   test("phần Đúng/Sai nhập 4 câu cho mỗi nhãn: 4 nhãn ↔ 16 câu", () => {
     const markers = mk([1, 2, 3, 4]);
     const q = ids("q", 16);
@@ -124,11 +145,11 @@ describe("Ghép nhãn với câu", () => {
 
 describe("Ranh giới (tiêu đề phần, kết thúc)", () => {
   test("nhận tiêu đề phần có số La Mã và dòng kết thúc", () => {
-    for (const t of ["Phần II: Trắc nghiệm đúng sai", "PHẦN III. Trả lời ngắn", "II. TRẮC NGHIỆM ĐÚNG SAI", "Dạng 3: Phủ định", "--- HẾT ---", "HẾT", "BẢNG ĐÁP ÁN", "Đáp án"])
+    for (const t of ["Phần II: Trắc nghiệm đúng sai", "PHẦN III. Trả lời ngắn", "II. TRẮC NGHIỆM ĐÚNG SAI", "Dạng 3: Phủ định", "--- HẾT ---", "HẾT", "BẢNG ĐÁP ÁN", "ĐÁP ÁN", "--- ĐÁP ÁN ---"])
       assert.equal(isHeadingLine(t), true, t);
   });
   test("không nhầm dòng lời giải / đáp án thường", () => {
-    for (const t of ["I. Cho hàm số y = f(x) có đồ thị", "Đáp án đúng là A", "Phần lớn học sinh", "Hết thời gian thì nộp bài", "Chọn B"])
+    for (const t of ["I. Cho hàm số y = f(x) có đồ thị", "Đáp án đúng là A", "Phần lớn học sinh", "Hết thời gian thì nộp bài", "Chọn B", "Đáp án:", "Đáp án", "ĐÁP ÁN:"])
       assert.equal(isHeadingLine(t), false, t);
   });
 });
@@ -142,6 +163,12 @@ describe("Mốc tách lời giải", () => {
   test("bản OCR rớt dấu: 'Giai' / 'Giải:' cũng nhận", () => {
     const a = analyzeTextLines([[line(10, "Cau 1: abc"), line(20, "Giai:"), line(50, "Cau 2: xyz"), line(60, "Giải.")]], { fold: true });
     assert.equal((a.solutionMarks ?? []).length, 2);
+  });
+  test("dòng 'Đáp án:' riêng trong lời giải từng câu không phải ranh giới kết thúc (Gemini review diff #3)", () => {
+    const a = analyzeTextLines([[line(10, "Câu 1: abc"), line(20, "Đáp án:"), line(24, "Chọn A. Vì ..."), line(50, "Câu 2: xyz"), line(90, "ĐÁP ÁN")]]);
+    const ys = (a.headings ?? []).map((h) => h.y);
+    assert.equal(ys.length, 1, `chỉ 'ĐÁP ÁN' cuối đề là ranh giới: ${ys}`);
+    assert.ok(ys[0] > 80);
   });
   test("không nhầm câu hỏi bắt đầu bằng 'Giải ...'", () => {
     const a = analyzeTextLines([[line(10, "Câu 1: abc"), line(20, "Giải phương trình x^2 = 1"), line(30, "Giải bất phương trình sau")]]);

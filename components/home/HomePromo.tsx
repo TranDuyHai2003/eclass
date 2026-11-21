@@ -47,7 +47,8 @@ const Unit = ({
   </div>
 );
 
-const EXAM_DATE = new Date("2027-06-11T08:00:00");
+// Giờ Việt Nam (UTC+7), không phụ thuộc múi giờ máy chủ / máy học sinh
+const EXAM_DATE = new Date("2027-06-11T08:00:00+07:00");
 
 /**
  * Đếm ngược kỳ thi.

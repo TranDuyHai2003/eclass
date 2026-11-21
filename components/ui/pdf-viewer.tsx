@@ -462,6 +462,8 @@ export default function PDFViewer({
                                     }
                                   : undefined
                               }
+                              // Mất con trỏ giữa chừng (chuyển cửa sổ, chạm đa điểm) → huỷ kéo, mốc giữ chỗ cũ
+                              onPointerCancel={interactive ? () => setDrag(null) : undefined}
                               className={cn(
                                 "-translate-y-1/2 select-none rounded-r-md px-1.5 py-0.5 text-[10px] font-black uppercase text-white shadow",
                                 interactive && "pointer-events-auto",

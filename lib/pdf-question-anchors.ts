@@ -201,12 +201,15 @@ export function analyzeTextLines(pageLines: PositionedLine[][], opts: { fold?: b
 const HEADING_REGEX = /^[^\p{L}\d]{0,4}(dạng|dang|phần|phan|kiểu|kieu|chương|chuong)\s*(\d{1,2}|[IVX]{1,4})\s*[:.]/iu;
 // "II. TRẮC NGHIỆM ĐÚNG SAI" — số La Mã đầu dòng + chữ in hoa (không nhầm với "I." trong lời giải)
 const ROMAN_HEADING_REGEX = /^[^\p{L}\d]{0,4}[IVX]{1,4}\s*[.:]\s*\p{Lu}{2,}[\p{Lu}\s,–-]*$/u;
-// "--- HẾT ---", "HẾT", "BẢNG ĐÁP ÁN", "ĐÁP ÁN" đứng riêng một dòng → kết thúc câu cuối
-const END_MARK_REGEX = /^[\s\-–—_.*=]*(hết|het|bảng đáp án|bang dap an|đáp án|dap an)[\s\-–—_.*=:]*$/iu;
+// "--- HẾT ---", "HẾT", "BẢNG ĐÁP ÁN" đứng riêng một dòng → kết thúc câu cuối
+const END_MARK_REGEX = /^[\s\-–—_.*=]*(hết|het|bảng đáp án|bang dap an)[\s\-–—_.*=:]*$/iu;
+// "ĐÁP ÁN" chỉ tính khi VIẾT HOA và không có dấu ":" (tiêu đề cuối đề). "Đáp án:" đứng riêng là phần của lời giải
+// từng câu (dòng sau là "Chọn A …") → không được coi là ranh giới (Gemini review diff #3)
+const ANSWER_TITLE_REGEX = /^[\s\-–—_.*=]*(ĐÁP ÁN|DAP AN)[\s\-–—_.*=]*$/u;
 
 export function isHeadingLine(text: string) {
   const t = text.trim();
-  return HEADING_REGEX.test(t) || ROMAN_HEADING_REGEX.test(t) || END_MARK_REGEX.test(t);
+  return HEADING_REGEX.test(t) || ROMAN_HEADING_REGEX.test(t) || END_MARK_REGEX.test(t) || ANSWER_TITLE_REGEX.test(t);
 }
 
 function findHeadings(pages: TextLine[][]): PdfPoint[] {
@@ -520,37 +523,78 @@ export function lisCoverageOk(found: number, total: number, bare: boolean) {
  * Ưu tiên 1 nhãn = 1 câu; "1 nhãn = 4 câu" (Đúng/Sai nhập 4 câu) chỉ khi không có nhãn nào vượt số nhãn cần có.
  * Trả về true nếu đã ghép.
  */
-function assignSectionByLis(
-  blocks: PdfMarker[][],
-  ids: string[],
-  offsets: number[],
-  result: Record<string, AnchorItem>,
-): boolean {
-  for (const block of blocks) {
-    const bare = block.some((mk) => mk.bare);
-    let best: { lis: PdfMarker[]; offset: number; factor: number } | null = null;
-    for (const factor of EXPANSION_FACTORS) {
-      if (best) break;
-      if (ids.length % factor !== 0) continue;
-      const count = ids.length / factor;
-      for (const offset of offsets) {
-        if (factor > 1 && block.some((mk) => mk.n > offset + count)) continue;
-        const lis = longestIncreasingByNumber(block.filter((mk) => mk.n > offset && mk.n <= offset + count));
-        if (!lisCoverageOk(lis.length, count, bare)) continue;
-        if (!best || lis.length > best.lis.length) best = { lis, offset, factor };
-      }
+type LisMatch = { lis: PdfMarker[]; offset: number; factor: number };
+
+/** Dãy tăng dài nhất của một khối ứng với một phần (đủ ngưỡng an toàn), hoặc null */
+function bestLisFor(block: PdfMarker[], ids: string[], offsets: number[]): LisMatch | null {
+  const bare = block.some((mk) => mk.bare);
+  let best: LisMatch | null = null;
+  for (const factor of EXPANSION_FACTORS) {
+    if (best) break;
+    if (ids.length % factor !== 0) continue;
+    const count = ids.length / factor;
+    for (const offset of offsets) {
+      if (factor > 1 && block.some((mk) => mk.n > offset + count)) continue;
+      const lis = longestIncreasingByNumber(block.filter((mk) => mk.n > offset && mk.n <= offset + count));
+      if (!lisCoverageOk(lis.length, count, bare)) continue;
+      if (!best || lis.length > best.lis.length) best = { lis, offset, factor };
     }
-    if (!best) continue;
-    for (const mk of best.lis) {
-      const base = (mk.n - best.offset - 1) * best.factor;
-      for (let f = 0; f < best.factor; f++) {
-        const id = ids[base + f];
-        if (id && !result[id]) result[id] = { page: mk.page, y: mk.y, label: mk.label, source: "auto" };
-      }
-    }
-    return true;
   }
-  return false;
+  return best;
+}
+
+function applyLis(match: LisMatch, ids: string[], result: Record<string, AnchorItem>) {
+  for (const mk of match.lis) {
+    const base = (mk.n - match.offset - 1) * match.factor;
+    for (let f = 0; f < match.factor; f++) {
+      const id = ids[base + f];
+      if (id && !result[id]) result[id] = { page: mk.page, y: mk.y, label: mk.label, source: "auto" };
+    }
+  }
+}
+
+/**
+ * Ghép các khối của một khe với các phần chưa khớp trong khe, giữ đúng thứ tự (quy hoạch động).
+ * Một phần có thể "nhận" khối của mình dù khối thiếu nhãn (không đủ ngưỡng LIS) — để phần trước KHÔNG nhảy sang
+ * lấy khối của phần sau (vd phần 1 chỉ còn nhãn 1–5, phần 2 có 1–11: khối 1–11 phải thuộc phần 2).
+ * Bỏ qua một khối (coi là nhiễu) bị trừ điểm theo số nhãn của nó. Trả về: phần → { khối, LIS dùng được hoặc null }.
+ */
+function alignGapBlocks(blocks: PdfMarker[][], secIds: string[][], secOffsets: number[][]) {
+  const k = secIds.length;
+  const m = blocks.length;
+  const SKIP = 0.5;
+  const match: (LisMatch | null)[][] = secIds.map((ids, i) => blocks.map((bl) => bestLisFor(bl, ids, secOffsets[i])));
+  // dp[i][j]: điểm tốt nhất dùng i phần đầu và j khối đầu
+  const dp = Array.from({ length: k + 1 }, () => new Array<number>(m + 1).fill(-Infinity));
+  const how = Array.from({ length: k + 1 }, () => new Array<"claim" | "skipSec" | "skipBlock" | null>(m + 1).fill(null));
+  dp[0][0] = 0;
+  for (let i = 0; i <= k; i++) {
+    for (let j = 0; j <= m; j++) {
+      if (i === 0 && j === 0) continue;
+      const opts: [number, "claim" | "skipSec" | "skipBlock"][] = [];
+      if (i > 0 && j > 0) opts.push([dp[i - 1][j - 1] + (match[i - 1][j - 1]?.lis.length ?? 0), "claim"]);
+      if (i > 0) opts.push([dp[i - 1][j], "skipSec"]);
+      if (j > 0) opts.push([dp[i][j - 1] - SKIP * blocks[j - 1].length, "skipBlock"]);
+      // Bằng điểm: ưu tiên nhận khối (giữ đúng vị trí), rồi mới bỏ phần, cuối cùng mới bỏ khối
+      for (const [v, h] of opts) if (v > dp[i][j] + 1e-9) {
+        dp[i][j] = v;
+        how[i][j] = h;
+      }
+    }
+  }
+  const out = new Map<number, { block: number; lis: LisMatch | null }>();
+  let i = k;
+  let j = m;
+  while (i > 0 || j > 0) {
+    const h = how[i][j];
+    if (h === "claim") {
+      out.set(i - 1, { block: j - 1, lis: match[i - 1][j - 1] });
+      i--;
+      j--;
+    } else if (h === "skipSec") i--;
+    else j--;
+  }
+  return out;
 }
 
 /**
@@ -617,18 +661,17 @@ export function mapMarkersToQuestions(markers: PdfMarker[], sections: string[][]
     const from = prevExact ? prevExact.end + 1 : 0;
     const to = nextExact ? nextExact.start - 1 : runs.length - 1;
     const blocks = from <= to ? buildBlocks(runs.slice(from, to + 1)) : [];
-    let ptr = 0;
     const takenBlock = new Map<number, number>(); // phần → khối đã ghép bằng LIS
-    for (let s2 = si; s2 <= sj; s2++) {
-      const ids = sections[s2];
-      const offsets = offsetsOf[s2] > 0 ? [0, offsetsOf[s2]] : [0];
-      for (let b = ptr; b < blocks.length; b++) {
-        if (assignSectionByLis([blocks[b]], ids, offsets, result)) {
-          takenBlock.set(s2, b);
-          ptr = b + 1;
-          break;
-        }
-      }
+    const gapSecs = sections.slice(si, sj + 1);
+    const aligned = alignGapBlocks(
+      blocks,
+      gapSecs,
+      gapSecs.map((_, i) => (offsetsOf[si + i] > 0 ? [0, offsetsOf[si + i]] : [0])),
+    );
+    for (const [i, { block, lis }] of aligned) {
+      if (!lis) continue;
+      applyLis(lis, sections[si + i], result);
+      takenBlock.set(si + i, block);
     }
     // Dự phòng như trước (chỉ nhãn có từ khoá, không áp dụng số trần): phần còn thiếu ghép theo số ghi trên nhãn,
     // chỉ dùng các khối nằm giữa khối của phần đã ghép ngay trước và ngay sau nó, và chỉ khi việc chia là rõ ràng

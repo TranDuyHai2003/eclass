@@ -133,7 +133,19 @@ export default function SolutionAnchorEditor({
   const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
   const sectionIds = useMemo(() => sections.map((s) => s.questions.map((q) => q.id)), [sections]);
 
-  const [data, setData] = useState<SolutionAnchorsData | null>(initialAnchors);
+  // Dữ liệu + lịch sử hoàn tác trong MỘT state → hàm cập nhật thuần (StrictMode gọi 2 lần vẫn đúng)
+  const [hist, setHist] = useState<{ data: SolutionAnchorsData | null; past: SolutionAnchorsData[]; future: SolutionAnchorsData[] }>({
+    data: initialAnchors,
+    past: [],
+    future: [],
+  });
+  const data = hist.data;
+  /** Đặt dữ liệu không ghi lịch sử (kết quả dò tự động lúc mở) */
+  const setData = useCallback(
+    (v: SolutionAnchorsData | null | ((prev: SolutionAnchorsData | null) => SolutionAnchorsData | null)) =>
+      setHist((h) => ({ ...h, data: typeof v === "function" ? v(h.data) : v })),
+    [],
+  );
   const [analysis, setAnalysis] = useState<PdfAnalysis | null>(null);
   const [analyzing, setAnalyzing] = useState(true);
   // dirty = giáo viên đã tự chỉnh; autoPending = chỉ có kết quả dò tự động chưa lưu (không chặn rời trang)
@@ -156,44 +168,38 @@ export default function SolutionAnchorEditor({
   const [usedOcr, setUsedOcr] = useState(false);
   const [ocrProgress, setOcrProgress] = useState<OcrProgress | null>(null);
   const ocrAbortRef = useRef<AbortController | null>(null);
+  const unmountedRef = useRef(false);
+  // Rời trang khi OCR đang chạy → dừng hẳn (không chạy ngầm tốn CPU, không báo sau khi đã rời)
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
+      ocrAbortRef.current?.abort();
+    };
+  }, []);
 
   // ---------- Hoàn tác / làm lại ----------
-  const undoRef = useRef<SolutionAnchorsData[]>([]);
-  const redoRef = useRef<SolutionAnchorsData[]>([]);
-  const [historyTick, setHistoryTick] = useState(0);
   /** Mọi thay đổi do thầy làm đều đi qua đây (để hoàn tác được) */
   const commit = useCallback((next: (prev: SolutionAnchorsData) => SolutionAnchorsData) => {
-    setData((prev) => {
-      if (!prev) return prev;
-      undoRef.current = [...undoRef.current, prev].slice(-HISTORY_LIMIT);
-      redoRef.current = [];
-      return next(prev);
-    });
+    setHist((h) => (h.data ? { data: next(h.data), past: [...h.past, h.data].slice(-HISTORY_LIMIT), future: [] } : h));
     setDirty(true);
-    setHistoryTick((t) => t + 1);
   }, []);
+  const canUndo = hist.past.length > 0;
+  const canRedo = hist.future.length > 0;
   const undo = useCallback(() => {
-    setData((cur) => {
-      const prev = undoRef.current.pop();
-      if (!prev || !cur) return cur;
-      redoRef.current = [...redoRef.current, cur];
-      return prev;
-    });
+    if (!canUndo) return;
+    setHist((h) =>
+      h.data && h.past.length ? { data: h.past[h.past.length - 1], past: h.past.slice(0, -1), future: [...h.future, h.data] } : h,
+    );
     setDirty(true);
-    setHistoryTick((t) => t + 1);
-  }, []);
+  }, [canUndo]);
   const redo = useCallback(() => {
-    setData((cur) => {
-      const next = redoRef.current.pop();
-      if (!next || !cur) return cur;
-      undoRef.current = [...undoRef.current, cur];
-      return next;
-    });
+    if (!canRedo) return;
+    setHist((h) =>
+      h.data && h.future.length ? { data: h.future[h.future.length - 1], past: [...h.past, h.data], future: h.future.slice(0, -1) } : h,
+    );
     setDirty(true);
-    setHistoryTick((t) => t + 1);
-  }, []);
-  const canUndo = historyTick >= 0 && undoRef.current.length > 0;
-  const canRedo = historyTick >= 0 && redoRef.current.length > 0;
+  }, [canRedo]);
 
   // ---------- Phân tích PDF (tự dò mốc) ----------
   const handlePdfLoad = useCallback(
@@ -440,6 +446,7 @@ export default function SolutionAnchorEditor({
     ocrAbortRef.current = ctrl;
     try {
       const result = await analyzePdfWithOcr(pdf, setOcrProgress, ctrl.signal);
+      if (unmountedRef.current) return;
       setAnalysis(result);
       setUsedOcr(true);
       const auto = buildAutoAnchors(result, sectionIds, solutionPdfUrl, "ocr");
@@ -450,6 +457,7 @@ export default function SolutionAnchorEditor({
       const found = rows.filter((r) => auto.items[r.id]).length;
       toast.success(`Nhận dạng xong: tự cắt được ${found}/${rows.length} câu. Kiểm tra lại rồi bấm Lưu.`);
     } catch (err) {
+      if (unmountedRef.current) return;
       if ((err as Error).name === "AbortError") toast("Đã huỷ nhận dạng chữ");
       else {
         console.error(err);
@@ -463,7 +471,7 @@ export default function SolutionAnchorEditor({
 
   const redetect = () => {
     if (!analysis || !data) return;
-    const auto = buildAutoAnchors(analysis, sectionIds, solutionPdfUrl);
+    const auto = buildAutoAnchors(analysis, sectionIds, solutionPdfUrl, usedOcr ? "ocr" : "text");
     commit((prev) => {
       const manual = Object.fromEntries(Object.entries(prev.items).filter(([, it]) => it.source === "manual"));
       return { ...auto, layout: prev.layout, items: { ...auto.items, ...manual } };
