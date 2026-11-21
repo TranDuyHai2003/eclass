@@ -382,6 +382,38 @@ export function ResultReview({
     }
   }
 
+  // Đề có file lời giải riêng mà câu này chưa tách được → dò nhãn ngay trong file ĐỀ GỐC (thường có lớp chữ kể cả
+  // khi file lời giải là ảnh) để cuộn thẳng tới câu, thay vì bắt học sinh tự tìm từ trang 1
+  const [paperAnchors, setPaperAnchors] = useState<SolutionAnchorsData | null>(null);
+  const paperAnalysisStartedRef = useRef(false);
+  const handlePaperLoad = useCallback(
+    async (pdf: PDFDocumentProxy) => {
+      if (!solutionPdfUrl || paperAnalysisStartedRef.current) return;
+      paperAnalysisStartedRef.current = true;
+      try {
+        const analysis = await analyzePdfCached(pdf);
+        setPaperAnchors(buildAutoAnchors(analysis, sections.map((s) => s.questions.map((q) => q.id)), pdfUrl));
+      } catch (error) {
+        console.error("[ResultReview] Không dò được vị trí câu trong đề gốc", error);
+      }
+    },
+    [solutionPdfUrl, sections, pdfUrl],
+  );
+  if (selected && !questionSegments && solutionPdfUrl && paperAnchors) {
+    const it = paperAnchors.items[selected.q.id];
+    if (it) {
+      paperGuess = { page: it.page, yPct: Math.max(0, it.y - 0.5), key: `paper-${selected.q.id}`, label: `Câu ${selected.number}` };
+    } else {
+      // Không có nhãn của chính câu này → mở ngay sau câu liền trước có nhãn trong đề gốc
+      const idx = flat.findIndex((f) => f.q.id === selected.q.id);
+      for (let i = idx - 1; i >= 0 && !paperGuess; i--) {
+        const prev = resolveRegion(paperAnchors, flat[i].q.id);
+        if (prev) paperGuess = { page: prev.end.page, yPct: Math.max(0, prev.end.y - 1), key: `paper-${selected.q.id}` };
+      }
+    }
+  }
+  const paperExact = !!(paperGuess && paperGuess.label);
+
   const [showSolution, setShowSolution] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [showWholeFile, setShowWholeFile] = useState(false);
@@ -590,9 +622,19 @@ export function ResultReview({
                           <p className="flex items-start gap-2 px-3 py-2 text-xs font-bold text-amber-800 sm:text-sm">
                             <Info className="mt-0.5 h-4 w-4 shrink-0" />
                             <span>
-                              Chưa tách riêng được câu này — dưới đây là toàn bộ đề, em tìm{" "}
-                              <b className="font-black">Câu {selected.number}</b>
-                              {sections.length > 1 && <> ({selected.sectionName})</>} nhé.
+                              {paperExact ? (
+                                <>
+                                  Chưa tách riêng được câu này — đề gốc đã mở sẵn tới{" "}
+                                  <b className="font-black">Câu {selected.number}</b>
+                                  {sections.length > 1 && <> ({selected.sectionName})</>} (dải vàng).
+                                </>
+                              ) : (
+                                <>
+                                  Chưa tách riêng được câu này — dưới đây là toàn bộ đề, em tìm{" "}
+                                  <b className="font-black">Câu {selected.number}</b>
+                                  {sections.length > 1 && <> ({selected.sectionName})</>} nhé.
+                                </>
+                              )}
                             </span>
                           </p>
                           <div className="h-[62vh] border-t border-amber-200 bg-slate-100 md:h-[68vh]">
@@ -601,7 +643,8 @@ export function ResultReview({
                               flat
                               maxPageWidth={900}
                               scrollTarget={paperGuess}
-                              highlightTarget={false}
+                              highlightTarget={paperExact}
+                              onDocumentLoad={handlePaperLoad}
                               renderTextLayer={false}
                               renderLeft={
                                 <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Toàn bộ đề</span>
@@ -716,11 +759,12 @@ export function ResultReview({
                   aria-label="Mở bảng câu hỏi"
                 >
                   <LayoutGrid className={cn("h-4 w-4 shrink-0 text-indigo-600", panelOpen && "lg:hidden")} />
-                  <span className="truncate">
+                  <span className="shrink-0 whitespace-nowrap">
                     Câu {selectedVisibleIndex + 1}
                     <span className="text-slate-400"> / {visible.length}</span>
                   </span>
-                  <span className="text-indigo-600 lg:hidden">· Chọn câu</span>
+                  {/* Điện thoại hẹp chỉ giữ biểu tượng lưới (vẫn bấm được) để số câu không bị cắt / chữ không rớt dòng */}
+                  <span className="hidden shrink-0 whitespace-nowrap text-indigo-600 min-[440px]:inline lg:hidden">· Chọn câu</span>
                   <span className={cn("hidden text-indigo-600", !panelOpen && "lg:inline")}>· Mở bảng kết quả</span>
                 </button>
                 <div className="flex shrink-0 items-center gap-2">

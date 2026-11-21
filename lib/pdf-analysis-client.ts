@@ -1,9 +1,10 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { analyzePdf, type PdfAnalysis } from "@/lib/pdf-question-anchors";
+import { ANALYSIS_VERSION, analyzePdf, type PdfAnalysis } from "@/lib/pdf-question-anchors";
 
 // Chỉ dùng ở client (cần Web Worker + localStorage).
 
-const CACHE_PREFIX = "pdf-analysis:v9:";
+// Gắn với phiên bản thuật toán → đổi cách phân tích là kết quả cũ trong trình duyệt tự bị bỏ
+const CACHE_PREFIX = `pdf-analysis:v${ANALYSIS_VERSION}:`;
 
 /**
  * Như analyzePdf nhưng:

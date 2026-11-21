@@ -39,6 +39,8 @@ export interface PdfAnalysis {
   solutionMarks?: PdfPoint[];
   /** Tiêu đề mục ("Dạng 3:", "Phần 2:", "Kiểu 1:") — là ranh giới kết thúc của câu đứng trước */
   headings?: PdfPoint[];
+  /** Mép trên các dòng chữ của từng trang (% trang) — để công cụ cắt tay "hút" mốc vào đầu dòng */
+  lineTops?: number[][];
 }
 
 export interface AnchorItem extends PdfPoint {
@@ -48,8 +50,15 @@ export interface AnchorItem extends PdfPoint {
   source: "auto" | "manual";
 }
 
+/** Tăng khi đổi cách phân tích/ghép → bộ nhớ đệm phân tích trong trình duyệt tự làm mới */
+export const ANALYSIS_VERSION = 10;
+
 export interface SolutionAnchorsData {
   version: 1;
+  /** Phiên bản thuật toán tạo ra mốc tự động (ANALYSIS_VERSION) */
+  algoVersion?: number;
+  /** Nguồn dò: lớp chữ của PDF hay nhận dạng chữ trong ảnh (OCR) */
+  method?: "text" | "ocr";
   /** File lời giải mà các mốc này thuộc về — đổi file thì bỏ qua mốc cũ */
   pdfUrl: string;
   numPages: number;
@@ -150,17 +159,28 @@ export async function analyzePdf(pdf: PDFDocumentProxy): Promise<PdfAnalysis> {
     layout: detectLayout(pages),
     solutionMarks: findSolutionMarks(pages),
     headings: findHeadings(pages),
+    lineTops: pages.map((lines) => [...new Set(lines.map((l) => round1(l.top)))]),
   };
 }
 
-// "Dạng 3: PHỦ ĐỊNH ...", "Phần 2. Đúng sai", "Kiểu 1: ...", "DẠNG 1: ..." (kể cả biểu tượng phía trước)
-const HEADING_REGEX = /^[^\p{L}\d]{0,4}(dạng|phần|kiểu)\s*\d{1,2}\s*[:.]/iu;
+// "Dạng 3: PHỦ ĐỊNH ...", "Phần 2. Đúng sai", "Phần II: Trắc nghiệm đúng sai", "Kiểu 1: ...", "DẠNG 1: ..."
+// (kể cả biểu tượng phía trước)
+const HEADING_REGEX = /^[^\p{L}\d]{0,4}(dạng|phần|kiểu|chương)\s*(\d{1,2}|[IVX]{1,4})\s*[:.]/iu;
+// "II. TRẮC NGHIỆM ĐÚNG SAI" — số La Mã đầu dòng + chữ in hoa (không nhầm với "I." trong lời giải)
+const ROMAN_HEADING_REGEX = /^[^\p{L}\d]{0,4}[IVX]{1,4}\s*[.:]\s*\p{Lu}{2,}[\p{Lu}\s,–-]*$/u;
+// "--- HẾT ---", "HẾT", "BẢNG ĐÁP ÁN", "ĐÁP ÁN" đứng riêng một dòng → kết thúc câu cuối
+const END_MARK_REGEX = /^[\s\-–—_.*=]*(hết|bảng đáp án|đáp án)[\s\-–—_.*=:]*$/iu;
+
+export function isHeadingLine(text: string) {
+  const t = text.trim();
+  return HEADING_REGEX.test(t) || ROMAN_HEADING_REGEX.test(t) || END_MARK_REGEX.test(t);
+}
 
 function findHeadings(pages: TextLine[][]): PdfPoint[] {
   const points: PdfPoint[] = [];
   pages.forEach((lines, i) => {
     for (const line of lines) {
-      if (HEADING_REGEX.test(line.text.trim())) {
+      if (isHeadingLine(line.text)) {
         points.push({ page: i + 1, y: round1(clamp(line.top - 0.6, 0, 100)) });
       }
     }
@@ -337,46 +357,175 @@ function isCleanRun(run: PdfMarker[]) {
  */
 const EXPANSION_FACTORS = [1, 4];
 
-/**
- * Căn mỗi phần với một hoặc vài đợt đánh số liên tiếp (đều "sạch") có tổng số nhãn × hệ số
- * đúng bằng số câu của phần. Cho phép bỏ qua đợt thừa (ví dụ minh hoạ, phần ôn tập không có trong đề).
- */
-function alignRunsToSections(runs: PdfMarker[][], sections: string[][], result: Record<string, AnchorItem>) {
-  const matchedSections = new Set<number>();
-  const usedRuns = new Set<number>();
-  let runPtr = 0;
+/** Một phần được gán trọn cho nhóm đợt [start..end] (đều "sạch", tổng nhãn × hệ số = số câu) */
+interface ExactPlan {
+  start: number;
+  end: number;
+  factor: number;
+}
 
-  sections.forEach((ids, si) => {
-    for (let start = runPtr; start < runs.length; start++) {
+/** Kết quả căn chỉnh: phần nào khớp chính xác với nhóm đợt nào */
+interface SectionPlan {
+  exact: Map<number, ExactPlan>;
+}
+
+/**
+ * Căn chỉnh tối ưu toàn cục (quy hoạch động) giữa các phần và các đợt đánh số, giữ đúng thứ tự:
+ * - phần được gán một nhóm đợt liền nhau "sạch" có tổng nhãn × hệ số = số câu (+1000 điểm mỗi câu);
+ * - bỏ qua đợt (vd ví dụ minh hoạ) bị trừ điểm theo số nhãn bỏ qua;
+ * - phần chưa khớp được "giữ" các đợt nằm ngay trước phần kế tiếp mà không bị trừ điểm → nhãn của phần này
+ *   không bao giờ bị gán cho phần khác (vd phần 1 chỉ có nhãn 1–5 thì dãy 1–12 của phần 2 vẫn thuộc phần 2).
+ */
+function planSections(runs: PdfMarker[][], sections: string[][]): SectionPlan {
+  const m = runs.length;
+  const k = sections.length;
+  const memo = new Map<string, { score: number; choice: ["exact", ExactPlan] | ["window", number] | null }>();
+  const skipped = (from: number, to: number) => {
+    let n = 0;
+    for (let r = from; r <= to; r++) n += runs[r].length;
+    return n;
+  };
+
+  const best = (si: number, r: number): { score: number; choice: ["exact", ExactPlan] | ["window", number] | null } => {
+    if (si === k) return { score: 0, choice: null };
+    const key = `${si}:${r}`;
+    const hit = memo.get(key);
+    if (hit) return hit;
+    let res: { score: number; choice: ["exact", ExactPlan] | ["window", number] | null } = { score: -Infinity, choice: null };
+    const len = sections[si].length;
+
+    // A. Phần chưa khớp: giữ các đợt r..x làm vùng của mình (không trừ điểm), phần sau bắt đầu từ x+1
+    for (let x = r - 1; x < m; x++) {
+      const sub = best(si + 1, x + 1).score;
+      if (sub > res.score) res = { score: sub, choice: ["window", x] };
+    }
+    // B. Khớp chính xác với nhóm đợt [start..end]; các đợt r..start-1 bị bỏ qua (trừ điểm)
+    for (let start = r; start < m; start++) {
       let total = 0;
-      for (let end = start; end < runs.length && isCleanRun(runs[end]); end++) {
+      for (let end = start; end < m && isCleanRun(runs[end]); end++) {
         total += runs[end].length;
-        const factor = EXPANSION_FACTORS.find((f) => total * f === ids.length);
+        const factor = EXPANSION_FACTORS.find((f) => total * f === len);
         if (factor) {
-          runs
-            .slice(start, end + 1)
-            .flat()
-            .forEach((m, j) => {
-              for (let k = 0; k < factor; k++) {
-                result[ids[j * factor + k]] = { page: m.page, y: m.y, label: m.label, source: "auto" };
-              }
-            });
-          for (let r = start; r <= end; r++) usedRuns.add(r);
-          matchedSections.add(si);
-          runPtr = end + 1;
-          return;
+          const score = len * 1000 - skipped(r, start - 1) + best(si + 1, end + 1).score;
+          if (score > res.score) res = { score, choice: ["exact", { start, end, factor }] };
         }
-        if (total > ids.length) break;
+        if (total > len) break;
       }
     }
-  });
+    memo.set(key, res);
+    return res;
+  };
 
-  return { matchedSections, usedRuns };
+  const plan: SectionPlan = { exact: new Map() };
+  let r = 0;
+  for (let si = 0; si < k; si++) {
+    const { choice } = best(si, r);
+    if (choice && choice[0] === "exact") {
+      plan.exact.set(si, choice[1]);
+      r = choice[1].end + 1;
+    } else {
+      r = (choice ? (choice[1] as number) : r - 1) + 1;
+    }
+  }
+  return plan;
+}
+
+/**
+ * Gom các đợt (trong vùng của một phần) thành "khối": đợt sau chỉ nhập vào khối nếu số đầu của nó chỉ lùi rất ít
+ * so với số lớn nhất của khối (nhãn lặp/lạc chỗ, vd "…10, 12, 11, 12, 13…"). Đánh số lại từ đầu là khối mới.
+ */
+function buildBlocks(runs: PdfMarker[][]): PdfMarker[][] {
+  const blocks: PdfMarker[][] = [];
+  let current: PdfMarker[] | null = null;
+  let currentMax = 0;
+  for (const run of runs) {
+    const first = run[0].n;
+    // Chỉ coi là "nhãn lạc" khi khối đã đủ dài (≥ 3 nhãn): một nhãn lẻ đứng trước không được kéo cả đợt sau vào
+    if (current && current.length >= 3 && first >= currentMax - 2 && first > 1) {
+      current.push(...run);
+    } else {
+      current = [...run];
+      blocks.push(current);
+    }
+    currentMax = Math.max(...current.map((mk) => mk.n));
+  }
+  return blocks;
+}
+
+/** Dãy con tăng ngặt dài nhất theo số câu (giữ thứ tự đọc). O(n log n). */
+export function longestIncreasingByNumber(markers: PdfMarker[]): PdfMarker[] {
+  const tails: number[] = []; // chỉ số marker kết thúc dãy dài k+1
+  const prev: number[] = new Array(markers.length).fill(-1);
+  markers.forEach((mk, i) => {
+    let lo = 0;
+    let hi = tails.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (markers[tails[mid]].n < mk.n) lo = mid + 1;
+      else hi = mid;
+    }
+    if (lo > 0) prev[i] = tails[lo - 1];
+    tails[lo] = i;
+  });
+  const out: PdfMarker[] = [];
+  for (let x = tails.length ? tails[tails.length - 1] : -1; x !== -1; x = prev[x]) out.push(markers[x]);
+  return out.reverse();
+}
+
+/**
+ * Đủ chắc để ghép theo số? Phần nhỏ (≤ 5 câu, vd Đúng/Sai 4 câu) chỉ được thiếu tối đa 1 câu;
+ * phần lớn cần phủ ≥ 70% (nhãn số trần dễ nhầm hơn → ≥ 85%).
+ */
+export function lisCoverageOk(found: number, total: number, bare: boolean) {
+  if (total <= 0 || found <= 0) return false;
+  if (total <= 5) return total - found <= 1 && found >= Math.min(total, 2);
+  return found / total >= (bare ? 0.85 : 0.7);
+}
+
+/**
+ * Ghép một phần theo số trên nhãn bằng dãy số tăng dài nhất trong các khối của vùng nó.
+ * Ưu tiên 1 nhãn = 1 câu; "1 nhãn = 4 câu" (Đúng/Sai nhập 4 câu) chỉ khi không có nhãn nào vượt số nhãn cần có.
+ * Trả về true nếu đã ghép.
+ */
+function assignSectionByLis(
+  blocks: PdfMarker[][],
+  ids: string[],
+  offsets: number[],
+  result: Record<string, AnchorItem>,
+): boolean {
+  for (const block of blocks) {
+    const bare = block.some((mk) => mk.bare);
+    let best: { lis: PdfMarker[]; offset: number; factor: number } | null = null;
+    for (const factor of EXPANSION_FACTORS) {
+      if (best) break;
+      if (ids.length % factor !== 0) continue;
+      const count = ids.length / factor;
+      for (const offset of offsets) {
+        if (factor > 1 && block.some((mk) => mk.n > offset + count)) continue;
+        const lis = longestIncreasingByNumber(block.filter((mk) => mk.n > offset && mk.n <= offset + count));
+        if (!lisCoverageOk(lis.length, count, bare)) continue;
+        if (!best || lis.length > best.lis.length) best = { lis, offset, factor };
+      }
+    }
+    if (!best) continue;
+    for (const mk of best.lis) {
+      const base = (mk.n - best.offset - 1) * best.factor;
+      for (let f = 0; f < best.factor; f++) {
+        const id = ids[base + f];
+        if (id && !result[id]) result[id] = { page: mk.page, y: mk.y, label: mk.label, source: "auto" };
+      }
+    }
+    return true;
+  }
+  return false;
 }
 
 /**
  * Ghép nhãn với câu hỏi. Chỉ ghép khi đủ chắc chắn; câu không ghép được sẽ không có mốc.
- * Thứ tự ưu tiên: tuần tự toàn bài → căn theo độ dài từng phần → theo số câu ghi trên nhãn.
+ * 1. Số nhãn = số câu và dãy số hợp lý → tuần tự toàn bài.
+ * 2. Căn chỉnh tối ưu toàn cục các phần với các đợt đánh số "sạch".
+ * 3. Phần chưa khớp: đề đánh số liên tục toàn bài → LIS trên cả bài; nếu không, LIS trong vùng riêng của phần
+ *    (có ngưỡng độ phủ); cuối cùng (chỉ nhãn có từ khoá) ghép theo số của đợt dài nhất trong vùng.
  * @param sections danh sách id câu hỏi theo từng phần, đúng thứ tự hiển thị
  */
 export function mapMarkersToQuestions(markers: PdfMarker[], sections: string[][]): Record<string, AnchorItem> {
@@ -386,55 +535,94 @@ export function mapMarkersToQuestions(markers: PdfMarker[], sections: string[][]
   // 1. Số nhãn đúng bằng số câu và dãy số hợp lý ở từng phần → ghép tuần tự theo thứ tự đọc
   const flatIds = sections.flat();
   if (markers.length === flatIds.length && isConsistentSequence(markers, sections)) {
-    markers.forEach((m, i) => {
-      result[flatIds[i]] = { page: m.page, y: m.y, label: m.label, source: "auto" };
+    markers.forEach((mk, i) => {
+      result[flatIds[i]] = { page: mk.page, y: mk.y, label: mk.label, source: "auto" };
     });
     return result;
   }
 
-  // 2. Căn từng phần theo độ dài các đợt đánh số
+  // 2. Căn chỉnh tối ưu các phần với các đợt đánh số sạch
   const runs = splitRuns(markers);
-  const { matchedSections, usedRuns } = alignRunsToSections(runs, sections, result);
+  const plan = planSections(runs, sections);
+  for (const [si, { start, end, factor }] of plan.exact) {
+    const ids = sections[si];
+    runs
+      .slice(start, end + 1)
+      .flat()
+      .forEach((mk, j) => {
+        for (let f = 0; f < factor; f++) result[ids[j * factor + f]] = { page: mk.page, y: mk.y, label: mk.label, source: "auto" };
+      });
+  }
+  if (plan.exact.size === sections.length) return result;
 
-  // Nhãn số trần ("1. ...") dễ nhầm với tiêu đề mục → chỉ chấp nhận khi khớp chính xác ở trên
-  if (markers.some((m) => m.bare)) return result;
-  if (matchedSections.size === sections.length) return result;
+  const anyBare = markers.some((mk) => mk.bare);
 
-  // 3. Các phần còn lại: ghép theo số câu ghi trên nhãn (chịu được câu bị khuyết do là ảnh)
-  const maxN = (run: PdfMarker[]) => Math.max(...run.map((m) => m.n));
-  const pending = sections.map((_, i) => i).filter((i) => !matchedSections.has(i));
-  const freeRuns = runs.map((_, i) => i).filter((i) => !usedRuns.has(i));
-  if (freeRuns.length === 0) return result;
-
-  if (sections.length === 1) {
-    // Một phần: lấy đợt đánh số dài nhất (bỏ qua các nhãn lẻ như ví dụ minh hoạ)
-    const longest = freeRuns.map((i) => runs[i]).reduce((a, b) => (b.length > a.length ? b : a));
-    assignRun(longest, sections[0], result);
-    return result;
+  // 3a. Chưa phần nào khớp chính xác và đề đánh số liên tục qua các phần (nhãn vượt số câu phần 1)
+  if (plan.exact.size === 0 && sections.length > 1 && Math.max(...markers.map((mk) => mk.n)) > sections[0].length) {
+    const lis = longestIncreasingByNumber(markers.filter((mk) => mk.n <= flatIds.length));
+    if (lisCoverageOk(lis.length, flatIds.length, anyBare)) {
+      for (const mk of lis) result[flatIds[mk.n - 1]] = { page: mk.page, y: mk.y, label: mk.label, source: "auto" };
+      return result;
+    }
   }
 
-  if (runs.length === sections.length) {
-    pending.forEach((i) => !usedRuns.has(i) && assignRun(runs[i], sections[i], result));
-    return result;
-  }
-
-  if (runs.length === 1 && matchedSections.size === 0) {
-    const run = runs[0];
-    // Đánh số liên tục qua các phần → ghép theo thứ tự toàn bài
-    if (maxN(run) > sections[0].length) assignRun(run, flatIds, result);
-    else assignRun(run, sections[0], result);
-    return result;
-  }
-
-  // Đợt nào có số câu lớn nhất trùng số câu của một phần chưa ghép (giữ thứ tự)
-  let sectionPtr = 0;
-  for (const ri of freeRuns) {
-    const count = maxN(runs[ri]);
-    const idx = pending.find((si) => si >= sectionPtr && !matchedSections.has(si) && sections[si].length === count);
-    if (idx === undefined) continue;
-    assignRun(runs[ri], sections[idx], result);
-    matchedSections.add(idx);
-    sectionPtr = idx + 1;
+  // 3b. Phần chưa khớp: mỗi "khe" là đoạn đợt nằm giữa hai phần đã khớp chính xác; các phần chưa khớp trong khe
+  //     lần lượt (đúng thứ tự) nhận khối của khe → nhãn không bao giờ bị lấy sang phần ở ngoài khe
+  const offsetsOf: number[] = [];
+  sections.reduce((acc, ids, si) => ((offsetsOf[si] = acc), acc + ids.length), 0);
+  let si = 0;
+  while (si < sections.length) {
+    if (plan.exact.has(si)) {
+      si++;
+      continue;
+    }
+    // Khe: các phần chưa khớp liên tiếp [si..sj], đợt từ sau phần khớp trước đến trước phần khớp sau
+    let sj = si;
+    while (sj + 1 < sections.length && !plan.exact.has(sj + 1)) sj++;
+    const prevExact = si > 0 ? plan.exact.get(si - 1) : undefined;
+    const nextExact = sj + 1 < sections.length ? plan.exact.get(sj + 1) : undefined;
+    const from = prevExact ? prevExact.end + 1 : 0;
+    const to = nextExact ? nextExact.start - 1 : runs.length - 1;
+    const blocks = from <= to ? buildBlocks(runs.slice(from, to + 1)) : [];
+    let ptr = 0;
+    const takenBlock = new Map<number, number>(); // phần → khối đã ghép bằng LIS
+    for (let s2 = si; s2 <= sj; s2++) {
+      const ids = sections[s2];
+      const offsets = offsetsOf[s2] > 0 ? [0, offsetsOf[s2]] : [0];
+      for (let b = ptr; b < blocks.length; b++) {
+        if (assignSectionByLis([blocks[b]], ids, offsets, result)) {
+          takenBlock.set(s2, b);
+          ptr = b + 1;
+          break;
+        }
+      }
+    }
+    // Dự phòng như trước (chỉ nhãn có từ khoá, không áp dụng số trần): phần còn thiếu ghép theo số ghi trên nhãn,
+    // chỉ dùng các khối nằm giữa khối của phần đã ghép ngay trước và ngay sau nó, và chỉ khi việc chia là rõ ràng
+    // (một phần ↔ khối dài nhất, hoặc số phần = số khối) — chịu được phần chỉ còn vài nhãn chữ (còn lại là ảnh)
+    if (!anyBare) {
+      const groups = new Map<string, { lo: number; hi: number; secs: number[] }>();
+      for (let s2 = si; s2 <= sj; s2++) {
+        if (takenBlock.has(s2)) continue;
+        let lo = -1;
+        let hi = blocks.length;
+        for (const [s3, b] of takenBlock) {
+          if (s3 < s2) lo = Math.max(lo, b);
+          else hi = Math.min(hi, b);
+        }
+        const key = `${lo}:${hi}`;
+        const g = groups.get(key) ?? { lo, hi, secs: [] };
+        g.secs.push(s2);
+        groups.set(key, g);
+      }
+      for (const { lo, hi, secs } of groups.values()) {
+        const cand = blocks.slice(lo + 1, hi);
+        if (cand.length === 0) continue;
+        if (secs.length === 1) assignRun(cand.reduce((a, b) => (b.length > a.length ? b : a)), sections[secs[0]], result);
+        else if (cand.length === secs.length) secs.forEach((s2, idx) => assignRun(cand[idx], sections[s2], result));
+      }
+    }
+    si = sj + 1;
   }
   return result;
 }
@@ -461,9 +649,16 @@ function isConsistentSequence(markers: PdfMarker[], sections: string[][]) {
 }
 
 /** Tạo bộ mốc tự động từ kết quả phân tích. */
-export function buildAutoAnchors(analysis: PdfAnalysis, sections: string[][], pdfUrl: string): SolutionAnchorsData {
+export function buildAutoAnchors(
+  analysis: PdfAnalysis,
+  sections: string[][],
+  pdfUrl: string,
+  method: "text" | "ocr" = "text",
+): SolutionAnchorsData {
   return {
     version: 1,
+    algoVersion: ANALYSIS_VERSION,
+    method,
     pdfUrl,
     numPages: analysis.numPages,
     layout: analysis.layout,
@@ -473,6 +668,26 @@ export function buildAutoAnchors(analysis: PdfAnalysis, sections: string[][], pd
     solutionMarks: analysis.solutionMarks ?? [],
     items: mapMarkersToQuestions(analysis.markers, sections),
   };
+}
+
+/**
+ * "Hút" vị trí y về mép trên dòng chữ gần nhất (trong khoảng `radius` % trang), lùi 0.6% như nhãn tự dò.
+ * Không có dòng nào gần thì giữ nguyên.
+ */
+export function snapToLine(lineTops: number[][] | undefined, page: number, y: number, radius = 1.5) {
+  const tops = lineTops?.[page - 1];
+  if (!tops?.length) return y;
+  let best = y;
+  let dist = radius;
+  for (const t of tops) {
+    const target = clamp(t - 0.6, 0, 100);
+    const d = Math.abs(target - y);
+    if (d < dist) {
+      dist = d;
+      best = target;
+    }
+  }
+  return round1(best);
 }
 
 // ---------------------------------------------------------------------------
@@ -617,5 +832,16 @@ export function sanitizeSolutionAnchors(
     };
   }
 
-  return { version: 1, numPages, layout, boundaries, solutionMarks, items };
+  const algoVersion = Number.isInteger(raw.algoVersion) && raw.algoVersion > 0 && raw.algoVersion < 1000 ? raw.algoVersion : undefined;
+  const method = raw.method === "ocr" || raw.method === "text" ? raw.method : undefined;
+  return {
+    version: 1,
+    ...(algoVersion ? { algoVersion } : {}),
+    ...(method ? { method } : {}),
+    numPages,
+    layout,
+    boundaries,
+    solutionMarks,
+    items,
+  };
 }
