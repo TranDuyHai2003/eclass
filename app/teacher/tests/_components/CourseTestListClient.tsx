@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import TestTypeSwitcherClient from "./TestTypeSwitcherClient";
 import DueDateUpdaterClient from "./DueDateUpdaterClient";
+import ClassDeadlinesClient, { type ClassDeadline } from "./ClassDeadlinesClient";
 import { DeleteTestButton } from "./DeleteTestButton";
 
 export type TestItem = {
@@ -33,6 +34,7 @@ export type TestItem = {
     dueDate: string | null;
     createdAt: string;
     updatedAt: string;
+    classDeadlines?: ClassDeadline[];
   } | null;
   attempts: {
     completedAt: string | null;
@@ -127,6 +129,7 @@ export default function CourseTestListClient({
                             testId={t.test.id}
                             initialDueDate={t.test.dueDate}
                           />
+                          <ClassDeadlinesClient testId={t.test.id} classes={t.test.classDeadlines ?? []} generalDueDate={t.test.dueDate} />
                           <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
                             Tạo:{" "}
                             {new Intl.DateTimeFormat("vi-VN", {

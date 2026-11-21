@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { applyTestDeadlines } from "@/lib/test-deadlines";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { commitTempFile } from "@/lib/b2";
@@ -100,6 +101,12 @@ export async function PATCH(
   }
 
   const body = await req.json();
+  // Hạn nộp riêng theo lớp (lib/test-deadlines.ts kiểm tra lớp thuộc khoá của đề)
+  if (Array.isArray(body.deadlines)) {
+    const r = await applyTestDeadlines(test.id, body.deadlines);
+    if (!r.ok) return new NextResponse(r.error, { status: 400 });
+    if (Object.keys(body).length === 1) return NextResponse.json(r);
+  }
   const title = typeof body.title === "string" ? body.title.trim() : undefined;
   const subject =
     typeof body.subject === "string" ? body.subject.trim() : undefined;

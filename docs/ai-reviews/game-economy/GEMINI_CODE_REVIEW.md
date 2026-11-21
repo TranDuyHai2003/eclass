@@ -50,3 +50,50 @@ Database production (eclass-vps) hiện đã có dữ liệu thật trong PointW
 | 3 | Truy vấn hạn ngoài `runPointsSafely` | **Đúng.** | Tra `TestDeadline` + `classId` bên trong `onTestSubmitted` (trong giao dịch điểm); `actions/test.ts` không truy vấn thêm. Test hồi quy: lớp có hạn riêng còn hạn → đúng hạn dù hạn chung đã qua. |
 | 4 | `revokeKey` trừ nhầm `lifetimeEarned` | **Đúng** (bẫy cho GĐ sau). | `revokeKey` xem nguồn của dòng gốc; chỉ trừ `lifetimeEarned` nếu nguồn ∈ `EARNING_SOURCES`. Test: thu hồi `GIFTCODE` giữ nguyên danh hiệu, thu hồi `TEST_SUBMIT` thì trừ. |
 | Q | Production có dữ liệu điểm chưa? | Chưa — tính năng Điểm thưởng chưa deploy lần nào. | — |
+
+---
+
+## Giai đoạn 1 — diff `e7107ec..e4e2e54` (21/11/2026)
+
+### Summary
+
+Nhìn chung code giai đoạn 1 được triển khai chắc chắn: các bất biến sổ–ví, khoá ví lockWallet, chống đua lượt cuối (updateMany có điều kiện usedCount < maxUses), chống nhập trùng hai tab, phân quyền server action, tách giftcode-shared.ts (không lọt Prisma vào client), và các sửa từ review GĐ0 (revokeKey giữ lifetimeEarned, tra TestDeadline trong runPointsSafely) đều đúng và có test bao phủ tốt. Rủi ro lớn nhất nằm ở xử lý múi giờ expiresAt khi thầy tạo lô mã quà tặng (sẽ lệch +7 tiếng trên Heroku chạy UTC) và nội suy chuỗi chưa escape vào document.write khi in thẻ.
+
+### Findings
+
+#### [HIGH] Lệch múi giờ +7 tiếng khi đặt hạn dùng (expiresAt) cho lô mã quà tặng trên production
+- **Where:** components/points/GiftCodesTab.tsx:89, lib/game/giftcode.ts:40,65
+- **Scenario:** Thầy ở Việt Nam (UTC+7) chọn hạn dùng 2026-11-22T18:00 trong `<input type="datetime-local">`. Giá trị gửi lên createGiftCodes là chuỗi không có múi giờ "2026-11-22T18:00". Trên Heroku (chạy UTC), new Date("2026-11-22T18:00") hiểu là 18:00 UTC = 01:00 sáng ngày 23/11 giờ Việt Nam (muộn hơn 7 tiếng). Tương tự, nếu thầy chọn mốc quá khứ gần (ví dụ 2 tiếng trước giờ VN), kiểm tra d.getTime() < Date.now() trên server UTC vẫn cho qua.
+- **Why it matters:** Mã quà tặng hết hạn sai 7 tiếng so với giờ thầy chọn, vi phạm quy ước múi giờ Việt Nam (UTC+7) của hệ thống.
+- **Minimal fix:** Trước khi gửi từ GiftCodesTab.tsx, chuyển expiresAt sang chuỗi ISO có múi giờ: expiresAt ? new Date(expiresAt).toISOString() : null (hoặc trên server trong lib/game/giftcode.ts, nếu chuỗi expiresAt khớp /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/ thì gắn thêm +07:00 trước khi new Date(...)).
+
+#### [MEDIUM] HTML injection / XSS khi in thẻ quà tặng bằng w.document.write
+- **Where:** components/points/GiftCodesTab.tsx:39-57
+- **Scenario:** Thầy (hoặc tài khoản TEACHER/ADMIN khác) nhập ghi chú lô mã có ký tự HTML như "Điểm < 10" hoặc `<img src=x onerror=...>`, sau đó bấm In thẻ / In. label (chứa note) được nối thẳng vào chuỗi HTML trong w.document.write(...) trên cửa sổ cùng origin.
+- **Why it matters:** Dấu <, > làm vỡ bố cục thẻ in; nếu chứa thẻ HTML/script sẽ thực thi trực tiếp trong phiên đăng nhập của giáo viên/admin.
+- **Minimal fix:** Thêm hàm escape HTML (&, <, >, ", ') và áp dụng cho label (và c) trước khi ghép vào chuỗi HTML trong printCodes.
+
+#### [LOW] Nút "In thẻ" ở khung vừa tạo (justCreated) in sai nếu thầy sửa form trước khi bấm in
+- **Where:** components/points/GiftCodesTab.tsx:26,34,116
+- **Scenario:** Thầy tạo lô 10 mã × 3 ngọc (ghi chú "Điểm 10"), sau đó sửa ô amount thành 5 hoặc đổi currency/note để chuẩn bị tạo lô tiếp, rồi mới bấm In thẻ ở khung Vừa tạo 10 mã. Hàm printCodes đọc amount, currency, note hiện tại của form thay vì thông số của lô vừa tạo.
+- **Why it matters:** Thẻ in ra ghi sai mệnh giá hoặc ghi chú so với dữ liệu thực tế lưu trong DB.
+- **Minimal fix:** Lưu justCreated dạng { codes: string[]; label: string } | null ngay tại thời điểm create thành công và truyền justCreated.label vào printCodes.
+
+#### [LOW] CountUp chưa tôn trọng prefers-reduced-motion
+- **Where:** components/game/CoinBurst.tsx:69-83
+- **Scenario:** Người dùng bật tùy chọn "Giảm chuyển động" (prefers-reduced-motion: reduce) trên thiết bị. CSS đã ẩn coin-fly, nhưng CountUp vẫn chạy requestAnimationFrame đếm số trong 800ms.
+- **Why it matters:** Chưa đồng nhất về khả năng tiếp cận (accessibility) với các hiệu ứng còn lại.
+- **Minimal fix:** Trong useEffect của CountUp, kiểm tra if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setN(value); return; } trước khi khởi chạy requestAnimationFrame.
+
+### Questions for the author
+
+Không có câu hỏi nào; ngữ cảnh trong diff đủ để kết luận.
+
+### Claude kiểm chứng (GĐ1)
+
+| # | Finding | Kết luận | Đã làm |
+|---|---|---|---|
+| 1 | Hạn dùng lệch +7 giờ trên Heroku (UTC) | **Đúng.** Chuỗi `datetime-local` không có múi giờ bị server UTC hiểu sai. | Client gửi ISO (`new Date(v).toISOString()`); server thêm `parseVnDateTime` coi chuỗi không múi giờ là +07:00 (phòng gọi API trực tiếp). Test: `"2026-11-22T18:00"` → `11:00Z`. |
+| 2 | XSS khi in thẻ qua `document.write` | **Đúng** (thầy/admin tự nhập, nhưng vẫn phải escape). | Hàm `esc` áp cho mã và nhãn. |
+| 3 | Nút "In thẻ" lô vừa tạo đọc form hiện tại | **Đúng.** | `justCreated = { codes, label }` chụp lúc tạo xong. |
+| 4 | `CountUp` bỏ qua "giảm chuyển động" | **Đúng.** | `matchMedia` → hiện số cuối ngay. |

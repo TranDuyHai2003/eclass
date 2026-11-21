@@ -8,16 +8,18 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { cancelRedemption, redeemReward, setGoalReward } from "@/actions/points";
 import { EARNING_RULES, SOURCE_LABEL } from "@/lib/points/config";
-import { LEVELS, getLevel, type LevelInfo } from "@/lib/points/levels";
+import { LEVELS, getLevel } from "@/lib/points/levels";
 import { rarityOf } from "@/lib/points/rarity";
 import { resolveKindFilter, type KindFilter } from "@/lib/points/filters";
-import { getAvatarThumbUrl } from "@/lib/game-rank";
 import type { StudentPointsPageData } from "@/lib/points/queries";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Confetti } from "./Confetti";
-import { Mascot } from "./Mascot";
+import { Npc } from "@/components/game/Npc";
+import { buildNpcLines } from "@/lib/game/npc";
 import { GiftCodeDialog } from "./GiftCodeDialog";
 import { SoundToggle } from "@/components/game/SoundToggle";
+import { CosmeticShop } from "./CosmeticShop";
+import { Chibi } from "@/components/avatar/Chibi";
 import { play } from "@/lib/sound";
 
 type Reward = StudentPointsPageData["rewards"][number];
@@ -67,13 +69,29 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
   const level = getLevel(wallet.lifetimeEarned);
   const pendingCount = data.redemptions.filter((r) => r.status === "PENDING").length;
 
-  // Chỉ hiện các lựa chọn lọc có quà thực tế (vd học sinh online không có quà "Nhận tại lớp")
-  const kinds = useMemo(() => Array.from(new Set(data.rewards.map((r) => r.kind))), [data.rewards]);
+  // Chỉ hiện các lựa chọn lọc có quà thực tế (vd học sinh online không có quà "Nhận tại lớp"); "Trang trí" luôn có
+  const kinds = useMemo(() => [...Array.from(new Set(data.rewards.map((r) => r.kind))), "COSMETIC"], [data.rewards]);
   // Loại đang lọc không còn quà (vd thầy vừa ẩn món cuối) → tự về "Tất cả", tránh kẹt ở lưới trống (review Gemini)
   const activeKind = resolveKindFilter(kind, kinds);
   const rewards = activeKind === "ALL" ? data.rewards : data.rewards.filter((r) => r.kind === activeKind);
 
-  const tips = useMemo(() => buildTips(data, level), [data, level]);
+  const tips = useMemo(
+    () =>
+      buildNpcLines({
+        name: user.name,
+        canEarn: data.canEarn,
+        weekActivities: wallet.weekActivities,
+        weekTarget: wallet.weekTarget,
+        thisWeekCounted: wallet.thisWeekCounted,
+        lifetimeEarned: wallet.lifetimeEarned,
+        levelName: level.name,
+        nextLevel: level.next ? { name: level.next.name, toNext: level.toNext } : null,
+        balance: wallet.balance,
+        gems: wallet.gems,
+        goal: goal ? { title: goal.title, price: goal.price } : null,
+      }),
+    [data.canEarn, user.name, wallet, level, goal],
+  );
 
   const run = (fn: () => Promise<{ success: boolean; message?: string; error?: string }>, after?: () => void) =>
     startTransition(async () => {
@@ -105,14 +123,9 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
           {/* Hồ sơ + cấp độ */}
           <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <div className="relative shrink-0">
-              <div className="h-16 w-16 overflow-hidden rounded-2xl border-4 border-white/80 bg-white/20 shadow-lg sm:h-20 sm:w-20">
-                {user.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={getAvatarThumbUrl(user.name, user.image, 128)} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="flex h-full w-full items-center justify-center text-2xl font-black">{user.name?.[0]?.toUpperCase() || "?"}</span>
-                )}
-              </div>
+              <Link href="/profile/avatar" title="Tuỳ chỉnh nhân vật" className="block h-16 w-16 overflow-hidden rounded-2xl border-4 border-white/80 bg-white/20 shadow-lg transition-transform hover:scale-105 sm:h-20 sm:w-20">
+                <Chibi config={data.avatar} className="h-full w-full" title={user.name ?? undefined} />
+              </Link>
               <span className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-xl bg-white text-base shadow-md ring-2 ring-blue-200" title={`Cấp ${level.level}`}>
                 {level.icon}
               </span>
@@ -158,6 +171,10 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
           <span aria-hidden className="sparkle -left-1 -top-1" /><span aria-hidden className="sparkle sparkle-2 -right-1 top-1" />
           <Ticket className="h-4 w-4" /> Nhập code
         </button>
+        <Link href="/rewards/gacha" data-testid="gacha-link" onClick={() => play("click")} className="btn-3d btn-shine relative bg-violet-600 px-4 py-2.5 text-sm text-white [--btn-edge:#4c1d95] hover:bg-violet-500">
+          <span aria-hidden className="sparkle -right-1 -top-1" />
+          🎁 Rương bí ẩn
+        </Link>
         <SoundToggle className="ml-auto" />
       </div>
 
@@ -183,7 +200,7 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
           )}
         </div>
         <div className="min-w-0 border-t border-slate-100 pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
-          <Mascot tips={tips} />
+          <Npc lines={tips} />
         </div>
       </section>
 
@@ -220,8 +237,11 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
                   ["ALL", "Tất cả"],
                   ["PHYSICAL", "🏫 Nhận tại lớp"],
                   ["VIRTUAL", "✨ Đặc quyền"],
+                  ["COSMETIC", "🎨 Trang trí hồ sơ"],
                 ] as const
-              ).map(([k, label]) => (
+              )
+                .filter(([k]) => k === "ALL" || kinds.includes(k))
+                .map(([k, label]) => (
                 <button
                   key={k}
                   type="button"
@@ -237,6 +257,10 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
               ))}
             </div>
           )}
+          {activeKind === "COSMETIC" ? (
+            <CosmeticShop avatar={data.avatar} owned={data.ownedItems} balance={wallet.balance} gems={wallet.gems} canEarn={data.canEarn} />
+          ) : (
+            <>
           {!data.isOffline && data.rewards.length > 0 && (
             <p className="text-xs text-slate-500">Quà hiện vật được trao tại lớp học offline, vì vậy bạn chỉ thấy các quà dành cho mọi học sinh.</p>
           )}
@@ -262,6 +286,8 @@ export function StudentRewards({ data, user }: { data: StudentPointsPageData; us
                 />
               ))}
             </div>
+          )}
+            </>
           )}
         </section>
       )}
@@ -543,28 +569,4 @@ function RewardCard({
       </div>
     </div>
   );
-}
-
-/** Câu nhắc của linh vật — tính từ dữ liệu (không ngẫu nhiên) */
-function buildTips(data: StudentPointsPageData, level: LevelInfo): string[] {
-  const { wallet, goal } = data;
-  const tips: string[] = [];
-  if (!data.canEarn) tips.push("Tài khoản cần thầy duyệt để bắt đầu nhận xu nhé!");
-  if (wallet.lifetimeEarned === 0) tips.push("Nộp bài đầu tiên để nhận 300 xu nhé! Làm ít nhất một nửa số câu là có xu.");
-  if (goal) {
-    tips.push(
-      wallet.balance >= goal.price
-        ? `Đủ xu đổi "${goal.title}" rồi — đổi thôi! ${goal.emoji || "🎁"}`
-        : `Còn ${(goal.price - wallet.balance).toLocaleString("vi-VN")} xu nữa là đổi được "${goal.title}" ${goal.emoji || "🎁"}`,
-    );
-  }
-  if (!wallet.thisWeekCounted) {
-    const left = Math.max(0, wallet.weekTarget - wallet.weekActivities);
-    tips.push(left > 0 ? `Nộp thêm ${left} bài tuần này để giữ chuỗi 🔥` : "Tuần này đủ bài rồi, chuỗi sẽ được tính 🔥");
-  }
-  if (level.next) tips.push(`Thêm ${level.toNext.toLocaleString("vi-VN")} xu nữa là lên danh hiệu ${level.next.icon} ${level.next.name}.`);
-  if (wallet.gems === 0) tips.push("Được điểm 10 trên lớp, thầy phát thẻ cào — nhập code ở đây để nhận ngọc 💎");
-  tips.push("Nộp bài đúng hạn được thêm 150 xu; đạt từ 8,5 điểm được thưởng thêm, bứt phá còn có xu 🚀");
-  tips.push("Đổi quà không làm tụt danh hiệu đâu — danh hiệu tính theo tổng xu đã kiếm.");
-  return tips;
 }

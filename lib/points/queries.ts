@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getVietnamMonthStart, getVietnamWeekStart, getWeekCode } from "@/lib/ranking/history-engine";
 import { POINTS, STREAK_ACTIVITY_SOURCES } from "./config";
 import { visibleRewardWhere } from "./redemption";
+import { getAvatar } from "@/lib/game/inventory";
 
 const EMPTY_WALLET = {
   balance: 0,
@@ -37,7 +38,7 @@ export async function getStudentPointsPage(userId: string) {
   });
   const monthStart = getVietnamMonthStart();
 
-  const [walletRow, rewards, redemptions, ledger, weekActivities, monthUsage] = await Promise.all([
+  const [walletRow, rewards, redemptions, ledger, weekActivities, monthUsage, avatar] = await Promise.all([
     prisma.pointWallet.findUnique({ where: { userId } }),
     prisma.reward.findMany({
       where: visibleRewardWhere(user),
@@ -64,6 +65,7 @@ export async function getStudentPointsPage(userId: string) {
       where: { userId, status: { in: ["PENDING", "DELIVERED"] }, createdAt: { gte: monthStart } },
       _count: { _all: true },
     }),
+    getAvatar(userId),
   ]);
 
   const wallet = { ...EMPTY_WALLET, ...(walletRow ?? {}) };
@@ -86,6 +88,8 @@ export async function getStudentPointsPage(userId: string) {
       weekTarget: POINTS.streak.minActivities,
     },
     goal,
+    avatar: avatar.config,
+    ownedItems: avatar.owned,
     rewards: rewards.map((r) => ({
       ...r,
       usedThisMonth: usage.get(r.id) ?? 0,

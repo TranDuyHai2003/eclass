@@ -23,6 +23,7 @@ import {
   Youtube,
   FileText,
   Trophy,
+  Crown,
   Gift,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -60,6 +61,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
       : [{ icon: LogIn, label: "Đăng nhập", href: "/login" }]),
     { icon: BookOpen, label: "Khóa Học", href: "/courses" },
     { icon: Trophy, label: "Bảng xếp hạng Hunter", href: "/ranking" },
+    ...(pointsEnabled ? [{ icon: Crown, label: "Bảng Vàng", href: "/leaderboard" }] : []),
     ...(pointsEnabled && role === "STUDENT" ? [{ icon: Gift, label: "Tiệm quà", href: "/rewards" }] : []),
     {
       icon: DiscordIcon,

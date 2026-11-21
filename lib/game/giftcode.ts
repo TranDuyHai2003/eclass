@@ -3,7 +3,7 @@ import type { Currency } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { awardOnce, isEligibleStudent, lockWallet, type Tx } from "@/lib/points/engine";
 import type { PointsResult } from "@/lib/points/redemption";
-import { ALPHABET, CODE_LENGTH, MAX_AMOUNT, MAX_BATCH, normalizeCode } from "./giftcode-shared";
+import { ALPHABET, CODE_LENGTH, MAX_AMOUNT, MAX_BATCH, normalizeCode, parseVnDateTime } from "./giftcode-shared";
 
 export { CODE_LENGTH, MAX_AMOUNT, MAX_BATCH, normalizeCode } from "./giftcode-shared";
 
@@ -37,8 +37,8 @@ export function validateBatchInput(input: GiftCodeBatchInput): string | null {
   }
   if (!Number.isInteger(input.maxUses) || input.maxUses < 1 || input.maxUses > 500) return "Số lượt dùng mỗi mã từ 1 đến 500.";
   if (input.expiresAt) {
-    const d = new Date(input.expiresAt);
-    if (Number.isNaN(d.getTime())) return "Hạn dùng không hợp lệ.";
+    const d = parseVnDateTime(input.expiresAt);
+    if (!d) return "Hạn dùng không hợp lệ.";
     if (d.getTime() < Date.now()) return "Hạn dùng phải ở tương lai.";
   }
   return null;
@@ -62,7 +62,7 @@ export async function createBatch(input: GiftCodeBatchInput, createdById: string
       currency: input.currency,
       amount: input.amount,
       maxUses: input.maxUses,
-      expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+      expiresAt: parseVnDateTime(input.expiresAt),
       classId: input.classId || null,
       note: input.note?.trim().slice(0, 120) || null,
       batchId,

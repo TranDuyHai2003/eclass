@@ -1,4 +1,4 @@
-export type KindFilter = "ALL" | "PHYSICAL" | "VIRTUAL";
+export type KindFilter = "ALL" | "PHYSICAL" | "VIRTUAL" | "COSMETIC";
 
 /**
  * Bộ lọc loại quà thực sự áp dụng: chỉ có ý nghĩa khi có từ 2 loại quà; nếu loại đang chọn không còn quà nào

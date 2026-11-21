@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import {
   CODE_LENGTH, RATE_LIMIT, createBatch, generateCode, noteFailure, normalizeCode, rateLimited, redeemGiftCodeInTx, resetFailures, validateBatchInput,
 } from "@/lib/game/giftcode";
+import { parseVnDateTime } from "@/lib/game/giftcode-shared";
 import { createFixture, disconnect } from "../helpers/fixtures";
 
 const fx = createFixture();
@@ -29,6 +30,15 @@ describe("Sinh mã và kiểm tra đầu vào", () => {
     for (let i = 0; i < 50; i++) assert.match(generateCode(), /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$/);
     assert.equal(normalizeCode(" ab-cd ef gh "), "ABCDEFGH");
     assert.equal(CODE_LENGTH, 8);
+  });
+
+  test("hạn dùng từ datetime-local (không múi giờ) hiểu là giờ Việt Nam; ISO/Date giữ nguyên (review Gemini)", () => {
+    assert.equal(parseVnDateTime("2026-11-22T18:00")?.toISOString(), "2026-11-22T11:00:00.000Z");
+    assert.equal(parseVnDateTime("2026-11-22T18:00:30")?.toISOString(), "2026-11-22T11:00:30.000Z");
+    assert.equal(parseVnDateTime("2026-11-22T11:00:00.000Z")?.toISOString(), "2026-11-22T11:00:00.000Z");
+    assert.equal(parseVnDateTime(new Date("2026-01-01T00:00:00Z"))?.toISOString(), "2026-01-01T00:00:00.000Z");
+    assert.equal(parseVnDateTime("xx"), null);
+    assert.equal(parseVnDateTime(null), null);
   });
 
   test("từ chối lô sai: số mã, giá trị, lượt, hạn quá khứ", () => {

@@ -13,6 +13,9 @@ import { HomePromo } from "../HomePromo";
 import { StudentHero } from "./StudentHero";
 import type { PointsCardData } from "@/lib/points/queries";
 import type { HomeRecentResult, HomeTodoItem } from "@/lib/home/student-home";
+import type { AvatarConfig } from "@/lib/game/avatar";
+import type { LeaderboardRow } from "@/lib/game/leaderboard";
+import { HomeNpcRow } from "./HomeNpcRow";
 import { StudentTasks } from "./StudentTasks";
 import { GuestHero } from "./GuestHero";
 
@@ -25,6 +28,10 @@ export function Dashboard({
   stats,
   points,
   extras,
+  avatar,
+  npcLines,
+  top3,
+  grade,
 }: {
   user: any;
   courses: any[];
@@ -34,6 +41,13 @@ export function Dashboard({
   points?: PointsCardData | null;
   /** Bài cần làm + kết quả gần đây (chỉ học sinh) */
   extras?: { todo: HomeTodoItem[]; todoTotal: number; recent: HomeRecentResult[] } | null;
+  /** Nhân vật chibi của học sinh (null = tắt Xu) */
+  avatar?: AvatarConfig | null;
+  /** Câu thoại NPC Lucky Boy (tính ở server) */
+  npcLines?: string[] | null;
+  /** Top 3 Bảng Vàng khối mình */
+  top3?: LeaderboardRow[];
+  grade?: number | null;
 }) {
   const searchParams = useSearchParams();
   const currentSort = searchParams?.get("sort") || "default";
@@ -77,10 +91,14 @@ export function Dashboard({
               stats={stats}
               startHref={startHref}
               aside={<HomePromo variant="card" />}
+              avatar={avatar ?? null}
+              userId={user?.id}
             />
           )}
 
           {user?.role === "STUDENT" && extras && <StudentTasks todo={extras.todo} todoTotal={extras.todoTotal} recent={extras.recent} />}
+
+          {user?.role === "STUDENT" && npcLines && <HomeNpcRow lines={npcLines} top3={top3 ?? []} grade={grade ?? null} currentUserId={user.id} />}
 
           {/* Đếm ngược kỳ thi: học sinh đã có thẻ gọn ở cột phải thẻ chào */}
           {!user && (

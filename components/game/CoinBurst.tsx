@@ -69,6 +69,11 @@ export function CoinSvg({ className }: { className?: string }) {
 export function CountUp({ value, duration = 800, className }: { value: number; duration?: number; className?: string }) {
   const [n, setN] = useState(0);
   useEffect(() => {
+    // Giảm chuyển động → hiện số cuối ngay (review Gemini)
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setN(value);
+      return;
+    }
     let raf = 0;
     const start = performance.now();
     const tick = (t: number) => {

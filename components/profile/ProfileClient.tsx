@@ -9,6 +9,9 @@ import axios from "axios";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { resizeImageFile } from "@/lib/resize-image";
+import Link from "next/link";
+import type { AvatarConfig } from "@/lib/game/avatar";
+import { Chibi } from "@/components/avatar/Chibi";
 
 interface ProfileClientProps {
   user: {
@@ -22,6 +25,8 @@ interface ProfileClientProps {
     completedLessons: number;
     points?: number | null;
     level?: { icon: string; level: number; name: string } | null;
+    /** Nhân vật chibi (học sinh, khi bật Xu) */
+    avatar?: AvatarConfig | null;
   };
   /** Khối thêm ở cột phải (vd thẻ đổi mật khẩu) */
   children?: React.ReactNode;
@@ -133,7 +138,7 @@ export default function ProfileClient({ user, stats, children }: ProfileClientPr
           <p className="mt-4 text-lg font-black text-slate-900 break-words max-w-full">{name || "Học sinh"}</p>
           {stats?.level && (
             <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-800 ring-1 ring-amber-200">
-              <span aria-hidden>{stats.level.icon}</span> Cấp {stats.level.level} · {stats.level.name}
+              <span aria-hidden>{stats.level.icon}</span> {stats.level.name}
             </span>
           )}
           <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500 max-w-full min-w-0">
@@ -149,10 +154,23 @@ export default function ProfileClient({ user, stats, children }: ProfileClientPr
               </div>
               {stats.points !== undefined && stats.points !== null && (
                 <a href="/rewards" className="rounded-2xl bg-amber-50 px-3 py-2.5 hover:bg-amber-100 transition-colors">
-                  <p className="text-xl font-black text-amber-700 tabular-nums">⭐ {stats.points}</p>
+                  <p className="text-xl font-black text-amber-700 tabular-nums">🪙 {stats.points.toLocaleString("vi-VN")}</p>
                   <p className="text-xs font-bold text-amber-600">xu</p>
                 </a>
               )}
+            </div>
+          )}
+
+          {stats?.avatar && (
+            <div data-testid="profile-chibi" className="mt-4 flex w-full items-center gap-3 rounded-2xl border-2 border-violet-100 bg-gradient-to-br from-violet-50 to-blue-50 p-3 text-left">
+              <Chibi config={stats.avatar} size={64} className="shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black text-slate-800">Nhân vật của bạn</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <Link href="/profile/avatar" className="btn-3d btn-3d-blue px-2.5 py-1 text-[11px]">🎨 Tuỳ chỉnh</Link>
+                  <Link href={`/profile/${user.id}`} className="btn-3d btn-3d-white px-2.5 py-1 text-[11px]">Xem hồ sơ</Link>
+                </div>
+              </div>
             </div>
           )}
 

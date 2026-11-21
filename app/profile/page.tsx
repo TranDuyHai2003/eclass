@@ -4,9 +4,11 @@ import { HomeSidebar } from "@/components/home/HomeSidebar";
 import ProfileClient from "@/components/profile/ProfileClient";
 import ChangePasswordCard from "@/components/profile/ChangePasswordCard";
 import { prisma } from "@/lib/prisma";
+import type { AvatarConfig } from "@/lib/game/avatar";
 import { isPointsEnabled } from "@/lib/points/config";
 import { getHeaderPoints } from "@/lib/points/queries";
 import { getLevel } from "@/lib/points/levels";
+import { getAvatar } from "@/lib/game/inventory";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -22,17 +24,19 @@ export default async function ProfilePage() {
     : null;
 
   // Số liệu học tập cho thẻ tóm tắt (chỉ học sinh)
-  let stats: { completedLessons: number; points: number | null; level: { icon: string; level: number; name: string } | null } | undefined;
+  let stats: { completedLessons: number; points: number | null; level: { icon: string; level: number; name: string } | null; avatar?: AvatarConfig | null } | undefined;
   if (user.id && user.role === "STUDENT") {
-    const [completedLessons, wallet] = await Promise.all([
+    const [completedLessons, wallet, avatar] = await Promise.all([
       prisma.progress.count({ where: { userId: user.id, isCompleted: true } }),
       isPointsEnabled() ? getHeaderPoints(user.id).catch(() => null) : Promise.resolve(null),
+      isPointsEnabled() ? getAvatar(user.id).then((a) => a.config).catch(() => null) : Promise.resolve(null),
     ]);
     const lv = wallet ? getLevel(wallet.lifetimeEarned) : null;
     stats = {
       completedLessons,
       points: wallet ? wallet.balance : null,
       level: lv ? { icon: lv.icon, level: lv.level, name: lv.name } : null,
+      avatar,
     };
   }
 

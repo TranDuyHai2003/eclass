@@ -88,6 +88,23 @@ export async function updateClass(id: string, name: string) {
   }
 }
 
+/** Đặt khối (10/11/12…) cho lớp — "server" của Bảng Vàng; null = bỏ khối */
+export async function updateClassGrade(id: string, grade: number | null) {
+  const demoBlocked = await demoGuard();
+  if (demoBlocked) return demoBlocked;
+  const session = await auth();
+  if (!session || session.user.role !== "ADMIN") return { success: false, error: "Unauthorized" };
+  if (grade !== null && (!Number.isInteger(grade) || grade < 1 || grade > 12)) return { success: false, error: "Khối từ 1 đến 12." };
+  try {
+    const updated = await prisma.studyClass.update({ where: { id }, data: { grade } });
+    revalidatePath("/admin/classes");
+    revalidatePath("/leaderboard");
+    return { success: true, data: updated };
+  } catch {
+    return { success: false, error: "Đã có lỗi xảy ra" };
+  }
+}
+
 export async function deleteClass(id: string) {
   const demoBlocked = await demoGuard();
   if (demoBlocked) return demoBlocked;

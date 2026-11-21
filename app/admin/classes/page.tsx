@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react"
-import { getClasses, createClass, updateClass, deleteClass } from "@/actions/class"
+import { getClasses, createClass, updateClass, deleteClass, updateClassGrade } from "@/actions/class"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -93,6 +93,7 @@ export default function ClassManagementPage() {
                         <li>Thêm, sửa, xóa các lớp học thực tế (VD: 10A, 11A, 12B...).</li>
                         <li>Chỉ có thể xóa lớp nếu lớp đó hiện không có học sinh nào và không có khóa học nào được gán.</li>
                         <li>Việc đổi tên lớp sẽ được cập nhật tự động cho tất cả học sinh đang ở trong lớp đó.</li>
+                        <li>Cột <b>Khối</b> (10/11/12) quyết định &quot;server&quot; trên Bảng Vàng của học sinh; lớp chưa đặt khối không lên bảng theo khối.</li>
                     </ul>
                 </div>
             </div>
@@ -117,13 +118,14 @@ export default function ClassManagementPage() {
                             <TableRow>
                                 <TableHead className="w-[80px] text-center">STT</TableHead>
                                 <TableHead>Tên lớp</TableHead>
+                                <TableHead className="w-[140px]">Khối</TableHead>
                                 <TableHead className="text-right">Hành động</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {classes.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={3} className="text-center py-8 text-slate-500 font-medium">
+                                    <TableCell colSpan={4} className="text-center py-8 text-slate-500 font-medium">
                                         Chưa có lớp học nào. Hãy thêm lớp đầu tiên!
                                     </TableCell>
                                 </TableRow>
@@ -146,6 +148,27 @@ export default function ClassManagementPage() {
                                             ) : (
                                                 <span className="font-bold text-slate-900 text-base">{c.name}</span>
                                             )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <select
+                                                aria-label={`Khối của lớp ${c.name}`}
+                                                value={c.grade ?? ""}
+                                                disabled={isPending}
+                                                onChange={(e) => {
+                                                    const g = e.target.value ? Number(e.target.value) : null
+                                                    startTransition(async () => {
+                                                        const res = await updateClassGrade(c.id, g)
+                                                        if (res.success) {
+                                                            toast.success(g ? `Lớp ${c.name} → khối ${g}` : `Đã bỏ khối của lớp ${c.name}`)
+                                                            setClasses(prev => prev.map(x => x.id === c.id ? { ...x, grade: g } : x))
+                                                        } else toast.error(res.error)
+                                                    })
+                                                }}
+                                                className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-sm font-bold text-slate-700"
+                                            >
+                                                <option value="">Chưa đặt</option>
+                                                {[10, 11, 12].map(g => <option key={g} value={g}>Khối {g}</option>)}
+                                            </select>
                                         </TableCell>
                                         <TableCell className="text-right">
                                             {editingId !== c.id && (

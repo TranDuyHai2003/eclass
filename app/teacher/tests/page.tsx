@@ -119,9 +119,11 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
       } : {})
     },
     include: {
+      classes: { select: { id: true, name: true } },
       finalTest: {
         include: {
           attempts: { select: { id: true, score: true, completedAt: true } },
+          deadlines: { select: { classId: true, dueDate: true } },
         },
       },
       chapters: {
@@ -143,6 +145,7 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
                   attempts: {
                     select: { id: true, score: true, completedAt: true },
                   },
+                  deadlines: { select: { classId: true, dueDate: true } },
                 },
               },
             },
@@ -431,6 +434,12 @@ export default async function TeacherTestsPage({ searchParams }: { searchParams:
                     dueDate: t.test.dueDate ? t.test.dueDate.toISOString() : null,
                     createdAt: t.test.createdAt.toISOString(),
                     updatedAt: t.test.updatedAt.toISOString(),
+                    // Hạn riêng theo lớp: mọi lớp gắn khoá, lớp không có dòng → null (dùng hạn chung)
+                    classDeadlines: course.classes.map((c) => ({
+                      classId: c.id,
+                      className: c.name,
+                      dueDate: t.test!.deadlines.find((d) => d.classId === c.id)?.dueDate.toISOString() ?? null,
+                    })),
                   }
                 : null,
               attempts: t.attempts.map((a) => ({

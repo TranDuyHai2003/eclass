@@ -5,6 +5,8 @@ import { getLevel } from "@/lib/points/levels";
 import { rarityOf } from "@/lib/points/rarity";
 import type { PointsCardData } from "@/lib/points/queries";
 import type { ReactNode } from "react";
+import type { AvatarConfig } from "@/lib/game/avatar";
+import { Chibi } from "@/components/avatar/Chibi";
 
 export interface StudentHeroProps {
   name?: string | null;
@@ -16,6 +18,9 @@ export interface StudentHeroProps {
   startHref: string;
   /** Khối nhỏ ở đầu cột phải (vd thẻ đếm ngược kỳ thi) */
   aside?: ReactNode;
+  /** Nhân vật chibi (null khi tắt Xu) */
+  avatar?: AvatarConfig | null;
+  userId?: string;
 }
 
 /** Tên gọi: chữ cuối của họ tên tiếng Việt ("Nguyễn Văn An" → "An") */
@@ -25,7 +30,7 @@ function givenName(name?: string | null) {
 }
 
 /** Thẻ chào trên trang chủ học sinh: mình đang ở đâu, học tiếp gì, sắp đổi được gì */
-export function StudentHero({ name, points, lastLesson, stats, startHref, aside }: StudentHeroProps) {
+export function StudentHero({ name, points, lastLesson, stats, startHref, aside, avatar, userId }: StudentHeroProps) {
   const level = points ? getLevel(points.lifetimeEarned) : null;
 
   return (
@@ -36,9 +41,16 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside 
 
         <div className="relative flex h-full flex-col gap-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-2xl font-black tracking-tight sm:text-3xl">Chào {givenName(name)}! 👋</h2>
-              <p className="text-sm font-medium text-blue-100">Hôm nay mình cùng học tiếp nhé.</p>
+            <div className="flex min-w-0 items-center gap-3">
+              {avatar && (
+                <Link href={userId ? `/profile/${userId}` : "/profile"} title="Hồ sơ nhân vật" data-testid="hero-chibi" className="shrink-0 rounded-2xl bg-white/15 p-1 ring-1 ring-white/30 transition-transform hover:scale-105">
+                  <Chibi config={avatar} size={56} className="animate-float" />
+                </Link>
+              )}
+              <div className="min-w-0">
+                <h2 className="text-2xl font-black tracking-tight sm:text-3xl">Chào {givenName(name)}! 👋</h2>
+                <p className="text-sm font-medium text-blue-100">Hôm nay mình cùng học tiếp nhé.</p>
+              </div>
             </div>
             {level && (
               <Link

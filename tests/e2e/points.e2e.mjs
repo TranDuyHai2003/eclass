@@ -78,7 +78,8 @@ async function cleanupStale() {
 
 async function setup() {
   await cleanupStale();
-  const cls = await prisma.studyClass.create({ data: { name: `${tag} lớp` } });
+  // Khối 7: không trùng khối thật (10–12) của DB local → Bảng Vàng khối 7 chỉ có dữ liệu thử
+  const cls = await prisma.studyClass.create({ data: { name: `${tag} lớp`, grade: 7 } });
   const student = await prisma.user.create({
     data: { email: `${tag}-hs@test.local`, name: `${tag} Học sinh`, role: "STUDENT", isApproved: true, studentType: "OFFLINE", classId: cls.id },
   });
@@ -341,6 +342,96 @@ try {
     expect(await s.waitText(/Đã đổi/), "đổi thêm thất bại");
   });
 
+  // -------------------------------------------------- Nhân vật & hồ sơ
+  await step("Học sinh: tiệm → lọc 'Trang trí hồ sơ' → mua tóc dựng (900 xu)", async () => {
+    await s.goto("/rewards", /Tiệm quà đổi xu/i);
+    await s.click(/^🎨 Trang trí hồ sơ$/);
+    expect(await s.waitText(/Chỉ từ rương/), "không thấy lưới đồ trang trí");
+    const before = await balanceOf(data.student.id);
+    const ok = await s.ev(`const b=document.querySelector('[data-testid="shop-buy-hair-spiky"]'); if(!b||b.disabled) return false; b.click(); return true;`);
+    expect(ok, "không bấm được nút mua tóc dựng");
+    expect(await s.waitText(/Đã mua "Tóc dựng"/), "không thấy thông báo đã mua");
+    expect((await balanceOf(data.student.id)) === before - 900, "chưa trừ 900 xu");
+    const own = await prisma.userItem.findFirst({ where: { userId: data.student.id, itemId: "hair-spiky" } });
+    expect(own, "chưa có món trong túi");
+    expect(await s.waitText(/Đã có/), "thẻ món không chuyển sang Đã có");
+  });
+
+  await step("Học sinh: trình tuỳ chỉnh — mặc tóc dựng, mua kính (450 xu) tại chỗ, lưu", async () => {
+    await s.goto("/profile/avatar", /Tuỳ chỉnh nhân vật/i);
+    await s.ev(`document.querySelector('[data-testid="item-hair-spiky"]').click()`);
+    await s.ev(`document.querySelector('[data-testid="slot-accessory"]').click()`);
+    const okBuy = await s.ev(`const b=document.querySelector('[data-testid="buy-acc-glasses"]'); if(!b||b.disabled) return false; b.click(); return true;`);
+    expect(okBuy, "không bấm được mua kính");
+    expect(await s.waitText(/Đã mua "Kính học bá"/), "không thấy thông báo mua kính");
+    // Chờ transition mua xong (nút lưu bật lại) rồi mới bấm lưu
+    let saveOk = false;
+    for (let i = 0; i < 20 && !saveOk; i++) {
+      saveOk = await s.ev(`const b=document.querySelector('[data-testid="avatar-save"]'); if(!b||b.disabled) return false; b.click(); return true;`);
+      if (!saveOk) await sleep(250);
+    }
+    expect(saveOk, "nút lưu bị khoá dù đã đổi");
+    expect(await s.waitText(/Đã lưu nhân vật/), "không thấy thông báo đã lưu");
+    const av = await prisma.userAvatar.findUnique({ where: { userId: data.student.id } });
+    expect(av && av.config.hair === "hair-spiky" && av.config.accessory === "acc-glasses", `cấu hình lưu sai: ${JSON.stringify(av?.config)}`);
+    // Món chưa sở hữu không lưu được dù gửi thẳng (kiểm tra ở lib) — ở đây chỉ xác nhận giao diện khoá
+    expect(await s.ev(`return !!document.querySelector('[data-testid="item-acc-crown"] [data-testid="buy-acc-crown"]')?.disabled`), "vương miện 10 ngọc phải bị khoá (chỉ có 3 ngọc)");
+  });
+
+  await step("Học sinh: hồ sơ cá nhân hiện nhân vật, danh hiệu, xu tích luỹ; bạn khác xem không thấy kết quả gần đây; hồ sơ thầy → 404", async () => {
+    await s.goto(`/profile/${data.student.id}`, /Thang danh hiệu/i);
+    const txt = await s.text();
+    expect(/Tuỳ chỉnh nhân vật/.test(txt) && /Kết quả gần đây/.test(txt), "chính chủ thiếu nút tuỳ chỉnh / kết quả gần đây");
+    expect(/Tiểu thương|Phú nông|Người nghèo/.test(txt), "thiếu danh hiệu");
+    expect(await s.ev(`return !!document.querySelector('[data-testid="public-profile"] svg[role="img"]')`), "thiếu nhân vật SVG");
+    const res = await fetch(BASE_URL + `/profile/${data.teacher.id}`, { headers: { cookie: `authjs.session-token=${sTok}` }, redirect: "manual" });
+    expect(res.status === 404, `hồ sơ thầy phải 404 (thực tế ${res.status})`);
+    const other = await prisma.user.create({ data: { email: `${tag}-hs2@test.local`, name: `${tag} Bạn khác`, role: "STUDENT", isApproved: true, classId: data.cls.id } });
+    const oTok = await token(other);
+    const html = await (await fetch(BASE_URL + `/profile/${data.student.id}`, { headers: { cookie: `authjs.session-token=${oTok}` } })).text();
+    expect(!html.includes("Kết quả gần đây") && html.includes("Hoạt động"), "bạn khác không được thấy kết quả gần đây");
+  });
+
+  await step("Học sinh: rương bí ẩn — xem tỉ lệ, mở Rương Xu (600 xu) → có kết quả, sổ khớp ví, bảo hiểm cập nhật", async () => {
+    await s.goto("/rewards/gacha", /Rương kho báu bí ẩn/i);
+    await s.click(/^Tỉ lệ rơi quà$/, "button");
+    expect(await s.waitText(/60%/), "bảng tỉ lệ không hiện 60% Phổ thông");
+    expect(await s.ev(`return document.querySelectorAll('[data-testid="rates-table"] > div').length >= 4`), "bảng tỉ lệ thiếu bậc");
+    await s.ev(`document.querySelector('[role="dialog"] button[aria-label], [role="dialog"] [data-slot="dialog-close"]')?.click()`);
+    await sleep(400);
+    const before = await balanceOf(data.student.id);
+    const ok = await s.ev(`const b=document.querySelector('[data-testid="open-xu"]'); if(!b||b.disabled) return false; b.click(); return true;`);
+    expect(ok, "không bấm được Mở Rương Xu");
+    expect(await s.ev(`return document.querySelector('[data-testid="gacha-scene"]')?.dataset.phase`) === "shaking", "rương không lắc");
+    expect(await s.waitText(/Mở tiếp/, 10000), "không thấy thẻ kết quả");
+    const rarity = await s.ev(`return document.querySelector('[data-testid="gacha-result"]')?.dataset.rarity`);
+    expect(["common", "rare", "epic", "legendary"].includes(rarity), `bậc lạ: ${rarity}`);
+    const pull = await prisma.gachaPull.findFirst({ where: { userId: data.student.id } });
+    expect(pull && pull.cost === 600, "chưa ghi GachaPull");
+    const w = await prisma.pointWallet.findUnique({ where: { userId: data.student.id } });
+    const sum = (await prisma.pointLedger.aggregate({ where: { userId: data.student.id, currency: "XU" }, _sum: { amount: true } }))._sum.amount;
+    expect(w.balance === sum, `ví ${w.balance} ≠ sổ ${sum}`);
+    expect(w.balance <= before - 600 + 600, "trừ xu sai");
+    expect(/còn 2\/3 hôm nay/.test(await s.text()), "bộ đếm lượt/ngày không giảm");
+    await s.screenshot(path.join(SHOTS, "gacha-result.png"));
+  });
+
+  await step("Học sinh: Bảng Vàng khối 7 — bục top 3 có mình, tab tháng này, tab lớp; trang chủ có NPC + top 3", async () => {
+    await s.goto("/leaderboard?tab=g7&period=all", /Bảng Vàng/i);
+    expect(await s.ev(`return !!document.querySelector('[data-testid="podium"]')`), "không thấy bục top 3");
+    const podium = await s.ev(`return document.querySelector('[data-testid="podium"]')?.innerText || ""`);
+    expect(podium.includes("Học sinh") && /17\.100|16\.|15\./.test(podium), `bục không có mình: ${podium.slice(0, 80)}`);
+    expect(await s.ev(`return document.querySelectorAll('[data-testid="podium"] svg[role="img"]').length >= 1`), "bục thiếu nhân vật");
+    await s.goto("/leaderboard?tab=g7&period=month", /Bảng Vàng/i);
+    expect(/Tháng này/.test(await s.text()), "thiếu tab Tháng này");
+    await s.goto("/leaderboard?tab=class&period=all", /Bảng Vàng/i);
+    expect((await s.text()).includes(`${tag} lớp`), "tab lớp tôi không hiện tên lớp");
+    await s.goto("/", /Tiệm quà/i);
+    expect(await s.ev(`return !!document.querySelector('[data-testid="npc"]') && !!document.querySelector('[data-testid="home-top3"]')`), "trang chủ thiếu NPC hoặc top 3");
+    const npc = await s.ev(`return document.querySelector('[data-testid="npc"]')?.innerText || ""`);
+    expect(/Lucky Boy/.test(npc) && !/rương/i.test(npc), `NPC sai: ${npc.slice(0, 80)}`);
+  });
+
   // -------------------------------------------------- Bố cục nhiều cỡ màn hình
   const sizes = [
     [320, 640],
@@ -355,13 +446,20 @@ try {
     await step(`Bố cục ${w}px: không tràn ngang (học sinh: /rewards, trang chủ; thầy: 5 tab)`, async () => {
       const problems = [];
       await s.setSize(w, h);
-      for (const [p, ready] of [["/rewards", /Tiệm quà đổi xu/i], ["/", /Tiệm quà/i]]) {
+      for (const [p, ready, shot] of [
+        ["/rewards", /Tiệm quà đổi xu/i, "rewards"],
+        ["/", /Tiệm quà/i, "home"],
+        ["/profile/avatar", /Tuỳ chỉnh nhân vật/i, "avatar"],
+        [`/profile/${data.student.id}`, /Thang danh hiệu/i, "profile"],
+        ["/rewards/gacha", /Rương kho báu bí ẩn/i, "gacha"],
+        ["/leaderboard?tab=g7&period=all", /Bảng Vàng/i, "leaderboard"],
+      ]) {
         await s.goto(p, ready);
         for (const tab of p === "/rewards" ? ["Đổi quà", "Quà của tôi", "Lịch sử xu", "Cách kiếm xu"] : [null]) {
           if (tab) await s.click(new RegExp("^" + tab), "button");
           for (const x of await s.layoutProblems()) problems.push(`HS ${p} ${tab ?? ""}: ${x}`);
         }
-        await s.screenshot(path.join(SHOTS, `student-${p === "/" ? "home" : "rewards"}-${w}.png`));
+        await s.screenshot(path.join(SHOTS, `student-${shot}-${w}.png`));
       }
       // Chip điểm không đè lên logo
       const overlap = await s.ev(`const a=document.querySelector('header [data-wallet-chip]')?.getBoundingClientRect(); const b=document.querySelector('header a[href="/"]')?.getBoundingClientRect(); if(!a||!b) return "thiếu chip/logo"; return (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) ? "chip đè logo" : "";`);

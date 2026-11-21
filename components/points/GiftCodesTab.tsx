@@ -9,6 +9,9 @@ import { createGiftCodes, deactivateGiftBatch } from "@/actions/giftcode";
 import { MAX_AMOUNT, MAX_BATCH } from "@/lib/game/giftcode-shared";
 import type { GiftCodeBatch } from "@/lib/game/giftcode-queries";
 
+/** Escape HTML trước khi ghép vào trang in (review Gemini: ghi chú do thầy nhập có thể chứa < > ") */
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+
 const fmtDate = (iso: string) =>
   new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
@@ -23,15 +26,18 @@ export function GiftCodesTab({ batches, classes }: { batches: GiftCodeBatch[]; c
   const [expiresAt, setExpiresAt] = useState("");
   const [classId, setClassId] = useState("");
   const [note, setNote] = useState("Điểm 10 trên lớp");
-  const [justCreated, setJustCreated] = useState<string[] | null>(null);
+  const [justCreated, setJustCreated] = useState<{ codes: string[]; label: string } | null>(null);
   const [open, setOpen] = useState<string | null>(null);
 
   const create = () =>
     start(async () => {
-      const res = await createGiftCodes({ count, currency, amount, maxUses, expiresAt: expiresAt || null, classId: classId || null, note });
+      // datetime-local không có múi giờ → đổi sang ISO ngay trên trình duyệt (giờ máy thầy) trước khi gửi
+      const expiresIso = expiresAt ? new Date(expiresAt).toISOString() : null;
+      const res = await createGiftCodes({ count, currency, amount, maxUses, expiresAt: expiresIso, classId: classId || null, note });
       if (res.success) {
         toast.success(res.message);
-        setJustCreated(res.codes ?? []);
+        // Chụp nhãn tại thời điểm tạo → sửa form sau đó không làm thẻ in sai (review Gemini)
+        setJustCreated({ codes: res.codes ?? [], label: `${amount.toLocaleString("vi-VN")} ${currency === "GEM" ? "ngọc" : "xu"} · ${note.trim() || "Thẻ quà tặng"}` });
         router.refresh();
       } else toast.error(res.error);
     });
@@ -42,7 +48,7 @@ export function GiftCodesTab({ batches, classes }: { batches: GiftCodeBatch[]; c
     const cards = codes
       .map(
         (c) =>
-          `<div class="card"><div class="t">🎁 Thẻ quà tặng</div><div class="c">${c}</div><div class="s">${label}</div><div class="s">Nhập mã tại thatdehoctoan → Tiệm quà → Nhập code</div></div>`,
+          `<div class="card"><div class="t">🎁 Thẻ quà tặng</div><div class="c">${esc(c)}</div><div class="s">${esc(label)}</div><div class="s">Nhập mã tại thatdehoctoan → Tiệm quà → Nhập code</div></div>`,
       )
       .join("");
     w.document.write(
@@ -112,12 +118,12 @@ export function GiftCodesTab({ batches, classes }: { batches: GiftCodeBatch[]; c
         {justCreated && (
           <div data-testid="giftcode-created" className="animate-pop-in rounded-2xl border border-pink-200 bg-pink-50 p-3">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-black text-pink-700">Vừa tạo {justCreated.length} mã</p>
-              <button type="button" onClick={() => printCodes(justCreated, `${amount} ${currency === "GEM" ? "ngọc" : "xu"} · ${note}`)} className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-xs font-black text-pink-700 ring-1 ring-pink-200 hover:bg-pink-100">
+              <p className="text-xs font-black text-pink-700">Vừa tạo {justCreated.codes.length} mã</p>
+              <button type="button" onClick={() => printCodes(justCreated.codes, justCreated.label)} className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-xs font-black text-pink-700 ring-1 ring-pink-200 hover:bg-pink-100">
                 <Printer className="h-3.5 w-3.5" /> In thẻ
               </button>
             </div>
-            <p className="mt-2 break-all font-mono text-xs font-bold leading-6 tracking-wider text-slate-700">{justCreated.join("  ")}</p>
+            <p className="mt-2 break-all font-mono text-xs font-bold leading-6 tracking-wider text-slate-700">{justCreated.codes.join("  ")}</p>
           </div>
         )}
       </div>
@@ -141,7 +147,7 @@ export function GiftCodesTab({ batches, classes }: { batches: GiftCodeBatch[]; c
               <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">{b.used} lượt đã dùng</span>
                 <span className={cn("rounded-full px-2 py-0.5", b.active ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-500")}>{b.active} mã còn dùng được</span>
-                <button type="button" onClick={() => printCodes(b.codes.filter((c) => c.isActive && c.usedCount < b.maxUses).map((c) => c.code), `${b.amount} ${b.currency === "GEM" ? "ngọc" : "xu"} · ${b.note ?? ""}`)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 hover:bg-slate-50">
+                <button type="button" onClick={() => printCodes(b.codes.filter((c) => c.isActive && c.usedCount < b.maxUses).map((c) => c.code), `${b.amount.toLocaleString("vi-VN")} ${b.currency === "GEM" ? "ngọc" : "xu"} · ${b.note ?? "Thẻ quà tặng"}`)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 hover:bg-slate-50">
                   <Printer className="h-3.5 w-3.5" /> In
                 </button>
                 {b.active > 0 && (
