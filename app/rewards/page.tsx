@@ -8,6 +8,8 @@ import { getStudentPointsPage } from "@/lib/points/queries";
 import { expireStaleRedemptions } from "@/lib/points/redemption";
 import { getStudentHomeExtras, getVisibleCourseIds } from "@/lib/home/student-home";
 import { getGrades, getLeaderboard, getMyRank } from "@/lib/game/leaderboard";
+import { isGachaEnabled, pullsToday } from "@/lib/game/gacha";
+import { weeklyChallenge } from "@/lib/game/weekly-challenge";
 import { maskUsersForDemo } from "@/lib/demo-privacy";
 import { prisma, prismaBase } from "@/lib/prisma";
 import type { BoardData } from "@/components/shop/LeaderboardModal";
@@ -25,10 +27,12 @@ export default async function RewardsPage() {
   const uid = session.user.id;
 
   await expireStaleRedemptions().catch(() => {});
-  const [data, me, grades] = await Promise.all([
+  const gachaOn = isGachaEnabled();
+  const [data, me, grades, today] = await Promise.all([
     getStudentPointsPage(uid),
     prisma.user.findUnique({ where: { id: uid }, select: { name: true, studyClass: { select: { name: true, grade: true } } } }),
     getGrades(),
+    gachaOn ? pullsToday(uid).catch(() => 0) : Promise.resolve(0),
   ]);
   const myGrade = me?.studyClass?.grade ?? null;
   const [extras, ...boardRows] = await Promise.all([
@@ -62,7 +66,10 @@ export default async function RewardsPage() {
             user={{ id: uid, name: session.user.name ?? me?.name ?? null, className: me?.studyClass?.name ?? null, grade: myGrade }}
             todo={extras.todo}
             todoTotal={extras.todoTotal}
+            recent={extras.recent.map((r) => ({ attemptId: r.attemptId, lessonId: r.lessonId, title: r.title, score: r.score }))}
             boards={boards}
+            event={weeklyChallenge(data.wallet)}
+            gacha={gachaOn ? { pullsToday: today } : null}
           />
         </main>
       </div>

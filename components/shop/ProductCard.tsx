@@ -51,6 +51,12 @@ export function ProductCard({ title, rarity, meta, art, action, corner, testId, 
         selected && "ring-4 ring-[#8fdc75]",
       )}
     >
+      {(rarity === "epic" || rarity === "legendary") && (
+        <>
+          <span aria-hidden className={cn("card-star -right-1.5 -top-1.5", b.glow && "card-star-gold")}>✦</span>
+          <span aria-hidden className={cn("card-star -bottom-1.5 -left-1.5", b.glow && "card-star-gold")} style={{ animationDelay: "1.2s" }}>✦</span>
+        </>
+      )}
       {b.glow && (
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border-2 border-[#5b3d1e] bg-[#ffd84d] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-[#5b3d1e]">
           🏅 Cực phẩm
@@ -64,7 +70,13 @@ export function ProductCard({ title, rarity, meta, art, action, corner, testId, 
         {meta && <span className="rounded-full border border-[#5b3d1e]/40 bg-white px-2 py-0.5 text-[10px] font-bold text-[#5b3d1e]">{meta}</span>}
       </div>
       <div className={cn("dots-bg relative mt-2 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-[#5b3d1e]/30", b.art)} style={{ "--dot": "rgba(91,61,30,.14)" } as React.CSSProperties}>
-        {corner && <div className="absolute right-1.5 top-1.5">{corner}</div>}
+        {corner && <div className="absolute right-1.5 top-1.5 z-[1]">{corner}</div>}
+        {(rarity === "epic" || rarity === "legendary") && (
+          <>
+            <span aria-hidden className={cn("card-star left-2 top-2", b.glow && "card-star-gold")} style={{ animationDelay: ".6s" }}>✧</span>
+            <span aria-hidden className={cn("card-star bottom-2 right-2", b.glow && "card-star-gold")} style={{ animationDelay: "1.8s" }}>✧</span>
+          </>
+        )}
         <div className="group-hover-float">{art}</div>
       </div>
       <Btn

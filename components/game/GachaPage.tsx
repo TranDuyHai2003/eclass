@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CHESTS, RARITY_ORDER, ratesTable, type ChestId, type Outcome } from "@/lib/game/gacha-shared";
+import { CHESTS, RARITY_ORDER, describeOutcome, ratesTable, type ChestId, type Outcome } from "@/lib/game/gacha-shared";
 import { RARITY_LABEL } from "@/lib/game/items";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { RARITY } from "@/lib/points/rarity";
@@ -61,7 +61,7 @@ export function GachaPage({
               return (
                 <li key={h.id} className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm">
                   <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-black", rar.chip)}>{RARITY_LABEL[h.outcome.rarity]}</span>
-                  <span className="min-w-0 flex-1 truncate font-bold text-slate-800">{describe(h.outcome)}</span>
+                  <span className="min-w-0 flex-1 truncate font-bold text-slate-800">{describeOutcome(h.outcome)}</span>
                   <span className="shrink-0 text-[11px] text-slate-400">{CHESTS[h.chest].emoji} {fmtTime(h.createdAt)}</span>
                 </li>
               );
@@ -106,8 +106,4 @@ export function GachaPage({
   );
 }
 
-export function describe(o: Outcome) {
-  if (o.kind === "item") return o.duplicate ? `${o.name} (trùng → +${o.refundXu.toLocaleString("vi-VN")} xu)` : o.name;
-  if (o.kind === "xu") return `+${o.amount.toLocaleString("vi-VN")} xu`;
-  return `+${o.amount} ngọc`;
-}
+

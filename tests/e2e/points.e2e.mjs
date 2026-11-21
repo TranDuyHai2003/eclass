@@ -472,6 +472,88 @@ try {
     expect(/lucky boy/i.test(npc) && !/rương/i.test(npc), `NPC sai: ${npc.slice(0, 80)}`);
   });
 
+  // -------------------------------------------------- Tiệm Quà GĐ6 (mockup Canvas 2)
+  await step("Học sinh: Menu Tiệm Quà — chọn Tuyết thì có lớp tuyết rơi, tải lại vẫn nhớ; lối tắt Danh hiệu mở hệ thống danh hiệu", async () => {
+    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.ev(`document.querySelector('[data-testid="menu-open"]').click()`);
+    expect(await s.waitText(/Menu Tiệm Quà/), "menu không mở");
+    expect(await s.ev(`return document.querySelectorAll('[data-testid^="menu-"]').length >= 9`), "menu thiếu lối tắt");
+    await s.ev(`document.querySelector('[data-testid="weather-snow"]').click()`);
+    await sleep(300);
+    expect(await s.ev(`return document.querySelector('[data-weather]')?.dataset.weather === "snow" && document.querySelectorAll('.weather-layer[data-weather="snow"] .weather-flake').length > 10`), "chọn Tuyết không có tuyết rơi");
+    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await sleep(300);
+    expect(await s.ev(`return document.querySelector('[data-weather]')?.dataset.weather === "snow"`), "tải lại không nhớ thời tiết");
+    await s.ev(`document.querySelector('[data-testid="menu-open"]').click()`);
+    await sleep(400);
+    await s.ev(`document.querySelector('[data-testid="weather-sun"]').click()`);
+    await s.ev(`document.querySelector('[data-testid="menu-titles"]').click()`);
+    expect(await s.waitText(/Hệ Thống Danh Hiệu/), "lối tắt Danh hiệu không mở hộp danh hiệu");
+    const rows = await s.ev(`return [...document.querySelectorAll('[data-testid="title-row"]')].map(r => r.dataset.unlocked).join("")`);
+    expect(rows.length === 8 && rows.startsWith("1"), `danh hiệu sai: ${rows}`);
+    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
+    await sleep(400);
+    await s.ev(`document.querySelector('[data-testid="titles-open"]').click()`);
+    expect(await s.waitText(/Tổng xu tích luỹ/), "bấm huy hiệu cấp không mở hộp danh hiệu");
+    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
+    await sleep(400);
+  });
+
+  await step("Học sinh: Bảng Vàng có banner thử thách tuần thật; Nộp bài có mục đã nộp; Trang trí lọc theo ô", async () => {
+    await s.ev(`document.querySelector('[data-testid="board-open"]').click()`);
+    expect(await s.waitText(/Thử thách tuần/), "thiếu banner thử thách tuần");
+    expect(/Còn \d ngày/.test(await s.ev(`return document.querySelector('[data-testid="leaderboard-modal"]')?.innerText || ""`)), "banner thiếu số ngày còn lại");
+    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
+    await sleep(400);
+    await s.ev(`document.querySelector('[data-testid="tasks-open"]').click()`);
+    expect(await s.waitText(/Nộp Bài Tập Nhận Xu/), "hộp Nộp bài không mở");
+    // Mục "Đã nộp" chỉ có khi học sinh có lượt nộp bài gắn với bài học (dữ liệu thử ở đây: đề không gắn bài học → không hiện)
+    const lessonAttempts = await prisma.studentAttempt.count({ where: { userId: data.student.id, completedAt: { not: null }, test: { lesson: { isNot: null } } } });
+    const doneShown = await s.ev(`return /Đã nộp/.test(document.querySelector('[data-testid="tasks-done"]')?.innerText || "")`);
+    expect(doneShown === lessonAttempts > 0, `mục đã nộp sai: hiện=${doneShown}, lượt có bài học=${lessonAttempts}`);
+    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
+    await sleep(400);
+    await s.ev(`document.querySelector('[data-testid="cat-deco"]').click()`);
+    await sleep(300);
+    await s.ev(`document.querySelector('[data-testid="deco-hair"]').click()`);
+    await sleep(300);
+    const items = await s.ev(`return [...document.querySelectorAll('[data-testid="item-card"]')].map(c => c.dataset.item).join("|")`);
+    expect(items.length > 0 && items.split("|").every((id) => id.startsWith("hair-")), `lọc Kiểu tóc sai: ${items}`);
+    await s.ev(`document.querySelector('[data-testid="cat-all"]').click()`);
+    await sleep(300);
+    const all = await s.ev(`return [...document.querySelectorAll('[data-testid="item-card"]')].map(c => c.dataset.item).join("|")`);
+    expect(!all.includes("hair-bun") && !all.includes("hair-spiky"), `"Tất cả" không được trưng đồ tóc / đồ chỉ từ rương: ${all}`);
+  });
+
+  await step("Học sinh: cầu nguyện ngay trong tiệm — Hộp bí ẩn → Đài Cầu Nguyện → CHÚC MỪNG; lượt/ngày, sổ khớp ví", async () => {
+    await s.ev(`document.querySelector('[data-testid="cat-box"]').click()`);
+    await sleep(300);
+    expect(await s.ev(`return !!document.querySelector('[data-testid="gacha-panel"]')`), "thiếu khối Đài Cầu Nguyện");
+    await s.ev(`document.querySelector('[data-testid="chest-open-xu"]').click()`);
+    expect(await s.waitText(/Đài Cầu Nguyện Hộp Bí Ẩn/), "hộp thoại cầu nguyện không mở");
+    expect(await s.waitText(/còn 2\/3 hôm nay/), "lượt/ngày trong hộp thoại sai (đã mở 1 lượt ở trang rương)");
+    await s.ev(`document.querySelector('[data-testid="gacha-rates"]').click()`);
+    expect(await s.waitText(/60%/), "bảng tỉ lệ trong hộp thoại không hiện");
+    await s.click(/^Đóng bảng tỉ lệ$/, "[role=dialog] button");
+    const ok = await s.ev(`const b=document.querySelector('[data-testid="pray-xu"]'); if(!b||b.disabled) return false; b.click(); return true;`);
+    expect(ok, "không bấm được Cầu Nguyện Hộp Sao");
+    expect(await s.ev(`return document.querySelector('[data-testid="gacha-stage"]')?.dataset.phase`) === "shaking", "hộp không lắc");
+    expect(await s.waitText(/CHÚC MỪNG/, 10000), "không thấy thẻ CHÚC MỪNG");
+    const rarity = await s.ev(`return document.querySelector('[data-testid="gacha-result"]')?.dataset.rarity`);
+    expect(["common", "rare", "epic", "legendary"].includes(rarity), `bậc lạ: ${rarity}`);
+    expect(/còn 1\/3 hôm nay/.test(await s.text()), "lượt/ngày không giảm sau khi cầu nguyện");
+    expect((await prisma.gachaPull.count({ where: { userId: data.student.id } })) === 2, "chưa ghi GachaPull thứ 2");
+    const w = await prisma.pointWallet.findUnique({ where: { userId: data.student.id } });
+    const sum = (await prisma.pointLedger.aggregate({ where: { userId: data.student.id, currency: "XU" }, _sum: { amount: true } }))._sum.amount;
+    expect(w.balance === sum, `ví ${w.balance} ≠ sổ ${sum}`);
+    const shown = await s.ev(`return document.querySelector('[data-testid="gacha-wallet"]')?.innerText || ""`);
+    expect(shown.includes(w.balance.toLocaleString("vi-VN")), `số dư trong hộp thoại (${shown}) khác ví ${w.balance}`);
+    await s.screenshot(path.join(SHOTS, "shop-gacha-result.png"));
+    await s.click(/^Tuyệt vời!$/, "[role=dialog] button");
+    await sleep(500);
+    expect(!(await s.ev(`return !!document.querySelector('[data-testid="gacha-modal"]')`)), "Tuyệt vời! không đóng hộp thoại");
+  });
+
   // -------------------------------------------------- Bố cục nhiều cỡ màn hình
   const sizes = [
     [320, 640],

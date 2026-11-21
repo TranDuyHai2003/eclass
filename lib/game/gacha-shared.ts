@@ -124,3 +124,10 @@ export function ratesTable(chestId: ChestId) {
     prizes: poolFor(chestId, r).map((p) => (p.kind === "item" ? p.item.name : `${p.amount.toLocaleString("vi-VN")} ${p.kind === "xu" ? "xu" : "ngọc"}`)),
   }));
 }
+
+/** Mô tả ngắn một kết quả mở rương (dùng ở thẻ kết quả, lịch sử) */
+export function describeOutcome(o: Outcome) {
+  if (o.kind === "item") return o.duplicate ? `${o.name} (trùng → +${o.refundXu.toLocaleString("vi-VN")} xu)` : o.name;
+  if (o.kind === "xu") return `+${o.amount.toLocaleString("vi-VN")} xu`;
+  return `+${o.amount} ngọc`;
+}

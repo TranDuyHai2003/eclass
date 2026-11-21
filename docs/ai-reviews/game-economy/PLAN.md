@@ -217,3 +217,20 @@ Sau GĐ4: rà lại toàn bộ, Gemini review diff tổng, rồi chờ thầy du
 1. Tên danh hiệu (4.3) — thầy đổi tuỳ ý trước khi deploy.
 2. Giá rương và tỉ lệ (4.6) — chỉnh một chỗ trong `lib/game/gacha.ts`.
 3. Có cho học sinh online xem bảng vàng toàn trường (mọi khối) không? Mặc định: chỉ các tab khối + lớp mình.
+
+## 10. GĐ6 — Tiệm Quà theo mockup Gemini Canvas thứ hai (21/11/2026)
+
+Nguồn: https://gemini.google.com/share/5efaee92ce10 (thầy yêu cầu "đầy đủ các tab, hiệu ứng, tính năng, đẹp hơn nữa"). Chỉ đổi giao diện; logic xu/ngọc/rương giữ nguyên, rương vẫn gọi `openChest` (kết quả do server quyết).
+
+| Phần | Mockup | Làm |
+|---|---|---|
+| Menu Tiệm Quà | Nút cửa hàng mở menu: thời tiết Nắng/Mưa/Tuyết + 8 lối tắt | `ShopMenuModal`; thời tiết lưu localStorage (đọc trong effect), lớp hiệu ứng `pointer-events:none`, tắt khi `prefers-reduced-motion`; lối tắt: Cửa hàng, Bài tập, Hộp bí ẩn, Bảng vàng, Thẻ cào, Túi đồ, Danh hiệu, Nhân vật (thay "Giáo viên": học sinh không phát mã; thầy phát mã ở /teacher/rewards) |
+| Hộp Bí Ẩn | Khối tím "Đài Cầu Nguyện" 2 hộp, chấm bảo hiểm, chip cực phẩm; hộp thoại cầu nguyện + "CHÚC MỪNG!" | `GachaPanel` trong danh mục Hộp bí ẩn + `GachaModal` (tải lười) mở rương ngay trong tiệm; trang `/rewards/gacha` giữ để xem lịch sử |
+| Danh hiệu | Hộp thoại "Hệ Thống Danh Hiệu" (Đã mở / Chưa đạt) | `TitlesModal`, mở từ huy hiệu cấp ở HUD và menu |
+| Bảng Vàng | Banner "Sự kiện tuần" | Banner thật: thử thách chuỗi tuần (hoạt động tuần này / mục tiêu, còn N ngày — tính ở server) |
+| Nộp bài | Mục "Đã duyệt" | Thêm các bài đã nộp gần đây (điểm) |
+| Thẻ sản phẩm | Hình vẽ riêng từng quà, sao lấp lánh ở thẻ hiếm | `RewardArt` (SVG theo từ khoá tên quà, mặc định emoji); sao góc thẻ Sử thi/Huyền thoại |
+| Gọn lưới | "Tất cả" ~13 món | "Tất cả" bỏ đồ chỉ-từ-rương; Trang trí có chip lọc theo ô (Tóc, Màu tóc, Mắt, Trang phục, Phụ kiện, Khung, Nền, Danh hiệu) |
+
+Không làm: "Góc Giáo Viên" trong tiệm học sinh (thầy không vào /rewards; phát mã đã có ở tab Mã quà tặng), "Reset demo".
+Test: E2E tiệm cập nhật (menu, thời tiết, danh hiệu, mở rương trong tiệm), audit 4 bề rộng, đo JS tải lần đầu /rewards.

@@ -532,3 +532,55 @@ h6 {
 @media (prefers-reduced-motion: reduce) {
   .pet-bounce, .heart-up { animation: none !important; }
 }
+
+/* ===== Tiệm Quà GĐ6 (mockup Canvas 2): thời tiết, sân khấu cầu nguyện ===== */
+.weather-layer { position: fixed; inset: 0; z-index: 25; pointer-events: none; overflow: hidden; }
+.weather-drop {
+  position: absolute; top: -12vh; width: 2px; height: 14vh;
+  background: linear-gradient(180deg, rgba(110, 170, 230, 0), rgba(90, 150, 220, 0.55));
+  border-radius: 2px; transform: rotate(12deg);
+  animation: weather-rain 1s linear infinite;
+}
+@keyframes weather-rain { to { transform: translate(-14vh, 118vh) rotate(12deg); } }
+.weather-flake {
+  position: absolute; top: -5vh; color: #ffffff; text-shadow: 0 0 2px rgba(91, 61, 30, 0.35);
+  animation: weather-snow 8s linear infinite;
+}
+@keyframes weather-snow {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(3vw, 55vh) rotate(180deg); }
+  100% { transform: translate(-2vw, 110vh) rotate(360deg); }
+}
+.weather-sun {
+  position: absolute; top: -90px; right: -90px; width: 260px; height: 260px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 220, 110, 0.38) 0%, rgba(255, 220, 110, 0.12) 45%, transparent 70%);
+  animation: weather-sun-pulse 5s ease-in-out infinite;
+}
+@keyframes weather-sun-pulse { 50% { transform: scale(1.12); opacity: 0.8; } }
+
+.gacha-stage { background: radial-gradient(120% 90% at 50% 0%, #6b46c1 0%, #3b2370 45%, #24164a 100%); }
+.gacha-stars {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.55;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 28% 72%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 46% 30%, #ffe9a8 50%, transparent 51%),
+    radial-gradient(1px 1px at 64% 84%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 78% 22%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 90% 60%, #d8c4ff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 6% 88%, #fff 50%, transparent 51%);
+  animation: gacha-twinkle 4s ease-in-out infinite alternate;
+}
+@keyframes gacha-twinkle { to { opacity: 0.95; } }
+.gacha-halo {
+  position: absolute; left: 50%; top: 50%; width: 112%; height: 112%; transform: translate(-50%, -50%);
+  border-radius: 50%; border: 2px dashed rgba(255, 233, 168, 0.55);
+  background: radial-gradient(circle, rgba(255, 233, 168, 0.28), transparent 65%);
+  animation: rays-spin 18s linear infinite;
+}
+.card-star { position: absolute; color: #a78bfa; font-size: 13px; line-height: 1; pointer-events: none; animation: sparkle-twinkle 2.4s ease-in-out infinite; }
+.card-star-gold { color: #d9a52a; }
+@media (prefers-reduced-motion: reduce) {
+  .weather-layer { display: none; }
+  .gacha-stars, .gacha-halo, .card-star { animation: none !important; }
+}

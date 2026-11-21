@@ -1,12 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { openChest } from "@/actions/gacha";
-import { CHESTS, type ChestId, type Outcome } from "@/lib/game/gacha-shared";
+import { describeOutcome, type ChestId } from "@/lib/game/gacha-shared";
 import { ITEM_BY_ID, RARITY_LABEL } from "@/lib/game/items";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { RARITY } from "@/lib/points/rarity";
@@ -14,9 +10,7 @@ import { play } from "@/lib/sound";
 import { Chibi } from "@/components/avatar/Chibi";
 import { Confetti } from "@/components/points/Confetti";
 import { CoinBurst } from "./CoinBurst";
-import { describe } from "./GachaPage";
-
-type Phase = "idle" | "shaking" | "reveal";
+import { useGachaPull } from "./useGachaPull";
 
 /** Cảnh mở rương: rương lắc → tia sáng → lật thẻ theo bậc; kết quả do server trả về */
 export function GachaScene({
@@ -30,58 +24,9 @@ export function GachaScene({
   owned: string[];
   initialChest?: ChestId;
 }) {
-  const router = useRouter();
-  const [wallet, setWallet] = useState(w0);
-  const [pity, setPity] = useState(pity0);
-  const [today, setToday] = useState(today0);
-  const [owned, setOwned] = useState(() => new Set(owned0));
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [chest, setChest] = useState<ChestId>(initialChest);
-  const [result, setResult] = useState<{ outcome: Outcome; guaranteed: boolean } | null>(null);
-  const [pending, start] = useTransition();
-  const [burst, setBurst] = useState(0);
-  const [confetti, setConfetti] = useState(0);
-  const limit = CHESTS.xu.dailyLimit ?? 0;
-  const left = Math.max(0, limit - today);
-  const pityMax = CHESTS.xu.pity ?? 5;
-
-  const open = (id: ChestId) => {
-    const c = CHESTS[id];
-    const enough = "xu" in c.cost ? wallet.balance >= c.cost.xu : wallet.gems >= c.cost.gem;
-    if (!enough) {
-      play("error");
-      toast.error("xu" in c.cost ? "Chưa đủ xu để mở rương." : "Chưa đủ ngọc để mở rương.");
-      return;
-    }
-    setChest(id);
-    setResult(null);
-    setPhase("shaking");
-    play("click");
-    const ticks = [150, 350, 550, 750].map((t) => setTimeout(() => play("tick"), t));
-    start(async () => {
-      const res = await openChest(id);
-      ticks.forEach(clearTimeout);
-      if (!res.success || !res.outcome) {
-        setPhase("idle");
-        play("error");
-        toast.error(res.success ? "Không mở được rương." : res.error);
-        return;
-      }
-      // Giữ cảm giác hồi hộp tối thiểu ~0,9 giây rồi lật thẻ
-      setTimeout(() => {
-        setResult({ outcome: res.outcome!, guaranteed: !!res.guaranteed });
-        setPhase("reveal");
-        if (res.wallet) setWallet(res.wallet);
-        if (typeof res.pity === "number") setPity(res.pity);
-        if (id === "xu") setToday((n) => n + 1);
-        if (res.outcome!.kind === "item" && !res.outcome!.duplicate) setOwned((o) => new Set([...o, (res.outcome as { itemId: string }).itemId]));
-        play(`reveal-${res.outcome!.rarity}` as Parameters<typeof play>[0]);
-        if (res.outcome!.kind !== "item" || res.outcome!.duplicate) setBurst((n) => n + 1);
-        if (res.outcome!.rarity === "epic" || res.outcome!.rarity === "legendary") setConfetti((n) => n + 1);
-        router.refresh();
-      }, 900);
-    });
-  };
+  const { wallet, pity, pityMax, limit, left, owned, phase, chest, result, pending, burst, confetti, open, reset } = useGachaPull({
+    wallet: w0, pity: pity0, pullsToday: today0, owned: owned0, initialChest,
+  });
 
   const rar = result ? RARITY[result.outcome.rarity] : null;
   const preview = result?.outcome.kind === "item" ? { ...avatar, [ITEM_BY_ID[result.outcome.itemId].slot]: result.outcome.itemId } : null;
@@ -109,10 +54,10 @@ export function GachaScene({
             <div className={cn("dots-bg mt-2 flex h-40 items-center justify-center rounded-2xl bg-gradient-to-br", rar.art)} style={{ "--dot": rar.dot } as React.CSSProperties}>
               {preview ? <Chibi config={preview} size={120} className="animate-float" /> : <span className="animate-float text-6xl">{result.outcome.kind === "xu" ? "🪙" : "💎"}</span>}
             </div>
-            <p className="mt-3 text-lg font-black text-slate-900">{describe(result.outcome)}</p>
+            <p className="mt-3 text-lg font-black text-slate-900">{describeOutcome(result.outcome)}</p>
             {result.outcome.kind === "item" && !result.outcome.duplicate && <p className="text-xs font-semibold text-emerald-700">Đã vào túi đồ — vào Tuỳ chỉnh nhân vật để mặc ✨</p>}
             {result.outcome.kind === "item" && result.outcome.duplicate && <p className="text-xs font-semibold text-slate-500">Bạn đã có món này nên được trả lại xu.</p>}
-            <button type="button" onClick={() => { play("click"); setPhase("idle"); setResult(null); }} className="btn-3d btn-3d-white mt-3 px-4 py-1.5 text-xs">Mở tiếp</button>
+            <button type="button" onClick={() => { play("click"); reset(); }} className="btn-3d btn-3d-white mt-3 px-4 py-1.5 text-xs">Mở tiếp</button>
           </div>
         )}
       </div>
