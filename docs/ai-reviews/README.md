@@ -16,7 +16,7 @@ Mỗi tính năng có một thư mục `docs/ai-reviews/<tính-năng>/`:
 
 ## Các bước
 
-Claude **tự chạy** các bước review (2 và 5) và tự xử lý báo cáo. Bạn chỉ cần đọc tóm tắt Claude báo lại.
+Từ 22/11/2026 Claude **không tự chạy** các bước review (2 và 5). Chỉ chạy khi bạn yêu cầu; khi đó Claude tự xử lý báo cáo và báo lại tóm tắt.
 
 **Cách Claude gửi cho Gemini (ưu tiên theo thứ tự):**
 1. **Gemini trên web, qua trình duyệt Chrome** (model mới nhất của gói Pro, hiện là Neon):

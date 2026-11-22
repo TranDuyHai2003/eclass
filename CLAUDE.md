@@ -7,10 +7,11 @@
 
 ## Quy trình review chéo với Gemini
 Xem `docs/ai-reviews/README.md`.
-- Tính năng lớn: viết `docs/ai-reviews/<tính-năng>/PLAN.md` trước khi code, rồi **tự chạy** `REVIEW_NO_CLIPBOARD=1 scripts/ai-review.sh plan <tính-năng>` (chạy nền, mất vài phút).
-- Sau mỗi giai đoạn code (đã commit): tự chạy `REVIEW_NO_CLIPBOARD=1 scripts/ai-review.sh diff <tính-năng> <commit-trước-giai-đoạn>`, rồi xử lý báo cáo trước khi sang giai đoạn sau.
-- Người dùng đã đồng ý cho Claude tự gọi Gemini (tài khoản Gemini Pro của họ) cho các review này.
-- Ưu tiên gửi qua Gemini trên web bằng trình duyệt (Claude in Chrome):
+- Tính năng lớn: viết `docs/ai-reviews/<tính-năng>/PLAN.md` trước khi code.
+- **Không tự gọi Gemini** (người dùng tắt từ 22/11/2026). Chỉ review khi người dùng yêu cầu, theo cách dưới đây:
+  - kế hoạch: `REVIEW_NO_CLIPBOARD=1 scripts/ai-review.sh plan <tính-năng>`;
+  - code: `REVIEW_NO_CLIPBOARD=1 scripts/ai-review.sh diff <tính-năng> <commit-trước-giai-đoạn>`.
+- Khi được yêu cầu review, ưu tiên gửi qua Gemini trên web bằng trình duyệt (Claude in Chrome):
   - `REVIEW_NO_CLIPBOARD=1 REVIEW_BUNDLE_ONLY=1 scripts/ai-review.sh …` → chép file `review-input-*.md` sang thư mục scratchpad dạng `.txt` → đính kèm vào cuộc trò chuyện mới trên gemini.google.com (model Neon) → gửi yêu cầu review theo `GEMINI.md`;
   - lấy câu trả lời bằng `innerText` (thay `?`, `=`, `&` vì công cụ chặn chuỗi giống query string) → lưu `GEMINI_*_REVIEW.md` và thêm bảng "Claude kiểm chứng".
 - `agy` chỉ dùng khi không có trình duyệt.
