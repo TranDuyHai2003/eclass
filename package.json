@@ -9,7 +9,7 @@
     "lint": "eslint",
     "db:push": "prisma db push",
     "test": "node --no-experimental-strip-types --test --test-reporter=spec -r ./tests/setup/register.cjs \"tests/**/*.test.ts\"",
-    "test:e2e": "node tests/e2e/points.e2e.mjs && node tests/e2e/anchor-editor.e2e.mjs && node tests/e2e/lesson-page.e2e.mjs",
+    "test:e2e": "node tests/e2e/points.e2e.mjs && node tests/e2e/anchor-editor.e2e.mjs && node tests/e2e/lesson-page.e2e.mjs && node tests/e2e/landing.e2e.mjs",
     "test:audit": "node tests/e2e/site-audit.mjs"
   },
   "browserslist": [

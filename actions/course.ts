@@ -194,6 +194,7 @@ export async function getCourses(options?: {
         select: {
           id: true,
           name: true,
+          grade: true,
         }
       }
     },

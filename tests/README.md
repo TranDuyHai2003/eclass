@@ -16,10 +16,11 @@ Dùng test runner có sẵn của Node (`node:test`) cùng `ts-node`, không c�
 | `points/manual.test.ts` | Thầy thưởng và trừ điểm, giới hạn ngày, bỏ qua tài khoản không hợp lệ |
 | `anchors/matching.test.ts` | Bộ ghép nhãn câu ↔ câu hỏi: dãy số tăng dài nhất, nhãn khuyết/lạc, số trần, không ghép xuyên phần, Đúng/Sai 4 câu/nhãn, tiêu đề Phần I/II |
 | `points/queries.test.ts` | Dữ liệu trang Điểm thưởng, dải điểm trang chủ, màn kết quả, trang quản lý của thầy |
+| `home/course-grade.test.ts` | Nhóm khối của khoá học (Lớp 10/11/12/Luyện thi) từ tiêu đề và lớp gắn khoá, thứ tự và bìa thẻ |
 
 ## Test giao diện — `npm run test:e2e`
 
-Gồm ba script: `points.e2e.mjs` (Điểm thưởng), `anchor-editor.e2e.mjs` (công cụ cắt lời giải từng câu: bấm đặt mốc, Shift/Alt + bấm, kéo mốc, hoàn tác, Ctrl+S lưu, điện thoại) và `lesson-page.e2e.mjs` (trang học bài: danh sách bài cột phải, Bài trước/Bài sau, hoàn thành bài, 2 tab trên điện thoại, 390–1920px).
+Gồm bốn script: `points.e2e.mjs` (Điểm thưởng), `anchor-editor.e2e.mjs` (công cụ cắt lời giải từng câu: bấm đặt mốc, Shift/Alt + bấm, kéo mốc, hoàn tác, Ctrl+S lưu, điện thoại) `lesson-page.e2e.mjs` (trang học bài: danh sách bài cột phải, Bài trước/Bài sau, hoàn thành bài, 2 tab trên điện thoại, 390–1920px) và `landing.e2e.mjs` (Khóa học: lọc theo khối, tìm, Tiếp tục học, 390–1920px).
 
 `npm run test:audit` (cũng cần server đang chạy): rà toàn trang theo vai trò khách / học sinh / giáo viên / admin ở 390 · 768 · 1366 · 1920px — mã HTTP, lỗi JavaScript, ảnh hỏng, tràn ngang / chữ bị cắt / thừa khoảng trống. Chỉ đọc, không mở trang làm bài. Tuỳ chọn `--only teacher`, `--widths 390,1366`.
 

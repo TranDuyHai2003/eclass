@@ -140,8 +140,8 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
           className={cn(
             "flex items-center justify-between p-2.5 transition-all rounded-2xl group border-2",
             isActive
-              ? "bg-blue-50 border-blue-200 text-blue-700 shadow-[0_3px_0_0_#bfdbfe]"
-              : "border-transparent hover:bg-slate-100/80 text-slate-600 hover:text-blue-600",
+              ? "bg-[#EDE7FD] border-[#DCD0FB] text-[#4319A8]"
+              : "border-transparent hover:bg-[#F1EDFC] text-[#3B3650] hover:text-[#4319A8]",
           )}
         >
           <div className="flex items-center gap-3">
@@ -149,8 +149,8 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
               className={cn(
                 "p-1.5 rounded-xl transition-colors border",
                 isActive
-                  ? "bg-blue-600 border-blue-600 text-white shadow-sm"
-                  : "bg-white border-slate-200/80 text-slate-400 group-hover:text-blue-600 group-hover:border-blue-200",
+                  ? "bg-[#5B2BD6] border-[#5B2BD6] text-white shadow-sm"
+                  : "bg-white border-slate-200/80 text-slate-400 group-hover:text-[#5B2BD6] group-hover:border-[#DCD0FB]",
               )}
             >
               <item.icon className="w-4 h-4" />
@@ -163,8 +163,8 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
             className={cn(
               "w-3.5 h-3.5 transition-all opacity-0 group-hover:opacity-100",
               isActive
-                ? "text-blue-600 opacity-100"
-                : "text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5",
+                ? "text-[#5B2BD6] opacity-100"
+                : "text-slate-300 group-hover:text-[#5B2BD6] group-hover:translate-x-0.5",
             )}
           />
         </Link>
