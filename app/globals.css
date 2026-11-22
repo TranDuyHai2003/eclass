@@ -487,18 +487,8 @@ h6 {
     border-bottom: 4px solid #8a5a24;
     box-shadow: 0 4px 0 0 #6b4418;
   }
-  /* Cả tiệm là một khung gỗ: biển gỗ (dính trên khi cuộn) + mái hiên + gian hàng sọc kem.
-     Điện thoại: tràn sát mép như cũ; từ 640px: khung bo góc nằm giữa vùng nội dung. */
-  .shop-frame { overflow: clip; }
-  @media (min-width: 640px) {
-    .shop-frame {
-      border: 4px solid #8a5a24;
-      border-radius: 28px;
-      box-shadow: 0 6px 0 0 #6b4418, 0 22px 44px -18px rgba(91, 61, 30, 0.45);
-      background: #f6efe3;
-    }
-    .shop-frame > .shop-wood { box-shadow: none; }
-  }
+  /* Tiệm tràn toàn màn hình: biển gỗ (dính dưới header) + mái hiên + gian hàng sọc kem chung một nền */
+  .shop-frame { overflow: clip; background: #f6efe3; }
   .shop-awning {
     position: absolute;
     inset: 0 0 auto 0;

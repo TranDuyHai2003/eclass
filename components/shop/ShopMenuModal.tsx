@@ -10,7 +10,7 @@ import { WEATHER_LABEL, type Weather } from "./Weather";
 
 export type MenuAction = "shop" | "tasks" | "box" | "board" | "scratch" | "bag" | "titles";
 
-/** "Menu Tiệm Quà": chọn thời tiết + lưới lối tắt (theo mockup; "Giáo viên" thay bằng Nhân vật / Trang chủ vì học sinh không phát mã) */
+/** "Menu Tiệm Quà": chọn thời tiết + lưới lối tắt (theo mockup; "Giáo viên" thay bằng Nhân vật / Trang chủ vì học sinh không phát mã; tiệm tràn màn hình nên luôn có Trang chủ) */
 export function ShopMenuModal({
   open, onOpenChange, weather, onWeather, onAction, showBox,
 }: {
@@ -30,7 +30,7 @@ export function ShopMenuModal({
     { key: "bag", label: "Túi Đồ", icon: <Backpack className="h-6 w-6 text-[#b4531a]" />, action: "bag" },
     { key: "titles", label: "Danh Hiệu", icon: <Medal className="h-6 w-6 text-[#d9a52a]" />, action: "titles" },
     { key: "avatar", label: "Nhân Vật", icon: <UserRound className="h-6 w-6 text-[#2e8fe0]" />, href: "/profile/avatar" },
-    ...(showBox ? [] : [{ key: "home", label: "Trang Chủ", icon: <Home className="h-6 w-6 text-[#4fae4a]" />, href: "/" }]),
+    { key: "home", label: "Trang Chủ", icon: <Home className="h-6 w-6 text-[#4fae4a]" />, href: "/" },
   ];
   const opts: { key: Weather; label: string; cls: string }[] = [
     { key: "sun", label: "☀️ Nắng", cls: "btn-pill-yellow" },
@@ -61,7 +61,7 @@ export function ShopMenuModal({
           ))}
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-4 gap-2">
+      <div className={cn("mt-3 grid gap-2", tiles.length === 9 ? "grid-cols-3" : "grid-cols-4")}>
         {tiles.map((t) => {
           const inner = (
             <>

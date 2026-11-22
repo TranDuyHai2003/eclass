@@ -499,6 +499,20 @@ try {
     await sleep(400);
   });
 
+  await step("Học sinh: Tiệm Quà tràn toàn màn hình (không sidebar chung) có lối về trang chủ; nhân vật anime chibi (mống mắt + tóc mái)", async () => {
+    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    const wide = await s.ev(`const f=document.querySelector('[data-testid="shop-frame"]').getBoundingClientRect(); return f.left <= 1 && f.width >= document.body.clientWidth - 1`); // trang cuộn trên <body> nên so với body (trừ thanh cuộn)
+    expect(wide, "tiệm chưa tràn hết chiều ngang (còn sidebar/lề)");
+    expect(await s.ev(`return document.querySelector('[data-testid="shop-home"]')?.getAttribute('href') === "/" && document.querySelector('[data-testid="shop-home"]').offsetParent !== null`), "thiếu nút về trang chủ trên thanh gỗ");
+    await s.ev(`document.querySelector('[data-testid="menu-open"]').click()`);
+    expect(await s.waitText(/Menu Tiệm Quà/), "menu không mở");
+    expect(await s.ev(`return document.querySelector('[data-testid="menu-home"]')?.getAttribute('href') === "/"`), "menu thiếu lối tắt Trang Chủ");
+    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
+    await sleep(400);
+    const chibi = await s.ev(`const svg=document.querySelector('[data-testid="shop-hud"] svg[role="img"]'); return svg ? [!!svg.querySelector('linearGradient[id$="-iris"]'), svg.querySelectorAll('ellipse').length] : null`);
+    expect(chibi && chibi[0] && chibi[1] >= 10, `nhân vật chưa phải bản anime: ${JSON.stringify(chibi)}`);
+  });
+
   await step("Học sinh: Bảng Vàng có banner thử thách tuần thật; Nộp bài có mục đã nộp; Trang trí lọc theo ô", async () => {
     await s.ev(`document.querySelector('[data-testid="board-open"]').click()`);
     expect(await s.waitText(/Thử thách tuần/), "thiếu banner thử thách tuần");

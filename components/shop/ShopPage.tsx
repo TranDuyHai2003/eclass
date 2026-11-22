@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Backpack, Loader2, Pin, PinOff, Store } from "lucide-react";
+import { Backpack, Home, Loader2, Pin, PinOff, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { cancelRedemption, redeemReward, setGoalReward } from "@/actions/points";
 import { buyItem, saveAvatar } from "@/actions/avatar";
@@ -202,15 +202,16 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   const affordable = (p: Item["price"]) => (p && "xu" in p ? wallet.balance >= p.xu : p ? wallet.gems >= p.gem : false);
 
   return (
-    <div className="shop-font shop-frame -mx-4 -my-5 flex min-h-[calc(100vh-3.5rem)] flex-col sm:mx-auto sm:my-0 sm:min-h-[calc(100vh-7rem)] sm:max-w-[1280px]" data-testid="shop-frame" data-celebrated={celebrated} data-weather={weather}>
+    <div className="shop-font shop-frame flex min-h-[calc(100vh-3.5rem)] flex-col sm:min-h-[calc(100vh-4rem)]" data-testid="shop-frame" data-celebrated={celebrated} data-weather={weather}>
       <Confetti burst={celebrated} />
       <CoinBurst burst={burst} />
       <WeatherLayer weather={weather} />
 
       {/* ===== Thanh gỗ ===== */}
       <div className="shop-wood sticky top-14 z-30 px-3 py-2 sm:top-16 sm:px-5">
-        <div className="mx-auto flex max-w-[1200px] items-center gap-2">
+        <div className="mx-auto flex max-w-[1440px] items-center gap-2">
           <button type="button" title="Menu Tiệm Quà" data-testid="menu-open" onClick={() => { play("click"); setModal("menu"); }} className="btn-pill btn-pill-blue h-9 w-9 shrink-0 px-0" aria-label="Menu Tiệm Quà"><Store className="h-4 w-4" /></button>
+          <Link href="/" title="Về trang chủ" aria-label="Về trang chủ" data-testid="shop-home" className="btn-pill btn-pill-green hidden h-9 w-9 shrink-0 px-0 md:inline-flex"><Home className="h-4 w-4" /></Link>
           <button type="button" title="Túi đồ" data-testid="bag-open" onClick={() => { play("click"); setModal("bag"); }} className="btn-pill btn-pill-brown relative h-9 w-9 shrink-0 px-0" aria-label="Túi đồ">
             <Backpack className="h-4 w-4" />
             {bagCount > 0 && <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-[#5b3d1e] bg-[#ef5a3c] px-1 text-[10px] font-black text-white">{bagCount}</span>}
@@ -228,7 +229,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       <div className="shop-stripes relative flex-1 px-3 pb-5 pt-8 sm:px-5 sm:pt-9">
         {/* Mái hiên sọc nối biển gỗ với gian hàng */}
         <div aria-hidden className="shop-awning" />
-        <div className="mx-auto max-w-[1200px] space-y-4">
+        <div className="mx-auto max-w-[1440px] space-y-4">
           {/* ===== Hồ sơ + mèo ===== */}
           <section className="shop-card grid grid-cols-1 gap-3 p-3 sm:p-4 lg:grid-cols-[minmax(0,1fr)_320px]" data-testid="shop-hud">
             <div className="flex min-w-0 items-center gap-3">
@@ -280,7 +281,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
             <p className="rounded-2xl border-2 border-[#f5b61e] bg-[#fff1c2] px-4 py-2 text-sm font-bold text-[#7c4a03]">Tài khoản cần được thầy duyệt để bắt đầu nhận xu và đổi quà.</p>
           )}
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-[170px_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-[180px_minmax(0,1fr)]">
             {/* ===== Danh mục ===== */}
             <aside className="flex gap-1.5 overflow-x-auto whitespace-nowrap pb-1 md:flex-col md:overflow-visible md:whitespace-normal md:pb-0" aria-label="Danh mục và tiện ích">
               <div className="contents" role="tablist" aria-label="Danh mục">
@@ -327,7 +328,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                   <p className="text-sm text-[#7a5a35]">Cứ chăm học tích xu, quà sẽ sớm có ở đây!</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3 pt-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 pt-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                   {rewards.map((r) => {
                     const rar = rarityOf(r.price);
                     const soldOut = r.stock !== null && r.stock <= 0;
@@ -373,7 +374,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                         rarity={item.rarity}
                         meta={`${slotLabel(item.slot)} · Vĩnh viễn`}
                         selected={on}
-                        art={<Chibi config={{ ...avatar, [item.slot]: item.id }} size={84} />}
+                        art={<Chibi config={{ ...avatar, [item.slot]: item.id }} size={120} className="h-24 w-auto sm:h-32 xl:h-36" />}
                         action={
                           own
                             ? on
