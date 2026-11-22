@@ -344,3 +344,41 @@ Nguồn: canvas https://claude.ai/artifact/2kcB8o96tqYyVMXqAtYDn5 (4 artboard: H
 - Danh sách quà/thẻ cụ thể trong mockup (quà do thầy tạo ở trang quản lý).
 - Giá theo mockup (giữ thang ×150).
 - Danh sách mong muốn: dùng "ghim quà mục tiêu" sẵn có.
+
+## 13. GĐ10 — Tiệm quà v2 theo artboard "Tiệm quà v2 – theo spec Gemini" (22/11/2026)
+
+Thầy yêu cầu "thêm đầy đủ tính năng, hiệu ứng, âm thanh của design".
+
+### Đã làm (A + B)
+- **Âm thanh** (lib/sound) theo đúng nốt của design:
+  - Sửa các tiếng: bấm (trượt 520→760 Hz), xu, lỗi, lên cấp.
+  - Thêm các tiếng: dựng hồi hộp, lật thẻ, meo.
+  - Thêm `buzz()` rung trên điện thoại.
+  - Nút "Âm thanh: Bật/Tắt" nằm trong ví.
+- **Hiệu ứng** (`components/studio/effects.tsx` + keyframes `v2-*` cuối globals.css):
+  - Cảnh mở rương toàn màn hình: sao băng màu theo độ hiếm, nổ sáng, nút "Bỏ qua". `useGachaPull` hiện kết quả sau 2,4 giây, bỏ qua được.
+  - Hộp thoại "LÊN CẤP": so với cấp đã thấy lần trước trong trình duyệt.
+  - Mèo linh vật trôi ở góc trái, có lời nhắc; vuốt ve thì ra tim và kêu meo.
+  - Băng báo mất mạng.
+  - Số xu đếm nhảy.
+  - Tất cả tắt khi bật `prefers-reduced-motion`.
+- **Bố cục:**
+  - Tiêu đề "Tiệm Quà Học Đường".
+  - Thẻ cấp độ: ảnh đại diện có khung, ô tên, Lv, xu tích luỹ, thanh tiến độ, "Còn X xu nữa để lên…", nút "Tùy chỉnh hồ sơ".
+  - Ví nền tối: Xu tiêu được, Kim cương, các nút + Kiếm xu, Túi đồ, Âm thanh.
+  - 5 mục:
+    - Cửa hàng: lưới và chi tiết như GĐ9.
+    - Kiếm xu: Nộp bài và Thẻ cào & GiftCode đặt ngay trong trang, kèm thang cấp độ.
+    - Hộp bí ẩn: 2 rương có thanh tỉ lệ và sao bảo hiểm; "Mở hộp" mở Đài Cầu Nguyện.
+    - Bảng Vàng.
+    - Túi đồ.
+  - `ShopModal` có thêm chế độ `inline`, nên dùng lại logic và testid sẵn có.
+
+### Còn lại (C)
+- **Bảng tên (nameplate):** ô trang trí mới với 7 bảng tên có hiệu ứng (gợn nước, hoa rơi, sao, ánh quét…), hiện ở hồ sơ và Bảng Vàng. Cần thêm sprite bảng tên và sprite đồ mới của canvas.
+- **Món mở khoá theo cấp:** lớp "Cần Lv.X".
+
+### Không làm
+- Mục Giáo viên trong tiệm: thầy không vào /rewards; tạo mã đã có ở /teacher/rewards.
+- "Khôi phục dữ liệu demo".
+- Danh mục và giá của mockup: giữ thang ×150 và quà do thầy tạo.

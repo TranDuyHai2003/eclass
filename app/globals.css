@@ -646,3 +646,36 @@ h6 {
   .shimmer::after { animation: none; display: none; }
   .studio-item, .studio-art { transition: none; }
 }
+
+/* ===================== GĐ10: hiệu ứng theo canvas "Tiệm quà v2" (sao băng, lên cấp, mèo linh vật, bảng tên) ===================== */
+@keyframes v2-shoot { 0% { transform: translate(-46vw, -34vh) rotate(32deg); opacity: 0; } 12% { opacity: 1; } 78% { transform: translate(0, 0) rotate(32deg); opacity: 1; } 100% { transform: translate(0, 0) rotate(32deg) scale(0.2); opacity: 0; } }
+@keyframes v2-burst { 0%, 74% { transform: scale(0); opacity: 0; } 86% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes v2-twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes v2-pop { 0% { transform: scale(0.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes v2-rise { 0% { transform: translateY(8px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+@keyframes v2-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes v2-heart { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-64px) scale(1.15); opacity: 0; } }
+@keyframes v2-bump { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes v2-ripple { 0% { transform: scale(0.4); opacity: 0.9; } 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes v2-fall { 0% { transform: translate(0, -8px) rotate(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(-46px, 80px) rotate(240deg); opacity: 0; } }
+@keyframes v2-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes v2-sweep { 0% { transform: translateX(-150%) skewX(-20deg); } 60%, 100% { transform: translateX(420%) skewX(-20deg); } }
+@layer components {
+  .v2-shoot { animation: v2-shoot 2.2s cubic-bezier(0.3, 0.6, 0.4, 1) forwards; }
+  .v2-burst { animation: v2-burst 2.6s ease-out forwards; }
+  .v2-tw { position: absolute; pointer-events: none; animation: v2-twinkle 1.6s ease-in-out infinite; }
+  .v2-pop { animation: v2-pop 0.28s ease-out; }
+  .v2-rise { animation: v2-rise 0.25s ease-out; }
+  .v2-float { animation: v2-float 3.2s ease-in-out infinite; }
+  .v2-heart { position: absolute; pointer-events: none; animation: v2-heart 1.1s ease-out forwards; }
+  .v2-bump { display: inline-block; animation: v2-bump 0.35s ease-out; }
+  .v2-ripple { position: absolute; border: 2px solid rgba(255, 255, 255, 0.95); border-radius: 50%; pointer-events: none; animation: v2-ripple 2.4s ease-out infinite; }
+  .v2-fall { position: absolute; border-radius: 60% 0 60% 0; pointer-events: none; animation: v2-fall 3.4s linear infinite; }
+  .v2-bob { position: absolute; pointer-events: none; animation: v2-bob 1.4s ease-in-out infinite; }
+  .v2-sweep { position: absolute; top: 0; bottom: 0; left: 0; width: 28%; pointer-events: none; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent); animation: v2-sweep 3.6s ease-in-out infinite; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-shoot, .v2-burst, .v2-tw, .v2-pop, .v2-rise, .v2-float, .v2-bump, .v2-bob, .v2-sweep { animation: none !important; }
+  .v2-ripple, .v2-fall, .v2-heart { display: none; }
+  .v2-burst { opacity: 1; transform: none; }
+}

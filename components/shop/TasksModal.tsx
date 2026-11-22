@@ -23,11 +23,11 @@ export interface RecentDone {
   score: number | null;
 }
 
-export function TasksModal({ open, onOpenChange, todo, todoTotal, recent = [] }: { open: boolean; onOpenChange: (o: boolean) => void; todo: HomeTodoItem[]; todoTotal: number; recent?: RecentDone[] }) {
+export function TasksModal({ open, onOpenChange, inline, todo, todoTotal, recent = [] }: { open: boolean; onOpenChange: (o: boolean) => void; inline?: boolean; todo: HomeTodoItem[]; todoTotal: number; recent?: RecentDone[] }) {
   // Mốc "bây giờ" lấy một lần khi tạo (hộp chỉ render sau khi mở ở client)
   const [now] = useState(() => Date.now());
   return (
-    <ShopModal open={open} onOpenChange={onOpenChange} title="📝 Nộp Bài Tập Nhận Xu" testId="tasks-modal">
+    <ShopModal open={open} onOpenChange={onOpenChange} inline={inline} title="📝 Nộp Bài Tập Nhận Xu" testId="tasks-modal">
       {todo.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-[#4fae4a] bg-[#eef9ea] p-5 text-center">
           <p className="text-3xl">🎉</p>

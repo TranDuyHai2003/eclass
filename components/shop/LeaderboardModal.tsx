@@ -12,11 +12,11 @@ export interface BoardData {
 }
 
 /** "Bản Tin & Bảng Vàng": top 5 mỗi khối + hạng của mình; xem đầy đủ ở /leaderboard */
-export function LeaderboardModal({ open, onOpenChange, boards, myGrade, currentUserId, event }: { open: boolean; onOpenChange: (o: boolean) => void; boards: BoardData[]; myGrade: number | null; currentUserId: string; event?: { title: string; text: string; badge: string } | null }) {
+export function LeaderboardModal({ open, onOpenChange, inline, boards, myGrade, currentUserId, event }: { open: boolean; onOpenChange: (o: boolean) => void; inline?: boolean; boards: BoardData[]; myGrade: number | null; currentUserId: string; event?: { title: string; text: string; badge: string } | null }) {
   const [grade, setGrade] = useState<number | null>(myGrade ?? boards[0]?.grade ?? null);
   const board = boards.find((b) => b.grade === grade);
   return (
-    <ShopModal open={open} onOpenChange={onOpenChange} title="📰 Bản Tin & Bảng Vàng" testId="leaderboard-modal">
+    <ShopModal open={open} onOpenChange={onOpenChange} inline={inline} title="📰 Bản Tin & Bảng Vàng" testId="leaderboard-modal">
       {event && (
         <div className="mb-3 flex items-center gap-3 rounded-2xl border-2 border-[#f5b61e] bg-[#fff1c2] p-3">
           <span className="text-2xl">🎉</span>

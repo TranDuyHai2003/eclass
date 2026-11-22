@@ -23,10 +23,12 @@ const fmtDate = (iso: string) => new Intl.DateTimeFormat("vi-VN", { timeZone: "A
 
 /** "Túi đồ đã sở hữu": quà & thẻ đã đổi (trạng thái), đồ trang trí (Dùng / Đang chọn), mèo cưng */
 export function InventoryModal({
-  open, onOpenChange, redemptions, owned, avatar, pending, onEquip, onCancel,
+  open, onOpenChange, inline, redemptions, owned, avatar, pending, onEquip, onCancel,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  /** Hiện như một khối trong trang (mục Túi đồ của tiệm) thay vì hộp thoại */
+  inline?: boolean;
   redemptions: Redemption[];
   owned: string[];
   avatar: AvatarConfig;
@@ -51,7 +53,7 @@ export function InventoryModal({
   const slotLabel = (s: Item["slot"]) => SLOTS.find((x) => x.key === s)?.label ?? s;
 
   return (
-    <ShopModal open={open} onOpenChange={onOpenChange} title={`🎒 Túi Đồ Đã Sở Hữu (${total})`} testId="inventory-modal" className="sm:max-w-2xl">
+    <ShopModal open={open} onOpenChange={onOpenChange} inline={inline} title={`🎒 Túi Đồ Đã Sở Hữu (${total})`} testId="inventory-modal" className="sm:max-w-2xl">
       <div className="mb-3 flex flex-wrap gap-1.5">
         {tabs.map((t) => (
           <button key={t.key} type="button" onClick={() => setTab(t.key)} aria-pressed={tab === t.key} className={cn("btn-pill px-3 py-1 text-xs", tab === t.key && "btn-pill-yellow")}>

@@ -17,6 +17,7 @@ import { ShopModal } from "./ShopModal";
 import { GiftBoxSvg } from "./GiftBoxSvg";
 import { BAND } from "./ProductCard";
 import { PityBar } from "./PityBar";
+import { GachaCinematic } from "@/components/studio/effects";
 
 /** Cực phẩm trưng hai bên sân khấu (đều có trong bể quà của rương) */
 export const FEATURED = { left: ["acc-halo", "outfit-astro"], right: ["pet-shadow", "frame-rainbow"] };
@@ -75,6 +76,7 @@ export function GachaModal({
     <ShopModal open={open} onOpenChange={(o) => !busy && onOpenChange(o)} title="🌠 Đài Cầu Nguyện Hộp Bí Ẩn" testId="gacha-modal" className="sm:max-w-3xl">
       <CoinBurst burst={g.burst} />
       <Confetti burst={g.confetti} />
+      {g.phase === "shaking" && <GachaCinematic rarity={g.incoming} onSkip={g.skip} />}
       <div className="gacha-stage relative overflow-hidden rounded-[1.25rem] border-[2.5px] border-[#2a1b4a] p-3 sm:p-4" data-testid="gacha-stage" data-phase={g.phase}>
         <span aria-hidden className="gacha-stars" />
         <div className="relative flex items-center justify-between gap-2">

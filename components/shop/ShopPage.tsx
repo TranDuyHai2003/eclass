@@ -1,24 +1,25 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Coin, Gem, GemSmall, IconCode, IconEye, IconGift, IconHeart, IconHistory, IconInfo, IconMenu, IconPlus, IconTrophy } from "@/components/studio/icons";
-import { ShopArt, SHOP_CHEST, SHOP_MASCOT, Sprite, hasSprite, rewardArtIndex, shopItemIndex } from "@/components/studio/Sprite";
+import { Coin, GemSmall, IconEye, IconHeart, IconHistory, IconInfo, IconMenu } from "@/components/studio/icons";
+import { ShopArt, SHOP_CHEST, Sprite, frameSpriteStyle, hasSprite, rewardArtIndex, shopItemIndex } from "@/components/studio/Sprite";
 import { FrameRing } from "@/components/profile/FrameRing";
 import { cn } from "@/lib/utils";
 import { cancelRedemption, redeemReward, setGoalReward } from "@/actions/points";
 import { buyItem, saveAvatar } from "@/actions/avatar";
 import type { StudentPointsPageData } from "@/lib/points/queries";
 import type { HomeTodoItem } from "@/lib/home/student-home";
-import { getLevel } from "@/lib/points/levels";
+import { LEVELS, getLevel } from "@/lib/points/levels";
 import { rarityOf, type Rarity } from "@/lib/points/rarity";
 import { ITEMS, ITEM_BY_ID, SLOTS, type Item } from "@/lib/game/items";
 import { CHESTS, type ChestId, type Outcome } from "@/lib/game/gacha-shared";
 import { buildNpcLines } from "@/lib/game/npc";
-import { play } from "@/lib/sound";
+import { buzz, isSoundOn, onSoundChange, play, setSoundOn } from "@/lib/sound";
+import { LevelUpDialog, Mascot, OfflineBanner, useOnline, useTweenNumber } from "@/components/studio/effects";
 import { Chibi } from "@/components/avatar/Chibi";
 import { PetSvg } from "@/components/avatar/PetSvg";
 import { Confetti } from "@/components/points/Confetti";
@@ -39,6 +40,14 @@ const GachaModal = dynamic(() => import("./GachaModal").then((m) => m.GachaModal
 
 type Reward = StudentPointsPageData["rewards"][number];
 type Cat = "all" | "physical" | "voucher" | "deco" | "pet" | "box";
+type Sec = "shop" | "earn" | "gacha" | "gold" | "bag";
+const SECS: { key: Sec; label: string }[] = [
+  { key: "shop", label: "Cửa hàng" },
+  { key: "earn", label: "Kiếm xu" },
+  { key: "gacha", label: "Hộp bí ẩn" },
+  { key: "gold", label: "Bảng Vàng" },
+  { key: "bag", label: "Túi đồ" },
+];
 type DecoSlot = "all" | Item["slot"];
 type RarFilter = "all" | Rarity;
 type Sort = "pop" | "asc" | "desc";
@@ -84,6 +93,11 @@ const fmt = (n: number) => n.toLocaleString("vi-VN");
 export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, event = null, gacha = null }: ShopPageProps) {
   const router = useRouter();
   const [cat, setCat] = useState<Cat>("all");
+  // Các mục của "Tiệm quà v2" (canvas thiết kế): Cửa hàng · Kiếm xu · Hộp bí ẩn · Bảng Vàng · Túi đồ
+  const [sec, setSec] = useState<Sec>("shop");
+  const [lvUp, setLvUp] = useState<number | null>(null);
+  const [soundOn, setSoundState] = useState(true);
+  const online = useOnline();
   const [modal, setModal] = useState<null | "tasks" | "bag" | "scratch" | "board" | "history" | "menu" | "titles">(null);
   const [decoSlot, setDecoSlot] = useState<DecoSlot>("all");
   const [rar, setRar] = useState<RarFilter>("all");
@@ -97,7 +111,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   const [pending, start] = useTransition();
   const [celebrated, setCelebrated] = useState(0);
   const [burst, setBurst] = useState(0);
-  const [petPets, setPetPets] = useState(0);
   const [avatar, setAvatar] = useState(data.avatar);
   const [owned, setOwned] = useState(() => new Set(data.ownedItems));
   const { wallet, goal } = data;
@@ -122,7 +135,27 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       }).map((l) => l.replace(/Mình là Lucky Boy, bấm vào mình để nghe tiếp nhé 😉/, "Meo~ vuốt ve tớ đi, tớ kể tiếp cho nghe 🐾")),
     [user.name, data.canEarn, todoTotal, wallet, level, goal],
   );
-  const [lineIdx, setLineIdx] = useState(0);
+  const xuShown = useTweenNumber(wallet.balance);
+  // Âm thanh: đọc/ghi localStorage trong effect (HTML server/client khớp)
+  useEffect(() => {
+    setSoundState(isSoundOn());
+    return onSoundChange(setSoundState);
+  }, []);
+  // Lên cấp: so với cấp đã thấy lần trước trong trình duyệt này
+  useEffect(() => {
+    try {
+      const k = `last-level:${user.id}`;
+      const prev = Number(localStorage.getItem(k) || 0);
+      if (prev && level.level > prev) setLvUp(level.level);
+      localStorage.setItem(k, String(level.level));
+    } catch {
+      /* bỏ qua */
+    }
+  }, [level.level, user.id]);
+  const goSec = (k: Sec) => {
+    play("click");
+    setSec(k);
+  };
 
   const run = (fn: () => Promise<{ success: boolean; message?: string; error?: string }>, after?: () => void) =>
     start(async () => {
@@ -157,6 +190,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       const res = await buyItem(item.id);
       if (res.success) {
         play("coin");
+        buzz(25);
         setTimeout(() => play("success"), 200);
         setBurst((n) => n + 1);
         setOwned((o) => new Set([...o, item.id]));
@@ -173,11 +207,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       }
     });
 
-  const petTouch = () => {
-    play("tick");
-    setPetPets((n) => n + 1);
-    setLineIdx((i) => i + 1);
-  };
 
   const openGacha = (chest: ChestId, rates = false) => {
     if (!gacha) return;
@@ -190,8 +219,11 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   };
   const menuAction = (a: MenuAction) => {
     setModal(null);
-    if (a === "shop") setCat("all");
-    else if (a === "box") setCat("box");
+    if (a === "shop") { setSec("shop"); setCat("all"); }
+    else if (a === "box") setSec("gacha");
+    else if (a === "tasks" || a === "scratch") setSec("earn");
+    else if (a === "board") setSec("gold");
+    else if (a === "bag") setSec("bag");
     else setTimeout(() => setModal(a), 120);
   };
 
@@ -238,78 +270,75 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       <CoinBurst burst={burst} />
       <WeatherLayer weather={weather} />
 
-      {/* ===== Đầu trang + ví ===== */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-col gap-1.5">
-          <h1 className="text-[28px] font-extrabold tracking-tight" data-testid="shop-title">Tiệm quà</h1>
-          <p className="text-[#5F5B73]">Đổi xu và kim cương lấy quà thật, thẻ đặc quyền và đồ trang trí.</p>
+      {/* ===== Đầu trang (canvas "Tiệm quà v2") ===== */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[28px] font-extrabold tracking-tight" data-testid="shop-title">Tiệm Quà Học Đường</h1>
+          <p className="text-[#5F5B73]">Chăm làm bài, đổi quà xinh. Xu tiêu thoải mái, cấp độ không tụt.</p>
         </div>
-        <div className="flex max-w-full flex-wrap items-stretch rounded-2xl border border-[#ECE9F5] bg-white shadow-[0_1px_2px_rgba(30,27,46,0.04)]">
-          <div className="flex items-center gap-2.5 px-4 py-2.5" data-testid="hud-balance">
-            <Coin size={28} border={3} />
-            <div className="flex flex-col">
-              <span className="text-lg font-extrabold leading-tight text-[#7A4E00] tabular-nums">{fmt(wallet.balance)}</span>
-              <span className="text-xs text-[#5F5B73]">Xu</span>
-            </div>
-          </div>
-          <div className="w-px bg-[#ECE9F5]" />
-          <div className="flex items-center gap-2.5 px-4 py-2.5" data-testid="hud-gems">
-            <Gem size={26} />
-            <div className="flex flex-col">
-              <span className="text-lg font-extrabold leading-tight text-[#1D4ED8] tabular-nums">{wallet.gems}</span>
-              <span className="text-xs text-[#5F5B73]">Kim cương</span>
-            </div>
-          </div>
-          <div className="w-px bg-[#ECE9F5]" />
-          <div className="flex items-center gap-1.5 px-2.5 py-2">
-            <button type="button" data-testid="scratch-open" onClick={() => { play("click"); setModal("scratch"); }} className="flex h-10 items-center gap-1.5 rounded-[10px] bg-[#F3F0FF] px-3 text-[13px] font-bold text-[#4319A8]">
-              <IconCode /> Nhập code
-            </button>
-            <button type="button" data-testid="history-open" onClick={() => { play("click"); setModal("history"); }} className="flex h-10 items-center gap-1.5 rounded-[10px] px-3 text-[13px] font-bold text-[#3B3650] hover:bg-[#F6F5FB]">
-              <IconHistory /> Lịch sử
-            </button>
-            <button type="button" data-testid="bag-open" onClick={() => { play("click"); setModal("bag"); }} aria-label="Túi đồ" title="Túi đồ" className="relative flex h-10 w-10 items-center justify-center rounded-[10px] text-[#3B3650] hover:bg-[#F6F5FB]">
-              <IconGift />
-              {bagCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#5B2BD6] px-1 text-[10px] font-bold text-white">{bagCount}</span>}
-            </button>
-            <button type="button" data-testid="menu-open" onClick={() => { play("click"); setModal("menu"); }} aria-label="Menu Tiệm Quà" title="Menu Tiệm Quà" className="flex h-10 w-10 items-center justify-center rounded-[10px] text-[#3B3650] hover:bg-[#F6F5FB]">
-              <IconMenu />
-            </button>
-          </div>
+        <div className="flex items-center gap-1.5">
+          <button type="button" data-testid="history-open" onClick={() => { play("click"); setModal("history"); }} className="flex h-10 items-center gap-1.5 rounded-[10px] px-3 text-[13px] font-bold text-[#3B3650] hover:bg-white"><IconHistory /> Lịch sử</button>
+          <button type="button" data-testid="menu-open" onClick={() => { play("click"); setModal("menu"); }} aria-label="Menu Tiệm Quà" title="Menu Tiệm Quà" className="flex h-10 w-10 items-center justify-center rounded-[10px] text-[#3B3650] hover:bg-white"><IconMenu /></button>
         </div>
       </div>
 
-      {/* ===== Dải mục tiêu: mèo nhắc + xu tích luỹ ===== */}
-      <section className="flex flex-wrap items-center gap-x-6 gap-y-4 rounded-[18px] border border-[#ECE9F5] bg-white px-5 py-3.5" data-testid="shop-hud">
-        <button type="button" data-testid="pet-card" onClick={petTouch} title="Chạm để vuốt ve" className="group flex min-w-0 flex-[1_1_340px] items-center gap-3.5 text-left">
-          <span className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#FFF6DB]">
-            <span key={petPets} className={cn("block h-14 w-14", petPets > 0 && "pet-bounce")}>{!pet || pet.id === "pet-bi" ? <ShopArt index={SHOP_MASCOT} className="h-14 w-14" /> : <ItemArt it={pet} avatar={avatar} />}</span>
-            {petPets > 0 && <span key={`h${petPets}`} className="heart-up text-base">💗</span>}
-          </span>
-          <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-xs font-bold text-[#6B6680]">{pet ? pet.name : "Thú cưng"} nhắc bạn <span className="font-medium text-[#5B2BD6] group-hover:underline">· vuốt ve</span></span>
-            <span className="text-[15px] font-bold" data-testid="pet-line">{lines[lineIdx % lines.length]}</span>
-          </span>
-        </button>
-        <div className="flex flex-[1_1_260px] flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-2 text-xs text-[#5F5B73]">
-            <button type="button" data-testid="titles-open" onClick={() => { play("click"); setModal("titles"); }} title="Xem hệ thống danh hiệu" className="rounded-full bg-[#F3E3C3] px-2.5 py-0.5 font-bold text-[#6B4512] hover:brightness-95">
-              {level.icon} {level.name} · Lv.{level.level}
-            </button>
-            <span className="font-bold text-[#3B3650]">{fmt(wallet.lifetimeEarned)}{level.next ? ` / ${fmt(level.next.min)}` : ""} xu tích luỹ</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-[#F1EEF8]" role="progressbar" aria-label="Xu tích luỹ đến cấp sau" aria-valuenow={level.progress} aria-valuemin={0} aria-valuemax={100}>
-            <div className="h-full rounded-full bg-[#F5B82E]" style={{ width: `${Math.max(2, level.progress)}%` }} />
+      {!online && <OfflineBanner onRetry={() => router.refresh()} />}
+
+      {/* ===== Cấp độ + ví ===== */}
+      <section className="flex flex-wrap gap-[18px]" data-testid="shop-hud">
+        <div className="flex flex-[999_1_520px] flex-wrap items-center gap-[18px] rounded-[20px] border border-[#ECE9F5] bg-white p-[18px]">
+          <Link href="/profile" title="Tùy chỉnh hồ sơ" className="relative h-24 w-24 shrink-0 rounded-full" style={avatar.frame ? frameSpriteStyle(avatar.frame, 96) : undefined}>
+            <span className="absolute inset-5 overflow-hidden rounded-full bg-[#EDE7FD]"><Chibi config={{ ...avatar, background: null, frame: null, effect: null }} size={56} className="h-full w-full" /></span>
+            {avatar.frame && !frameSpriteStyle(avatar.frame, 96) && <FrameRing frameId={avatar.frame} className="absolute inset-0 h-full w-full" />}
+          </Link>
+          <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-2.5">
+            <div className="relative flex min-h-14 items-center overflow-hidden rounded-[14px] bg-gradient-to-r from-[#EDE7FD] via-[#F6F1FF] to-[#FCE7F3] px-3.5 py-2.5">
+              <div className="relative flex flex-col text-[#2A1F5C]">
+                <span className="text-[17px] font-extrabold">{user.name || "Học sinh"}</span>
+                <span className="text-xs">{user.grade ? `Khối ${user.grade} · ` : ""}{level.name}</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-between gap-2.5 text-[13px]">
+              <button type="button" data-testid="titles-open" onClick={() => { play("click"); setModal("titles"); }} title="Xem hệ thống danh hiệu" className="text-left hover:underline">
+                <b>Lv.{level.level}</b> <span className="text-[#5F5B73]">{level.name}</span>
+              </button>
+              <span className="text-[#5F5B73]"><b className="text-[#1E1B2E]">{fmt(wallet.lifetimeEarned)}</b> xu tích lũy</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-[#F1EEF8]" role="progressbar" aria-label="Xu tích luỹ đến cấp sau" aria-valuenow={level.progress} aria-valuemin={0} aria-valuemax={100}>
+              <div className="h-full rounded-full bg-[#5B2BD6]" style={{ width: `${Math.max(2, level.progress)}%` }} />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="flex-[1_1_240px] text-xs text-[#5F5B73]">{level.next ? `Còn ${fmt(level.toNext)} xu nữa để lên Lv.${level.level + 1} · ${level.next.name}` : "Bạn đã đạt cấp cao nhất 👑"}</span>
+              <Link href="/profile" className="flex h-9 items-center rounded-[10px] border border-[#E4E0F0] bg-white px-3 text-[13px] font-bold text-[#2A1F5C]">Tùy chỉnh hồ sơ</Link>
+            </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button type="button" data-testid="board-open" onClick={() => { play("click"); setModal("board"); }} className="flex h-11 items-center gap-2 rounded-xl border border-[#E4E0F0] bg-white px-3.5 font-bold text-[#3B3650] hover:bg-[#F6F5FB]">
-            <IconTrophy size={16} className="text-[#D8961B]" /> Bảng Vàng
-          </button>
-          <button type="button" data-testid="tasks-open" onClick={() => { play("click"); setModal("tasks"); }} className="flex h-11 items-center gap-2 rounded-xl bg-[#5B2BD6] px-4 font-bold text-white hover:bg-[#4C22BC]">
-            <IconPlus /> Nộp bài kiếm xu
-            {todoTotal > 0 && <span className="rounded-full bg-white/25 px-1.5 text-[11px]">{todoTotal}</span>}
-          </button>
+        <div className="flex flex-[1_1_300px] flex-col gap-3.5 rounded-[20px] bg-[#1E1745] p-[18px] text-white">
+          <div className="flex gap-6">
+            <div data-testid="hud-balance">
+              <div className="text-xs text-[#C9BEFF]">Xu tiêu được</div>
+              <div className="flex items-center gap-2 text-[26px] font-extrabold"><Coin size={18} /><span key={xuShown.bump} className={cn(xuShown.bump > 0 && "v2-bump")}>{fmt(xuShown.shown)}</span></div>
+            </div>
+            <div data-testid="hud-gems">
+              <div className="text-xs text-[#C9BEFF]">Kim cương</div>
+              <div className="flex items-center gap-2 text-[26px] font-extrabold"><GemSmall size={14} />{wallet.gems}</div>
+            </div>
+          </div>
+          <p className="text-xs leading-normal text-[#D9D3F5]">Tiêu xu không làm giảm cấp độ. Cấp độ tính theo tổng xu tích lũy.</p>
+          <div className="mt-auto flex flex-wrap gap-2">
+            <button type="button" onClick={() => goSec("earn")} className="h-11 rounded-xl bg-white px-4 font-bold text-[#2A1F5C]">+ Kiếm xu</button>
+            <button type="button" data-testid="bag-open" onClick={() => goSec("bag")} className="relative h-11 rounded-xl bg-white/[0.12] px-4 font-bold">
+              Túi đồ{bagCount > 0 && <span className="ml-1.5 rounded-full bg-[#5B2BD6] px-1.5 text-[11px]">{bagCount}</span>}
+            </button>
+            <button type="button" role="switch" aria-checked={soundOn} aria-label="Âm thanh hiệu ứng" onClick={() => setSoundOn(!soundOn)} className="ml-auto flex h-11 items-center gap-2 rounded-xl bg-white/[0.12] px-3.5 font-bold">
+              {soundOn ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M11 5L6 9H2v6h4l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" /></svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M11 5L6 9H2v6h4l5 4z" /><path d="M22 9l-6 6M16 9l6 6" /></svg>
+              )}
+              {soundOn ? "Âm thanh: Bật" : "Âm thanh: Tắt"}
+            </button>
+          </div>
         </div>
       </section>
 
@@ -317,6 +346,26 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         <p className="rounded-2xl border border-[#F3DC8E] bg-[#FFF6DB] px-4 py-2.5 text-sm font-semibold text-[#7A4E00]">Tài khoản cần được thầy duyệt để bắt đầu nhận xu và đổi quà.</p>
       )}
 
+      {/* ===== Các mục ===== */}
+      <div role="tablist" aria-label="Tiệm quà" className="flex flex-wrap border-b border-[#E4E0F0]">
+        {SECS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={sec === t.key}
+            data-testid={t.key === "earn" ? "tasks-open" : t.key === "gold" ? "board-open" : `sec-${t.key}`}
+            onClick={() => goSec(t.key)}
+            className={cn("mr-[22px] px-1 py-3 text-[15px]", sec === t.key ? "font-bold text-[#5B2BD6] shadow-[inset_0_-3px_0_#5B2BD6]" : "font-semibold text-[#5F5B73]")}
+          >
+            {t.label}
+            {t.key === "earn" && todoTotal > 0 && <span className="ml-1.5 rounded-full bg-[#5B2BD6] px-1.5 text-[11px] text-white">{todoTotal}</span>}
+          </button>
+        ))}
+      </div>
+
+      {sec === "shop" && (
+        <>
       {/* ===== Danh mục ===== */}
       <div role="tablist" aria-label="Danh mục quà" className="flex gap-1 overflow-x-auto border-b border-[#E4E0F0] [scrollbar-width:none]">
         {CATS.map((c) => (
@@ -397,6 +446,89 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         </>
       )}
 
+        </>
+      )}
+
+      {/* ===== Kiếm xu: nộp bài + thẻ cào & GiftCode + thang cấp độ ===== */}
+      {sec === "earn" && (
+        <div className="flex flex-col gap-[18px]">
+          <div className="flex flex-wrap items-start gap-[18px]">
+            <div className="min-w-0 flex-[999_1_520px]">
+              <TasksModal inline open onOpenChange={() => setSec("shop")} todo={todo} todoTotal={todoTotal} recent={recent} />
+            </div>
+            <div className="min-w-0 flex-[1_1_320px]" data-testid="scratch-open">
+              <ScratchCodeModal inline open onOpenChange={() => setSec("shop")} canEarn={data.canEarn} />
+            </div>
+          </div>
+          <div className="studio-card flex flex-col gap-3.5 p-5">
+            <h2 className="text-lg font-extrabold">Cấp độ &amp; danh hiệu</h2>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-2.5">
+              {LEVELS.map((l, i) => {
+                const on = i + 1 === level.level;
+                const reached = wallet.lifetimeEarned >= l.min;
+                return (
+                  <div key={l.name} className={cn("flex flex-col gap-1.5 rounded-[14px] p-3.5", on ? "bg-[#EDE7FD] ring-2 ring-[#5B2BD6]" : reached ? "bg-[#F6F5FB]" : "border border-dashed border-[#E4E0F0] bg-white")}>
+                    <div className={cn("flex justify-between text-xs font-extrabold", on ? "text-[#4319A8]" : "text-[#5F5B73]")}><span>Lv.{i + 1}</span><span>{fmt(l.min)} xu</span></div>
+                    <div className="font-extrabold">{l.icon} {l.name}</div>
+                    <div className="text-xs leading-snug text-[#5F5B73]">{on ? "Cấp hiện tại của bạn" : reached ? "Đã đạt" : `Còn ${fmt(l.min - wallet.lifetimeEarned)} xu`}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Hộp bí ẩn: 2 rương + thanh tỉ lệ + sao bảo hiểm ===== */}
+      {sec === "gacha" && (
+        gacha ? (
+          <div className="flex flex-col gap-[18px]">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-[18px]">
+              {(["xu", "gem"] as const).map((id) => {
+                const c = CHESTS[id];
+                const dark = id === "gem";
+                return (
+                  <div key={id} className={cn("flex flex-col gap-3.5 rounded-[20px] p-[22px]", dark ? "bg-[#1E1745] text-white" : "border border-[#ECE9F5] bg-white")} data-testid="chest-card" data-chest={id}>
+                    <div className="flex items-center justify-between"><h2 className="text-[19px] font-extrabold">{id === "xu" ? "Hộp Sao Mèo" : "Hộp Tinh Tú VIP"}</h2><span className="font-extrabold">{"xu" in c.cost ? `${fmt(c.cost.xu)} xu` : `${c.cost.gem} KC`}</span></div>
+                    <div className="relative flex h-[170px] items-center justify-center">
+                      <span aria-hidden className="absolute h-[190px] w-[190px] rounded-full" style={{ background: dark ? "radial-gradient(circle, rgba(253,230,138,0.35), transparent 65%)" : "radial-gradient(circle, rgba(91,43,214,0.16), transparent 65%)" }} />
+                      <span aria-hidden className="absolute bottom-1.5 h-[18px] w-[150px] rounded-full" style={{ background: dark ? "rgba(0,0,0,0.35)" : "rgba(30,27,46,0.09)" }} />
+                      <ShopArt index={SHOP_CHEST[id]} className="v2-float relative h-40 w-40" />
+                    </div>
+                    {(["common", "rare", "epic", "legendary"] as Rarity[]).filter((r) => (c.rates[r] ?? 0) > 0).map((r) => (
+                      <div key={r} className="grid grid-cols-[100px_1fr_40px] items-center gap-2.5 text-[13px]">
+                        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: RAR_STYLE[r].dot }} />{RAR_STYLE[r].label}</span>
+                        <div className={cn("h-2 overflow-hidden rounded-full", dark ? "bg-white/15" : "bg-[#F1EEF8]")}><div className="h-full rounded-full" style={{ width: `${c.rates[r]}%`, background: RAR_STYLE[r].dot }} /></div>
+                        <b className="text-right">{c.rates[r]}%</b>
+                      </div>
+                    ))}
+                    <button type="button" data-testid={`chest-open-${id}`} onClick={() => openGacha(id)} className={cn("h-[46px] rounded-xl font-extrabold", dark ? "bg-[#FDE68A] text-[#2A1F5C]" : "bg-[#5B2BD6] text-white")}>
+                      Mở hộp · {"xu" in c.cost ? `${fmt(c.cost.xu)} xu` : `${c.cost.gem} KC`}{id === "xu" && c.dailyLimit ? ` (còn ${Math.max(0, c.dailyLimit - gacha.pullsToday)}/${c.dailyLimit} hôm nay)` : ""}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex flex-wrap items-center gap-4 rounded-[20px] border border-[#ECE9F5] bg-white px-5 py-[18px]" data-testid="pity">
+              <div className="flex-[1_1_300px]">
+                <div className="font-extrabold">Bảo hiểm nhân phẩm ({wallet.gachaPity}/{CHESTS.xu.pity})</div>
+                <div className="text-[13px] text-[#5F5B73]">Mở thêm {Math.max(0, (CHESTS.xu.pity ?? 5) - wallet.gachaPity)} lượt Hộp Sao Mèo chưa ra Sử thi thì lượt tiếp chắc chắn Sử thi trở lên.</div>
+              </div>
+              <div className="flex gap-1.5">
+                {Array.from({ length: CHESTS.xu.pity ?? 5 }, (_, i) => (
+                  <span key={i} className={cn("flex h-[30px] w-[30px] items-center justify-center rounded-full font-extrabold", i < wallet.gachaPity ? "bg-[#FDE68A] text-[#7A4300]" : "bg-[#F1EEF8] text-[#C9C4DA]")}>★</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="studio-card p-8 text-center font-semibold text-[#5F5B73]">Hộp bí ẩn đang tạm đóng. Quay lại sau nhé!</div>
+        )
+      )}
+
+      {sec === "gold" && <LeaderboardModal inline open onOpenChange={() => setSec("shop")} boards={boards} myGrade={user.grade} currentUserId={user.id} event={event} />}
+      {sec === "bag" && <InventoryModal inline open onOpenChange={() => setSec("shop")} redemptions={data.redemptions} owned={[...owned]} avatar={avatar} pending={pending} onEquip={equip} onCancel={(id) => run(() => cancelRedemption(id))} />}
+
       {/* Chi tiết dạng sheet đáy (điện thoại/máy tính bảng) */}
       <Dialog open={sheet && !!sel} onOpenChange={setSheet}>
         <DialogContent showCloseButton={false} className="studio fixed bottom-0 left-0 right-0 top-auto flex max-h-[88dvh] max-w-none translate-x-0 translate-y-0 flex-col gap-3.5 overflow-y-auto rounded-b-none rounded-t-3xl border-0 p-5 pt-2.5 sm:max-w-none lg:hidden" data-testid="shop-sheet">
@@ -407,11 +539,23 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         </DialogContent>
       </Dialog>
 
+      {/* Mèo linh vật (canvas v2): trôi góc trái, bấm vuốt ve → tim + meo + lời nhắc tiếp */}
+      <Mascot
+        name={pet ? pet.name : "Mèo Mướp Bi"}
+        tips={lines}
+        art={pet && pet.id !== "pet-bi" ? <ItemArt it={pet} avatar={avatar} /> : undefined}
+      />
+      {lvUp && (
+        <LevelUpDialog
+          level={lvUp}
+          title={level.name}
+          note={level.next ? `Còn ${fmt(level.toNext)} xu nữa để lên ${level.next.name}. Đồ trang trí mới đang chờ bạn ở Cửa hàng!` : "Bạn đã đạt cấp cao nhất 👑"}
+          onClose={() => setLvUp(null)}
+          onSee={() => { setLvUp(null); setSec("shop"); setCat("deco"); }}
+        />
+      )}
+
       {/* ===== Hộp thoại ===== */}
-      <TasksModal open={modal === "tasks"} onOpenChange={(o) => setModal(o ? "tasks" : null)} todo={todo} todoTotal={todoTotal} recent={recent} />
-      <InventoryModal open={modal === "bag"} onOpenChange={(o) => setModal(o ? "bag" : null)} redemptions={data.redemptions} owned={[...owned]} avatar={avatar} pending={pending} onEquip={equip} onCancel={(id) => run(() => cancelRedemption(id))} />
-      <ScratchCodeModal open={modal === "scratch"} onOpenChange={(o) => setModal(o ? "scratch" : null)} canEarn={data.canEarn} />
-      <LeaderboardModal open={modal === "board"} onOpenChange={(o) => setModal(o ? "board" : null)} boards={boards} myGrade={user.grade} currentUserId={user.id} event={event} />
       <TitlesModal open={modal === "titles"} onOpenChange={(o) => setModal(o ? "titles" : null)} lifetimeEarned={wallet.lifetimeEarned} />
       <ShopMenuModal open={modal === "menu"} onOpenChange={(o) => setModal(o ? "menu" : null)} weather={weather} onWeather={setWeather} onAction={menuAction} showBox={!!gacha} />
       {gachaOpen && gacha && (

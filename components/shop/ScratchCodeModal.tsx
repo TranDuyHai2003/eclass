@@ -14,7 +14,7 @@ import { CoinBurst } from "@/components/game/CoinBurst";
  * "Thẻ cào & GiftCode": cào lớp nhũ bạc (canvas) để lộ ô nhập mã — niềm vui nhỏ như thẻ cào thật;
  * có nút "Nhập mã luôn" cho người dùng bàn phím/đọc màn hình. Mã do thầy phát, logic nhập giữ nguyên (actions/giftcode).
  */
-export function ScratchCodeModal({ open, onOpenChange, canEarn }: { open: boolean; onOpenChange: (o: boolean) => void; canEarn: boolean }) {
+export function ScratchCodeModal({ open, onOpenChange, inline, canEarn }: { open: boolean; onOpenChange: (o: boolean) => void; inline?: boolean; canEarn: boolean }) {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [revealed, setRevealed] = useState(false);
@@ -97,7 +97,7 @@ export function ScratchCodeModal({ open, onOpenChange, canEarn }: { open: boolea
   return (
     <>
       <CoinBurst burst={burst} />
-      <ShopModal open={open} onOpenChange={onOpenChange} title="🎟️ Thẻ Cào & GiftCode" description="Dùng chuột hoặc ngón tay cào lớp nhũ bạc để mở ô nhập mã thầy phát." testId="scratch-modal">
+      <ShopModal open={open} onOpenChange={onOpenChange} inline={inline} title="🎟️ Thẻ Cào & GiftCode" description="Dùng chuột hoặc ngón tay cào lớp nhũ bạc để mở ô nhập mã thầy phát." testId="scratch-modal">
         {won ? (
           <div data-testid="giftcode-won" className="animate-pop-in rounded-2xl border-2 border-[#4fae4a] bg-[#eef9ea] p-5 text-center">
             <p className="text-4xl">{won.currency === "GEM" ? "💎" : "🪙"}</p>

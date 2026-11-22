@@ -2,6 +2,7 @@
 
 import { Loader2, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GachaCinematic } from "@/components/studio/effects";
 import { describeOutcome, type ChestId } from "@/lib/game/gacha-shared";
 import { ITEM_BY_ID, RARITY_LABEL } from "@/lib/game/items";
 import type { AvatarConfig } from "@/lib/game/avatar";
@@ -24,7 +25,7 @@ export function GachaScene({
   owned: string[];
   initialChest?: ChestId;
 }) {
-  const { wallet, pity, pityMax, limit, left, owned, phase, chest, result, pending, burst, confetti, open, reset } = useGachaPull({
+  const { wallet, pity, pityMax, limit, left, owned, phase, chest, result, pending, burst, confetti, open, reset, incoming, skip } = useGachaPull({
     wallet: w0, pity: pity0, pullsToday: today0, owned: owned0, initialChest,
   });
 
@@ -37,7 +38,8 @@ export function GachaScene({
       <Confetti burst={confetti} />
       {/* Sân khấu */}
       <div className="dots-bg relative flex min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-amber-200 bg-gradient-to-b from-amber-50 via-orange-50 to-rose-50 p-4 shadow-[0_6px_0_0_#fcd34d]" style={{ "--dot": "rgba(245,158,11,.25)" } as React.CSSProperties}>
-        <div aria-hidden className={cn("animate-rays absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 transition-opacity", phase === "idle" ? "opacity-30" : "opacity-90")} style={{ background: "conic-gradient(from 0deg, rgba(253,224,71,.0) 0deg, rgba(253,224,71,.55) 20deg, rgba(253,224,71,.0) 40deg, rgba(253,224,71,.0) 60deg, rgba(253,224,71,.55) 80deg, rgba(253,224,71,.0) 100deg, rgba(253,224,71,.0) 120deg, rgba(253,224,71,.55) 140deg, rgba(253,224,71,.0) 160deg, rgba(253,224,71,.0) 180deg, rgba(253,224,71,.55) 200deg, rgba(253,224,71,.0) 220deg, rgba(253,224,71,.0) 240deg, rgba(253,224,71,.55) 260deg, rgba(253,224,71,.0) 280deg, rgba(253,224,71,.0) 300deg, rgba(253,224,71,.55) 320deg, rgba(253,224,71,.0) 340deg)" }} />
+        {phase === "shaking" && <GachaCinematic rarity={incoming} onSkip={skip} />}
+      <div aria-hidden className={cn("animate-rays absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 transition-opacity", phase === "idle" ? "opacity-30" : "opacity-90")} style={{ background: "conic-gradient(from 0deg, rgba(253,224,71,.0) 0deg, rgba(253,224,71,.55) 20deg, rgba(253,224,71,.0) 40deg, rgba(253,224,71,.0) 60deg, rgba(253,224,71,.55) 80deg, rgba(253,224,71,.0) 100deg, rgba(253,224,71,.0) 120deg, rgba(253,224,71,.55) 140deg, rgba(253,224,71,.0) 160deg, rgba(253,224,71,.0) 180deg, rgba(253,224,71,.55) 200deg, rgba(253,224,71,.0) 220deg, rgba(253,224,71,.0) 240deg, rgba(253,224,71,.55) 260deg, rgba(253,224,71,.0) 280deg, rgba(253,224,71,.0) 300deg, rgba(253,224,71,.55) 320deg, rgba(253,224,71,.0) 340deg)" }} />
 
         {phase !== "reveal" && (
           <div className={cn("relative", phase === "shaking" && "animate-shake")}>

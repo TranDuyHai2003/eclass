@@ -11,7 +11,7 @@ export type GachaPhase = "idle" | "shaking" | "reveal";
 
 /**
  * Trạng thái + thao tác mở rương dùng chung cho trang /rewards/gacha và hộp thoại "Đài Cầu Nguyện" trong Tiệm Quà.
- * Kết quả luôn do server trả về (openChest); client chỉ diễn hoạt ảnh tối thiểu ~0,9 giây.
+ * Kết quả luôn do server trả về (openChest); client diễn cảnh sao băng ~2,4 giây (bỏ qua được).
  */
 export function useGachaPull({
   wallet: w0, pity: pity0, pullsToday: today0, owned: owned0, initialChest = "xu", onDone,
@@ -35,6 +35,10 @@ export function useGachaPull({
   const [pending, start] = useTransition();
   const [burst, setBurst] = useState(0);
   const [confetti, setConfetti] = useState(0);
+  // Độ hiếm vừa nhận từ server (để tô màu sao băng trong cảnh mở rương) + hàm lật thẻ đang chờ (nút "Bỏ qua")
+  const [incoming, setIncoming] = useState<Outcome["rarity"] | null>(null);
+  const revealNow = useRef<(() => void) | null>(null);
+  const skipWanted = useRef(false);
   const limit = CHESTS.xu.dailyLimit ?? 0;
   const left = Math.max(0, limit - today);
   const pityMax = CHESTS.xu.pity ?? 5;
@@ -61,6 +65,8 @@ export function useGachaPull({
       return;
     }
     inFlight.current = true;
+    skipWanted.current = false;
+    setIncoming(null);
     setChest(id);
     setResult(null);
     setPhase("shaking");
@@ -78,7 +84,13 @@ export function useGachaPull({
         return;
       }
       const outcome = res.outcome;
-      const reveal = setTimeout(() => {
+      setIncoming(outcome.rarity);
+      let done = false;
+      const doReveal = () => {
+        if (done) return;
+        done = true;
+        revealNow.current = null;
+        clearTimeout(reveal);
         inFlight.current = false;
         setResult({ outcome, guaranteed: !!res.guaranteed });
         setPhase("reveal");
@@ -91,9 +103,19 @@ export function useGachaPull({
         if (outcome.rarity === "epic" || outcome.rarity === "legendary") setConfetti((n) => n + 1);
         onDone?.({ outcome, wallet: res.wallet });
         router.refresh();
-      }, 900);
+      };
+      // Cảnh sao băng ~2,4 giây (canvas thiết kế); "Bỏ qua" lật ngay
+      const reveal = setTimeout(doReveal, 2400);
       timers.current.push(reveal);
+      revealNow.current = doReveal;
+      if (skipWanted.current) doReveal();
     });
+  };
+
+  /** "Bỏ qua" cảnh mở rương: lật thẻ ngay khi đã có kết quả (chưa có thì lật ngay khi server trả về) */
+  const skip = () => {
+    skipWanted.current = true;
+    revealNow.current?.();
   };
 
   const reset = () => {
@@ -101,5 +123,5 @@ export function useGachaPull({
     setResult(null);
   };
 
-  return { wallet, pity, pityMax, today, limit, left, owned, phase, chest, setChest, result, pending, burst, confetti, open, reset, canAfford };
+  return { wallet, pity, pityMax, today, limit, left, owned, phase, chest, setChest, result, pending, burst, confetti, open, reset, canAfford, incoming, skip };
 }

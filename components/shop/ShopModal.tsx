@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /** Hộp thoại của Tiệm Quà (GĐ9: thẻ trắng bo 20px, tiêu đề trái + nút đóng phải theo artifact) */
 export function ShopModal({
-  open, onOpenChange, title, description, children, className, testId,
+  open, onOpenChange, title, description, children, className, testId, inline,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -15,7 +15,26 @@ export function ShopModal({
   children: React.ReactNode;
   className?: string;
   testId?: string;
+  /** Hiện thành khối trong trang (các mục của Tiệm quà v2) thay vì hộp thoại; nút ✕ quay về mục Cửa hàng */
+  inline?: boolean;
 }) {
+  if (inline) {
+    if (!open) return null;
+    return (
+      <section className={cn("studio-card overflow-hidden", className?.replace(/sm:max-w-\S+/g, ""))} data-testid={testId} aria-label={title}>
+        <div className="flex items-center gap-3 border-b border-[#ECE9F5] px-5 py-3.5">
+          <h2 className="min-w-0 flex-1 truncate text-[17px] font-extrabold text-[#1E1B2E]" data-testid="shop-modal-title">{title}</h2>
+          <button type="button" aria-label="Đóng" data-testid="shop-modal-close" onClick={() => onOpenChange(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#5F5B73] hover:bg-[#F3F1FA]">
+            <X className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
+        <div className="px-4 pb-4 pt-4 sm:px-5">
+          {description && <p className="mb-3 text-center text-xs font-medium text-[#5F5B73]">{description}</p>}
+          {children}
+        </div>
+      </section>
+    );
+  }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
