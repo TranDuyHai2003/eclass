@@ -2,12 +2,12 @@ import type { AvatarConfig } from "@/lib/game/avatar";
 import { ITEM_BY_ID } from "@/lib/game/items";
 import { Chibi } from "@/components/avatar/Chibi";
 import { PetSvg } from "@/components/avatar/PetSvg";
-import { Eye } from "lucide-react";
+import { IconEye } from "@/components/studio/icons";
 import { cn } from "@/lib/utils";
 import { ProfileScene } from "./ProfileScene";
 import { EffectLayer } from "./EffectLayer";
 import { FrameRing } from "./FrameRing";
-import { Sprite, hasSprite } from "@/components/studio/Sprite";
+import { ShopArt, Sprite, hasSprite, shopItemIndex } from "@/components/studio/Sprite";
 
 /**
  * Banner hồ sơ dùng chung (trang /profile và hồ sơ công khai): cảnh Hình nền + Hiệu ứng động + nhân vật + thú cưng,
@@ -38,7 +38,7 @@ export function ProfileBanner({
         <EffectLayer effectId={config.effect} />
         {previewing && (
           <span className="absolute left-3 top-3 z-[1] inline-flex items-center gap-1.5 rounded-full bg-[#140e30]/70 px-2.5 py-1.5 text-xs font-semibold text-white" data-testid="previewing">
-            <Eye className="h-3.5 w-3.5" aria-hidden /> Đang xem trước
+            <IconEye size={14} /> Đang xem trước
           </span>
         )}
         <div className={cn("absolute inset-x-0 bottom-0 flex items-end justify-center gap-1", showAvatar && "pl-16 sm:pl-10")}>
@@ -47,6 +47,8 @@ export function ProfileBanner({
             <span className="mb-1 shrink-0" title={ITEM_BY_ID[config.pet]?.name}>
               {hasSprite(config.pet) ? (
                 <Sprite id={config.pet} className="w-[78px] rounded-xl [mask-image:radial-gradient(closest-side,#000_70%,transparent_100%)]" />
+              ) : shopItemIndex(config.pet) !== undefined ? (
+                <ShopArt index={shopItemIndex(config.pet)!} className="w-[72px]" />
               ) : (
                 <PetSvg itemId={config.pet} size={58} className="drop-shadow-[0_4px_6px_rgba(15,23,42,0.25)]" />
               )}

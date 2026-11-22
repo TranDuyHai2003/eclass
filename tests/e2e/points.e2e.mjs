@@ -262,7 +262,7 @@ try {
     expect(txt.includes("17.100"), "không thấy số dư 17.100");
     expect(txt.includes("Kẹo / bánh nhỏ") && txt.includes("Quà đắt"), "thiếu quà");
     const note = await s.ev(`[...document.querySelectorAll('[data-testid="reward-card"]')].find(c => c.dataset.title.endsWith("Quà đắt"))?.click(); await new Promise(r=>setTimeout(r,200)); return document.querySelector('[data-testid="shop-detail"] [data-testid="detail-note"]')?.innerText || ""`);
-    expect(/Còn thiếu 32\.900 xu/.test(note), `quà đắt phải báo còn thiếu 32.900 xu: ${note}`);
+    expect(/còn thiếu 32\.900 xu/i.test(note), `quà đắt phải báo còn thiếu 32.900 xu: ${note}`);
     const rarity = await s.ev(`return [...document.querySelectorAll('[data-testid="reward-card"]')].map(c => c.dataset.title.replace(/^.*Quà đắt$/, "Quà đắt") + ":" + c.dataset.rarity).join(",")`);
     expect(rarity.includes("Kẹo / bánh nhỏ:common") && rarity.includes("Quà đắt:legendary"), `độ hiếm sai: ${rarity}`);
     expect(/Chó rách|Nghèo rớt|Người nghèo|Tiểu thương|Phú nông|Phú ông|Đại gia|Tỷ phú/.test(txt), "thanh trạng thái thiếu danh hiệu");
@@ -534,7 +534,7 @@ try {
     // Bấm thẻ đồ trang trí → chi tiết xem thử nhân vật + liên kết Thử trên hồ sơ
     await s.ev(`document.querySelector('[data-testid="item-card"][data-item="acc-crown"]').click()`);
     await sleep(200);
-    expect(await s.ev(`return document.querySelector('[data-testid="detail-name"]')?.innerText === "Vương miện" && !!document.querySelector('[data-testid="detail-art"] svg[role="img"]')`), "chi tiết không xem thử vương miện");
+    expect(await s.ev(`const a=document.querySelector('[data-testid="detail-art"] [role="presentation"]'); return document.querySelector('[data-testid="detail-name"]')?.innerText === "Vương miện" && !!a && /studio\\/shop\\.webp/.test(getComputedStyle(a).backgroundImage)`), "chi tiết vương miện không dùng ảnh thật của canvas");
     expect(await s.ev(`return document.querySelector('[data-testid="try-acc-crown"]')?.getAttribute('href') === "/profile?try=acc-crown"`), "thiếu Thử trên hồ sơ");
     expect(await s.ev(`const s=document.querySelector('[data-testid="shop-sort"]'); const set=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set; set.call(s,'pop'); s.dispatchEvent(new Event('change',{bubbles:true})); document.querySelector('[data-testid="cat-all"]').click(); return true`), "");
     await sleep(200);
@@ -576,8 +576,8 @@ try {
   await step("Học sinh: cầu nguyện ngay trong tiệm — Hộp bí ẩn → Đài Cầu Nguyện → CHÚC MỪNG; lượt/ngày, sổ khớp ví", async () => {
     await s.ev(`document.querySelector('[data-testid="cat-box"]').click()`);
     await sleep(300);
-    expect(await s.ev(`return !!document.querySelector('[data-testid="gacha-panel"]')`), "thiếu khối Đài Cầu Nguyện");
-    await s.ev(`document.querySelector('[data-testid="chest-open-xu"]').click()`);
+    expect(await s.ev(`return document.querySelectorAll('[data-testid="chest-card"]').length === 2`), "Hộp bí ẩn thiếu thẻ rương");
+    await s.ev(`document.querySelector('[data-testid="chest-card"][data-chest="xu"]').click(); await new Promise(r=>setTimeout(r,200)); document.querySelector('[data-testid="shop-detail"] [data-testid="chest-open-xu"]').click()`);
     expect(await s.waitText(/Đài Cầu Nguyện Hộp Bí Ẩn/), "hộp thoại cầu nguyện không mở");
     expect(await s.waitText(/còn 2\/3 hôm nay/), "lượt/ngày trong hộp thoại sai (đã mở 1 lượt ở trang rương)");
     await s.ev(`document.querySelector('[data-testid="gacha-rates"]').click()`);
@@ -606,7 +606,7 @@ try {
     await s.goto("/rewards", /Đổi xu và kim cương/i);
     await s.ev(`document.querySelector('[data-testid="cat-box"]').click()`);
     await sleep(300);
-    await s.ev(`document.querySelector('[data-testid="chest-open-xu"]').click()`);
+    await s.ev(`document.querySelector('[data-testid="chest-card"][data-chest="xu"]').click(); await new Promise(r=>setTimeout(r,200)); document.querySelector('[data-testid="shop-detail"] [data-testid="chest-open-xu"]').click()`);
     expect(await s.waitText(/còn 1\/3 hôm nay/), "hộp thoại phải còn 1/3 lượt");
     const before = await prisma.gachaPull.count({ where: { userId: data.student.id } });
     await s.ev(`const b=document.querySelector('[data-testid="pray-xu"]'); b.click(); b.click(); document.querySelector('[data-testid="gacha-box"]')?.click();`);
@@ -641,7 +641,8 @@ try {
     expect(await s.ev(`const t=document.querySelector('[role="tablist"][aria-label="Danh mục quà"]'); return !!t && [...t.children].every(c => c.getAttribute("role") === "tab")`), "tablist chứa phần tử không phải tab");
     await s.ev(`document.querySelector('[data-testid="cat-box"]').click()`);
     await sleep(300);
-    await s.ev(`document.querySelector('[data-testid="chest-open-gem"]').click()`);
+    // Điện thoại: bấm thẻ rương → chi tiết mở dạng sheet đáy → Mở ngay
+    await s.ev(`document.querySelector('[data-testid="chest-card"][data-chest="gem"]').click(); await new Promise(r=>setTimeout(r,500)); document.querySelector('[data-testid="shop-sheet"] [data-testid="chest-open-gem"]').click()`);
     expect(await s.waitText(/Cầu Nguyện Tinh Tú VIP/), "hộp thoại cầu nguyện không mở ở 320px");
     await sleep(500);
     const geo = await s.ev(`const t=document.querySelector('[data-testid="shop-modal-title"]').getBoundingClientRect(); const x=document.querySelector('[data-testid="shop-modal-close"]').getBoundingClientRect(); return { overlap: t.right > x.left && t.top < x.bottom, left: t.left, right: t.right, vw: innerWidth }`);

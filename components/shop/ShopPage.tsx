@@ -5,7 +5,9 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Backpack, Eye, History, Info, Loader2, Menu as MenuIcon, Pin, PinOff, Plus, Ticket, Trophy } from "lucide-react";
+import { Coin, Gem, GemSmall, IconCode, IconEye, IconGift, IconHeart, IconHistory, IconInfo, IconMenu, IconPlus, IconTrophy } from "@/components/studio/icons";
+import { ShopArt, SHOP_CHEST, SHOP_MASCOT, Sprite, hasSprite, rewardArtIndex, shopItemIndex } from "@/components/studio/Sprite";
+import { FrameRing } from "@/components/profile/FrameRing";
 import { cn } from "@/lib/utils";
 import { cancelRedemption, redeemReward, setGoalReward } from "@/actions/points";
 import { buyItem, saveAvatar } from "@/actions/avatar";
@@ -30,9 +32,6 @@ import { LeaderboardModal, type BoardData } from "./LeaderboardModal";
 import { HistoryModal } from "./HistoryModal";
 import { TitlesModal } from "./TitlesModal";
 import { ShopMenuModal, type MenuAction } from "./ShopMenuModal";
-import { GachaPanel } from "./GachaPanel";
-import { GiftBoxSvg } from "./GiftBoxSvg";
-import { RewardArt } from "./RewardArt";
 import { WeatherLayer, useWeather } from "./Weather";
 
 // Hộp thoại cầu nguyện (hoạt ảnh + gọi server) chỉ tải khi mở
@@ -209,7 +208,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           : [];
     const pets = c === "all" || c === "pet" ? ITEMS.filter((i) => i.slot === "pet" && (c === "pet" || !i.studio)) : [];
     const items: Entry[] = [...cosmetics, ...pets].map((it) => ({ key: `i:${it.id}`, kind: "item", rarity: it.rarity, name: it.name, price: it.price ?? null, it }));
-    const chests: Entry[] = gacha && c === "all"
+    const chests: Entry[] = gacha && (c === "all" || c === "box")
       ? (["xu", "gem"] as const).map((id) => ({ key: `c:${id}`, kind: "chest", rarity: id === "xu" ? "epic" : "legendary", name: id === "xu" ? "Hộp Sao Mèo" : "Hộp Tinh Tú VIP", price: CHESTS[id].cost, chest: id }))
       : [];
     return [...rewards, ...items, ...chests];
@@ -247,7 +246,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         </div>
         <div className="flex max-w-full flex-wrap items-stretch rounded-2xl border border-[#ECE9F5] bg-white shadow-[0_1px_2px_rgba(30,27,46,0.04)]">
           <div className="flex items-center gap-2.5 px-4 py-2.5" data-testid="hud-balance">
-            <Coin className="h-7 w-7 border-[3px]" />
+            <Coin size={28} border={3} />
             <div className="flex flex-col">
               <span className="text-lg font-extrabold leading-tight text-[#7A4E00] tabular-nums">{fmt(wallet.balance)}</span>
               <span className="text-xs text-[#5F5B73]">Xu</span>
@@ -255,7 +254,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           </div>
           <div className="w-px bg-[#ECE9F5]" />
           <div className="flex items-center gap-2.5 px-4 py-2.5" data-testid="hud-gems">
-            <Gem className="h-[26px] w-[26px]" />
+            <Gem size={26} />
             <div className="flex flex-col">
               <span className="text-lg font-extrabold leading-tight text-[#1D4ED8] tabular-nums">{wallet.gems}</span>
               <span className="text-xs text-[#5F5B73]">Kim cương</span>
@@ -264,17 +263,17 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           <div className="w-px bg-[#ECE9F5]" />
           <div className="flex items-center gap-1.5 px-2.5 py-2">
             <button type="button" data-testid="scratch-open" onClick={() => { play("click"); setModal("scratch"); }} className="flex h-10 items-center gap-1.5 rounded-[10px] bg-[#F3F0FF] px-3 text-[13px] font-bold text-[#4319A8]">
-              <Ticket className="h-4 w-4" aria-hidden /> Nhập code
+              <IconCode /> Nhập code
             </button>
             <button type="button" data-testid="history-open" onClick={() => { play("click"); setModal("history"); }} className="flex h-10 items-center gap-1.5 rounded-[10px] px-3 text-[13px] font-bold text-[#3B3650] hover:bg-[#F6F5FB]">
-              <History className="h-4 w-4" aria-hidden /> Lịch sử
+              <IconHistory /> Lịch sử
             </button>
             <button type="button" data-testid="bag-open" onClick={() => { play("click"); setModal("bag"); }} aria-label="Túi đồ" title="Túi đồ" className="relative flex h-10 w-10 items-center justify-center rounded-[10px] text-[#3B3650] hover:bg-[#F6F5FB]">
-              <Backpack className="h-[18px] w-[18px]" aria-hidden />
+              <IconGift />
               {bagCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#5B2BD6] px-1 text-[10px] font-bold text-white">{bagCount}</span>}
             </button>
             <button type="button" data-testid="menu-open" onClick={() => { play("click"); setModal("menu"); }} aria-label="Menu Tiệm Quà" title="Menu Tiệm Quà" className="flex h-10 w-10 items-center justify-center rounded-[10px] text-[#3B3650] hover:bg-[#F6F5FB]">
-              <MenuIcon className="h-[18px] w-[18px]" aria-hidden />
+              <IconMenu />
             </button>
           </div>
         </div>
@@ -284,7 +283,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       <section className="flex flex-wrap items-center gap-x-6 gap-y-4 rounded-[18px] border border-[#ECE9F5] bg-white px-5 py-3.5" data-testid="shop-hud">
         <button type="button" data-testid="pet-card" onClick={petTouch} title="Chạm để vuốt ve" className="group flex min-w-0 flex-[1_1_340px] items-center gap-3.5 text-left">
           <span className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#FFF6DB]">
-            {pet ? <PetSvg key={petPets} itemId={pet.id} size={52} className={cn(petPets > 0 && "pet-bounce")} /> : <span className="text-2xl">🐾</span>}
+            <span key={petPets} className={cn("block h-14 w-14", petPets > 0 && "pet-bounce")}>{!pet || pet.id === "pet-bi" ? <ShopArt index={SHOP_MASCOT} className="h-14 w-14" /> : <ItemArt it={pet} avatar={avatar} />}</span>
             {petPets > 0 && <span key={`h${petPets}`} className="heart-up text-base">💗</span>}
           </span>
           <span className="flex min-w-0 flex-col gap-0.5">
@@ -305,10 +304,10 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         </div>
         <div className="flex gap-2">
           <button type="button" data-testid="board-open" onClick={() => { play("click"); setModal("board"); }} className="flex h-11 items-center gap-2 rounded-xl border border-[#E4E0F0] bg-white px-3.5 font-bold text-[#3B3650] hover:bg-[#F6F5FB]">
-            <Trophy className="h-4 w-4 text-[#D8961B]" aria-hidden /> Bảng Vàng
+            <IconTrophy size={16} className="text-[#D8961B]" /> Bảng Vàng
           </button>
           <button type="button" data-testid="tasks-open" onClick={() => { play("click"); setModal("tasks"); }} className="flex h-11 items-center gap-2 rounded-xl bg-[#5B2BD6] px-4 font-bold text-white hover:bg-[#4C22BC]">
-            <Plus className="h-4 w-4" aria-hidden /> Nộp bài kiếm xu
+            <IconPlus /> Nộp bài kiếm xu
             {todoTotal > 0 && <span className="rounded-full bg-white/25 px-1.5 text-[11px]">{todoTotal}</span>}
           </button>
         </div>
@@ -336,12 +335,8 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         ))}
       </div>
 
-      {showPanel ? (
-        gacha ? (
-          <GachaPanel pity={wallet.gachaPity} pullsToday={gacha.pullsToday} onOpen={(c) => openGacha(c)} onRates={() => openGacha("xu", true)} />
-        ) : (
-          <div className="studio-card p-8 text-center font-semibold text-[#5F5B73]">Hộp bí ẩn đang tạm đóng. Quay lại sau nhé!</div>
-        )
+      {showPanel && !gacha ? (
+        <div className="studio-card p-8 text-center font-semibold text-[#5F5B73]">Hộp bí ẩn đang tạm đóng. Quay lại sau nhé!</div>
       ) : (
         <>
           {/* ===== Thanh lọc ===== */}
@@ -465,7 +460,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
               }
               className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#5B2BD6] font-extrabold text-white disabled:opacity-60"
             >
-              {pending && <Loader2 className="h-4 w-4 animate-spin" />} Xác nhận đổi
+              {pending && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />} Xác nhận đổi
             </button>
           </DialogFooter>
         </DialogContent>
@@ -484,30 +479,23 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
     const pct = need ? Math.max(3, Math.min(100, Math.round((have / need) * 100))) : 100;
     let how = "";
     let catLabel = "";
-    let art: React.ReactNode;
     if (e.kind === "reward") {
       how = e.r.kind === "PHYSICAL" ? "Trao trực tiếp tại lớp học offline. Thầy sẽ xác nhận khi bạn nhận quà." : "Thẻ được cất vào túi đồ, bạn dùng khi cần.";
       catLabel = e.r.kind === "PHYSICAL" ? "Quà hiện vật" : "Thẻ đặc quyền";
-      art = <span className="studio-art scale-[1.6]"><RewardArt title={e.r.title} emoji={e.r.emoji} /></span>;
     } else if (e.kind === "chest") {
-      how = "Mở ra ngẫu nhiên một món theo tỉ lệ rơi của rương. Kết quả do máy chủ quyết định.";
+      how = "Mở ra ngẫu nhiên một món theo tỉ lệ rơi của rương.";
       catLabel = "Hộp bí ẩn";
-      art = <GiftBoxSvg tone={e.chest === "xu" ? "red" : "blue"} size={150} className="animate-float" />;
     } else {
       const it = e.it;
-      catLabel = it.slot === "pet" ? "Thú cưng" : SLOTS.find((s) => s.key === it.slot)?.label ?? "Trang trí";
-      how = it.slot === "pet" ? "Thú cưng đi cùng nhân vật trên hồ sơ. Đây là bản xem thử trên nhân vật của bạn." : "Dùng ngay trên hồ sơ. Đây là bản xem thử trên nhân vật của bạn.";
-      art =
-        it.slot === "pet" ? (
-          <span className="flex items-end gap-1"><Chibi config={{ ...avatar, background: null, frame: null }} size={110} /><PetSvg itemId={it.id} size={92} className="studio-art" /></span>
-        ) : (
-          <Chibi config={{ ...avatar, [it.slot]: it.id }} size={150} className="studio-art" />
-        );
+      catLabel = it.slot === "pet" ? "Thú cưng" : "Trang trí";
+      how = it.slot === "pet" ? "Thú cưng đi cùng nhân vật trên hồ sơ. Có thể thử trước khi đổi." : "Dùng ngay trên hồ sơ. Có thể thử trước khi đổi.";
     }
     const isGoal = e.kind === "reward" && goal?.id === e.r.id;
     return (
       <>
-        <div className={cn("flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[14px]", st.tile, e.rarity === "legendary" && "shimmer")} data-testid="detail-art">{art}</div>
+        <div className={cn("flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[14px]", st.tile)} data-testid="detail-art">
+          <span className="flex aspect-square h-[92%] items-center justify-center"><EntryArt e={e} avatar={avatar} /></span>
+        </div>
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1.5">
             <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold", st.tag)}>{st.label}</span>
@@ -516,7 +504,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           <h2 className="text-xl font-extrabold" data-testid="detail-name">{e.name}</h2>
         </div>
         <div className="flex items-start gap-2.5 rounded-xl bg-[#F6F5FB] px-3 py-2.5 text-[13px] text-[#3B3650]">
-          <Info className="mt-px h-[18px] w-[18px] shrink-0" aria-hidden />
+          <IconInfo className="mt-px shrink-0" />
           <span>{how}</span>
         </div>
         {e.price && !ownIt && (
@@ -527,7 +515,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-[#F1EEF8]"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: ok ? "#22A05A" : unit === "xu" ? "#F5B82E" : "#60A5FA" }} /></div>
             <p className={cn("text-xs", ok ? "font-semibold text-[#17603A]" : "text-[#5F5B73]")} data-testid="detail-note">
-              {ok ? `Bạn đủ ${unit} để đổi món này.` : `Còn thiếu ${fmt(need - have)} ${unit} — nộp thêm bài để nhận nhé!`}
+              {ok ? `Bạn đủ ${unit} để đổi món này.` : `Bạn có ${fmt(have)} ${unit === "xu" ? "xu" : "KC"}, còn thiếu ${fmt(need - have)} ${unit === "xu" ? "xu" : "KC"}.`}
             </p>
           </div>
         )}
@@ -536,15 +524,15 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           {e.kind === "chest" && (
             <>
               <button type="button" data-testid={`chest-open-${e.chest}`} onClick={() => openGacha(e.chest)} className="h-12 rounded-xl bg-[#5B2BD6] text-[15px] font-extrabold text-white hover:bg-[#4C22BC]">
-                Mở ngay · {"xu" in e.price ? `${fmt(e.price.xu)} xu` : `${e.price.gem} kim cương`}
+                Mở ngay · {"xu" in e.price ? `${fmt(e.price.xu)} xu` : `${e.price.gem} KC`}
               </button>
               <button type="button" onClick={() => openGacha(e.chest, true)} className="h-11 rounded-xl border border-[#E4E0F0] bg-white font-bold text-[#3B3650]">Xem tỉ lệ rơi</button>
             </>
           )}
           {e.kind === "item" && renderItemActions(e.it)}
           {e.kind === "reward" && (
-            <button type="button" data-testid="pin" disabled={pending} aria-pressed={isGoal} onClick={() => run(() => setGoalReward(isGoal ? null : e.r.id))} className="flex h-10 items-center justify-center gap-2 rounded-xl font-semibold text-[#5F5B73] hover:bg-[#F6F5FB]">
-              {isGoal ? <PinOff className="h-4 w-4" aria-hidden /> : <Pin className="h-4 w-4" aria-hidden />} {isGoal ? "Bỏ ghim quà mục tiêu" : "Ghim làm quà mục tiêu"}
+            <button type="button" data-testid="pin" disabled={pending} aria-pressed={isGoal} onClick={() => run(() => setGoalReward(isGoal ? null : e.r.id))} className="flex h-10 items-center justify-center gap-2 rounded-xl font-semibold text-[#5F5B73]">
+              <IconHeart filled={isGoal} /> {isGoal ? "Đã thêm vào danh sách mong muốn" : "Thêm vào danh sách mong muốn"}
             </button>
           )}
         </div>
@@ -577,7 +565,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
     const ok = enough(it.price ?? null);
     const tryLink = (
       <Link href={`/profile?try=${it.id}`} data-testid={`try-${it.id}`} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#E4E0F0] bg-white font-bold text-[#3B3650] hover:bg-[#F6F5FB]">
-        <Eye className="h-4 w-4" aria-hidden /> {own ? "Mặc trên hồ sơ" : "Thử trên hồ sơ"}
+        <IconEye /> {own ? "Mặc trên hồ sơ" : "Thử trên hồ sơ"}
       </Link>
     );
     if (own) {
@@ -625,23 +613,18 @@ function ShopCard({ e, selected, avatar, owned, using, enough, have, onPick }: {
   const pct = owned ? 100 : need ? Math.max(3, Math.min(100, Math.round((have / need) * 100))) : 0;
   const isGem = !!e.price && "gem" in e.price;
   const tryable = e.kind === "item";
-  let art: React.ReactNode;
   let catLabel: string;
   const extra: Record<string, string> = {};
   if (e.kind === "reward") {
-    art = <span className="studio-art scale-125"><RewardArt title={e.r.title} emoji={e.r.emoji} /></span>;
     catLabel = e.r.kind === "PHYSICAL" ? "Quà hiện vật" : "Thẻ đặc quyền";
     extra["data-title"] = e.r.title;
     extra["data-rarity"] = e.rarity;
   } else if (e.kind === "chest") {
-    art = <GiftBoxSvg tone={e.chest === "xu" ? "red" : "blue"} size={96} className="studio-art" />;
     catLabel = "Hộp bí ẩn";
     extra["data-chest"] = e.chest;
   } else {
-    const it = e.it;
-    art = it.slot === "pet" ? <PetSvg itemId={it.id} size={100} className="studio-art" /> : <Chibi config={{ ...avatar, [it.slot]: it.id }} size={110} className="studio-art h-[118px] w-auto" />;
-    catLabel = it.slot === "pet" ? "Thú cưng" : SLOTS.find((s) => s.key === it.slot)?.label ?? "Trang trí";
-    extra["data-item"] = it.id;
+    catLabel = e.it.slot === "pet" ? "Thú cưng" : "Trang trí";
+    extra["data-item"] = e.it.id;
   }
   const status = e.kind === "item" && owned ? (using ? "Đang dùng" : "Đã có") : null;
   const tip = !owned && e.price && !enough ? `Còn thiếu ${fmt(need - have)} ${isGem ? "kim cương" : "xu"} — nộp thêm bài để nhận nhé!` : undefined;
@@ -659,9 +642,8 @@ function ShopCard({ e, selected, avatar, owned, using, enough, have, onPick }: {
           selected ? "border-[#5B2BD6] shadow-[0_8px_22px_rgba(91,43,214,0.16)]" : "border-transparent shadow-[0_1px_2px_rgba(30,27,46,0.05)] hover:shadow-[0_8px_22px_rgba(42,31,92,0.1)]",
         )}
       >
-        <span className={cn("relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl", st.tile, e.rarity === "legendary" && "shimmer")}>
-          <span className="absolute inset-[18%] rounded-full opacity-60 blur-2xl" style={{ background: st.dot }} aria-hidden />
-          <span className="relative">{art}</span>
+        <span className={cn("relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl", st.tile)}>
+          <span className="studio-art flex aspect-square w-[84%] items-center justify-center"><EntryArt e={e} avatar={avatar} /></span>
           <span className={cn("absolute left-2 top-2 rounded-full px-2 py-0.5 text-[11px] font-bold", st.tag)}>{st.label}</span>
         </span>
         <span className="flex min-w-0 flex-col gap-1.5 px-1">
@@ -683,30 +665,42 @@ function ShopCard({ e, selected, avatar, owned, using, enough, have, onPick }: {
       </button>
       {tryable && (
         <button type="button" onClick={onPick} aria-label={`Thử đồ: ${e.name}`} title="Thử đồ" data-testid="try-on" className="absolute right-4 top-4 flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white/90 text-[#3B3650] shadow-sm hover:bg-white">
-          <Eye className="h-3.5 w-3.5" aria-hidden />
+          <IconEye size={14} />
         </button>
       )}
     </div>
   );
 }
 
-function Coin({ className }: { className?: string }) {
-  return <span className={cn("inline-block shrink-0 rounded-full border-2 border-[#D8961B] bg-[#F5B82E]", className)} aria-hidden />;
-}
-function Gem({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={cn("shrink-0", className)} aria-hidden>
-      <path d="M6 3h12l4 6-10 12L2 9z" fill="#60A5FA" stroke="#1D4ED8" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M2 9h20M9 3l3 18M15 3l-3 18" stroke="#1D4ED8" strokeWidth="1" fill="none" />
-    </svg>
-  );
-}
 function PriceTag({ price, big, dim }: { price: { xu: number } | { gem: number }; big?: boolean; dim?: boolean }) {
   const xu = "xu" in price;
   return (
     <span className={cn("inline-flex items-center gap-1.5 font-extrabold", big ? "text-xl" : "text-[13px]", xu ? "text-[#7A4E00]" : "text-[#1D4ED8]", dim && "opacity-70")}>
-      {xu ? <Coin className={big ? "h-[18px] w-[18px]" : "h-3.5 w-3.5"} /> : <Gem className={big ? "h-[18px] w-[18px]" : "h-3.5 w-3.5"} />}
+      {xu ? <Coin size={big ? 18 : 14} /> : <GemSmall size={big ? 18 : 14} />}
       {xu ? `${fmt(price.xu)} xu` : `${price.gem} KC`}
     </span>
   );
+}
+
+/** Ảnh thật của một món trang trí: ảnh tiệm → ảnh hồ sơ → hình vẽ đúng của món (khung/danh hiệu/nhân vật mặc thử) */
+function ItemArt({ it, avatar }: { it: Item; avatar: StudentPointsPageData["avatar"] }) {
+  const idx = shopItemIndex(it.id);
+  if (idx !== undefined) return <ShopArt index={idx} className="h-full w-full" />;
+  if (hasSprite(it.id)) return <Sprite id={it.id} className="w-full rounded-lg" />;
+  if (it.slot === "pet") return <PetSvg itemId={it.id} size={120} className="h-full w-full" />;
+  if (it.slot === "frame")
+    return (
+      <span className="relative block h-[86%] w-[86%]">
+        <span className="absolute inset-[15%] rounded-full bg-white/70" />
+        <FrameRing frameId={it.id} className="absolute inset-0 h-full w-full" />
+      </span>
+    );
+  if (it.slot === "title") return <span className="rounded-full bg-[#2A1F5C] px-3 py-1.5 text-center text-xs font-extrabold text-[#FDE68A]">{it.name}</span>;
+  return <Chibi config={{ ...avatar, background: null, effect: null, [it.slot]: it.id }} size={120} className="h-full w-auto" />;
+}
+
+function EntryArt({ e, avatar }: { e: Entry; avatar: StudentPointsPageData["avatar"] }) {
+  if (e.kind === "reward") return <ShopArt index={rewardArtIndex(e.r.title, e.r.kind)} className="h-full w-full" />;
+  if (e.kind === "chest") return <ShopArt index={SHOP_CHEST[e.chest]} className="h-full w-full" />;
+  return <ItemArt it={e.it} avatar={avatar} />;
 }

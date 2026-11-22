@@ -90,3 +90,63 @@ export function frameSpriteStyle(id: string, size: number): React.CSSProperties 
     backgroundRepeat: "no-repeat",
   };
 }
+
+/* ============================== Sprite Tiệm quà (8 cột × 5 hàng, ô vuông) ============================== */
+
+export const SPRITE_SHOP = "/studio/shop.webp";
+
+/** Ô ảnh tiệm của từng món trang trí/thú cưng (theo canvas Tiệm quà) */
+const SHOP_ITEM: Record<string, number> = {
+  "frame-gold": 17, "frame-sakura": 18, "frame-neon": 19,
+  "bg-library": 20, "bg-galaxy": 21, "bg-sakura": 22,
+  "fx-sparkle": 23, "acc-glasses": 24, "acc-crown": 25,
+  "pet-shiba": 27, "pet-owl": 28, "pet-dragon": 29, "pet-bunny": 30, "pet-bi": 31, "pet-moka": 4,
+};
+export const SHOP_CHEST: Record<"xu" | "gem", number> = { xu: 34, gem: 36 };
+export const SHOP_MASCOT = 37;
+
+/** Quà của thầy: chọn ảnh theo từ khoá trong tên (không khớp → rương quà / vé đặc quyền) */
+const REWARD_KEYS: [RegExp, number][] = [
+  [/bình|nước|giữ nhiệt/i, 0],
+  [/sổ|vở|notebook/i, 1],
+  [/bút|gel/i, 2],
+  [/gấu|bông/i, 3],
+  [/móc ?kh[oó]a|móc chìa/i, 5],
+  [/áo|hoodie/i, 6],
+  [/balo|ba lô|cặp/i, 7],
+  [/sticker|nhãn dán/i, 8],
+  [/bảo vệ|giữ chuỗi|chuỗi/i, 9],
+  [/nhân đôi|x2|gấp đôi/i, 10],
+  [/miễn|phạt/i, 11],
+  [/cộng|\+ ?\d|điểm/i, 12],
+  [/đổi tên/i, 13],
+  [/gợi ý|đáp án/i, 14],
+  [/gia hạn|hạn nộp|trễ hạn/i, 15],
+  [/vip/i, 16],
+];
+export function rewardArtIndex(title: string, kind: "PHYSICAL" | "VIRTUAL") {
+  for (const [re, i] of REWARD_KEYS) if (re.test(title)) return i;
+  return kind === "PHYSICAL" ? 34 : 11;
+}
+export const shopItemIndex = (id: string): number | undefined => SHOP_ITEM[id];
+
+/** Một ô ảnh tiệm (vuông), viền mờ tròn như canvas để che mép ô */
+export function ShopArt({ index, className, style }: { index: number; className?: string; style?: React.CSSProperties }) {
+  const col = index % 8;
+  const row = Math.floor(index / 8);
+  return (
+    <span
+      role="presentation"
+      className={cn("block aspect-square", className)}
+      style={{
+        backgroundImage: `url(${SPRITE_SHOP})`,
+        backgroundSize: "800% 500%",
+        backgroundPosition: `${((col / 7) * 100).toFixed(4)}% ${((row / 4) * 100).toFixed(4)}%`,
+        backgroundRepeat: "no-repeat",
+        WebkitMaskImage: "radial-gradient(closest-side,#000 72%,transparent 96%)",
+        maskImage: "radial-gradient(closest-side,#000 72%,transparent 96%)",
+        ...style,
+      }}
+    />
+  );
+}

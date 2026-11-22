@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, CircleHelp, Loader2, Lock, LogOut, RotateCcw } from "lucide-react";
+import { Coin, IconAlert, IconCheck, IconHelp, IconLock, IconLogout, IconSave, IconUndo } from "@/components/studio/icons";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { buyBundle, saveAvatar } from "@/actions/avatar";
@@ -16,7 +16,7 @@ import { Chibi, FxShape } from "@/components/avatar/Chibi";
 import { PetSvg } from "@/components/avatar/PetSvg";
 import { CoinBurst } from "@/components/game/CoinBurst";
 import { Confetti } from "@/components/points/Confetti";
-import { Sprite, frameSpriteStyle, hasSprite } from "@/components/studio/Sprite";
+import { ShopArt, Sprite, frameSpriteStyle, hasSprite, shopItemIndex } from "@/components/studio/Sprite";
 import { ProfileBanner } from "./ProfileBanner";
 import { ProfileScene } from "./ProfileScene";
 import { FrameRing } from "./FrameRing";
@@ -185,6 +185,8 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
   /** Ảnh của một món trong lưới / ô "Đang trang bị" (ưu tiên ảnh canvas, không có thì SVG) */
   const artOf = (it: Item, small = false) => {
     if (hasSprite(it.id)) return <Sprite id={it.id} className={cn("w-full", small && "h-full")} />;
+    const shopIdx = shopItemIndex(it.id);
+    if (shopIdx !== undefined) return <ShopArt index={shopIdx} className={small ? "h-[52px] w-[52px]" : "h-full"} />;
     if (it.slot === "pet") return <PetSvg itemId={it.id} size={small ? 44 : 72} />;
     if (it.slot === "frame")
       return (
@@ -312,7 +314,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
             }}
             className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#F1C9D3] bg-white font-bold text-[#B4233F] hover:bg-[#FFF5F7]"
           >
-            <LogOut className="h-4 w-4" aria-hidden /> Đăng xuất
+            <IconLogout /> Đăng xuất
           </button>
         </div>
       </section>
@@ -330,7 +332,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
                 <Chibi config={config} size={44} />
               </div>
               <Link href="/courses" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#5B2BD6] hover:text-[#4319A8]">
-                <CircleHelp className="h-4 w-4" aria-hidden /> Cách kiếm thêm xu
+                <IconHelp /> Cách kiếm thêm xu
               </Link>
             </div>
           </div>
@@ -425,11 +427,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
         <div className="sticky bottom-0 z-10 mt-auto flex flex-wrap items-center gap-3 rounded-b-[20px] border-t border-[#ECE9F5] bg-[#FBFAFE] px-4 py-3.5 sm:px-6">
           <div className="flex min-w-0 flex-[1_1_260px] items-center gap-2.5">
             <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px]", bar.icon)} aria-hidden>
-              {bar.kind === "warn" ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 7" /></svg>
-              )}
+              {bar.kind === "warn" ? <IconAlert /> : <IconCheck />}
             </span>
             <div className="flex min-w-0 flex-col" aria-live="polite" data-testid="decor-status">
               <span className="text-sm font-bold">{bar.title}</span>
@@ -439,7 +437,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
           <div className="ml-auto flex flex-wrap gap-2.5">
             {dirty && (
               <button type="button" data-testid="decor-reset" disabled={pending} onClick={() => { play("tick"); setConfig(saved); }} className="flex h-11 items-center gap-2 rounded-xl border border-[#E4E0F0] bg-white px-4 font-bold text-[#3B3650]">
-                <RotateCcw className="h-4 w-4" aria-hidden /> Hoàn tác
+                <IconUndo /> Hoàn tác
               </button>
             )}
             {dirty && !locked.length && buyable.length > 0 && !enough && (
@@ -454,7 +452,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
                 title={isDemo ? "Tài khoản demo chỉ xem" : !canEarn ? "Tài khoản cần được thầy duyệt" : undefined}
                 className="flex h-11 items-center gap-2 rounded-xl bg-[#5B2BD6] px-5 font-bold text-white disabled:cursor-not-allowed disabled:bg-[#E4E0F0] disabled:text-[#6B6680]"
               >
-                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>} Mua &amp; lưu · {priceText(cost.xu, cost.gem)}
+                {pending ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden /> : <IconSave />} Mua &amp; lưu · {priceText(cost.xu, cost.gem)}
               </button>
             ) : (
               <button
@@ -465,7 +463,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
                 title={isDemo ? "Tài khoản demo chỉ xem" : undefined}
                 className="flex h-11 items-center gap-2 rounded-xl bg-[#5B2BD6] px-5 font-bold text-white disabled:cursor-not-allowed disabled:bg-[#E4E0F0] disabled:text-[#6B6680]"
               >
-                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>} Lưu trang trí
+                {pending ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden /> : <IconSave />} Lưu trang trí
               </button>
             )}
           </div>
@@ -515,7 +513,7 @@ const Using = () => <span className="text-xs font-bold text-[#5B2BD6]">Đang dù
 const Owned = () => <span className="text-xs font-semibold text-[#17703F]">Đã sở hữu</span>;
 const Price = ({ text }: { text: string }) => (
   <span className="flex items-center gap-1.5 text-[13px] font-bold text-[#7A4E00]">
-    <span className="box-border h-3.5 w-3.5 shrink-0 rounded-full border-2 border-[#D8961B] bg-[#F5B82E]" aria-hidden />{text}
+    <Coin size={14} />{text}
   </span>
 );
 const LockNote = ({ text }: { text: string }) => <span className="text-xs font-semibold text-[#8A3B12]">Mở khóa: {text}</span>;
@@ -548,14 +546,14 @@ function Card({ name, selected, trying, locked, onClick, art, status, testId, wi
         {art}
         {locked && (
           <span className="absolute inset-0 flex items-center justify-center bg-[rgba(30,27,46,0.35)]">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#3B3650]"><Lock className="h-4 w-4" aria-hidden /></span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#3B3650]"><IconLock /></span>
           </span>
         )}
         {trying && <span className="absolute bottom-1.5 left-1.5 rounded-full bg-[#2A1F5C] px-2 py-[3px] text-[11px] font-bold text-white">Đang thử</span>}
       </span>
       {selected && (
         <span className="absolute -right-[7px] -top-[7px] z-[2] flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[#5B2BD6] text-white" aria-hidden>
-          <Check className="h-3 w-3" strokeWidth={3} />
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 12l5 5L20 7" /></svg>
         </span>
       )}
       <span className="flex min-w-0 flex-col gap-1 px-1">
@@ -580,7 +578,7 @@ function Chips({ slot, config, has, put, optional }: { slot: Slot; config: Avata
         return (
           <button key={it.id} type="button" aria-pressed={on} data-testid={`item-${it.id}`} title={own ? it.name : `${it.name} — ${price}`} onClick={() => put(slot, it.id)} className={cn("flex h-11 items-center gap-1.5 rounded-xl border-2 px-4 text-[13px] font-semibold", chip(on))}>
             {it.name}
-            {!own && <Lock className="h-3 w-3 text-[#8A3B12]" aria-label={`chưa sở hữu, ${price}`} />}
+            {!own && <span className="text-[#8A3B12]" aria-label={`chưa sở hữu, ${price}`}><IconLock size={12} /></span>}
           </button>
         );
       })}
@@ -607,7 +605,7 @@ function Swatches({ slot, config, has, put, color }: { slot: Slot; config: Avata
             className="relative h-10 w-10 rounded-full"
             style={{ background: color(it), boxShadow: `0 0 0 3px #FFFFFF, 0 0 0 5px ${on ? ACCENT : "#E4E0F0"}` }}
           >
-            {!own && <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[#8A3B12] shadow"><Lock className="h-2.5 w-2.5" aria-hidden /></span>}
+            {!own && <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[#8A3B12] shadow"><IconLock size={10} /></span>}
           </button>
         );
       })}
