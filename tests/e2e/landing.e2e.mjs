@@ -4,6 +4,7 @@
  * Cần server đang chạy (BASE_URL, mặc định http://localhost:3000) và DB local. Tự tạo/xoá khoá học + học sinh thử.
  * Kiểm /courses: lọc theo khối (?grade=), tìm (?query=), dải "Tiếp tục học" trỏ bài kế tiếp;
  * trang chủ khách: hero, đếm ngược, lộ trình làm mờ theo khối, footer;
+ * đăng nhập: hiện/ẩn mật khẩu, sai/đúng mật khẩu, khối thương hiệu từ 960px;
  * không tràn/cắt chữ ở 390/768/1366/1920.
  */
 import { createRequire } from "module";
@@ -11,7 +12,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
-import { openBrowser } from "./cdp.mjs";
+import { openBrowser, sleep } from "./cdp.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const require = createRequire(path.join(root, "package.json"));
@@ -59,7 +60,10 @@ async function cleanup() {
 await cleanup();
 const teacher = await prisma.user.create({ data: { email: `${TAG}gv@test.local`, name: `${TAG}Thầy`, role: "TEACHER", isApproved: true } });
 // Học sinh chưa có lớp → thấy mọi khoá (buildCourseVisibilityWhere)
-const student = await prisma.user.create({ data: { email: `${TAG}hs@test.local`, name: `${TAG}Học sinh`, role: "STUDENT", isApproved: true } });
+// Mật khẩu thử sinh ngẫu nhiên mỗi lần chạy (chỉ cho tài khoản thử, xoá khi xong)
+const PW = `pw-${Math.random().toString(36).slice(2, 10)}`;
+const { hash } = require("bcryptjs");
+const student = await prisma.user.create({ data: { email: `${TAG}hs@test.local`, name: `${TAG}Học sinh`, role: "STUDENT", isApproved: true, password: await hash(PW, 10) } });
 const mkCourse = (title, lessons) =>
   prisma.course.create({
     data: {
@@ -77,6 +81,17 @@ const [a1, a2] = c10.chapters[0].lessons;
 await prisma.progress.create({ data: { userId: student.id, lessonId: a1.id, isCompleted: true } });
 const token = await encode({ salt: "authjs.session-token", secret: process.env.AUTH_SECRET, token: { sub: student.id, role: "STUDENT", isApproved: true }, maxAge: 3600 });
 
+/** Chờ tới khi hàm trả giá trị đúng (điều hướng phía client không có sự kiện để chờ) */
+async function waitFor(fn, timeout = 15000) {
+  const start = Date.now();
+  let v;
+  while (Date.now() - start < timeout) {
+    v = await fn();
+    if (v) return v;
+    await sleep(250);
+  }
+  return v;
+}
 const tiles = (b) => b.ev(`return [...document.querySelectorAll('[data-testid="course-tile"]')].map(t=>({g:t.dataset.group, t:t.querySelector('h3')?.innerText||''}))`);
 
 const b = await openBrowser({ baseUrl: BASE_URL, token, width: 1366, height: 900 });
@@ -95,13 +110,14 @@ try {
 
   await step("Lọc Lớp 10 chỉ còn khoá lớp 10; Tất cả hiện lại khoá chưa rõ khối", async () => {
     await b.click(/^Lớp 10$/, 'nav[aria-label="Lọc theo khối"] a');
-    expect(await b.waitText(/Lớp 10 thử/, 10000), "không thấy khoá lớp 10 sau khi lọc");
+    await waitFor(async () => (await b.ev(`return location.search`)).includes("grade=10") && (await tiles(b)).every((x) => x.g === "10"));
     const f = await tiles(b);
+    expect(f.some((x) => x.t.includes("Lớp 10 thử")), "không thấy khoá lớp 10 sau khi lọc");
     expect(f.length > 0 && f.every((x) => x.g === "10"), `còn khoá khác khối: ${JSON.stringify(f)}`);
     expect(await b.ev(`return location.search.includes("grade=10")`), "URL không có grade=10");
     expect(await b.ev(`return document.querySelector('nav[aria-label="Lọc theo khối"] a[aria-current="page"]')?.innerText.trim()`) === "Lớp 10", "tab đang chọn không đánh dấu aria-current");
     await b.click(/^Tất cả$/, 'nav[aria-label="Lọc theo khối"] a');
-    expect(await b.waitText(/Hình học thử/, 10000), "Tất cả không hiện khoá chưa rõ khối");
+    expect(await waitFor(async () => (await tiles(b)).some((x) => x.g === "")), "Tất cả không hiện khoá chưa rõ khối");
   });
 
   await step("Tìm theo tên (giữ khối đang lọc)", async () => {
@@ -189,6 +205,52 @@ try {
         const probs = await g.layoutProblems();
         expect(probs.length === 0, probs.join("\n    "));
         await g.screenshot(path.join(SHOTS, `landing-${w}.png`), { fullPage: true });
+      } finally {
+        await g.close();
+      }
+    });
+  }
+
+  await step("Đăng nhập: nút hiện/ẩn mật khẩu, sai mật khẩu báo lỗi, đúng thì về trang chủ học sinh", async () => {
+    const g = await openBrowser({ baseUrl: BASE_URL, width: 1366, height: 900 });
+    try {
+      await g.goto("/login", /Chào mừng trở lại/);
+      const pw = `document.getElementById('password')`;
+      expect((await g.ev(`return ${pw}.type`)) === "password", "ô mật khẩu không ẩn mặc định");
+      await g.ev(`document.querySelector('[data-testid="toggle-password"]').click()`);
+      expect((await g.ev(`return [${pw}.type, document.querySelector('[data-testid="toggle-password"]').getAttribute('aria-pressed')]`)).join() === "text,true", "bấm Hiện không đổi type/aria-pressed");
+      await g.ev(`document.querySelector('[data-testid="toggle-password"]').click()`);
+      expect((await g.ev(`return ${pw}.type`)) === "password", "bấm Ẩn không ẩn lại");
+      expect(await g.ev(`return !!document.querySelector('[data-testid="login-brand"]') && getComputedStyle(document.querySelector('[data-testid="login-brand"]')).display !== 'none'`), "màn rộng thiếu khối thương hiệu");
+
+      const submit = (p) => g.ev(`document.getElementById('email').value=${JSON.stringify(student.email)}; ${pw}.value=${JSON.stringify(p)}; ${pw}.form.requestSubmit()`);
+      await submit("sai-mat-khau");
+      expect(await g.waitText(/Email hoặc mật khẩu không chính xác/, 15000), "sai mật khẩu không báo lỗi");
+      await submit(PW);
+      let at = "";
+      for (let i = 0; i < 40 && at !== "/"; i++) {
+        await sleep(500);
+        at = await g.ev(`return location.pathname`);
+      }
+      expect(at === "/", `đăng nhập đúng không chuyển về / (đang ở ${at})`);
+      expect(await g.waitText(/Bài cần làm|Tiếp tục|Khoá học|Khóa học/, 20000), "trang chủ học sinh không tải xong");
+      expect(!(await g.ev(`return !!document.querySelector('[data-testid="guest-landing"]')`)), "đã đăng nhập vẫn thấy trang khách");
+      expect(g.errors.length === 0, g.errors.join("\n    "));
+    } finally {
+      await g.close();
+    }
+  });
+
+  for (const [w, h] of [[390, 844], [768, 1024], [1366, 900], [1920, 1080]]) {
+    await step(`Đăng nhập ${w}px: không tràn / cắt chữ; khối thương hiệu chỉ từ 960px`, async () => {
+      const g = await openBrowser({ baseUrl: BASE_URL, width: w, height: h });
+      try {
+        await g.goto("/login", /Chào mừng trở lại/);
+        const probs = await g.layoutProblems();
+        expect(probs.length === 0, probs.join("\n    "));
+        const brand = await g.ev(`const e=document.querySelector('[data-testid="login-brand"]'); return !!e && getComputedStyle(e).display !== 'none'`);
+        expect(brand === w >= 960, `khối thương hiệu ${brand ? "hiện" : "ẩn"} ở ${w}px`);
+        await g.screenshot(path.join(SHOTS, `login-${w}.png`), { fullPage: true });
       } finally {
         await g.close();
       }

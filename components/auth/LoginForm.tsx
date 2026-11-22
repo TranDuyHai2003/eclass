@@ -3,18 +3,23 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { Eye, EyeOff, Lock, Mail } from "lucide-react"
 import { login } from "@/actions/login"
-import Link from "next/link"
+
+/** Ô nhập có icon, viền tím khi focus (artifact thiết kế trang Đăng nhập) */
+const field =
+  "flex h-[52px] items-center gap-2.5 rounded-[14px] border-[1.5px] border-[#E4E0F0] bg-white px-4 transition-[border-color,box-shadow] focus-within:border-[#5B2BD6] focus-within:shadow-[0_0_0_4px_rgba(91,43,214,0.14)]"
 
 export default function LoginForm() {
   const router = useRouter()
   const [isPending, setIsPending] = useState(false)
+  const [showPw, setShowPw] = useState(false)
 
   const handleSubmit = async (formData: FormData) => {
     setIsPending(true)
     try {
       const result = await login(formData)
-      
+
       if (result.error) {
         toast.error(result.error)
       } else if (result.success) {
@@ -22,7 +27,7 @@ export default function LoginForm() {
         router.push("/")
         router.refresh()
       }
-    } catch (error) {
+    } catch {
       toast.error("Đã có lỗi xảy ra")
     } finally {
       setIsPending(false)
@@ -30,44 +35,60 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="mt-8 space-y-6">
-      <form action={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Email
-          </label>
+    <form action={handleSubmit} className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <label htmlFor="email" className="text-sm font-bold">
+          Email
+        </label>
+        <div className={field}>
+          <Mail className="h-[18px] w-[18px] shrink-0 text-[#6B6680]" aria-hidden />
           <input
             id="email"
             name="email"
             type="email"
             autoComplete="email"
             required
-            className="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+            placeholder="ban@email.com"
+            className="min-w-0 flex-1 bg-transparent text-[#1E1B2E] outline-none placeholder:text-[#8A85A0]"
           />
         </div>
-        
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-            Mật khẩu
-          </label>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <label htmlFor="password" className="text-sm font-bold">
+          Mật khẩu
+        </label>
+        <div className={`${field} pr-1.5`}>
+          <Lock className="h-[18px] w-[18px] shrink-0 text-[#6B6680]" aria-hidden />
           <input
             id="password"
             name="password"
-            type="password"
+            type={showPw ? "text" : "password"}
             autoComplete="current-password"
             required
-            className="mt-1 block w-full rounded-xl border border-gray-300 px-3 py-2 text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+            placeholder="Nhập mật khẩu"
+            className="min-w-0 flex-1 bg-transparent text-[#1E1B2E] outline-none placeholder:text-[#8A85A0]"
           />
+          <button
+            type="button"
+            onClick={() => setShowPw((v) => !v)}
+            aria-pressed={showPw}
+            aria-label={showPw ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+            data-testid="toggle-password"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] text-[#5F5B73] hover:bg-[#F6F5FB] hover:text-[#2A1F5C] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#A78BFA]"
+          >
+            {showPw ? <EyeOff className="h-[18px] w-[18px]" aria-hidden /> : <Eye className="h-[18px] w-[18px]" aria-hidden />}
+          </button>
         </div>
+      </div>
 
-        <button
-          type="submit"
-          disabled={isPending}
-          className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-orange-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:from-blue-500 hover:to-orange-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-        >
-          {isPending ? "Đang xử lý..." : "Đăng nhập bằng Email"}
-        </button>
-      </form>
-    </div>
+      <button
+        type="submit"
+        disabled={isPending}
+        className="h-[54px] rounded-[14px] bg-[#5B2BD6] text-base font-extrabold text-white shadow-[0_10px_24px_rgba(91,43,214,0.25)] transition-colors hover:bg-[#4319A8] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#A78BFA] disabled:opacity-60"
+      >
+        {isPending ? "Đang đăng nhập..." : "Đăng nhập"}
+      </button>
+    </form>
   )
 }
