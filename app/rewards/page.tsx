@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
-import { Baloo_2 } from "next/font/google";
 import { auth } from "@/auth";
+import { HomeSidebar } from "@/components/home/HomeSidebar";
+import { beVietnam } from "@/lib/fonts";
 import { ShopPage } from "@/components/shop/ShopPage";
 import { isPointsEnabled } from "@/lib/points/config";
 import { getStudentPointsPage } from "@/lib/points/queries";
@@ -13,7 +14,6 @@ import { maskUsersForDemo } from "@/lib/demo-privacy";
 import { prisma, prismaBase } from "@/lib/prisma";
 import type { BoardData } from "@/components/shop/LeaderboardModal";
 
-const baloo = Baloo_2({ subsets: ["latin", "vietnamese"], weight: ["500", "600", "700", "800"], variable: "--font-baloo" });
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Tiệm Quà Học Đường — Xu & Kim Cương" };
@@ -52,9 +52,15 @@ export default async function RewardsPage() {
   );
 
   return (
-    // Tiệm Quà tràn toàn màn hình (không có sidebar chung): lối về trang chủ nằm ở thanh gỗ + Menu Tiệm Quà + logo header
-    <div className={`page-shell min-h-screen bg-[#EBF3FF] ${baloo.variable}`}>
-      <main className="min-w-0">
+    // GĐ9 (artifact): Tiệm quà nằm trong khung chung (header + sidebar), nền tím nhạt, chữ Be Vietnam Pro
+    <div className={`min-h-screen bg-[#F6F5FB] ${beVietnam.variable}`}>
+      <div className="flex w-full min-h-[calc(100vh-4rem)]">
+        <aside className="hidden lg:block w-[250px] shrink-0 border-r border-slate-200/70 bg-white/70 backdrop-blur-xl p-3">
+          <div className="sticky top-24 h-[calc(100vh-7rem)]">
+            <HomeSidebar user={session.user} />
+          </div>
+        </aside>
+        <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px]">
         <ShopPage
           data={data}
           user={{ id: uid, name: session.user.name ?? me?.name ?? null, className: me?.studyClass?.name ?? null, grade: myGrade }}
@@ -65,7 +71,8 @@ export default async function RewardsPage() {
           event={weeklyChallenge(data.wallet)}
           gacha={gachaOn ? { pullsToday: today } : null}
         />
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

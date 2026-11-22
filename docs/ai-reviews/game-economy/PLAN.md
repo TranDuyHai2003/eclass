@@ -293,3 +293,54 @@ Test: E2E tiệm cập nhật (menu, thời tiết, danh hiệu, mở rương tr
 ### 11.4 Không làm
 - Danh hiệu theo thành tích tự mở ("Top 10 Hunter", "Bảng Vàng"): cần luật xét riêng, để sau.
 - Ảnh raster như mockup.
+
+## 12. GĐ9 — Tiệm quà và Hồ sơ theo artifact thiết kế của thầy (22/11/2026)
+
+Nguồn: canvas https://claude.ai/artifact/2kcB8o96tqYyVMXqAtYDn5 (4 artboard: Hồ sơ desktop/mobile, Tiệm quà desktop/mobile) cùng 5 ý góp thầy dán (bỏ sọc gỗ, thẻ sáng, nút "Thử đồ", hover nhấc thẻ, báo "còn thiếu X xu").
+
+### 12.1 Phong cách chung
+- Nền #F6F5FB, chữ Be Vietnam Pro (next/font, chỉ ở /rewards và /profile, thay Baloo 2).
+- Màu nhấn tím #5B2BD6; thẻ trắng viền #ECE9F5, bo 16–20px, bóng mềm.
+- Chip độ hiếm màu pastel (Phổ thông xanh lá, Hiếm xanh dương, Sử thi tím, Huyền thoại vàng).
+- Bỏ phong cách gỗ/sọc/mái hiên của GĐ6–7.
+- /rewards trở lại khung chung (header + sidebar) như artifact; `<main>` theo quy ước các trang (max-w 1600px, kiểm tra "thừa khoảng trống" của E2E), lưới tự chia cột ≥180px.
+
+### 12.2 Hồ sơ
+- Breadcrumb và "Hồ sơ của tôi".
+- **Thẻ trái:**
+  - Banner (huy hiệu "Đang xem trước" khi có thay đổi).
+  - Ảnh khung 112px, tên và email đặt cạnh ảnh.
+  - Chip danh hiệu, 2 ô số liệu.
+  - "Đang trang bị" 6 ô: bấm để sang mục tương ứng.
+  - Huy hiệu, nút Đăng xuất viền hồng.
+- **Thẻ phải "Tủ đồ & Cửa hàng":**
+  - Tab dạng viên kèm số đã có/tổng; "Mẫu có sẵn | Tuỳ chỉnh tóc & mắt"; lọc Tất cả / Đã sở hữu / Cửa hàng.
+  - Thẻ món: nhãn "Đang thử", dấu ✓ góc, lớp khoá "Mở khoá: Hộp bí ẩn" cho món chỉ từ rương.
+- **Thanh hành động:**
+  - Tóm tắt món đang thử, tổng giá và "còn thiếu X xu".
+  - Các nút Hoàn tác, "Kiếm xu", **"Mua & lưu"**: `buyBundle` rồi `saveAvatar` trong một lần bấm.
+- `?try=<itemId>` mở sẵn món để thử (từ nút "Thử trên hồ sơ" ở tiệm).
+
+### 12.3 Tiệm quà
+- **Đầu trang:** tiêu đề và mô tả; cụm ví (xu, kim cương, Nhập code, Lịch sử).
+- **Dải mục tiêu:** mèo nhắc, thanh xu tích luỹ, nút "Nộp bài kiếm xu".
+- **Lọc:** tab danh mục có số đếm; chip độ hiếm, công tắc "Chỉ món đủ tiền", sắp xếp (Nổi bật / giá tăng / giá giảm).
+- **Lưới thẻ 4 cột** (rộng ≥172px):
+  - Ảnh món nằm trên nền màu độ hiếm.
+  - Nút mắt "Thử đồ" cho đồ trang trí.
+  - Thanh tiến độ "đủ tiền".
+  - Thẻ Huyền thoại có ánh quét (shimmer). Rê chuột thì thẻ nhấc lên.
+- **Bảng chi tiết dính bên phải:**
+  - Đồ trang trí hiện nhân vật đang mặc thử món đó.
+  - Cách nhận quà, giá, tiến độ, "còn thiếu X xu".
+  - Nút Đổi/Mua, "Thử trên hồ sơ", "Xem tỉ lệ rơi" (hộp), ghim mục tiêu.
+  - Xác nhận đổi quà như cũ.
+- **Điện thoại:** chip cuộn ngang, lưới 2 cột, chi tiết dạng sheet đáy.
+- Giữ nguyên mọi hộp thoại và logic (Nộp bài, Túi đồ, Thẻ cào, Bảng Vàng, Lịch sử, Đài Cầu Nguyện, Danh hiệu, Menu…).
+- Thời tiết vẫn trong Menu.
+
+### 12.4 Không làm
+- Rương thứ 3 "Hoàng Gia" (đổi kinh tế, cần thầy đồng ý).
+- Danh sách quà/thẻ cụ thể trong mockup (quà do thầy tạo ở trang quản lý).
+- Giá theo mockup (giữ thang ×150).
+- Danh sách mong muốn: dùng "ghim quà mục tiêu" sẵn có.

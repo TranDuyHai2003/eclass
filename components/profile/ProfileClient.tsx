@@ -38,7 +38,7 @@ interface ProfileClientProps {
   /** Khối thêm ở cột phải (vd thẻ đổi mật khẩu) */
   children?: React.ReactNode;
   /** "Hồ sơ & Trang trí" (học sinh khi bật Xu); không có → chỉ hiện phần cài đặt tài khoản như cũ */
-  decor?: Omit<DecorStudioProps, "user" | "onOpenSettings">;
+  decor?: Omit<DecorStudioProps, "user">;
 }
 
 export default function ProfileClient({ user, stats, children, decor }: ProfileClientProps) {
@@ -123,17 +123,25 @@ export default function ProfileClient({ user, stats, children, decor }: ProfileC
   };
 
   return (
-    <div className={cn("mx-auto space-y-5", decor ? "max-w-[1240px]" : "max-w-[1100px]")}>
-      <div className="space-y-1">
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-          <span className="w-2 h-8 bg-violet-600 rounded-full" />
-          Hồ sơ của bạn
-        </h1>
-        <p className="text-slate-500 font-medium text-sm">Quản lý hiển thị, ảnh đại diện và mật khẩu.</p>
-      </div>
+    <div className={cn("mx-auto space-y-5", decor ? "studio max-w-[1160px]" : "max-w-[1100px]")}>
+      {decor ? (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[13px] text-[#6B6680]">Tài khoản / Hồ sơ</p>
+          <h1 className="text-[28px] font-extrabold tracking-tight text-[#1E1B2E]">Hồ sơ của tôi</h1>
+          <p className="text-[#5F5B73]">Tuỳ chỉnh nhân vật, thú cưng và danh hiệu hiển thị với bạn bè trên bảng xếp hạng.</p>
+        </div>
+      ) : (
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+            <span className="w-2 h-8 bg-blue-600 rounded-full" />
+            Hồ sơ của bạn
+          </h1>
+          <p className="text-slate-500 font-medium text-sm">Quản lý tên hiển thị, ảnh đại diện và mật khẩu.</p>
+        </div>
+      )}
 
       {decor && (
-        <div className="flex gap-1 border-b border-slate-200" role="tablist" aria-label="Hồ sơ">
+        <div className="flex gap-7 border-b border-[#E4E0F0]" role="tablist" aria-label="Mục hồ sơ">
           {([["decor", "Hồ sơ & Trang trí"], ["settings", "Cài đặt tài khoản"]] as const).map(([k, label]) => (
             <button
               key={k}
@@ -142,7 +150,7 @@ export default function ProfileClient({ user, stats, children, decor }: ProfileC
               aria-selected={tab === k}
               data-testid={`tab-${k}`}
               onClick={() => pickTab(k)}
-              className={cn("-mb-px border-b-[3px] px-4 py-2.5 text-base font-black transition-colors", tab === k ? "border-violet-700 text-slate-900" : "border-transparent text-slate-400 hover:text-slate-700")}
+              className={cn("-mb-px border-b-[3px] px-1 py-3 text-[15px] transition-colors", tab === k ? "border-[#5B2BD6] font-bold text-[#5B2BD6]" : "border-transparent font-semibold text-[#5F5B73] hover:text-[#2A1F5C]")}
             >
               {label}
             </button>
@@ -150,7 +158,7 @@ export default function ProfileClient({ user, stats, children, decor }: ProfileC
         </div>
       )}
 
-      {decor && tab === "decor" && <DecorStudio {...decor} user={user} onOpenSettings={() => pickTab("settings")} />}
+      {decor && tab === "decor" && <DecorStudio {...decor} user={user} />}
 
       <div className={cn("grid grid-cols-1 lg:grid-cols-12 gap-5 items-start", tab !== "settings" && "hidden")}>
         {/* Cột trái: thẻ tóm tắt tài khoản */}

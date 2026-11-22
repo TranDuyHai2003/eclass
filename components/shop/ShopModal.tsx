@@ -1,9 +1,10 @@
 "use client";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** Hộp thoại kiểu bảng gỗ của Tiệm Quà: tiêu đề nổi trên viền, nút đóng đỏ góc phải */
+/** Hộp thoại của Tiệm Quà (GĐ9: thẻ trắng bo 20px, tiêu đề trái + nút đóng phải theo artifact) */
 export function ShopModal({
   open, onOpenChange, title, description, children, className, testId,
 }: {
@@ -20,24 +21,24 @@ export function ShopModal({
       <DialogContent
         showCloseButton={false}
         data-testid={testId}
-        className={cn("shop-font max-h-[92dvh] overflow-visible rounded-[1.5rem] border-[3px] border-[#5b3d1e] bg-[#fffaf0] p-0 shadow-[0_8px_0_0_#5b3d1e] sm:max-w-lg", className)}
+        className={cn("studio max-h-[92dvh] gap-0 overflow-hidden rounded-[20px] border border-[#ECE9F5] bg-white p-0 shadow-[0_24px_60px_rgba(20,14,48,0.3)] sm:max-w-lg", className)}
       >
-        <div className="pointer-events-none absolute -top-5 left-1/2 z-10 max-w-[calc(100%-3.5rem)] -translate-x-1/2" data-testid="shop-modal-title">
-          <DialogTitle className="block truncate rounded-full border-[2.5px] border-[#5b3d1e] bg-gradient-to-b from-[#ffd84d] to-[#f5b61e] px-3.5 py-1.5 text-sm font-black sm:px-5 sm:text-[15px] text-[#3b2a14] shadow-[0_4px_0_0_#5b3d1e]">
-            {title}
-          </DialogTitle>
+        <div className="flex items-center gap-3 border-b border-[#ECE9F5] px-5 py-3.5">
+          <div className="min-w-0 flex-1" data-testid="shop-modal-title">
+            <DialogTitle className="block truncate text-[17px] font-extrabold text-[#1E1B2E]">{title}</DialogTitle>
+          </div>
+          <button
+            type="button"
+            aria-label="Đóng"
+            data-testid="shop-modal-close"
+            onClick={() => onOpenChange(false)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#5F5B73] hover:bg-[#F3F1FA]"
+          >
+            <X className="h-5 w-5" aria-hidden />
+          </button>
         </div>
-        <button
-          type="button"
-          aria-label="Đóng"
-          data-testid="shop-modal-close"
-          onClick={() => onOpenChange(false)}
-          className="absolute -right-3 -top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border-[2.5px] border-[#5b3d1e] bg-[#ef5a3c] text-base font-black text-white shadow-[0_3px_0_0_#5b3d1e]"
-        >
-          ✕
-        </button>
-        <div className="max-h-[88dvh] overflow-y-auto px-4 pb-4 pt-7 sm:px-5">
-          {description ? <DialogDescription className="mb-3 text-center text-xs font-semibold text-[#7a5a35]">{description}</DialogDescription> : <DialogDescription className="sr-only">{title}</DialogDescription>}
+        <div className="max-h-[calc(92dvh-64px)] overflow-y-auto px-4 pb-4 pt-4 sm:px-5">
+          {description ? <DialogDescription className="mb-3 text-center text-xs font-medium text-[#5F5B73]">{description}</DialogDescription> : <DialogDescription className="sr-only">{title}</DialogDescription>}
           {children}
         </div>
       </DialogContent>

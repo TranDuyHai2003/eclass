@@ -623,3 +623,26 @@ h6 {
 @media (prefers-reduced-motion: reduce) {
   .fx-p, .fx-ring { animation: none !important; }
 }
+
+/* ===================== GĐ9: phong cách Tiệm quà & Hồ sơ theo artifact (nền tím nhạt, Be Vietnam Pro) ===================== */
+@layer components {
+  .studio { font-family: var(--font-bvp), var(--font-jakarta), system-ui, sans-serif; color: #1e1b2e; }
+  .studio-card { background: #fff; border: 1px solid #ece9f5; border-radius: 20px; box-shadow: 0 1px 2px rgba(30, 27, 46, 0.04), 0 8px 24px rgba(42, 31, 92, 0.06); }
+  .studio-item { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .studio-item:hover { transform: translateY(-2px); }
+  .studio-item:hover .studio-art { transform: translateY(-4px) scale(1.05); }
+  .studio-art { transition: transform 0.2s ease; }
+  .studio :focus-visible { outline: 3px solid #a78bfa; outline-offset: 2px; }
+  /* Ánh quét chéo cho thẻ Huyền thoại (4,5 giây một lần) */
+  .shimmer { position: relative; overflow: hidden; isolation: isolate; }
+  .shimmer::after {
+    content: ""; position: absolute; inset: -40%; z-index: 2; pointer-events: none;
+    background: linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, 0.65) 50%, transparent 58%);
+    transform: translateX(-100%); animation: shimmer-sweep 4.5s ease-in-out infinite;
+  }
+}
+@keyframes shimmer-sweep { 0%, 70% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after { animation: none; display: none; }
+  .studio-item, .studio-art { transition: none; }
+}

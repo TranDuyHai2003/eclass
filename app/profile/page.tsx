@@ -10,8 +10,10 @@ import { getHeaderPoints } from "@/lib/points/queries";
 import { getLevel } from "@/lib/points/levels";
 import { getAvatar } from "@/lib/game/inventory";
 import type { DecorStudioProps } from "@/components/profile/DecorStudio";
+import { ITEM_BY_ID } from "@/lib/game/items";
+import { beVietnam } from "@/lib/fonts";
 
-export default async function ProfilePage() {
+export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ try?: string }> }) {
   const session = await auth();
 
   if (!session?.user) {
@@ -19,13 +21,14 @@ export default async function ProfilePage() {
   }
 
   const { user } = session;
+  const tryParam = (await searchParams)?.try;
 
   const account = user.id
     ? await prisma.user.findUnique({ where: { id: user.id }, select: { password: true, isApproved: true, isDemo: true } })
     : null;
 
   // Số liệu học tập cho thẻ tóm tắt (chỉ học sinh)
-  let decor: Omit<DecorStudioProps, "user" | "onOpenSettings"> | undefined;
+  let decor: Omit<DecorStudioProps, "user"> | undefined;
   let stats: { completedLessons: number; points: number | null; level: { icon: string; level: number; name: string } | null; avatar?: AvatarConfig | null } | undefined;
   if (user.id && user.role === "STUDENT") {
     const [completedLessons, wallet, av] = await Promise.all([
@@ -51,12 +54,17 @@ export default async function ProfilePage() {
         isDemo: !!account?.isDemo,
         completedLessons,
         level,
+        // ?try=<itemId> từ nút "Thử trên hồ sơ" ở tiệm (chỉ nhận slug có thật)
+        initialTry: (() => {
+          const t = tryParam;
+          return t && ITEM_BY_ID[t] ? t : null;
+        })(),
       };
     }
   }
 
   return (
-    <div className="page-shell bg-[#EBF3FF] min-h-screen">
+    <div className={decor ? `min-h-screen bg-[#F6F5FB] ${beVietnam.variable}` : "page-shell bg-[#EBF3FF] min-h-screen"}>
       <div className="flex w-full min-h-[calc(100vh-4rem)]">
         {/* Left Sidebar - Fixed 250px Width, Anchored Flush Left */}
         <aside className="hidden lg:block w-[250px] shrink-0 border-r border-slate-200/70 bg-white/70 backdrop-blur-xl p-3">

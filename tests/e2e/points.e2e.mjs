@@ -237,7 +237,7 @@ try {
   });
 
   await step("Học sinh: nhập thẻ cào → +3 ngọc; nhập lại → báo đã dùng; chip header hiện ngọc", async () => {
-    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.goto("/rewards", /Đổi xu và kim cương/i);
     await s.ev(`document.querySelector('[data-testid="scratch-open"]').click()`);
     expect(await s.waitText(/Thẻ Cào & GiftCode/i), "hộp thẻ cào không mở");
     expect(await s.ev(`return !!document.querySelector('[data-testid="scratch-canvas"]')`), "thiếu lớp nhũ bạc để cào");
@@ -251,17 +251,18 @@ try {
     await s.fill('[data-testid="giftcode-input"]', giftCodes[0]);
     await s.click(/^Nhận quà$/, "[role=dialog] button");
     expect(await s.waitText(/đã dùng mã này/i), "nhập lại không báo đã dùng");
-    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.goto("/rewards", /Đổi xu và kim cương/i);
     const gems = await s.ev(`return document.querySelector('[data-testid="header-gems"]')?.innerText || ""`);
     expect(/3/.test(gems), `chip ngọc trên header sai: ${gems}`);
   });
 
   await step("Học sinh: trang Tiệm quà — số dư, chỉ thấy quà dành cho mình", async () => {
-    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.goto("/rewards", /Đổi xu và kim cương/i);
     const txt = await s.text();
     expect(txt.includes("17.100"), "không thấy số dư 17.100");
     expect(txt.includes("Kẹo / bánh nhỏ") && txt.includes("Quà đắt"), "thiếu quà");
-    expect(/Còn thiếu 32\.900 xu/.test(txt), "quà đắt phải báo còn thiếu 32.900 xu");
+    const note = await s.ev(`[...document.querySelectorAll('[data-testid="reward-card"]')].find(c => c.dataset.title.endsWith("Quà đắt"))?.click(); await new Promise(r=>setTimeout(r,200)); return document.querySelector('[data-testid="shop-detail"] [data-testid="detail-note"]')?.innerText || ""`);
+    expect(/Còn thiếu 32\.900 xu/.test(note), `quà đắt phải báo còn thiếu 32.900 xu: ${note}`);
     const rarity = await s.ev(`return [...document.querySelectorAll('[data-testid="reward-card"]')].map(c => c.dataset.title.replace(/^.*Quà đắt$/, "Quà đắt") + ":" + c.dataset.rarity).join(",")`);
     expect(rarity.includes("Kẹo / bánh nhỏ:common") && rarity.includes("Quà đắt:legendary"), `độ hiếm sai: ${rarity}`);
     expect(/Chó rách|Nghèo rớt|Người nghèo|Tiểu thương|Phú nông|Phú ông|Đại gia|Tỷ phú/.test(txt), "thanh trạng thái thiếu danh hiệu");
@@ -288,7 +289,7 @@ try {
   });
 
   await step("Học sinh: ghim quà mục tiêu; vuốt ve mèo đổi câu thoại", async () => {
-    const ok = await s.ev(`const b=[...document.querySelectorAll('[data-testid="reward-card"]')].find(c => c.dataset.title.endsWith("Quà đắt"))?.querySelector('[data-testid="pin"]'); if(!b) return false; b.click(); return true;`);
+    const ok = await s.ev(`const c=[...document.querySelectorAll('[data-testid="reward-card"]')].find(c => c.dataset.title.endsWith("Quà đắt")); if(!c) return false; c.click(); await new Promise(r=>setTimeout(r,200)); const b=document.querySelector('[data-testid="shop-detail"] [data-testid="pin"]'); if(!b) return false; b.click(); return true;`);
     expect(ok, "không thấy nút ghim");
     await sleep(1500);
     const w = await prisma.pointWallet.findUnique({ where: { userId: data.student.id } });
@@ -302,10 +303,11 @@ try {
   });
 
   await step("Học sinh: đổi kẹo (hộp xác nhận) → trừ xu, hiện ở 'Quà của tôi'", async () => {
-    const opened = await s.ev(`const b=document.querySelector('[data-testid="reward-card"][data-title="Kẹo / bánh nhỏ"]')?.querySelector('[data-testid="redeem"]'); if(!b || b.disabled) return false; b.click(); return true;`);
+    const opened = await s.ev(`document.querySelector('[data-testid="reward-card"][data-title="Kẹo / bánh nhỏ"]')?.click(); await new Promise(r=>setTimeout(r,200)); const b=document.querySelector('[data-testid="shop-detail"] [data-testid="redeem"]'); if(!b || b.disabled) return false; b.click(); return true;`);
     expect(opened, "không thấy nút đổi kẹo");
-    expect(await s.waitText(/Dùng 6\.000 xu để đổi/), "hộp xác nhận không hiện");
-    await s.click(/^Đổi quà$/, "[role=dialog] button");
+    expect(await s.waitText(/Số dư sau khi đổi/), "hộp xác nhận không hiện");
+    expect(await s.waitText(/11\.100 xu/), "hộp xác nhận thiếu số dư sau khi đổi");
+    await s.click(/^Xác nhận đổi$/, "[role=dialog] button");
     expect(await s.waitText(/Đã đổi "Kẹo \/ bánh nhỏ"/), "không thấy thông báo đổi quà");
     expect((await balanceOf(data.student.id)) === 11100, "số dư sau đổi phải 11100");
     expect((await s.ev(`return document.querySelector("[data-celebrated]")?.dataset.celebrated`)) === "1", "không bắn pháo giấy khi đổi quà thành công");
@@ -322,9 +324,9 @@ try {
   await step("Học sinh: đổi lại kẹo (để thầy trao)", async () => {
     await s.ev(`document.querySelector('[data-testid="shop-modal-close"]')?.click()`);
     await sleep(400);
-    await s.ev(`document.querySelector('[data-testid="reward-card"][data-title="Kẹo / bánh nhỏ"]').querySelector('[data-testid="redeem"]').click();`);
+    await s.ev(`document.querySelector('[data-testid="reward-card"][data-title="Kẹo / bánh nhỏ"]').click(); await new Promise(r=>setTimeout(r,200)); document.querySelector('[data-testid="shop-detail"] [data-testid="redeem"]').click();`);
     await sleep(800);
-    await s.click(/^Đổi quà$/, "[role=dialog] button");
+    await s.click(/^Xác nhận đổi$/, "[role=dialog] button");
     expect(await s.waitText(/Đã đổi/), "đổi lại thất bại");
   });
 
@@ -343,7 +345,7 @@ try {
   });
 
   await step("Học sinh: thấy 'Đã nhận' và thông báo", async () => {
-    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.goto("/rewards", /Đổi xu và kim cương/i);
     await s.ev(`document.querySelector('[data-testid="bag-open"]').click()`);
     expect(await s.waitText(/Đã nhận/), "không thấy trạng thái Đã nhận");
     const n = await prisma.notification.count({ where: { userId: data.student.id, title: { contains: "Đã nhận quà" } } });
@@ -357,15 +359,15 @@ try {
   });
 
   await step("Học sinh: đổi thêm một món (để đo bố cục khi có đơn đang chờ)", async () => {
-    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
-    await s.ev(`document.querySelector('[data-testid="reward-card"][data-title="Kẹo / bánh nhỏ"] [data-testid="redeem"]').click();`);
+    await s.goto("/rewards", /Đổi xu và kim cương/i);
+    await s.ev(`document.querySelector('[data-testid="reward-card"][data-title="Kẹo / bánh nhỏ"]').click(); await new Promise(r=>setTimeout(r,200)); document.querySelector('[data-testid="shop-detail"] [data-testid="redeem"]').click();`);
     await sleep(800);
-    await s.click(/^Đổi quà$/, "[role=dialog] button");
+    await s.click(/^Xác nhận đổi$/, "[role=dialog] button");
     expect(await s.waitText(/Đã đổi/), "đổi thêm thất bại");
   });
 
   await step("Học sinh: hộp Nộp bài liệt kê bài chưa nộp; hộp Bảng Vàng Khối có tab khối 7", async () => {
-    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.goto("/rewards", /Đổi xu và kim cương/i);
     await s.ev(`document.querySelector('[data-testid="tasks-open"]').click()`);
     expect(await s.waitText(/Nộp Bài Tập Nhận Xu/), "hộp Nộp bài không mở");
     await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
@@ -384,11 +386,11 @@ try {
 
   // -------------------------------------------------- Nhân vật & hồ sơ
   await step("Học sinh: tiệm → lọc 'Trang trí hồ sơ' → mua tóc dựng (900 xu)", async () => {
-    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.goto("/rewards", /Đổi xu và kim cương/i);
     await s.ev(`document.querySelector('[data-testid="cat-deco"]').click()`);
-    expect(await s.waitText(/Chỉ từ hộp bí ẩn/), "không thấy lưới đồ trang trí");
+    expect(await s.waitText(/Chỉ từ Hộp bí ẩn/i), "không thấy lưới đồ trang trí");
     const before = await balanceOf(data.student.id);
-    const ok = await s.ev(`const b=document.querySelector('[data-testid="shop-buy-hair-spiky"]'); if(!b||b.disabled) return false; b.click(); return true;`);
+    const ok = await s.ev(`document.querySelector('[data-testid="item-card"][data-item="hair-spiky"]')?.click(); await new Promise(r=>setTimeout(r,200)); const b=document.querySelector('[data-testid="shop-detail"] [data-testid="shop-buy-hair-spiky"]'); if(!b||b.disabled) return false; b.click(); return true;`);
     expect(ok, "không bấm được nút mua tóc dựng");
     expect(await s.waitText(/Đã mua "Tóc dựng"/), "không thấy thông báo đã mua");
     expect((await balanceOf(data.student.id)) === before - 900, "chưa trừ 900 xu");
@@ -398,25 +400,19 @@ try {
   });
 
   await step("Học sinh: Hồ sơ & Trang trí — mặc tóc dựng, thử kính → mua tại chỗ (450 xu), lưu; vương miện thiếu ngọc thì khoá; /profile/avatar chuyển về /profile", async () => {
-    await s.goto("/profile", /Trang trí & Vật phẩm/i);
+    await s.goto("/profile", /Tủ đồ & Cửa hàng/i);
     const click = (id) => s.ev(`const b=document.querySelector('[data-testid="${id}"]'); if(!b||b.disabled) return false; b.click(); return true;`);
     expect(await click("char-custom"), "không có nút Tuỳ chỉnh tóc & mắt");
     await sleep(200);
     expect(await click("item-hair-spiky"), "không có ô tóc dựng");
     expect(await click("item-acc-glasses"), "không có ô kính");
-    expect(await s.waitText(/Đang thử 1 món chưa có/), "không báo đang thử kính");
+    expect(await s.waitText(/Kính học bá · 450 xu/), "thanh hành động không báo món đang thử");
     expect(await s.ev(`return document.querySelector('[data-testid="profile-banner"] svg[role="img"]') !== null`), "banner thiếu nhân vật xem trước");
     const before = await balanceOf(data.student.id);
-    expect(await click("decor-buy"), "không bấm được Mua món đang thử");
+    expect(await click("decor-buy"), "không bấm được Mua & lưu");
     expect(await s.waitText(/Đã mua cả bộ \(1 món\)/), "không thấy thông báo mua");
+    expect(await s.waitText(/Đã lưu trang trí/), "Mua & lưu chưa lưu trang trí");
     expect((await balanceOf(data.student.id)) === before - 450, "chưa trừ 450 xu");
-    let saveOk = false;
-    for (let i = 0; i < 20 && !saveOk; i++) {
-      saveOk = await click("decor-save");
-      if (!saveOk) await sleep(250);
-    }
-    expect(saveOk, "nút Lưu trang trí bị khoá dù đã đổi");
-    expect(await s.waitText(/Đã lưu trang trí/), "không thấy thông báo đã lưu");
     const av = await prisma.userAvatar.findUnique({ where: { userId: data.student.id } });
     expect(av && av.config.hair === "hair-spiky" && av.config.accessory === "acc-glasses", `cấu hình lưu sai: ${JSON.stringify(av?.config)}`);
     // Thử vương miện 10 ngọc (học sinh có 3 ngọc) → nút mua khoá; hoàn tác về bản đã lưu
@@ -424,7 +420,7 @@ try {
     await sleep(200);
     expect(await s.ev(`return !!document.querySelector('[data-testid="decor-buy"]')?.disabled`), "vương miện 10 ngọc phải bị khoá (chỉ có 3 ngọc)");
     expect(await click("decor-reset"), "không hoàn tác được");
-    expect(await s.waitText(/Đã lưu ✓/), "hoàn tác chưa về bản đã lưu");
+    expect(await s.waitText(/Hồ sơ đang hiển thị đúng như bạn thấy/), "hoàn tác chưa về bản đã lưu");
     // Tab Cài đặt tài khoản vẫn có form cũ; đường dẫn cũ chuyển hướng
     expect(await click("tab-settings"), "thiếu tab Cài đặt tài khoản");
     expect(await s.waitText(/Thông tin cá nhân/), "tab cài đặt thiếu form thông tin");
@@ -490,14 +486,14 @@ try {
 
   // -------------------------------------------------- Tiệm Quà GĐ6 (mockup Canvas 2)
   await step("Học sinh: Menu Tiệm Quà — chọn Tuyết thì có lớp tuyết rơi, tải lại vẫn nhớ; lối tắt Danh hiệu mở hệ thống danh hiệu", async () => {
-    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.goto("/rewards", /Đổi xu và kim cương/i);
     await s.ev(`document.querySelector('[data-testid="menu-open"]').click()`);
     expect(await s.waitText(/Menu Tiệm Quà/), "menu không mở");
     expect(await s.ev(`return document.querySelectorAll('[data-testid^="menu-"]').length >= 9`), "menu thiếu lối tắt");
     await s.ev(`document.querySelector('[data-testid="weather-snow"]').click()`);
     await sleep(300);
     expect(await s.ev(`return document.querySelector('[data-weather]')?.dataset.weather === "snow" && document.querySelectorAll('.weather-layer[data-weather="snow"] .weather-flake').length > 10`), "chọn Tuyết không có tuyết rơi");
-    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.goto("/rewards", /Đổi xu và kim cương/i);
     await sleep(300);
     expect(await s.ev(`return document.querySelector('[data-weather]')?.dataset.weather === "snow"`), "tải lại không nhớ thời tiết");
     await s.ev(`document.querySelector('[data-testid="menu-open"]').click()`);
@@ -515,17 +511,38 @@ try {
     await sleep(400);
   });
 
-  await step("Học sinh: Tiệm Quà tràn toàn màn hình (không sidebar chung) có lối về trang chủ; nhân vật anime chibi (mống mắt + tóc mái)", async () => {
-    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
-    const wide = await s.ev(`const f=document.querySelector('[data-testid="shop-frame"]').getBoundingClientRect(); return f.left <= 1 && f.width >= document.body.clientWidth - 1`); // trang cuộn trên <body> nên so với body (trừ thanh cuộn)
-    expect(wide, "tiệm chưa tràn hết chiều ngang (còn sidebar/lề)");
-    expect(await s.ev(`return document.querySelector('[data-testid="shop-home"]')?.getAttribute('href') === "/" && document.querySelector('[data-testid="shop-home"]').offsetParent !== null`), "thiếu nút về trang chủ trên thanh gỗ");
+  await step("Học sinh: [GĐ9] Tiệm quà theo artifact — khung chung có sidebar, lọc độ hiếm + chỉ món đủ tiền + sắp xếp, bảng chi tiết thử đồ trên nhân vật, liên kết Thử trên hồ sơ; nhân vật anime", async () => {
+    await s.goto("/rewards", /Đổi xu và kim cương/i);
+    expect(await s.ev(`return !!document.querySelector('aside a[href="/rewards"]')`), "thiếu sidebar chung");
+    // Lọc Huyền thoại → mọi thẻ đều Huyền thoại
+    await s.ev(`document.querySelector('[data-testid="rar-legendary"]').click()`);
+    await sleep(200);
+    expect(await s.ev(`const c=[...document.querySelectorAll('[data-testid="item-card"],[data-testid="reward-card"],[data-testid="chest-card"]')]; return c.length > 0 && c.every(x => /Huyền thoại/.test(x.getAttribute('aria-label')))`), "lọc Huyền thoại sai");
+    await s.ev(`document.querySelector('[data-testid="rar-all"]').click()`);
+    // Chỉ món đủ tiền: không còn thẻ nào báo thiếu (title "Còn thiếu")
+    await s.ev(`document.querySelector('[data-testid="afford-only"]').click()`);
+    await sleep(200);
+    expect(await s.ev(`return [...document.querySelectorAll('[data-testid="item-card"],[data-testid="reward-card"]')].every(x => !/Còn thiếu/.test(x.parentElement.getAttribute('title') || ''))`), "Chỉ món đủ tiền vẫn hiện món thiếu");
+    await s.ev(`document.querySelector('[data-testid="afford-only"]').click()`);
+    // Sắp xếp giá tăng dần trong danh mục Trang trí
+    await s.ev(`document.querySelector('[data-testid="cat-deco"]').click()`);
+    await s.ev(`const el=document.querySelector('[data-testid="shop-sort"]'); const set=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set; set.call(el,'asc'); el.dispatchEvent(new Event('change',{bubbles:true}));`);
+    await sleep(300);
+    const prices = await s.ev(`return [...document.querySelectorAll('[data-testid="item-card"]')].map(x => (x.getAttribute('aria-label').match(/, ([\\d.]+) xu$/) || [])[1]).filter(Boolean).map(v => +v.replace(/\\./g, ''))`);
+    expect(prices.length > 3 && prices.every((p, i) => i === 0 || prices[i - 1] <= p), `sắp xếp giá tăng sai: ${prices.join(",")}`);
+    // Bấm thẻ đồ trang trí → chi tiết xem thử nhân vật + liên kết Thử trên hồ sơ
+    await s.ev(`document.querySelector('[data-testid="item-card"][data-item="acc-crown"]').click()`);
+    await sleep(200);
+    expect(await s.ev(`return document.querySelector('[data-testid="detail-name"]')?.innerText === "Vương miện" && !!document.querySelector('[data-testid="detail-art"] svg[role="img"]')`), "chi tiết không xem thử vương miện");
+    expect(await s.ev(`return document.querySelector('[data-testid="try-acc-crown"]')?.getAttribute('href') === "/profile?try=acc-crown"`), "thiếu Thử trên hồ sơ");
+    expect(await s.ev(`const s=document.querySelector('[data-testid="shop-sort"]'); const set=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set; set.call(s,'pop'); s.dispatchEvent(new Event('change',{bubbles:true})); document.querySelector('[data-testid="cat-all"]').click(); return true`), "");
+    await sleep(200);
     await s.ev(`document.querySelector('[data-testid="menu-open"]').click()`);
     expect(await s.waitText(/Menu Tiệm Quà/), "menu không mở");
     expect(await s.ev(`return document.querySelector('[data-testid="menu-home"]')?.getAttribute('href') === "/"`), "menu thiếu lối tắt Trang Chủ");
     await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
     await sleep(400);
-    const chibi = await s.ev(`const svg=document.querySelector('[data-testid="shop-hud"] svg[role="img"]'); return svg ? [!!svg.querySelector('linearGradient[id$="-iris"]'), svg.querySelectorAll('ellipse').length] : null`);
+    const chibi = await s.ev(`const svg=document.querySelector('[data-testid="item-card"] svg[role="img"]'); return svg ? [!!svg.querySelector('linearGradient[id$="-iris"]'), svg.querySelectorAll('ellipse').length] : null`);
     expect(chibi && chibi[0] && chibi[1] >= 10, `nhân vật chưa phải bản anime: ${JSON.stringify(chibi)}`);
   });
 
@@ -585,7 +602,7 @@ try {
   });
 
   await step("[review GĐ6] bấm đúp Cầu Nguyện chỉ mở 1 lượt; hết 3 lượt/ngày thì hình hộp quà và nút đều khoá", async () => {
-    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.goto("/rewards", /Đổi xu và kim cương/i);
     await s.ev(`document.querySelector('[data-testid="cat-box"]').click()`);
     await sleep(300);
     await s.ev(`document.querySelector('[data-testid="chest-open-xu"]').click()`);
@@ -606,21 +623,21 @@ try {
     await s.ev(`document.querySelector('[data-testid="cat-pet"]').click()`);
     await sleep(300);
     // Mèo đầu tiên còn mua được bằng xu (rương có thể đã cho sẵn Moka)
-    const petId = await s.ev(`const b=[...document.querySelectorAll('[data-testid^="shop-buy-pet-"]')].find(x => !x.disabled && /Xu/.test(x.innerText)); if(!b) return null; b.click(); return b.dataset.testid.replace("shop-buy-", "");`);
+    const petId = await s.ev(`for (const c of document.querySelectorAll('[data-testid="item-card"]')) { c.click(); await new Promise(r=>setTimeout(r,150)); const b=document.querySelector('[data-testid="shop-detail"] [data-testid^="shop-buy-pet-"]'); if (b && !b.disabled && / xu$/.test(b.innerText.trim())) { b.click(); return b.dataset.testid.replace("shop-buy-", ""); } } return null;`);
     expect(petId, "không còn mèo nào mua được bằng xu");
     expect(await s.waitText(/Đã mua/), "không thấy thông báo đã mua");
     await sleep(1500);
     const row = await prisma.userAvatar.findUnique({ where: { userId: data.student.id } });
     expect(row?.config?.pet === petId, `chưa lưu mèo mới ${petId}: ${JSON.stringify(row?.config)}`);
     const petName = { "pet-moka": "Moka", "pet-peanut": "Peanut" }[petId] ?? petId;
-    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
+    await s.goto("/rewards", /Đổi xu và kim cương/i);
     expect(new RegExp(petName).test(await s.ev(`return document.querySelector('[data-testid="pet-card"]')?.innerText || ""`)), `tải lại không còn mèo ${petName}`);
   });
 
   await step("[review GĐ6] 320px: tiêu đề hộp thoại không đè nút đóng; tablist chỉ chứa tab; menu có nút loa", async () => {
     await s.setSize(320, 640);
-    await s.goto("/rewards", /Tiệm Quà Học Đường/i);
-    expect(await s.ev(`const t=document.querySelector('[role="tablist"][aria-label="Danh mục"]'); return !!t && [...t.children].every(c => c.getAttribute("role") === "tab")`), "tablist chứa phần tử không phải tab");
+    await s.goto("/rewards", /Đổi xu và kim cương/i);
+    expect(await s.ev(`const t=document.querySelector('[role="tablist"][aria-label="Danh mục quà"]'); return !!t && [...t.children].every(c => c.getAttribute("role") === "tab")`), "tablist chứa phần tử không phải tab");
     await s.ev(`document.querySelector('[data-testid="cat-box"]').click()`);
     await sleep(300);
     await s.ev(`document.querySelector('[data-testid="chest-open-gem"]').click()`);
@@ -652,9 +669,9 @@ try {
       const problems = [];
       await s.setSize(w, h);
       for (const [p, ready, shot] of [
-        ["/rewards", /Tiệm Quà Học Đường/i, "rewards"],
+        ["/rewards", /Đổi xu và kim cương/i, "rewards"],
         ["/", /Tiệm quà/i, "home"],
-        ["/profile", /Trang trí & Vật phẩm/i, "profile-decor"],
+        ["/profile", /Tủ đồ & Cửa hàng/i, "profile-decor"],
         [`/profile/${data.student.id}`, /Thang danh hiệu/i, "profile"],
         ["/rewards/gacha", /Rương kho báu bí ẩn/i, "gacha"],
         ["/leaderboard?tab=g7&period=all", /Bảng Vàng/i, "leaderboard"],
