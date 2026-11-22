@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 import { ITEM_BY_ID } from "@/lib/game/items";
+import { PRESETS } from "@/lib/game/presets";
+
+const CHAR_STRIP = "/studio/characters.webp";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { cn } from "@/lib/utils";
 
@@ -9,8 +12,10 @@ import { cn } from "@/lib/utils";
  * nét viền hoạt hình. Thứ tự vẽ: nền → khung → hào quang → đồ sau lưng → tóc sau → chân → thân/áo → tay → cổ → đầu
  * → mặt → tóc trước → phụ kiện.
  */
-export function Chibi({ config, size = 120, className, title }: { config: AvatarConfig; size?: number; className?: string; title?: string }) {
+export function Chibi({ config, size = 120, className, title, painted = true }: { config: AvatarConfig; size?: number; className?: string; title?: string; painted?: boolean }) {
   const get = (slot: keyof AvatarConfig) => (config[slot] ? ITEM_BY_ID[config[slot] as string] : undefined);
+  // Trùng một "Mẫu nhân vật" của canvas thiết kế → vẽ bằng tranh của design (public/studio/characters.webp)
+  const presetIdx = painted ? PRESETS.findIndex((p) => (Object.keys(p.items) as (keyof AvatarConfig)[]).every((k) => (config[k] ?? null) === (p.items[k] ?? null))) : -1;
   const skin = get("skin")?.v ?? "#fde7d2";
   const hair = get("hair")?.v ?? "short";
   const hairRaw = get("hairColor")?.v ?? "#1f2937";
@@ -107,6 +112,13 @@ export function Chibi({ config, size = 120, className, title }: { config: Avatar
         </g>
       )}
 
+      {presetIdx >= 0 ? (
+        // Tranh nhân vật của design: ô 332×272 trong dải 8 ô, canh đáy khung
+        <svg x="-12" y="10" width="144" height="128" viewBox={`${presetIdx * 332} 0 332 272`} preserveAspectRatio="xMidYMax meet" data-painted={PRESETS[presetIdx].id}>
+          <image href={CHAR_STRIP} width="2656" height="272" />
+        </svg>
+      ) : (
+      <>
       {/* Đồ sau lưng */}
       <OutfitBack id={outfitId} shirt={shirt} accent={accent} line={shirtLine} />
 
@@ -151,6 +163,8 @@ export function Chibi({ config, size = 120, className, title }: { config: Avatar
 
       {/* Phụ kiện */}
       <Accessory acc={acc} uid={uid} hair={H} hairLine={hairLine} />
+      </>
+      )}
 
       {/* Hiệu ứng (bản tĩnh; banner hồ sơ có bản động) */}
       {fx && <FxStatic kind={fx} />}

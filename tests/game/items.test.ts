@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { prisma } from "@/lib/prisma";
 import { DUPLICATE_REFUND, ITEMS, ITEM_BY_ID, SLOTS, itemsOfSlot, shopItems } from "@/lib/game/items";
 import { canEquip, defaultAvatar, sanitizeAvatar } from "@/lib/game/avatar";
+import { PRESETS } from "@/lib/game/presets";
 import { buyItemInTx, getAvatar, getAvatars, saveAvatarConfig } from "@/lib/game/inventory";
 import { createFixture, disconnect } from "../helpers/fixtures";
 
@@ -44,13 +45,16 @@ describe("Danh mục đồ", () => {
 });
 
 describe("Nhân vật mặc định và làm sạch cấu hình", () => {
-  test("mặc định xác định theo id, chỉ dùng đồ miễn phí, khác nhau giữa các id", () => {
+  test("mặc định xác định theo id, chỉ dùng đồ miễn phí, là mẫu Học sinh nam", () => {
     const a = defaultAvatar("user-a");
     assert.deepEqual(defaultAvatar("user-a"), a);
     for (const k of ["skin", "hair", "hairColor", "eyes", "outfit"] as const) assert.ok(ITEM_BY_ID[a[k]!].free, k);
     assert.equal(a.pet, "pet-bi", "ai cũng có mèo Bi miễn phí");
-    const distinct = new Set(Array.from({ length: 20 }, (_, i) => JSON.stringify(defaultAvatar(`u${i}`))));
-    assert.ok(distinct.size >= 8, "20 id cho ít nhất 8 nhân vật khác nhau");
+    // Mặc định = mẫu "Học sinh nam" của canvas (hiện bằng tranh vẽ) cho mọi bạn
+    for (let i = 0; i < 5; i++) {
+      const d = defaultAvatar(`u${i}`);
+      for (const [k, v] of Object.entries(PRESETS[0].items)) assert.equal(d[k as keyof typeof d] ?? null, v ?? null, `${k} khác mẫu Học sinh nam`);
+    }
   });
 
   test("món lạ / sai ô / chưa sở hữu → mặc định; món sở hữu → giữ; ô tuỳ chọn bỏ được", () => {

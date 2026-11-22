@@ -2,6 +2,7 @@
  * Cấu hình nhân vật (món đang trang bị ở từng ô) — thuần, dùng ở cả client lẫn server.
  */
 import { ITEM_BY_ID, SLOTS, itemsOfSlot, type Slot } from "./items";
+import { PRESETS } from "./presets";
 
 export type AvatarConfig = Partial<Record<Slot, string | null>>;
 
@@ -17,19 +18,21 @@ export function hashId(id: string) {
   return h;
 }
 
-/** Nhân vật mặc định suy từ id người dùng: chỉ chọn trong đồ miễn phí */
+/** Nhân vật mặc định: mẫu "Học sinh nam" (tranh vẽ); màu da suy từ id (chỉ dùng khi tự chỉnh sang nhân vật vẽ SVG) */
 export function defaultAvatar(userId: string): Required<Pick<AvatarConfig, (typeof REQUIRED)[number]>> & AvatarConfig {
   const h = hashId(userId || "x");
   const pick = (slot: Slot, seed: number) => {
     const free = itemsOfSlot(slot).filter((i) => i.free);
     return free[seed % free.length].id;
   };
+  // Mặc định là mẫu "Học sinh nam" của canvas thiết kế (vẽ bằng tranh, toàn đồ miễn phí) — thầy chọn 22/11/2026
+  const student = PRESETS[0].items;
   return {
     skin: pick("skin", h & 0xff),
-    hair: pick("hair", (h >>> 8) & 0xff),
-    hairColor: pick("hairColor", (h >>> 16) & 0xff),
-    eyes: pick("eyes", (h >>> 24) & 0xff),
-    outfit: pick("outfit", (h >>> 4) & 0xff),
+    hair: student.hair ?? "hair-short",
+    hairColor: student.hairColor ?? "hc-brown",
+    eyes: student.eyes ?? "eye-brown",
+    outfit: student.outfit ?? "outfit-uniform",
     accessory: null,
     frame: null,
     background: null,
