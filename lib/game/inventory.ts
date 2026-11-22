@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { isEligibleStudent, lockWallet, writeEntry, type Tx } from "@/lib/points/engine";
 import type { PointsResult } from "@/lib/points/redemption";
 import { ITEM_BY_ID, type Item } from "./items";
+import { getLevel } from "@/lib/points/levels";
 import { sanitizeAvatar, type AvatarConfig } from "./avatar";
 
 /** Đồ đã sở hữu (itemId) */
@@ -51,6 +52,8 @@ export async function buyItemInTx(tx: Tx, userId: string, itemId: string): Promi
   const wallet = await lockWallet(tx, userId);
   const owned = await tx.userItem.count({ where: { userId, itemId } });
   if (owned > 0) return { success: false, error: "Bạn đã có món này rồi." };
+  // Món mở theo cấp (canvas "Tiệm quà v2"): cấp tính theo xu tích luỹ, tiêu xu không làm tụt cấp
+  if (item.minLevel && getLevel(wallet.lifetimeEarned).level < item.minLevel) return { success: false, error: `Cần đạt Lv.${item.minLevel} để mở khoá "${item.name}".` };
 
   if ("xu" in item.price) {
     if (wallet.balance < item.price.xu) {

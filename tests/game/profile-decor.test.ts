@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { ITEMS, ITEM_BY_ID, SLOTS } from "@/lib/game/items";
 import { PRESETS } from "@/lib/game/presets";
 import { defaultAvatar, sanitizeAvatar } from "@/lib/game/avatar";
-import { BundleAbort, buyBundleInTx } from "@/lib/game/inventory";
+import { BundleAbort, buyBundleInTx, buyItemInTx } from "@/lib/game/inventory";
 import { RARITY_ORDER, poolFor } from "@/lib/game/gacha-shared";
 import { createFixture, disconnect } from "../helpers/fixtures";
 
@@ -149,5 +149,34 @@ describe("Mua cả bộ (buyBundleInTx)", () => {
       assert.equal((await bundle(u.id, ["acc-scarf"])).success, false, JSON.stringify(opts));
       assert.equal(await prisma.userItem.count({ where: { userId: u.id } }), 0);
     }
+  });
+});
+
+describe("Bảng tên & món mở theo cấp (canvas Tiệm quà v2)", () => {
+  test("ô Bảng tên có 7 món, mỗi món có cấp tối thiểu, không vào bể rương", () => {
+    const plates = ITEMS.filter((i) => i.slot === "nameplate");
+    assert.equal(plates.length, 7);
+    for (const p of plates) {
+      assert.ok((p.minLevel ?? 0) >= 1, p.id);
+      assert.ok(p.studio, `${p.id} phải là đồ studio (ngoài bể rương)`);
+    }
+    assert.ok(SLOTS.some((s) => s.key === "nameplate" && s.optional));
+    assert.equal(defaultAvatar("u").nameplate, null);
+  });
+
+  test("chưa đủ cấp → không mua được (báo cần Lv), đủ xu tích luỹ lên cấp → mua được; tiêu xu không làm mất quyền", async () => {
+    const s = await fx.user();
+    await fx.give(s.id, 1000); // Lv.1
+    const buy = (id: string) => prisma.$transaction((tx) => buyItemInTx(tx, s.id, id));
+    const r1 = await buy("np-sakura"); // cần Lv.2
+    assert.equal(r1.success, false);
+    assert.match((r1 as { error: string }).error, /Lv\.2/);
+    assert.equal(await fx.balance(s.id), 1000);
+    assert.equal((await bundle(s.id, ["np-sakura"])).success, false, "mua cả bộ cũng bị chặn");
+    await fx.give(s.id, 600); // tích luỹ 1 600 → Lv.2
+    assert.equal((await buy("np-sakura")).success, true);
+    assert.equal(await fx.balance(s.id), 1000);
+    assert.equal((await buy("np-pond")).success, true, "Lv.1 mua được bảng tên Lv.1 dù số dư đã giảm");
+    assert.equal(sanitizeAvatar({ nameplate: "np-sakura" }, s.id, ["np-sakura"]).nameplate, "np-sakura");
   });
 });

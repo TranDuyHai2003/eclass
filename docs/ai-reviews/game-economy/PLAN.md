@@ -374,9 +374,24 @@ Thầy yêu cầu "thêm đầy đủ tính năng, hiệu ứng, âm thanh của
     - Túi đồ.
   - `ShopModal` có thêm chế độ `inline`, nên dùng lại logic và testid sẵn có.
 
-### Còn lại (C)
-- **Bảng tên (nameplate):** ô trang trí mới với 7 bảng tên có hiệu ứng (gợn nước, hoa rơi, sao, ánh quét…), hiện ở hồ sơ và Bảng Vàng. Cần thêm sprite bảng tên và sprite đồ mới của canvas.
-- **Món mở khoá theo cấp:** lớp "Cần Lv.X".
+### Đã làm (C) — bảng tên & món mở theo cấp
+- Ô mới `nameplate` (Bảng tên), tuỳ chọn, gồm 7 món với giá theo thang ×150:
+  - Tí Ta Tí Tách (Lv.1, 450 xu)
+  - Gió Xuân Anh Đào (Lv.2, 600 xu)
+  - Choáng Ngợp Trời Sao (Lv.3, 1 200 xu)
+  - Bướm Đêm (Lv.3, 2 400 xu)
+  - Tiệc Mèo Béo (Lv.4, 3 000 xu)
+  - Vết Cào Hoả Hồng (Lv.5, 8 ngọc)
+  - Hoàng Kim Tinh Tú VIP (Lv.6, 10 ngọc)
+- Ảnh lấy từ `public/studio/nameplates.webp` của canvas. Hiệu ứng (gợn nước, hoa rơi, sao, bướm, ánh quét) nằm trong `components/studio/Nameplate.tsx`.
+- `Item.minLevel`: `buyItemInTx` chặn khi `getLevel(lifetimeEarned).level` < minLevel. Mua cả bộ cũng bị chặn. Tiêu xu không làm mất quyền mua, vì cấp tính theo xu tích luỹ.
+- Giao diện:
+  - Tiệm: lớp khoá "Cần Lv.X" trên thẻ; nút "Cần đạt Lv.X để mở khoá" trong chi tiết.
+  - Hồ sơ: tab "Bảng tên"; bảng tên hiện sau tên ở thẻ hồ sơ và ở thẻ cấp độ của tiệm.
+- Test: `profile-decor.test.ts` (đủ 7 món, chặn theo cấp, không vào pool rương).
+
+### Còn có thể làm thêm
+- Hiện bảng tên và khung trên từng dòng Bảng Vàng: cần nạp cấu hình nhân vật cho các dòng xếp hạng.
 
 ### Không làm
 - Mục Giáo viên trong tiệm: thầy không vào /rewards; tạo mã đã có ở /teacher/rewards.

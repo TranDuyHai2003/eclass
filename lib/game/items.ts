@@ -5,7 +5,7 @@
  */
 import type { Rarity } from "@/lib/points/rarity";
 
-export type Slot = "skin" | "hair" | "hairColor" | "eyes" | "outfit" | "accessory" | "frame" | "background" | "effect" | "title" | "pet";
+export type Slot = "skin" | "hair" | "hairColor" | "eyes" | "outfit" | "accessory" | "frame" | "background" | "effect" | "nameplate" | "title" | "pet";
 
 export const SLOTS: { key: Slot; label: string; icon: string; optional?: boolean }[] = [
   { key: "skin", label: "Màu da", icon: "🖐️" },
@@ -17,6 +17,7 @@ export const SLOTS: { key: Slot; label: string; icon: string; optional?: boolean
   { key: "frame", label: "Khung", icon: "🖼️", optional: true },
   { key: "background", label: "Nền", icon: "🌈", optional: true },
   { key: "effect", label: "Hiệu ứng", icon: "✨", optional: true },
+  { key: "nameplate", label: "Bảng tên", icon: "🪪", optional: true },
   { key: "title", label: "Danh hiệu", icon: "🏷️", optional: true },
   { key: "pet", label: "Mèo Cún", icon: "🐱", optional: true },
 ];
@@ -32,6 +33,8 @@ export interface Item {
   gachaOnly?: boolean;
   /** Món bán ở "Hồ sơ & Trang trí" (GĐ8): không vào bể rương (giữ tỉ lệ rương cũ, review Gemini GĐ8), không hiện ở "Tất cả" của tiệm */
   studio?: boolean;
+  /** Cấp tối thiểu (theo xu tích luỹ) mới mua được — canvas "Tiệm quà v2" */
+  minLevel?: number;
   /** Tham số vẽ (màu, biến thể) — Chibi.tsx đọc */
   v?: string;
   v2?: string;
@@ -146,6 +149,14 @@ export const ITEMS: Item[] = [
   { id: "title-hunter10", slot: "title", name: "Thợ săn điểm 10", rarity: "rare", studio: true, price: { xu: 1200 } },
   { id: "title-mathking", slot: "title", name: "Học bá Toán học", rarity: "epic", studio: true, price: { xu: 2400 } },
   { id: "title-warrior", slot: "title", name: "Chiến thần giải đề", rarity: "epic", gachaOnly: true },
+  // ---- Bảng tên (canvas "Tiệm quà v2"): nền dải bảng tên + hiệu ứng động; mở theo cấp. v = hàng trong public/studio/nameplates.webp, v2 = "dark" → chữ trắng
+  { id: "np-pond", slot: "nameplate", name: "Bảng tên Tí Ta Tí Tách", rarity: "common", studio: true, price: { xu: 450 }, minLevel: 1, v: "0" },
+  { id: "np-sakura", slot: "nameplate", name: "Bảng tên Gió Xuân Anh Đào", rarity: "common", studio: true, price: { xu: 600 }, minLevel: 2, v: "1" },
+  { id: "np-starry", slot: "nameplate", name: "Choáng Ngợp Trời Sao", rarity: "rare", studio: true, price: { xu: 1200 }, minLevel: 3, v: "2", v2: "dark" },
+  { id: "np-butterfly", slot: "nameplate", name: "Bảng tên Bướm Đêm Lấp Lánh", rarity: "epic", studio: true, price: { xu: 2400 }, minLevel: 3, v: "3", v2: "dark" },
+  { id: "np-catparty", slot: "nameplate", name: "Bảng tên Bữa Tiệc Mèo Béo", rarity: "epic", studio: true, price: { xu: 3000 }, minLevel: 4, v: "4" },
+  { id: "np-crimson", slot: "nameplate", name: "Bảng tên Vết Cào Hỏa Hồng", rarity: "legendary", studio: true, price: { gem: 8 }, minLevel: 5, v: "5", v2: "dark" },
+  { id: "np-celestial", slot: "nameplate", name: "Hoàng Kim Tinh Tú VIP", rarity: "legendary", studio: true, price: { gem: 10 }, minLevel: 6, v: "6", v2: "dark" },
   // ---- Mèo Cún đồng hành (theo mockup "Tiệm Quà Học Đường"): hiện cạnh hồ sơ, bấm vuốt ve
   { id: "pet-bi", slot: "pet", name: "Mèo Mướp Bi", rarity: "common", free: true, v: "tabby" },
   { id: "pet-moka", slot: "pet", name: "Mèo Vàng Moka Béo Ú", rarity: "common", price: { xu: 450 }, v: "orange" },

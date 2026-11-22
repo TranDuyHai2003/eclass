@@ -17,6 +17,7 @@ import { PetSvg } from "@/components/avatar/PetSvg";
 import { CoinBurst } from "@/components/game/CoinBurst";
 import { Confetti } from "@/components/points/Confetti";
 import { ShopArt, Sprite, frameSpriteStyle, hasSprite, shopItemIndex } from "@/components/studio/Sprite";
+import { Nameplate } from "@/components/studio/Nameplate";
 import { ProfileBanner } from "./ProfileBanner";
 import { ProfileScene } from "./ProfileScene";
 import { FrameRing } from "./FrameRing";
@@ -34,7 +35,7 @@ export interface DecorStudioProps {
   initialTry?: string | null;
 }
 
-type Tab = "char" | "pet" | "frame" | "background" | "effect" | "title";
+type Tab = "char" | "pet" | "frame" | "background" | "effect" | "nameplate" | "title";
 type Filter = "all" | "owned" | "shop";
 const TABS: { key: Tab; label: string; slots: Slot[] }[] = [
   { key: "char", label: "Nhân vật", slots: ["hair", "hairColor", "eyes", "outfit", "accessory", "skin"] },
@@ -42,10 +43,11 @@ const TABS: { key: Tab; label: string; slots: Slot[] }[] = [
   { key: "frame", label: "Khung viền", slots: ["frame"] },
   { key: "background", label: "Hình nền", slots: ["background"] },
   { key: "effect", label: "Hiệu ứng", slots: ["effect"] },
+  { key: "nameplate", label: "Bảng tên", slots: ["nameplate"] },
   { key: "title", label: "Danh hiệu", slots: ["title"] },
 ];
 const TAB_OF: Partial<Record<Slot, Tab>> = Object.fromEntries(TABS.flatMap((t) => t.slots.map((s) => [s, t.key])));
-const SLOT_KEYS: Slot[] = ["skin", "hair", "hairColor", "eyes", "outfit", "accessory", "frame", "background", "effect", "title", "pet"];
+const SLOT_KEYS: Slot[] = ["skin", "hair", "hairColor", "eyes", "outfit", "accessory", "frame", "background", "effect", "nameplate", "title", "pet"];
 const same = (a: AvatarConfig, b: AvatarConfig) => SLOT_KEYS.every((k) => (a[k] ?? null) === (b[k] ?? null));
 const fmt = (n: number) => n.toLocaleString("vi-VN");
 const priceText = (xu: number, gem: number) => [xu ? `${fmt(xu)} xu` : "", gem ? `${gem} ngọc` : ""].filter(Boolean).join(" + ") || "0 xu";
@@ -90,8 +92,10 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
     () => SLOT_KEYS.map((k) => (config[k] ? ITEM_BY_ID[config[k] as string] : undefined)).filter((it): it is Item => !!it && !it.free && !owned.has(it.id)),
     [config, owned],
   );
-  const buyable = trying.filter((it) => it.price);
-  const locked = trying.filter((it) => !it.price);
+  const lvl = level?.level ?? 1;
+  const lvLocked = (it: Item) => (it.minLevel ?? 0) > lvl;
+  const buyable = trying.filter((it) => it.price && !lvLocked(it));
+  const locked = trying.filter((it) => !it.price || lvLocked(it));
   const cost = buyable.reduce((s, it) => ({ xu: s.xu + (it.price && "xu" in it.price ? it.price.xu : 0), gem: s.gem + (it.price && "gem" in it.price ? it.price.gem : 0) }), { xu: 0, gem: 0 });
   const lackXu = Math.max(0, cost.xu - balance);
   const lackGem = Math.max(0, cost.gem - gems);
@@ -166,7 +170,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
   const bar = !dirty
     ? { kind: "ok" as const, title: justSaved ? "Đã lưu trang trí" : "Không có thay đổi", sub: justSaved ? "Hồ sơ của bạn đã được cập nhật." : "Chọn vật phẩm để xem thử trên hồ sơ.", icon: "bg-[#E8F6EE] text-[#17703F]" }
     : locked.length
-      ? { kind: "warn" as const, title: `Chưa mở khóa “${locked[0].name}”`, sub: "Mở Hộp bí ẩn ở Tiệm quà để nhận món này.", icon: "bg-[#FDECE4] text-[#8A3B12]" }
+      ? { kind: "warn" as const, title: `Chưa mở khóa “${locked[0].name}”`, sub: lvLocked(locked[0]) ? `Đạt Lv.${locked[0].minLevel} (xu tích luỹ) để mở khoá món này.` : "Mở Hộp bí ẩn ở Tiệm quà để nhận món này.", icon: "bg-[#FDECE4] text-[#8A3B12]" }
       : buyable.length
         ? {
             kind: "warn" as const,
@@ -239,10 +243,17 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
               </div>
               {config.frame && !frameStyle && <FrameRing frameId={config.frame} className="absolute inset-0 h-full w-full" />}
             </div>
-            <div className="flex min-w-0 flex-col gap-1.5 pb-1.5">
-              <p className="truncate text-[22px] font-extrabold leading-[1.1]">{user.name || "Học sinh"}</p>
-              <p className="truncate text-[13px] text-[#6B6680]">{user.email || "Chưa có email"}</p>
-            </div>
+            {config.nameplate ? (
+              <Nameplate id={config.nameplate} className="mb-1 min-w-0 flex-1 px-3 py-2" testId="profile-nameplate">
+                <p className="truncate text-[18px] font-extrabold leading-[1.1]">{user.name || "Học sinh"}</p>
+                <p className="truncate text-xs opacity-80">{user.email || "Chưa có email"}</p>
+              </Nameplate>
+            ) : (
+              <div className="flex min-w-0 flex-col gap-1.5 pb-1.5">
+                <p className="truncate text-[22px] font-extrabold leading-[1.1]">{user.name || "Học sinh"}</p>
+                <p className="truncate text-[13px] text-[#6B6680]">{user.email || "Chưa có email"}</p>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -474,7 +485,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
 
   function renderSlot(slot: Slot) {
     const items = itemsOfSlot(slot).filter((it) => (filter === "owned" ? has(it) : filter === "shop" ? !has(it) : true));
-    const wide = slot === "background";
+    const wide = slot === "background" || slot === "nameplate";
     const cards = items.map((it) => {
       const own = has(it);
       const on = config[slot] === it.id;
@@ -485,11 +496,19 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
           name={it.name}
           selected={on}
           trying={on && !own}
-          locked={!own && !it.price}
+          locked={!own && (!it.price || lvLocked(it))}
           wide={wide}
           onClick={() => put(slot, it.id)}
-          art={slot === "title" ? <span className="rounded-full px-3 py-[7px] text-center text-xs font-extrabold" style={titlePill(it.id)}>{it.name}</span> : artOf(it)}
-          status={saved[slot] === it.id && own ? <Using /> : own ? (it.free ? <span className="text-xs font-semibold text-[#6B6680]">Miễn phí</span> : <Owned />) : it.price ? <Price text={"xu" in it.price ? `${fmt(it.price.xu)} xu` : `${it.price.gem} ngọc`} /> : <LockNote text="Hộp bí ẩn" />}
+          art={
+            slot === "title" ? (
+              <span className="rounded-full px-3 py-[7px] text-center text-xs font-extrabold" style={titlePill(it.id)}>{it.name}</span>
+            ) : slot === "nameplate" ? (
+              <Nameplate id={it.id} className="flex aspect-[420/100] w-[94%] items-center px-2.5"><span className="text-xs font-extrabold">{user.name || "Học Sinh"}</span></Nameplate>
+            ) : (
+              artOf(it)
+            )
+          }
+          status={saved[slot] === it.id && own ? <Using /> : own ? (it.free ? <span className="text-xs font-semibold text-[#6B6680]">Miễn phí</span> : <Owned />) : lvLocked(it) ? <LockNote text={`Lv.${it.minLevel}`} /> : it.price ? <Price text={"xu" in it.price ? `${fmt(it.price.xu)} xu` : `${it.price.gem} ngọc`} /> : <LockNote text="Hộp bí ẩn" />}
           aria={`${it.name}${own ? ", đã sở hữu" : it.price ? `, giá ${"xu" in it.price ? `${fmt(it.price.xu)} xu` : `${it.price.gem} ngọc`}` : ", khóa"}`}
         />
       );

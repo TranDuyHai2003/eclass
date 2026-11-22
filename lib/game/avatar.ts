@@ -37,6 +37,7 @@ export function defaultAvatar(userId: string): Required<Pick<AvatarConfig, (type
     frame: null,
     background: null,
     effect: null,
+    nameplate: null,
     title: null,
     // Ai cũng có một bé mèo miễn phí đi cùng (mockup Tiệm Quà Học Đường)
     pet: "pet-bi",

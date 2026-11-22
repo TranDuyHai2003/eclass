@@ -19,6 +19,7 @@ import { ITEMS, ITEM_BY_ID, SLOTS, type Item } from "@/lib/game/items";
 import { CHESTS, type ChestId, type Outcome } from "@/lib/game/gacha-shared";
 import { buildNpcLines } from "@/lib/game/npc";
 import { buzz, isSoundOn, onSoundChange, play, setSoundOn } from "@/lib/sound";
+import { Nameplate } from "@/components/studio/Nameplate";
 import { LevelUpDialog, Mascot, OfflineBanner, useOnline, useTweenNumber } from "@/components/studio/effects";
 import { Chibi } from "@/components/avatar/Chibi";
 import { PetSvg } from "@/components/avatar/PetSvg";
@@ -56,7 +57,7 @@ const DECO_SLOTS = SLOTS.filter((sl) => sl.key !== "pet" && ITEMS.some((i) => i.
 /** "Tất cả" chỉ trưng đồ trang trí hồ sơ (khung, nền, phụ kiện, danh hiệu); tóc/mắt/trang phục xem ở Trang trí */
 const ALL_SLOTS: Item["slot"][] = ["frame", "background", "accessory", "title"];
 /** Ô mặc được ngay từ tiệm (không cần trình tuỳ chỉnh) */
-const QUICK_EQUIP: Item["slot"][] = ["frame", "background", "title", "accessory", "pet", "effect"];
+const QUICK_EQUIP: Item["slot"][] = ["frame", "background", "title", "accessory", "pet", "effect", "nameplate"];
 const GEM_XU = 1500; // quy đổi chỉ để sắp xếp theo giá
 
 const CATS: { key: Cat; label: string }[] = [
@@ -292,12 +293,12 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
             {avatar.frame && !frameSpriteStyle(avatar.frame, 96) && <FrameRing frameId={avatar.frame} className="absolute inset-0 h-full w-full" />}
           </Link>
           <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-2.5">
-            <div className="relative flex min-h-14 items-center overflow-hidden rounded-[14px] bg-gradient-to-r from-[#EDE7FD] via-[#F6F1FF] to-[#FCE7F3] px-3.5 py-2.5">
-              <div className="relative flex flex-col text-[#2A1F5C]">
+            <Nameplate id={avatar.nameplate} className="flex min-h-14 items-center px-3.5 py-2.5" testId="hud-nameplate">
+              <div className="flex flex-col">
                 <span className="text-[17px] font-extrabold">{user.name || "Học sinh"}</span>
                 <span className="text-xs">{user.grade ? `Khối ${user.grade} · ` : ""}{level.name}</span>
               </div>
-            </div>
+            </Nameplate>
             <div className="flex flex-wrap justify-between gap-2.5 text-[13px]">
               <button type="button" data-testid="titles-open" onClick={() => { play("click"); setModal("titles"); }} title="Xem hệ thống danh hiệu" className="text-left hover:underline">
                 <b>Lv.{level.level}</b> <span className="text-[#5F5B73]">{level.name}</span>
@@ -429,7 +430,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           <div className="flex items-start gap-6">
             <div className="grid min-w-0 flex-1 grid-cols-2 gap-3.5 sm:grid-cols-[repeat(auto-fill,minmax(180px,1fr))]">
               {list.map((e) => (
-                <ShopCard key={e.key} e={e} selected={sel?.key === e.key} avatar={avatar} owned={ownsEntry(e)} using={e.kind === "item" && avatar[e.it.slot] === e.it.id} enough={enough(e.price)} have={haveFor(e.price)} onPick={() => pick(e)} />
+                <ShopCard key={e.key} e={e} lv={level.level} selected={sel?.key === e.key} avatar={avatar} owned={ownsEntry(e)} using={e.kind === "item" && avatar[e.it.slot] === e.it.id} enough={enough(e.price)} have={haveFor(e.price)} onPick={() => pick(e)} />
               ))}
               {list.length === 0 && (
                 <div className="col-span-full rounded-[18px] border border-dashed border-[#E4E0F0] bg-white px-4 py-12 text-center text-[#5F5B73]">
@@ -729,6 +730,13 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         </>
       );
     }
+    if ((it.minLevel ?? 0) > level.level)
+      return (
+        <>
+          <button type="button" disabled className="h-12 cursor-not-allowed rounded-xl bg-[#ECE9F5] text-[15px] font-extrabold text-[#6B6680]" data-testid={`shop-buy-${it.id}`}>Cần đạt Lv.{it.minLevel} để mở khoá</button>
+          {tryLink}
+        </>
+      );
     return (
       <>
         <button
@@ -749,8 +757,8 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
 
 /* ============================== Thẻ trong lưới ============================== */
 
-function ShopCard({ e, selected, avatar, owned, using, enough, have, onPick }: {
-  e: Entry; selected: boolean; avatar: StudentPointsPageData["avatar"]; owned: boolean; using: boolean; enough: boolean; have: number; onPick: () => void;
+function ShopCard({ e, lv, selected, avatar, owned, using, enough, have, onPick }: {
+  e: Entry; lv: number; selected: boolean; avatar: StudentPointsPageData["avatar"]; owned: boolean; using: boolean; enough: boolean; have: number; onPick: () => void;
 }) {
   const st = RAR_STYLE[e.rarity];
   const need = e.price ? ("xu" in e.price ? e.price.xu : e.price.gem) : 0;
@@ -789,6 +797,12 @@ function ShopCard({ e, selected, avatar, owned, using, enough, have, onPick }: {
         <span className={cn("relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl", st.tile)}>
           <span className="studio-art flex aspect-square w-[84%] items-center justify-center"><EntryArt e={e} avatar={avatar} /></span>
           <span className={cn("absolute left-2 top-2 rounded-full px-2 py-0.5 text-[11px] font-bold", st.tag)}>{st.label}</span>
+          {e.kind === "item" && !owned && (e.it.minLevel ?? 0) > lv && (
+            <span className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-[rgba(30,27,46,0.5)] text-[13px] font-extrabold text-white" data-testid="level-lock">
+              <span className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-white text-[#2A1F5C]"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg></span>
+              Cần Lv.{e.it.minLevel}
+            </span>
+          )}
         </span>
         <span className="flex min-w-0 flex-col gap-1.5 px-1">
           <span className="truncate text-sm font-bold">{e.name}</span>
@@ -838,6 +852,12 @@ function ItemArt({ it, avatar }: { it: Item; avatar: StudentPointsPageData["avat
         <span className="absolute inset-[15%] rounded-full bg-white/70" />
         <FrameRing frameId={it.id} className="absolute inset-0 h-full w-full" />
       </span>
+    );
+  if (it.slot === "nameplate")
+    return (
+      <Nameplate id={it.id} className="flex aspect-[420/100] w-[96%] items-center px-2.5">
+        <span className="text-xs font-extrabold">Học Sinh</span>
+      </Nameplate>
     );
   if (it.slot === "title") return <span className="rounded-full bg-[#2A1F5C] px-3 py-1.5 text-center text-xs font-extrabold text-[#FDE68A]">{it.name}</span>;
   return <Chibi config={{ ...avatar, background: null, effect: null, [it.slot]: it.id }} size={120} className="h-full w-auto" />;
