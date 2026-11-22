@@ -141,12 +141,21 @@ export default async function Header() {
                   </Link>
                 </>
               ) : (
-                <Link
-                  href="/login"
-                  className="h-10 sm:h-12 px-6 sm:px-8 inline-flex items-center rounded-2xl bg-slate-900 text-[11px] font-black text-white hover:bg-blue-600 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest shadow-xl shadow-slate-200"
-                >
-                  Đăng nhập
-                </Link>
+                <>
+                  {/* Khách: theo artifact thiết kế (Đăng nhập viền + Đăng ký học tím) */}
+                  <Link
+                    href="/login"
+                    className="h-10 sm:h-11 px-4 sm:px-[18px] inline-flex items-center rounded-xl border border-[#E4E0F0] bg-white text-sm font-bold text-[#2A1F5C] hover:border-[#5B2BD6] transition-colors"
+                  >
+                    Đăng nhập
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="hidden min-[400px]:inline-flex h-10 sm:h-11 px-4 sm:px-[18px] items-center rounded-xl bg-[#5B2BD6] text-sm font-bold text-white hover:bg-[#4319A8] transition-colors"
+                  >
+                    Đăng ký học
+                  </Link>
+                </>
               )}
             </div>
           </div>

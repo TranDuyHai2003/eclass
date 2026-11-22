@@ -52,6 +52,7 @@ export async function getDashboardData(sort: "desc" | "asc" | "default" = "defau
         select: { name: true, image: true },
       },
       category: true,
+      classes: { select: { grade: true } },
     },
     orderBy: sort === "default" ? { createdAt: "desc" } : { updatedAt: sort },
   });

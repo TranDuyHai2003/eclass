@@ -17,7 +17,7 @@ import type { AvatarConfig } from "@/lib/game/avatar";
 import type { LeaderboardRow } from "@/lib/game/leaderboard";
 import { HomeNpcRow } from "./HomeNpcRow";
 import { StudentTasks } from "./StudentTasks";
-import { GuestHero } from "./GuestHero";
+import { GuestLanding, type LandingReward } from "../landing/GuestLanding";
 
 import { SortSelect } from "@/components/ui/SortSelect";
 
@@ -32,6 +32,7 @@ export function Dashboard({
   npcLines,
   top3,
   grade,
+  guestRewards,
 }: {
   user: any;
   courses: any[];
@@ -48,6 +49,8 @@ export function Dashboard({
   /** Top 3 Bảng Vàng khối mình */
   top3?: LeaderboardRow[];
   grade?: number | null;
+  /** Quà đang mở cho mọi lớp — chỉ trang chủ khách */
+  guestRewards?: LandingReward[];
 }) {
   const searchParams = useSearchParams();
   const currentSort = searchParams?.get("sort") || "default";
@@ -67,6 +70,9 @@ export function Dashboard({
   const firstEnrolled = courses.find((c) => c.isEnrolled);
   const firstLessonId = firstEnrolled?.chapters?.[0]?.lessons?.[0]?.id;
   const startHref = firstLessonId ? `/watch/${firstLessonId}` : "/courses";
+
+  // Khách: trang giới thiệu theo artifact thiết kế (không sidebar)
+  if (!user) return <GuestLanding courses={courses} rewards={guestRewards ?? []} />;
 
   return (
     <div className="page-shell min-h-screen bg-[#EBF3FF]">
@@ -100,13 +106,6 @@ export function Dashboard({
 
           {user?.role === "STUDENT" && npcLines && <HomeNpcRow lines={npcLines} top3={top3 ?? []} grade={grade ?? null} currentUserId={user.id} />}
 
-          {/* Đếm ngược kỳ thi: học sinh đã có thẻ gọn ở cột phải thẻ chào */}
-          {!user && (
-            <GuestHero
-              courseCount={courses.length}
-              lessonCount={courses.reduce((n, c) => n + (c.chapters ?? []).reduce((m: number, ch: any) => m + (ch.lessons?.length ?? 0), 0), 0)}
-            />
-          )}
           {user && user.role !== "STUDENT" && <HomePromo />}
 
           {/* Course Catalog / Learning Progress */}

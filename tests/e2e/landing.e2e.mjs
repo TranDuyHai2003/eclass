@@ -2,7 +2,8 @@
  * E2E Trang chủ khách · Khóa học · Đăng nhập (theo artifact thiết kế 22/11/2026).
  *
  * Cần server đang chạy (BASE_URL, mặc định http://localhost:3000) và DB local. Tự tạo/xoá khoá học + học sinh thử.
- * Kiểm /courses: lọc theo khối (?grade=), tìm (?query=), dải "Tiếp tục học" trỏ bài kế tiếp,
+ * Kiểm /courses: lọc theo khối (?grade=), tìm (?query=), dải "Tiếp tục học" trỏ bài kế tiếp;
+ * trang chủ khách: hero, đếm ngược, lộ trình làm mờ theo khối, footer;
  * không tràn/cắt chữ ở 390/768/1366/1920.
  */
 import { createRequire } from "module";
@@ -144,6 +145,55 @@ try {
       await g.close();
     }
   });
+
+  await step("Trang chủ khách: hero (Đăng ký/Đăng nhập), đếm ngược, 3 bước, lộ trình, footer; header có 2 nút khách", async () => {
+    const g = await openBrowser({ baseUrl: BASE_URL, width: 1366, height: 900 });
+    try {
+      await g.goto("/", /Học toán THPT dễ hiểu/);
+      const hero = await g.ev(`const h=document.querySelector('[data-testid="guest-hero"]'); return h ? [!!h.querySelector('a[href="/register"]'), !!h.querySelector('a[href="/login"]'), !!h.querySelector('a[href="#lo-trinh"]')] : null`);
+      expect(hero && hero.every(Boolean), `hero thiếu nút: ${JSON.stringify(hero)}`);
+      const header = await g.ev(`const h=document.querySelector('header'); return [!!h.querySelector('a[href="/login"]'), !!h.querySelector('a[href="/register"]')]`);
+      expect(header[0] && header[1], "header khách thiếu Đăng nhập / Đăng ký học");
+      const cd = await g.ev(`return document.querySelector('[data-testid="landing-countdown"]')?.innerText || ''`);
+      expect(/Kỳ thi THPT 2027/.test(cd) && /ngày/.test(cd) && /khóa học/.test(cd), `dải đếm ngược sai: ${cd}`);
+      expect(await g.waitText(/Học mỗi tuần theo \d bước/, 3000), "thiếu mục các bước");
+      expect(await g.ev(`return !!document.querySelector('#lo-trinh [data-testid="course-tile"]')`), "Lộ trình không có thẻ khoá");
+      expect(await g.ev(`return !!document.querySelector('footer')?.innerText.includes('Thật Dễ Học Toán')`), "thiếu footer");
+      expect(!(await g.ev(`return !!document.querySelector('aside')`)), "trang khách không được có sidebar");
+      expect(g.errors.length === 0, g.errors.join("\n    "));
+    } finally {
+      await g.close();
+    }
+  });
+
+  await step("Trang chủ khách: chọn khối ở Lộ trình làm mờ khoá khác khối, Tất cả bỏ mờ", async () => {
+    const g = await openBrowser({ baseUrl: BASE_URL, width: 1366, height: 900 });
+    try {
+      await g.goto("/", /Lộ trình học tập/);
+      await g.click(/^Lớp 10$/, '#lo-trinh [role="tab"]');
+      const st = await g.ev(`return [...document.querySelectorAll('#lo-trinh [data-testid="course-tile"]')].map(t=>[t.dataset.group, t.dataset.dimmed==="true"])`);
+      expect(st.length > 1 && st.every(([gr, dim]) => (gr === "10") === !dim), `làm mờ sai: ${JSON.stringify(st)}`);
+      expect(await g.ev(`return document.querySelector('#lo-trinh [role="tab"][aria-selected="true"]')?.innerText.trim()`) === "Lớp 10", "tab không aria-selected");
+      await g.click(/^Tất cả$/, '#lo-trinh [role="tab"]');
+      expect(await g.ev(`return !document.querySelector('#lo-trinh [data-dimmed="true"]')`), "Tất cả vẫn còn thẻ mờ");
+    } finally {
+      await g.close();
+    }
+  });
+
+  for (const [w, h] of [[390, 844], [768, 1024], [1366, 900], [1920, 1080]]) {
+    await step(`Trang chủ khách ${w}px: không tràn / cắt chữ`, async () => {
+      const g = await openBrowser({ baseUrl: BASE_URL, width: w, height: h });
+      try {
+        await g.goto("/", /Học toán THPT dễ hiểu/);
+        const probs = await g.layoutProblems();
+        expect(probs.length === 0, probs.join("\n    "));
+        await g.screenshot(path.join(SHOTS, `landing-${w}.png`), { fullPage: true });
+      } finally {
+        await g.close();
+      }
+    });
+  }
 
   await step("Không có lỗi JavaScript", async () => {
     expect(b.errors.length === 0, b.errors.join("\n    "));

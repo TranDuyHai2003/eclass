@@ -10,6 +10,20 @@ import { getLeaderboard } from "@/lib/game/leaderboard";
 import { getLevel } from "@/lib/points/levels";
 import { maskUsersForDemo } from "@/lib/demo-privacy";
 import { prisma, prismaBase } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
+
+/** Quà đang mở cho mọi lớp (không gắn lớp riêng) — hiện ở trang chủ khách, cache 60 giây */
+const getGuestRewards = unstable_cache(
+  () =>
+    prismaBase.reward.findMany({
+      where: { isActive: true, deletedAt: null, classes: { none: {} } },
+      select: { id: true, title: true, imageUrl: true, emoji: true },
+      orderBy: { createdAt: "desc" },
+      take: 4,
+    }),
+  ["guest-rewards"],
+  { revalidate: 60 },
+);
 
 /** Câu thoại NPC từ dữ liệu trang chủ (tách hàm để Date.now() không nằm trong thân component) */
 function buildHomeNpc(c: Omit<Parameters<typeof buildNpcLines>[0], "overdue" | "dueSoon"> & { todo: { title: string; dueDate: Date | null }[] }) {
@@ -28,6 +42,7 @@ export default async function Home() {
   const session = await auth();
   const { courses, lastLesson, stats } = await getDashboardData();
   const isStudent = session?.user?.role === "STUDENT" && !!session.user.id;
+  const guestRewards = !session?.user && isPointsEnabled() ? await getGuestRewards().catch(() => []) : [];
   const uid = session?.user?.id ?? "";
   // Các truy vấn của học sinh chạy song song (xu, bài cần làm, nhân vật)
   const [points, extras, avatar, me] = await Promise.all([
@@ -75,6 +90,7 @@ export default async function Home() {
       npcLines={npcLines}
       top3={top3}
       grade={grade}
+      guestRewards={guestRewards}
     />
   );
 }
