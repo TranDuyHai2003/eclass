@@ -67,6 +67,40 @@ export async function buyItemInTx(tx: Tx, userId: string, itemId: string): Promi
   return { success: true, message: `Đã mua "${item.name}" 🎉`, item };
 }
 
+export type BundleResult = PointsResult & { bought?: Item[] };
+
+/** Lỗi nội bộ để rollback cả giao dịch khi một món trong bộ không mua được */
+export class BundleAbort extends Error {}
+
+/**
+ * Mua cả bộ (Mẫu nhân vật): được cả bộ hoặc không món nào.
+ * Bỏ qua món miễn phí / đã sở hữu; còn món chỉ-từ-rương thì từ chối trước khi ghi; kiểm tổng xu/ngọc sau khi khoá ví;
+ * mua lần lượt bằng `buyItemInTx` (cùng tx) — món nào lỗi → ném BundleAbort để huỷ mọi bút toán trước đó.
+ */
+export async function buyBundleInTx(tx: Tx, userId: string, itemIds: string[]): Promise<BundleResult> {
+  const ids = [...new Set(itemIds.filter((x): x is string => typeof x === "string" && x.length > 0))].slice(0, 12);
+  const items = ids.map((id) => ITEM_BY_ID[id]);
+  if (items.length === 0 || items.some((i) => !i)) return { success: false, error: "Bộ đồ không hợp lệ." };
+  if (!(await isEligibleStudent(tx, userId))) return { success: false, error: "Tài khoản cần được thầy duyệt mới mua được đồ." };
+  const wallet = await lockWallet(tx, userId);
+  const ownedRows: { itemId: string }[] = await tx.userItem.findMany({ where: { userId, itemId: { in: ids } }, select: { itemId: true } });
+  const owned = new Set(ownedRows.map((r) => r.itemId));
+  const missing = items.filter((i) => !i.free && !owned.has(i.id));
+  // Đã đủ (vd tab khác vừa mua xong, hoặc bấm đúp): thành công, không ghi sổ
+  if (missing.length === 0) return { success: true, message: "Bạn đã có đủ các món trong bộ này ✨", bought: [] };
+  const gachaOnly = missing.filter((i) => !i.price);
+  if (gachaOnly.length) return { success: false, error: `Bộ này cần món chỉ có trong rương: ${gachaOnly.map((i) => i.name).join(", ")}.` };
+  const xu = missing.reduce((n, i) => n + (i.price && "xu" in i.price ? i.price.xu : 0), 0);
+  const gem = missing.reduce((n, i) => n + (i.price && "gem" in i.price ? i.price.gem : 0), 0);
+  if (wallet.balance < xu) return { success: false, error: `Bạn cần thêm ${(xu - wallet.balance).toLocaleString("vi-VN")} xu để mua cả bộ.` };
+  if (wallet.gems < gem) return { success: false, error: `Bạn cần thêm ${gem - wallet.gems} ngọc để mua cả bộ.` };
+  for (const item of missing) {
+    const res = await buyItemInTx(tx, userId, item.id);
+    if (!res.success) throw new BundleAbort(res.error);
+  }
+  return { success: true, message: `Đã mua cả bộ (${missing.length} món) 🎉`, bought: missing };
+}
+
 /** Lưu trang bị: chỉ nhận món miễn phí hoặc đã sở hữu; không tốn tiền */
 export async function saveAvatarConfig(userId: string, raw: unknown) {
   const owned = await getOwnedItemIds(userId);

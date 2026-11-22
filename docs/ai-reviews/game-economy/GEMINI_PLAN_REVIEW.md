@@ -96,3 +96,55 @@ Kế hoạch có cấu trúc rõ ràng, bám sát các bất biến cốt lõi c
 | 7 | Thiếu test case | **Đúng.** | Thêm vào bảng GĐ0–GĐ3 trong PLAN 8. |
 | Q1 | `price` tối đa trong `reward-input.ts` | **Câu hỏi đúng chỗ.** `MAX_REWARD_PRICE` đang là 100 000: mẫu quà mới (≤ 60 000) vẫn qua, nhưng quà lớn thầy tự đặt (vd 1 000 điểm cũ = 150 000 xu) sẽ bị từ chối. | Nâng lên 1 000 000; test `price: 1e9` vẫn bị từ chối. |
 | Q2 | Danh sách khoá thu hồi khi xoá lượt | `TEST`, `ONTIME`, `TESTSCORE`, `BREAK`. | Đã có. |
+
+---
+
+## Review kế hoạch GĐ7–8 (Hồ sơ & Trang trí) — Gemini web (Neon), 22/11/2026
+
+Nguồn: `review-input-plan.md` (PLAN §11), gửi qua gemini.google.com. Dưới đây là phần tóm lược các finding của Gemini. Khi trích từ trang, công cụ cắt bớt văn bản nên không chép nguyên văn.
+
+**Tóm tắt (Gemini):** kế hoạch bám kiến trúc sẵn có. Có 3 vùng rủi ro cao: `buyBundle` all-or-nothing; ~40 món mới làm loãng pool rương; SVG mới làm phình JS và có thể đụng id `<defs>`.
+
+1. **[Cao] `buyBundle`:**
+   - Có thể commit một phần, kẹt ở món gachaOnly hoặc khi trộn tiền.
+   - itemIds trùng hoặc dài bất thường.
+   - Lặp `lockWallet`/`isEligibleStudent`.
+   - Tab thứ hai khi món đã mua xong.
+   - Đề xuất: khoá ví một lần, khử trùng, chặn gachaOnly, kiểm cả xu lẫn ngọc, throw để rollback. Đã đủ món thì trả thành công, không ghi sổ.
+2. **[Cao] Pool rương:** pool phình gần gấp đôi, làm loãng đồ gachaOnly và có thể làm loãng gói ngọc. Tab "Tất cả" của tiệm cũng phình theo. Đề xuất: cờ chọn lọc món vào rương.
+3. **[Cao] Hiệu năng:**
+   - Bundle /profile và các trang dùng Chibi có thể phình. Đề xuất: tách file và tải lười tab trang trí.
+   - Id `<defs>` có thể trùng. Đề xuất: dùng `useId`.
+   - Lưới chọn chỉ nên dùng ảnh tĩnh.
+4. **[TB] Quyền riêng tư và quyền truy cập:**
+   - Email và nút Đăng xuất có thể lọt sang /profile/[userId].
+   - Chưa rõ demo và tài khoản chưa duyệt thấy gì.
+   - Action phải kiểm `isPointsEnabled`/`demoGuard`.
+5. **[TB] Bố cục 320px và trợ năng:**
+   - Email dài.
+   - Khung tròn đè lên chibi.
+   - Trên điện thoại, cuộn xuống thì không thấy phần xem trước.
+   - Tab nhiều tầng.
+   - Nút 🗑 dễ hiểu nhầm.
+   - Thiếu `prefers-reduced-motion`.
+6. **[TB] Test thiếu:** mua đồng thời, itemIds trùng, gachaOnly, đã đủ món, tài khoản bị chặn, preset không có gachaOnly, cấu hình cũ không có effect, hồi quy rương.
+7. **[Thấp]** `defaultAvatar` cần có `effect: null`.
+
+**Câu hỏi của Gemini:**
+- Trọng số gói tiền trong rương thế nào?
+- Preset có chứa món ngọc hoặc gachaOnly không?
+- Món mới có bán ở /rewards không?
+- Demo và tài khoản chưa duyệt thấy gì?
+
+### Claude kiểm chứng (GĐ7–8)
+
+| # | Finding | Kết luận | Đã làm |
+|---|---|---|---|
+| 1 | buyBundle | **Đúng một phần.** Throw trong `$transaction` đã rollback toàn bộ. Khi viết vẫn bổ sung đủ các chặn. | `buyBundleInTx`: khử trùng, tối đa 12 món; kiểm `isEligibleStudent` rồi `lockWallet` trước khi đọc món đã có; từ chối gachaOnly và slug lạ trước khi ghi; kiểm tổng xu và tổng ngọc; lỗi giữa chừng thì `BundleAbort` để rollback. Đã đủ món thì trả thành công, không ghi sổ. Action kiểm `isPointsEnabled`, `demoGuard`, bắt P2002. Vẫn gọi lại `buyItemInTx` cho từng món (khoá lại trong cùng tx, vô hại, ≤ 12 món) để dùng chung một đường ghi sổ. Test: thiếu tiền thì không món nào; xu + ngọc; 2 tab đồng thời; tài khoản bị chặn; mảng trùng; gachaOnly. |
+| 2 | Pool rương loãng | **Đúng.** `poolFor` bốc đều trong một bậc gồm cả gói tiền. Thêm món có giá thì tỉ lệ ra 1 ngọc ở Rương Xu tụt từ 1/11 xuống khoảng 1/15. | Cờ `studio: true` cho 36 món có giá của GĐ8: không vào pool, không hiện ở "Tất cả"/Mèo Cún của "Tất cả" trong tiệm (vẫn bán ở Trang trí, Mèo Cún và Hồ sơ). Chỉ 6 món gachaOnly mới vào pool. Test: món `studio` không có trong pool; mọi món gachaOnly đều có; pool Huyền thoại Rương Xu ≤ 13. |
+| 3 | Bundle và id `<defs>` | **Một phần.** Id gradient đã theo nội dung (hash cấu hình, id món), nên trùng id thì nội dung cũng giống hệt, không vỡ màu. `useId` không dùng được vì Chibi/Scene còn render trong Server Component. Tab ẩn được bỏ khỏi DOM, không chỉ `display:none`. | `DecorStudio` tải lười bằng `next/dynamic`: thầy/admin và khi tắt Xu không tải. Cảnh nền, khung, hiệu ứng nằm ở file riêng. Lưới hiệu ứng dùng hạt tĩnh (`EffectThumb`); chỉ banner chạy hoạt ảnh (transform/opacity, `top` cho hạt rơi). |
+| 4 | Email/đăng xuất, demo | **Đúng** (yêu cầu thiết kế). | `ProfileBanner` không chứa email/đăng xuất. Hồ sơ công khai chỉ dùng cảnh và hiệu ứng; E2E kiểm không lộ email. Demo vẫn xem được studio nhưng Mua/Lưu bị khoá (có tooltip); tài khoản chưa duyệt chỉ khoá Mua. |
+| 5 | 320px và trợ năng | **Đúng.** | Email `truncate`. Banner chừa lề trái cho ảnh tròn. Ô xem trước thu nhỏ `decor-mini-preview` trên điện thoại. Tab cuộn ngang ẩn thanh cuộn. 🗑 đổi thành ↺ có `aria-label` "Hoàn tác về bản đã lưu". `role=tablist`/`tab`, ô món là `button aria-pressed`. Hiệu ứng tắt khi reduced-motion (khung và thú cưng không có chuyển động). |
+| 6 | Test thiếu | **Đúng.** | `tests/game/profile-decor.test.ts` (10 test) và E2E bước Hồ sơ & Trang trí (thử → mua → lưu → khoá vương miện → hoàn tác → tab cài đặt → chuyển hướng). |
+| 7 | `effect: null` | **Đúng.** | Đã thêm; test cấu hình cũ không có khoá effect. |
+| Q | Câu hỏi | — | Gói tiền dùng chung pool đều (xem #2). Preset không có món ngọc; 2 preset có món gachaOnly (Nhà du hành, Game thủ): UI báo "Có món từ rương", buyBundle từ chối trước khi ghi. Món mới vẫn bán ở /rewards (Trang trí, Mèo Cún), không vào "Tất cả". Demo và tài khoản chưa duyệt: xem câu #4. |

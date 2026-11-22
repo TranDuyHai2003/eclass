@@ -74,7 +74,6 @@ const ROUTES = {
     R("/rewards/gacha"),
     R("/leaderboard"),
     R("/profile"),
-    R("/profile/avatar"),
     R("/library"),
     R("/news"),
     R("/practice"),

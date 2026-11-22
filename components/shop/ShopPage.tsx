@@ -191,9 +191,9 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
     cat === "deco"
       ? ITEMS.filter((i) => !i.free && i.slot !== "pet" && (i.price || i.gachaOnly) && (decoSlot === "all" || i.slot === decoSlot))
       : cat === "all"
-        ? ITEMS.filter((i) => !i.free && !i.gachaOnly && i.price && ALL_SLOTS.includes(i.slot))
+        ? ITEMS.filter((i) => !i.free && !i.gachaOnly && !i.studio && i.price && ALL_SLOTS.includes(i.slot))
         : [];
-  const pets = cat === "all" || cat === "pet" ? ITEMS.filter((i) => i.slot === "pet") : [];
+  const pets = cat === "all" || cat === "pet" ? ITEMS.filter((i) => i.slot === "pet" && (cat === "pet" || !i.studio)) : [];
   const showBoxes = !!gacha && cat === "all";
   const showPanel = !!gacha && cat === "box";
   const count = rewards.length + cosmetics.length + pets.length + (showBoxes ? 2 : 0) + (showPanel ? 2 : 0);
@@ -233,7 +233,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           {/* ===== Hồ sơ + mèo ===== */}
           <section className="shop-card grid grid-cols-1 gap-3 p-3 sm:p-4 lg:grid-cols-[minmax(0,1fr)_320px]" data-testid="shop-hud">
             <div className="flex min-w-0 items-center gap-3">
-              <Link href="/profile/avatar" title="Tuỳ chỉnh nhân vật" className="relative shrink-0 rounded-full border-[2.5px] border-[#5b3d1e] bg-[#cfe6fb] p-1 shadow-[0_3px_0_0_#5b3d1e] transition-transform hover:scale-105">
+              <Link href="/profile" title="Tuỳ chỉnh nhân vật" className="relative shrink-0 rounded-full border-[2.5px] border-[#5b3d1e] bg-[#cfe6fb] p-1 shadow-[0_3px_0_0_#5b3d1e] transition-transform hover:scale-105">
                 <Chibi config={avatar} size={64} className="h-16 w-16" title={user.name ?? undefined} />
                 <span className="absolute -bottom-1 -right-1 rounded-full border-2 border-[#5b3d1e] bg-white px-1 text-[10px] font-black">✏️</span>
               </Link>
@@ -381,7 +381,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                               ? { label: "Đang chọn 🐾", tone: "green", disabled: true }
                               : equipable
                                 ? { label: "Dùng ngay", tone: "green", onClick: () => equip(item), disabled: pending, testId: `equip-${item.id}` }
-                                : { label: "Đã có · mặc ở Tuỳ chỉnh", tone: "brown", href: "/profile/avatar" }
+                                : { label: "Đã có · mặc ở Tuỳ chỉnh", tone: "brown", href: "/profile" }
                             : item.gachaOnly
                               ? { label: "🔒 Chỉ từ hộp bí ẩn", tone: "muted", onClick: () => openGacha("xu"), disabled: !gacha, title: "Có trong Hộp bí ẩn" }
                               : { label: priceLabel(item.price), tone: item.price && "gem" in item.price ? "blue" : "yellow", onClick: () => purchase(item), disabled: pending || !affordable(item.price) || !data.canEarn, testId: `shop-buy-${item.id}`, title: !data.canEarn ? "Tài khoản cần được thầy duyệt" : !affordable(item.price) ? "Chưa đủ tiền" : "Mua" }

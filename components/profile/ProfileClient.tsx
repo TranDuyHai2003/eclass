@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { updateProfile } from "@/actions/user";
 import { Camera, Check, User, Mail, Loader2, Upload, X, Lock, LogOut } from "lucide-react";
@@ -12,6 +13,12 @@ import { resizeImageFile } from "@/lib/resize-image";
 import Link from "next/link";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { Chibi } from "@/components/avatar/Chibi";
+import type { DecorStudioProps } from "./DecorStudio";
+
+// Tải lười: thầy/admin hoặc khi tắt Xu không tải JS trang trí (review Gemini GĐ8)
+const DecorStudio = dynamic(() => import("./DecorStudio"), {
+  loading: () => <div className="h-[520px] animate-pulse rounded-3xl bg-white/70" aria-busy="true" />,
+});
 
 interface ProfileClientProps {
   user: {
@@ -30,10 +37,17 @@ interface ProfileClientProps {
   };
   /** Khối thêm ở cột phải (vd thẻ đổi mật khẩu) */
   children?: React.ReactNode;
+  /** "Hồ sơ & Trang trí" (học sinh khi bật Xu); không có → chỉ hiện phần cài đặt tài khoản như cũ */
+  decor?: Omit<DecorStudioProps, "user" | "onOpenSettings">;
 }
 
-export default function ProfileClient({ user, stats, children }: ProfileClientProps) {
+export default function ProfileClient({ user, stats, children, decor }: ProfileClientProps) {
   const router = useRouter();
+  const [tab, setTab] = useState<"decor" | "settings">(decor ? "decor" : "settings");
+  // Mở thẳng tab cài đặt bằng /profile#settings (đọc trong effect để HTML server/client khớp)
+  useEffect(() => {
+    if (decor && window.location.hash === "#settings") setTab("settings");
+  }, [decor]);
   const [name, setName] = useState(user.name || "");
   const [image, setImage] = useState(user.image || "");
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
@@ -103,17 +117,42 @@ export default function ProfileClient({ user, stats, children }: ProfileClientPr
   const labelClass = "text-xs font-bold text-slate-600 flex items-center gap-1.5";
   const dirty = name.trim() !== (user.name || "").trim() || image !== (user.image || "");
 
+  const pickTab = (t: "decor" | "settings") => {
+    setTab(t);
+    history.replaceState(null, "", t === "settings" ? "#settings" : window.location.pathname);
+  };
+
   return (
-    <div className="max-w-[1100px] mx-auto space-y-5">
+    <div className={cn("mx-auto space-y-5", decor ? "max-w-[1240px]" : "max-w-[1100px]")}>
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-          <span className="w-2 h-8 bg-blue-600 rounded-full" />
+          <span className="w-2 h-8 bg-violet-600 rounded-full" />
           Hồ sơ của bạn
         </h1>
-        <p className="text-slate-500 font-medium text-sm">Quản lý tên hiển thị, ảnh đại diện và mật khẩu.</p>
+        <p className="text-slate-500 font-medium text-sm">Quản lý hiển thị, ảnh đại diện và mật khẩu.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      {decor && (
+        <div className="flex gap-1 border-b border-slate-200" role="tablist" aria-label="Hồ sơ">
+          {([["decor", "Hồ sơ & Trang trí"], ["settings", "Cài đặt tài khoản"]] as const).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={tab === k}
+              data-testid={`tab-${k}`}
+              onClick={() => pickTab(k)}
+              className={cn("-mb-px border-b-[3px] px-4 py-2.5 text-base font-black transition-colors", tab === k ? "border-violet-700 text-slate-900" : "border-transparent text-slate-400 hover:text-slate-700")}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {decor && tab === "decor" && <DecorStudio {...decor} user={user} onOpenSettings={() => pickTab("settings")} />}
+
+      <div className={cn("grid grid-cols-1 lg:grid-cols-12 gap-5 items-start", tab !== "settings" && "hidden")}>
         {/* Cột trái: thẻ tóm tắt tài khoản */}
         <aside data-testid="profile-summary" className={cn(card, "lg:col-span-4 p-5 sm:p-6 flex flex-col items-center text-center")}>
           <div className="relative">
@@ -167,7 +206,7 @@ export default function ProfileClient({ user, stats, children }: ProfileClientPr
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-black text-slate-800">Nhân vật của bạn</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  <Link href="/profile/avatar" className="btn-3d btn-3d-blue px-2.5 py-1 text-[11px]">🎨 Tuỳ chỉnh</Link>
+                  <button type="button" onClick={() => pickTab("decor")} className="btn-3d btn-3d-blue px-2.5 py-1 text-[11px]">🎨 Tuỳ chỉnh</button>
                   <Link href={`/profile/${user.id}`} className="btn-3d btn-3d-white px-2.5 py-1 text-[11px]">Xem hồ sơ</Link>
                 </div>
               </div>

@@ -20,6 +20,7 @@ export function Chibi({ config, size = 120, className, title }: { config: Avatar
   const shirt = outfit?.v ?? "#60a5fa";
   const accent = outfit?.v2 ?? "#1e3a8a";
   const acc = get("accessory")?.v;
+  const fx = get("effect")?.v;
   const frame = get("frame")?.v;
   const bg = get("background");
   const uid = `c${Math.abs(hashStr(JSON.stringify(config)))}`; // id gradient riêng khi nhiều nhân vật trên một trang
@@ -149,7 +150,10 @@ export function Chibi({ config, size = 120, className, title }: { config: Avatar
       {hairStyle.extra?.(hairLine)}
 
       {/* Phụ kiện */}
-      <Accessory acc={acc} uid={uid} />
+      <Accessory acc={acc} uid={uid} hair={H} hairLine={hairLine} />
+
+      {/* Hiệu ứng (bản tĩnh; banner hồ sơ có bản động) */}
+      {fx && <FxStatic kind={fx} />}
     </svg>
   );
 }
@@ -336,7 +340,10 @@ const TORSO = "M40 100c0-6 8-9 20-9s20 3 20 9l2 20c0 3-2 4-5 4H43c-3 0-5-1-5-4z"
 function OutfitBack({ id, shirt, accent, line }: { id: string; shirt: string; accent: string; line: string }) {
   if (id === "outfit-royal")
     return <path d="M39 95q-6 16-10 33h62q-4-17-10-33z" fill={shade(shirt, -0.25)} stroke={line} strokeWidth="1.2" strokeLinejoin="round" />;
-  if (id === "outfit-hoodie") return <path d="M41 97q2-14 19-14t19 14z" fill={shade(shirt, -0.15)} stroke={line} strokeWidth="1.2" />;
+  if (id === "outfit-wizard")
+    return <path d="M39 95q-6 16-10 33h62q-4-17-10-33z" fill={shade(shirt, -0.3)} stroke={line} strokeWidth="1.2" strokeLinejoin="round" />;
+  if (id === "outfit-knight") return <path d="M41 95q-4 15-7 31h52q-3-16-7-31z" fill={accent} stroke={shade(accent, -0.4)} strokeWidth="1.2" strokeLinejoin="round" />;
+  if (id === "outfit-hoodie" || id === "outfit-cathoodie" || id === "outfit-gamer") return <path d="M41 97q2-14 19-14t19 14z" fill={shade(shirt, -0.15)} stroke={line} strokeWidth="1.2" />;
   if (id === "outfit-astro") return <rect x="39" y="93" width="42" height="28" rx="7" fill="#cbd5e1" stroke="#64748b" strokeWidth="1.2" />;
   if (id === "outfit-ninja") return <path d="M70 92q16-2 24 9-9-2-22-4z" fill={accent} stroke={shade(accent, -0.4)} strokeWidth="1" />;
   void accent;
@@ -351,12 +358,18 @@ function Legs({ id, skin, skinLine, shirt, accent }: { id: string; skin: string;
     : id === "outfit-ninja" ? shade(shirt, 0.1)
     : id === "outfit-royal" ? "#f5f3ff"
     : id === "outfit-astro" ? "#f1f5f9"
+    : id === "outfit-kimono" ? shade(shirt, -0.08)
+    : id === "outfit-wizard" ? "#312e81"
+    : id === "outfit-knight" ? "#94a3b8"
+    : id === "outfit-gamer" ? "#374151"
+    : id === "outfit-cathoodie" ? "#3b5b8f"
     : accent;
   const shoe =
     id === "outfit-dress" ? "#be185d"
     : id === "outfit-sport" ? "#ffffff"
     : id === "outfit-astro" ? "#e2e8f0"
-    : id === "outfit-royal" ? "#7c2d12"
+    : id === "outfit-royal" || id === "outfit-kimono" ? "#7c2d12"
+    : id === "outfit-knight" ? "#64748b"
     : "#3b2a1e";
   const line = id === "outfit-dress" ? skinLine : shade(pants, -0.45);
   return (
@@ -468,6 +481,64 @@ function Outfit({ id, shirt, accent, line, uid }: { id: string; shirt: string; a
           <ellipse cx="60" cy="92.6" rx="11" ry="3.6" fill="#94a3b8" stroke="#64748b" strokeWidth="1" />
         </g>
       );
+    case "outfit-cathoodie": // hoodie tai mèo: dấu chân mèo + túi
+      return (
+        <g>
+          <path d={TORSO} fill={shirt} {...base} />
+          <path d="M56 94l-1 9M64 94l1 9" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" />
+          <g fill={accent}>
+            <ellipse cx="60" cy="109" rx="3.6" ry="3" /><circle cx="55.6" cy="104.6" r="1.4" /><circle cx="58.6" cy="103.2" r="1.4" /><circle cx="61.4" cy="103.2" r="1.4" /><circle cx="64.4" cy="104.6" r="1.4" />
+          </g>
+          <path d="M48 114h24l-2.4 7H50.4z" fill={shade(shirt, -0.1)} {...base} />
+        </g>
+      );
+    case "outfit-gamer": // áo game thủ: viền neon + tay cầm
+      return (
+        <g>
+          <path d={TORSO} fill={shirt} stroke="#000" strokeWidth="1.2" strokeLinejoin="round" />
+          <path d="M42 99l-2 21M78 99l2 21" stroke={accent} strokeWidth="1.6" />
+          <path d="M52 92q8 6 16 0" fill="none" stroke={accent} strokeWidth="1.8" />
+          <rect x="51" y="104" width="18" height="9" rx="4.5" fill="#111827" stroke={accent} strokeWidth="1.2" />
+          <path d="M55 108.5h4M57 106.5v4" stroke={accent} strokeWidth="1.1" strokeLinecap="round" />
+          <circle cx="64" cy="107.4" r="1" fill="#f472b6" /><circle cx="66" cy="109.4" r="1" fill="#facc15" />
+        </g>
+      );
+    case "outfit-kimono": // kimono: cổ chéo + đai obi + hoa
+      return (
+        <g>
+          <path d="M40 100c0-6 8-9 20-9s20 3 20 9l3 24c0 2-2 3-4 3H41c-2 0-4-1-4-3z" fill={shirt} {...base} />
+          <path d="M50 92l12 16M70 92l-12 12" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+          <path d="M50 92l12 16M70 92l-12 12" stroke={accent} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+          <path d="M39.6 108h40.8v6H39.6z" fill={accent} stroke={shade(accent, -0.4)} strokeWidth="1" />
+          <path d="M60 111l-5-3v6zM60 111l5-3v6z" fill={shade(accent, 0.3)} />
+          <g fill={accent} opacity="0.8">
+            {[[46, 120], [72, 118], [66, 124]].map(([x, y]) => (
+              <g key={`${x}-${y}`}><circle cx={x - 1.4} cy={y} r="1.2" /><circle cx={x + 1.4} cy={y} r="1.2" /><circle cx={x} cy={y - 1.4} r="1.2" /><circle cx={x} cy={y + 1.4} r="1.2" /></g>
+            ))}
+          </g>
+        </g>
+      );
+    case "outfit-wizard": // áo choàng phù thuỷ: viền vàng, sao trăng
+      return (
+        <g>
+          <path d="M41 100c0-6 7-9 19-9s19 3 19 9l5 24c0 2-2 3-4 3H40c-2 0-4-1-4-3z" fill={shirt} {...base} />
+          <path d="M60 92v35" stroke={accent} strokeWidth="2.4" />
+          <path d="M37 125q23 3 46 0" fill="none" stroke={accent} strokeWidth="2" />
+          <path d="M49 103l1 2.2 2.4.4-1.7 1.7.4 2.4-2.1-1.1-2.1 1.1.4-2.4-1.7-1.7 2.4-.4z" fill={accent} />
+          <path d="M71 112a4 4 0 1 1-3.4-5.6 3 3 0 0 0 3.4 5.6z" fill={accent} />
+          <path d="M51 92q9 7 18 0" fill="none" stroke={accent} strokeWidth="2" />
+        </g>
+      );
+    case "outfit-knight": // giáp hiệp sĩ: giáp ngực bạc, áo khoác xanh có huy hiệu
+      return (
+        <g>
+          <path d={TORSO} fill={shirt} stroke="#64748b" strokeWidth="1.2" strokeLinejoin="round" />
+          <path d="M50 94h20v26H50z" fill={accent} stroke={shade(accent, -0.4)} strokeWidth="1" />
+          <path d="M60 99l5 2v5c0 4-2.4 6-5 7-2.6-1-5-3-5-7v-5z" fill="#fbbf24" stroke="#b45309" strokeWidth="0.9" />
+          <path d="M40 114h40v3.4H40z" fill="#78350f" />
+          <circle cx="42" cy="98" r="5" fill="#e2e8f0" stroke="#64748b" strokeWidth="1.1" /><circle cx="78" cy="98" r="5" fill="#e2e8f0" stroke="#64748b" strokeWidth="1.1" />
+        </g>
+      );
     default: // áo phông
       return (
         <g>
@@ -481,8 +552,44 @@ function Outfit({ id, shirt, accent, line, uid }: { id: string; shirt: string; a
 
 /* ============================== Phụ kiện ============================== */
 
-function Accessory({ acc, uid }: { acc?: string; uid: string }) {
+function Accessory({ acc, uid, hair, hairLine }: { acc?: string; uid: string; hair: string; hairLine: string }) {
   switch (acc) {
+    case "scarf": // khăn quàng sọc đỏ trắng
+      return (
+        <g stroke="#991b1b" strokeWidth="1.1" strokeLinejoin="round">
+          <path d="M66 94l3 17 6-1.4-2.6-16z" fill="#ef4444" />
+          <path d="M44 87q16 9 32 0l1.4 6q-17 10-34.8 0z" fill="#ef4444" />
+          <path d="M50 90.6l-1 5M57 92.6l-.4 5M64 92.4l.4 5M70.6 90.2l1 5M67.6 99l6-1.2M68.6 104l5.6-1.2" stroke="#fff" strokeWidth="1.6" />
+        </g>
+      );
+    case "sakura": // kẹp hoa anh đào bên trái
+      return (
+        <g>
+          {[[33, 33, 1], [41, 27, 0.8]].map(([x, y, k]) => (
+            <g key={x} transform={`translate(${x} ${y}) scale(${k})`} stroke="#be185d" strokeWidth="0.8">
+              {[0, 72, 144, 216, 288].map((r) => <ellipse key={r} cx="0" cy="-4.2" rx="2.8" ry="4" fill="#fbcfe8" transform={`rotate(${r})`} />)}
+              <circle r="1.8" fill="#facc15" stroke="#ca8a04" />
+            </g>
+          ))}
+        </g>
+      );
+    case "catears": // bờm tai mèo cùng màu tóc
+      return (
+        <g strokeLinejoin="round">
+          <path d="M30 30l-3-20 18 9z" fill={hair} stroke={hairLine} strokeWidth="1.4" />
+          <path d="M90 30l3-20-18 9z" fill={hair} stroke={hairLine} strokeWidth="1.4" />
+          <path d="M31.6 26l-1.6-11 9.6 5z" fill="#f9a8d4" /><path d="M88.4 26l1.6-11-9.6 5z" fill="#f9a8d4" />
+        </g>
+      );
+    case "wizardhat": // mũ phù thuỷ chóp cong
+      return (
+        <g strokeLinejoin="round" stroke="#2e1065" strokeWidth="1.3">
+          <path d="M38 32C46 24 54 12 66 4c4 3 9 3 13 1-6 4-8 10-6 16 2 5 5 8 9 11z" fill="#5b21b6" />
+          <path d="M40 30q20-6 40 0l-1 4q-19-5-38 0z" fill="#fbbf24" stroke="#b45309" />
+          <ellipse cx="60" cy="34" rx="40" ry="7" fill="#4c1d95" />
+          <path d="M62 16l1.4 3 3.2.4-2.3 2.2.6 3.2-2.9-1.5-2.9 1.5.6-3.2-2.3-2.2 3.2-.4z" fill="#fde047" stroke="#ca8a04" strokeWidth="0.7" />
+        </g>
+      );
     case "glasses":
       return (
         <g>
@@ -534,6 +641,93 @@ function Accessory({ acc, uid }: { acc?: string; uid: string }) {
           <circle cx="46" cy="8" r="1.4" fill="#fde68a" /><circle cx="60" cy="4" r="1.4" fill="#fde68a" /><circle cx="74" cy="8" r="1.4" fill="#fde68a" />
         </g>
       );
+    default:
+      return null;
+  }
+}
+
+/* ============================== Hiệu ứng tĩnh ============================== */
+
+/** Bản tĩnh của hiệu ứng trong khung nhân vật (thẻ tiệm, túi đồ, ô chọn); vị trí cố định → server/client khớp */
+function FxStatic({ kind }: { kind: string }) {
+  const at: [number, number, number][] = [[14, 26, 1], [104, 20, 0.8], [100, 74, 1.1], [16, 84, 0.9], [26, 118, 0.7], [96, 120, 0.8], [58, 6, 0.6]];
+  if (kind === "thunder")
+    return (
+      <g fill="none" stroke="#22d3ee" strokeLinecap="round" strokeLinejoin="round">
+        <ellipse cx="60" cy="74" rx="52" ry="62" strokeWidth="1.6" strokeDasharray="10 6" opacity="0.7" />
+        <path d="M12 52l6 4-4 4 6 4M106 84l-6 4 4 4-6 4M98 24l-4 6h5l-4 6" strokeWidth="2" />
+      </g>
+    );
+  if (kind === "flame")
+    return (
+      <g stroke="#c2410c" strokeWidth="0.8">
+        {[[14, 128, 1], [26, 132, 0.7], [106, 128, 1], [94, 132, 0.7]].map(([x, y, k]) => (
+          <g key={x} transform={`translate(${x} ${y}) scale(${k})`}>
+            <path d="M0 0c-7 0-9-7-5-12 1 3 3 4 4 3-1-5 2-10 6-12-1 5 4 8 4 14 0 4-3 7-9 7z" fill="#fb923c" />
+            <path d="M0-2c-3 0-4-3-2-6 1 2 3 2 3 0 2 2 3 4 3 5 0 1-2 1-4 1z" fill="#fde047" stroke="none" />
+          </g>
+        ))}
+      </g>
+    );
+  if (kind === "meteor")
+    return (
+      <g strokeLinecap="round">
+        {[[20, 14], [84, 8], [100, 46]].map(([x, y]) => (
+          <g key={x}>
+            <path d={`M${x} ${y}l-14 10`} stroke="#c7d2fe" strokeWidth="2" opacity="0.8" />
+            <circle cx={x} cy={y} r="2" fill="#fff" stroke="#818cf8" strokeWidth="0.8" />
+          </g>
+        ))}
+      </g>
+    );
+  return (
+    <g>
+      {at.map(([x, y, k], i) => (
+        <g key={i} transform={`translate(${x} ${y}) scale(${k})`}>
+          <FxShape kind={kind} i={i} />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+/** Một hạt hiệu ứng vẽ quanh gốc (0,0), cỡ ~10 — dùng chung cho bản tĩnh và lớp động trên banner */
+export function FxShape({ kind, i = 0 }: { kind: string; i?: number }) {
+  switch (kind) {
+    case "sparkle":
+      return <path d="M0-6l1.6 4.4L6 0 1.6 1.6 0 6-1.6 1.6-6 0l4.4-1.6z" fill={i % 2 ? "#fff" : "#fde047"} stroke="#f59e0b" strokeWidth="0.6" />;
+    case "sakura":
+      return <path d="M0-4c3-3 6 0 4 3L0 4-4 1c-2-3 1-6 4-3z" fill="#f9a8d4" stroke="#db2777" strokeWidth="0.6" transform={`rotate(${i * 47})`} />;
+    case "snow":
+      return (
+        <g stroke="#bae6fd" strokeWidth="1.2" strokeLinecap="round">
+          <path d="M0-5v10M-4.3-2.5l8.6 5M-4.3 2.5l8.6-5" /><circle r="1.2" fill="#fff" />
+        </g>
+      );
+    case "butterfly":
+      return (
+        <g transform={`rotate(${(i % 3) * 20 - 20})`} stroke="#6d28d9" strokeWidth="0.6">
+          <path d="M0 0c-3-5-8-5-7-1 0 3 4 3 7 1zM0 0c3-5 8-5 7-1 0 3-4 3-7 1z" fill={i % 2 ? "#c4b5fd" : "#67e8f9"} />
+          <path d="M0 0c-2 2-6 4-5 6 2 1 4-2 5-6zM0 0c2 2 6 4 5 6-2 1-4-2-5-6z" fill={i % 2 ? "#a78bfa" : "#22d3ee"} />
+        </g>
+      );
+    case "bubble":
+      return (
+        <g>
+          <circle r="5" fill={["#bfdbfe", "#fbcfe8", "#bbf7d0", "#fde68a"][i % 4]} fillOpacity="0.45" stroke="#60a5fa" strokeWidth="0.7" />
+          <path d="M-2.4-2.4a3 3 0 0 1 2-1.4" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+        </g>
+      );
+    case "flame":
+      return <path d="M0 5c-4 0-5-4-3-7 0 2 2 2 2 1-1-3 1-6 4-7-1 3 3 5 3 8 0 3-2 5-6 5z" fill={i % 2 ? "#fb923c" : "#f472b6"} />;
+    case "meteor":
+      return (
+        <g strokeLinecap="round">
+          <path d="M0 0l-16 10" stroke="#c7d2fe" strokeWidth="2" opacity="0.8" /><circle r="2" fill="#fff" />
+        </g>
+      );
+    case "thunder":
+      return <path d="M2-7l-6 8h4l-2 6 6-8H0z" fill="#67e8f9" stroke="#0891b2" strokeWidth="0.6" strokeLinejoin="round" />;
     default:
       return null;
   }

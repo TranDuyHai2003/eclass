@@ -597,3 +597,29 @@ h6 {
   .weather-layer { display: none; }
   .gacha-stars, .gacha-halo, .card-star { animation: none !important; }
 }
+
+/* ===================== Hồ sơ & Trang trí (GĐ8): hiệu ứng động trên banner ===================== */
+@layer components {
+  .fx-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .fx-p { position: absolute; width: var(--s, 14px); height: var(--s, 14px); will-change: transform; }
+  .fx-p svg { width: 100%; height: 100%; overflow: visible; }
+  .fx-fall { animation: fx-fall var(--d, 7s) linear var(--dl, 0s) infinite; }
+  .fx-rise { animation: fx-rise var(--d, 7s) ease-in var(--dl, 0s) infinite; }
+  .fx-twinkle { animation: fx-twinkle calc(var(--d, 7s) / 3) ease-in-out var(--dl, 0s) infinite; }
+  .fx-flutter { animation: fx-flutter var(--d, 7s) ease-in-out var(--dl, 0s) infinite; }
+  .fx-streak { animation: fx-streak var(--d, 7s) ease-in var(--dl, 0s) infinite; }
+  .fx-ring {
+    position: absolute; left: 50%; top: 50%; width: 70%; aspect-ratio: 1; translate: -50% -50%;
+    border-radius: 9999px; border: 2px dashed #22d3ee; box-shadow: 0 0 18px 2px rgba(34, 211, 238, 0.55), inset 0 0 14px rgba(34, 211, 238, 0.4);
+    animation: fx-spin 6s linear infinite;
+  }
+}
+@keyframes fx-fall { from { top: -10%; transform: translateX(0) rotate(0deg); } to { top: 110%; transform: translateX(var(--dx, 20px)) rotate(220deg); } }
+@keyframes fx-rise { 0% { top: 105%; opacity: 0; } 15% { opacity: 1; } 100% { top: -12%; opacity: 0; transform: translateX(var(--dx, 10px)); } }
+@keyframes fx-twinkle { 0%, 100% { transform: scale(0.4); opacity: 0.25; } 50% { transform: scale(1.1); opacity: 1; } }
+@keyframes fx-flutter { 0%, 100% { transform: translate(0, 0) rotate(-8deg); } 25% { transform: translate(12px, -10px) rotate(8deg); } 50% { transform: translate(22px, 2px) rotate(-4deg); } 75% { transform: translate(8px, 10px) rotate(6deg); } }
+@keyframes fx-streak { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: 1; } 60%, 100% { transform: translate(-220px, 140px); opacity: 0; } }
+@keyframes fx-spin { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) {
+  .fx-p, .fx-ring { animation: none !important; }
+}

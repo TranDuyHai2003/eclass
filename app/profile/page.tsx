@@ -9,6 +9,7 @@ import { isPointsEnabled } from "@/lib/points/config";
 import { getHeaderPoints } from "@/lib/points/queries";
 import { getLevel } from "@/lib/points/levels";
 import { getAvatar } from "@/lib/game/inventory";
+import type { DecorStudioProps } from "@/components/profile/DecorStudio";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -20,24 +21,38 @@ export default async function ProfilePage() {
   const { user } = session;
 
   const account = user.id
-    ? await prisma.user.findUnique({ where: { id: user.id }, select: { password: true } })
+    ? await prisma.user.findUnique({ where: { id: user.id }, select: { password: true, isApproved: true, isDemo: true } })
     : null;
 
   // Số liệu học tập cho thẻ tóm tắt (chỉ học sinh)
+  let decor: Omit<DecorStudioProps, "user" | "onOpenSettings"> | undefined;
   let stats: { completedLessons: number; points: number | null; level: { icon: string; level: number; name: string } | null; avatar?: AvatarConfig | null } | undefined;
   if (user.id && user.role === "STUDENT") {
-    const [completedLessons, wallet, avatar] = await Promise.all([
+    const [completedLessons, wallet, av] = await Promise.all([
       prisma.progress.count({ where: { userId: user.id, isCompleted: true } }),
       isPointsEnabled() ? getHeaderPoints(user.id).catch(() => null) : Promise.resolve(null),
-      isPointsEnabled() ? getAvatar(user.id).then((a) => a.config).catch(() => null) : Promise.resolve(null),
+      isPointsEnabled() ? getAvatar(user.id).catch(() => null) : Promise.resolve(null),
     ]);
     const lv = wallet ? getLevel(wallet.lifetimeEarned) : null;
+    const level = lv ? { icon: lv.icon, level: lv.level, name: lv.name } : null;
     stats = {
       completedLessons,
       points: wallet ? wallet.balance : null,
-      level: lv ? { icon: lv.icon, level: lv.level, name: lv.name } : null,
-      avatar,
+      level,
+      avatar: av?.config ?? null,
     };
+    // "Hồ sơ & Trang trí": học sinh khi bật Xu (demo/chưa duyệt vẫn xem, nút mua/lưu bị khoá theo quyền)
+    if (wallet && av) {
+      decor = {
+        config: av.config,
+        owned: av.owned,
+        wallet: { balance: wallet.balance, gems: wallet.gems },
+        canEarn: !!account?.isApproved && !account?.isDemo,
+        isDemo: !!account?.isDemo,
+        completedLessons,
+        level,
+      };
+    }
   }
 
   return (
@@ -60,6 +75,7 @@ export default async function ProfilePage() {
               image: user.image || null,
             }}
             stats={stats}
+            decor={decor}
           >
             <ChangePasswordCard hasPassword={!!account?.password} />
           </ProfileClient>

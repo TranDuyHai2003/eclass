@@ -29,7 +29,7 @@ export function ShopMenuModal({
     { key: "scratch", label: "Thẻ Cào", icon: <Ticket className="h-6 w-6 text-[#5b3d1e]" />, action: "scratch" },
     { key: "bag", label: "Túi Đồ", icon: <Backpack className="h-6 w-6 text-[#b4531a]" />, action: "bag" },
     { key: "titles", label: "Danh Hiệu", icon: <Medal className="h-6 w-6 text-[#d9a52a]" />, action: "titles" },
-    { key: "avatar", label: "Nhân Vật", icon: <UserRound className="h-6 w-6 text-[#2e8fe0]" />, href: "/profile/avatar" },
+    { key: "avatar", label: "Nhân Vật", icon: <UserRound className="h-6 w-6 text-[#2e8fe0]" />, href: "/profile" },
     { key: "home", label: "Trang Chủ", icon: <Home className="h-6 w-6 text-[#4fae4a]" />, href: "/" },
   ];
   const opts: { key: Weather; label: string; cls: string }[] = [

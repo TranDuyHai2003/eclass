@@ -397,25 +397,39 @@ try {
     expect(await s.waitText(/Đã có/), "thẻ món không chuyển sang Đã có");
   });
 
-  await step("Học sinh: trình tuỳ chỉnh — mặc tóc dựng, mua kính (450 xu) tại chỗ, lưu", async () => {
-    await s.goto("/profile/avatar", /Tuỳ chỉnh nhân vật/i);
-    await s.ev(`document.querySelector('[data-testid="item-hair-spiky"]').click()`);
-    await s.ev(`document.querySelector('[data-testid="slot-accessory"]').click()`);
-    const okBuy = await s.ev(`const b=document.querySelector('[data-testid="buy-acc-glasses"]'); if(!b||b.disabled) return false; b.click(); return true;`);
-    expect(okBuy, "không bấm được mua kính");
-    expect(await s.waitText(/Đã mua "Kính học bá"/), "không thấy thông báo mua kính");
-    // Chờ transition mua xong (nút lưu bật lại) rồi mới bấm lưu
+  await step("Học sinh: Hồ sơ & Trang trí — mặc tóc dựng, thử kính → mua tại chỗ (450 xu), lưu; vương miện thiếu ngọc thì khoá; /profile/avatar chuyển về /profile", async () => {
+    await s.goto("/profile", /Trang trí & Vật phẩm/i);
+    const click = (id) => s.ev(`const b=document.querySelector('[data-testid="${id}"]'); if(!b||b.disabled) return false; b.click(); return true;`);
+    expect(await click("char-custom"), "không có nút Tuỳ chỉnh tóc & mắt");
+    await sleep(200);
+    expect(await click("item-hair-spiky"), "không có ô tóc dựng");
+    expect(await click("item-acc-glasses"), "không có ô kính");
+    expect(await s.waitText(/Đang thử 1 món chưa có/), "không báo đang thử kính");
+    expect(await s.ev(`return document.querySelector('[data-testid="profile-banner"] svg[role="img"]') !== null`), "banner thiếu nhân vật xem trước");
+    const before = await balanceOf(data.student.id);
+    expect(await click("decor-buy"), "không bấm được Mua món đang thử");
+    expect(await s.waitText(/Đã mua cả bộ \(1 món\)/), "không thấy thông báo mua");
+    expect((await balanceOf(data.student.id)) === before - 450, "chưa trừ 450 xu");
     let saveOk = false;
     for (let i = 0; i < 20 && !saveOk; i++) {
-      saveOk = await s.ev(`const b=document.querySelector('[data-testid="avatar-save"]'); if(!b||b.disabled) return false; b.click(); return true;`);
+      saveOk = await click("decor-save");
       if (!saveOk) await sleep(250);
     }
-    expect(saveOk, "nút lưu bị khoá dù đã đổi");
-    expect(await s.waitText(/Đã lưu nhân vật/), "không thấy thông báo đã lưu");
+    expect(saveOk, "nút Lưu trang trí bị khoá dù đã đổi");
+    expect(await s.waitText(/Đã lưu trang trí/), "không thấy thông báo đã lưu");
     const av = await prisma.userAvatar.findUnique({ where: { userId: data.student.id } });
     expect(av && av.config.hair === "hair-spiky" && av.config.accessory === "acc-glasses", `cấu hình lưu sai: ${JSON.stringify(av?.config)}`);
-    // Món chưa sở hữu không lưu được dù gửi thẳng (kiểm tra ở lib) — ở đây chỉ xác nhận giao diện khoá
-    expect(await s.ev(`return !!document.querySelector('[data-testid="item-acc-crown"] [data-testid="buy-acc-crown"]')?.disabled`), "vương miện 10 ngọc phải bị khoá (chỉ có 3 ngọc)");
+    // Thử vương miện 10 ngọc (học sinh có 3 ngọc) → nút mua khoá; hoàn tác về bản đã lưu
+    expect(await click("item-acc-crown"), "không có ô vương miện");
+    await sleep(200);
+    expect(await s.ev(`return !!document.querySelector('[data-testid="decor-buy"]')?.disabled`), "vương miện 10 ngọc phải bị khoá (chỉ có 3 ngọc)");
+    expect(await click("decor-reset"), "không hoàn tác được");
+    expect(await s.waitText(/Đã lưu ✓/), "hoàn tác chưa về bản đã lưu");
+    // Tab Cài đặt tài khoản vẫn có form cũ; đường dẫn cũ chuyển hướng
+    expect(await click("tab-settings"), "thiếu tab Cài đặt tài khoản");
+    expect(await s.waitText(/Thông tin cá nhân/), "tab cài đặt thiếu form thông tin");
+    const res = await fetch(BASE_URL + "/profile/avatar", { headers: { cookie: `authjs.session-token=${sTok}` }, redirect: "manual" });
+    expect([307, 308].includes(res.status) && /\/profile$/.test(res.headers.get("location") ?? ""), `/profile/avatar phải chuyển về /profile (${res.status} ${res.headers.get("location")})`);
   });
 
   await step("Học sinh: hồ sơ cá nhân hiện nhân vật, danh hiệu, xu tích luỹ; bạn khác xem không thấy kết quả gần đây; hồ sơ thầy → 404", async () => {
@@ -424,6 +438,8 @@ try {
     expect(/Tuỳ chỉnh nhân vật/.test(txt) && /Kết quả gần đây/.test(txt), "chính chủ thiếu nút tuỳ chỉnh / kết quả gần đây");
     expect(/Tiểu thương|Phú nông|Người nghèo/.test(txt), "thiếu danh hiệu");
     expect(await s.ev(`return !!document.querySelector('[data-testid="public-profile"] svg[role="img"]')`), "thiếu nhân vật SVG");
+    expect(await s.ev(`return !!document.querySelector('[data-testid="public-profile"] [data-testid="profile-banner"] [data-scene]')`), "hồ sơ công khai thiếu cảnh banner");
+    expect(!/@test\.local/.test(txt), "hồ sơ công khai không được lộ email");
     const res = await fetch(BASE_URL + `/profile/${data.teacher.id}`, { headers: { cookie: `authjs.session-token=${sTok}` }, redirect: "manual" });
     expect(res.status === 404, `hồ sơ thầy phải 404 (thực tế ${res.status})`);
     const other = await prisma.user.create({ data: { email: `${tag}-hs2@test.local`, name: `${tag} Bạn khác`, role: "STUDENT", isApproved: true, classId: data.cls.id } });
@@ -638,7 +654,7 @@ try {
       for (const [p, ready, shot] of [
         ["/rewards", /Tiệm Quà Học Đường/i, "rewards"],
         ["/", /Tiệm quà/i, "home"],
-        ["/profile/avatar", /Tuỳ chỉnh nhân vật/i, "avatar"],
+        ["/profile", /Trang trí & Vật phẩm/i, "profile-decor"],
         [`/profile/${data.student.id}`, /Thang danh hiệu/i, "profile"],
         ["/rewards/gacha", /Rương kho báu bí ẩn/i, "gacha"],
         ["/leaderboard?tab=g7&period=all", /Bảng Vàng/i, "leaderboard"],

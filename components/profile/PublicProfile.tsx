@@ -6,12 +6,13 @@ import type { PublicProfile } from "@/lib/game/profile";
 import { Chibi } from "@/components/avatar/Chibi";
 import { ITEM_BY_ID } from "@/lib/game/items";
 import { PetSvg } from "@/components/avatar/PetSvg";
+import { ProfileScene } from "./ProfileScene";
+import { EffectLayer } from "./EffectLayer";
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", year: "numeric" });
 
 /** Hồ sơ cá nhân: nhân vật, danh hiệu, xu tích luỹ, thành tích; chủ nhân có nút tuỳ chỉnh */
 export function PublicProfileView({ p }: { p: PublicProfile }) {
-  const bg = p.avatar.background ? ITEM_BY_ID[p.avatar.background] : null;
   const card = "rounded-3xl border-2 border-blue-100/80 bg-white shadow-[0_4px_0_0_#e3ecff]";
   const badges = [
     { icon: "📝", value: p.completedTests, label: "bài đã nộp" },
@@ -22,10 +23,10 @@ export function PublicProfileView({ p }: { p: PublicProfile }) {
   return (
     <div className="space-y-4" data-testid="public-profile">
       <section className={cn(card, "overflow-hidden")}>
-        <div
-          className="dots-bg relative flex flex-col items-center gap-4 p-5 sm:flex-row sm:items-end sm:p-7"
-          style={{ background: `linear-gradient(135deg, ${bg?.v ?? "#dbeafe"}, ${bg?.v2 ?? "#ede9fe"})`, "--dot": "rgba(255,255,255,.5)" } as React.CSSProperties}
-        >
+        <div className="relative flex flex-col items-center gap-4 overflow-hidden p-5 sm:flex-row sm:items-end sm:p-7" data-testid="profile-banner" data-bg={p.avatar.background ?? ""}>
+          {/* Cảnh Hình nền + Hiệu ứng (dùng chung với trang Hồ sơ & Trang trí) */}
+          <ProfileScene bgId={p.avatar.background} className="absolute inset-0" />
+          <EffectLayer effectId={p.avatar.effect} />
           <div className="relative shrink-0 rounded-[2rem] bg-white/70 p-2 shadow-lg ring-4 ring-white/80">
             <Chibi config={p.avatar} size={168} title={p.name ?? undefined} />
             {p.avatar.pet && (
@@ -34,7 +35,7 @@ export function PublicProfileView({ p }: { p: PublicProfile }) {
               </span>
             )}
           </div>
-          <div className="w-full min-w-0 flex-1 text-center sm:w-auto sm:text-left">
+          <div className="relative w-full min-w-0 flex-1 rounded-2xl bg-white/85 p-3 text-center backdrop-blur-sm sm:w-auto sm:text-left">
             {p.equippedTitle && <p className="text-xs font-black uppercase tracking-widest text-violet-700">🏷️ {p.equippedTitle}</p>}
             <h1 className="max-w-full truncate text-2xl font-black text-slate-900 sm:text-3xl">{p.name || "Học sinh"}</h1>
             <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
@@ -59,8 +60,8 @@ export function PublicProfileView({ p }: { p: PublicProfile }) {
             </div>
           </div>
           {p.isSelf && (
-            <div className="flex shrink-0 flex-wrap justify-center gap-2 sm:flex-col">
-              <Link href="/profile/avatar" data-testid="profile-customize" className="btn-3d btn-3d-blue btn-shine px-4 py-2 text-sm">
+            <div className="relative flex shrink-0 flex-wrap justify-center gap-2 sm:flex-col">
+              <Link href="/profile" data-testid="profile-customize" className="btn-3d btn-3d-blue btn-shine px-4 py-2 text-sm">
                 <Palette className="h-4 w-4" /> Tuỳ chỉnh nhân vật
               </Link>
               <Link href="/profile" className="btn-3d btn-3d-white px-4 py-2 text-sm">

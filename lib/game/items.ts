@@ -5,7 +5,7 @@
  */
 import type { Rarity } from "@/lib/points/rarity";
 
-export type Slot = "skin" | "hair" | "hairColor" | "eyes" | "outfit" | "accessory" | "frame" | "background" | "title" | "pet";
+export type Slot = "skin" | "hair" | "hairColor" | "eyes" | "outfit" | "accessory" | "frame" | "background" | "effect" | "title" | "pet";
 
 export const SLOTS: { key: Slot; label: string; icon: string; optional?: boolean }[] = [
   { key: "skin", label: "Màu da", icon: "🖐️" },
@@ -16,6 +16,7 @@ export const SLOTS: { key: Slot; label: string; icon: string; optional?: boolean
   { key: "accessory", label: "Phụ kiện", icon: "🎀", optional: true },
   { key: "frame", label: "Khung", icon: "🖼️", optional: true },
   { key: "background", label: "Nền", icon: "🌈", optional: true },
+  { key: "effect", label: "Hiệu ứng", icon: "✨", optional: true },
   { key: "title", label: "Danh hiệu", icon: "🏷️", optional: true },
   { key: "pet", label: "Mèo Cún", icon: "🐱", optional: true },
 ];
@@ -29,6 +30,8 @@ export interface Item {
   price?: { xu: number } | { gem: number };
   free?: boolean;
   gachaOnly?: boolean;
+  /** Món bán ở "Hồ sơ & Trang trí" (GĐ8): không vào bể rương (giữ tỉ lệ rương cũ, review Gemini GĐ8), không hiện ở "Tất cả" của tiệm */
+  studio?: boolean;
   /** Tham số vẽ (màu, biến thể) — Chibi.tsx đọc */
   v?: string;
   v2?: string;
@@ -80,6 +83,12 @@ export const ITEMS: Item[] = [
   { id: "outfit-ninja", slot: "outfit", name: "Ninja", rarity: "epic", gachaOnly: true, v: "#1f2937", v2: "#dc2626" },
   { id: "outfit-royal", slot: "outfit", name: "Hoàng bào", rarity: "legendary", price: { gem: 8 }, v: "#7c3aed", v2: "#fbbf24" },
   { id: "outfit-astro", slot: "outfit", name: "Phi hành gia", rarity: "legendary", gachaOnly: true, v: "#f8fafc", v2: "#0ea5e9" },
+  // GĐ8 (trang Hồ sơ & Trang trí)
+  { id: "outfit-cathoodie", slot: "outfit", name: "Hoodie tai mèo", rarity: "rare", studio: true, price: { xu: 1500 }, v: "#f9a8d4", v2: "#be185d" },
+  { id: "outfit-kimono", slot: "outfit", name: "Kimono hoa", rarity: "rare", studio: true, price: { xu: 1500 }, v: "#fbcfe8", v2: "#db2777" },
+  { id: "outfit-gamer", slot: "outfit", name: "Áo game thủ", rarity: "rare", studio: true, price: { xu: 1200 }, v: "#1f2937", v2: "#22d3ee" },
+  { id: "outfit-wizard", slot: "outfit", name: "Áo choàng phù thuỷ", rarity: "epic", studio: true, price: { xu: 2400 }, v: "#4c1d95", v2: "#fbbf24" },
+  { id: "outfit-knight", slot: "outfit", name: "Giáp hiệp sĩ", rarity: "epic", studio: true, price: { xu: 3000 }, v: "#cbd5e1", v2: "#2563eb" },
   // ---- Phụ kiện
   { id: "acc-glasses", slot: "accessory", name: "Kính học bá", rarity: "common", price: { xu: 450 }, v: "glasses" },
   { id: "acc-cap", slot: "accessory", name: "Mũ lưỡi trai", rarity: "rare", price: { xu: 900 }, v: "cap" },
@@ -87,29 +96,70 @@ export const ITEMS: Item[] = [
   { id: "acc-headphones", slot: "accessory", name: "Tai nghe", rarity: "epic", gachaOnly: true, v: "headphones" },
   { id: "acc-crown", slot: "accessory", name: "Vương miện", rarity: "legendary", price: { gem: 10 }, v: "crown" },
   { id: "acc-halo", slot: "accessory", name: "Vòng hào quang", rarity: "legendary", gachaOnly: true, v: "halo" },
+  { id: "acc-scarf", slot: "accessory", name: "Khăn quàng ấm", rarity: "common", studio: true, price: { xu: 450 }, v: "scarf" },
+  { id: "acc-sakura", slot: "accessory", name: "Kẹp hoa anh đào", rarity: "common", studio: true, price: { xu: 450 }, v: "sakura" },
+  { id: "acc-catears", slot: "accessory", name: "Bờm tai mèo", rarity: "rare", studio: true, price: { xu: 900 }, v: "catears" },
+  { id: "acc-wizardhat", slot: "accessory", name: "Mũ phù thuỷ", rarity: "rare", studio: true, price: { xu: 1200 }, v: "wizardhat" },
   // ---- Khung
   { id: "frame-blue", slot: "frame", name: "Khung xanh", rarity: "common", price: { xu: 600 }, v: "#60a5fa" },
   { id: "frame-leaf", slot: "frame", name: "Khung lá", rarity: "rare", price: { xu: 1200 }, v: "#22c55e" },
   { id: "frame-rainbow", slot: "frame", name: "Khung mây cầu vồng", rarity: "epic", gachaOnly: true, v: "rainbow" },
   { id: "frame-gold", slot: "frame", name: "Khung hào quang vàng", rarity: "legendary", price: { gem: 6 }, v: "gold" },
+  // v = màu khung chữ nhật trong Chibi; v2 = kiểu vòng quanh ảnh đại diện (FrameRing)
+  { id: "frame-catear", slot: "frame", name: "Khung Tai Mèo", rarity: "common", studio: true, price: { xu: 600 }, v: "#f9a8d4", v2: "catear" },
+  { id: "frame-laurel", slot: "frame", name: "Khung Nguyệt Quế", rarity: "rare", studio: true, price: { xu: 1200 }, v: "#d4a017", v2: "laurel" },
+  { id: "frame-sakura", slot: "frame", name: "Khung Anh Đào", rarity: "rare", studio: true, price: { xu: 1200 }, v: "#f472b6", v2: "sakura" },
+  { id: "frame-ice", slot: "frame", name: "Khung Băng Tinh", rarity: "rare", studio: true, price: { xu: 1500 }, v: "#7dd3fc", v2: "ice" },
+  { id: "frame-royal", slot: "frame", name: "Khung Hoàng Gia", rarity: "epic", studio: true, price: { xu: 3000 }, v: "#8b5cf6", v2: "royal" },
+  { id: "frame-neon", slot: "frame", name: "Vòng Cyber Neon", rarity: "epic", gachaOnly: true, v: "#22d3ee", v2: "neon" },
+  { id: "frame-fire", slot: "frame", name: "Khung Hoả Long", rarity: "legendary", studio: true, price: { gem: 8 }, v: "#f97316", v2: "fire" },
+  { id: "frame-moon", slot: "frame", name: "Tinh Vân Dạ Nguyệt", rarity: "legendary", gachaOnly: true, v: "#6366f1", v2: "moon" },
   // ---- Nền
   { id: "bg-sky", slot: "background", name: "Trời xanh", rarity: "common", price: { xu: 300 }, v: "#dbeafe", v2: "#bfdbfe" },
   { id: "bg-mint", slot: "background", name: "Bạc hà", rarity: "common", price: { xu: 300 }, v: "#d1fae5", v2: "#a7f3d0" },
   { id: "bg-sunset", slot: "background", name: "Hoàng hôn", rarity: "rare", price: { xu: 900 }, v: "#fed7aa", v2: "#fbcfe8" },
   { id: "bg-galaxy", slot: "background", name: "Dải ngân hà", rarity: "epic", gachaOnly: true, v: "#312e81", v2: "#7c3aed" },
   { id: "bg-gold", slot: "background", name: "Vàng ròng", rarity: "legendary", gachaOnly: true, v: "#fde68a", v2: "#f59e0b" },
+  // Cảnh vẽ SVG cho banner hồ sơ (ProfileScene); trong Chibi là gradient v → v2
+  { id: "bg-classroom", slot: "background", name: "Lớp học nắng ấm", rarity: "common", studio: true, price: { xu: 450 }, v: "#fef3c7", v2: "#fdba74" },
+  { id: "bg-dusk", slot: "background", name: "Hoàng hôn mây tím", rarity: "common", studio: true, price: { xu: 600 }, v: "#c4b5fd", v2: "#f9a8d4" },
+  { id: "bg-library", slot: "background", name: "Thư viện đêm sao", rarity: "rare", studio: true, price: { xu: 1200 }, v: "#1e1b4b", v2: "#4338ca" },
+  { id: "bg-sakura", slot: "background", name: "Công viên anh đào", rarity: "rare", studio: true, price: { xu: 1200 }, v: "#fce7f3", v2: "#f9a8d4" },
+  { id: "bg-neon", slot: "background", name: "Đêm thành phố neon", rarity: "epic", studio: true, price: { xu: 3000 }, v: "#0f172a", v2: "#7c3aed" },
+  { id: "bg-forest", slot: "background", name: "Khu rừng kỳ ảo", rarity: "epic", gachaOnly: true, v: "#064e3b", v2: "#10b981" },
+  // ---- Hiệu ứng (lớp động trên banner hồ sơ; bản tĩnh trong Chibi)
+  { id: "fx-bubble", slot: "effect", name: "Bong bóng sắc màu", rarity: "common", studio: true, price: { xu: 450 }, v: "bubble" },
+  { id: "fx-sparkle", slot: "effect", name: "Hào quang lấp lánh", rarity: "common", studio: true, price: { xu: 600 }, v: "sparkle" },
+  { id: "fx-snow", slot: "effect", name: "Tuyết rơi mùa đông", rarity: "common", studio: true, price: { xu: 600 }, v: "snow" },
+  { id: "fx-sakura", slot: "effect", name: "Hoa anh đào rơi", rarity: "rare", studio: true, price: { xu: 1200 }, v: "sakura" },
+  { id: "fx-butterfly", slot: "effect", name: "Bướm đêm rực rỡ", rarity: "rare", studio: true, price: { xu: 1500 }, v: "butterfly" },
+  { id: "fx-thunder", slot: "effect", name: "Hào quang điện", rarity: "epic", studio: true, price: { xu: 3000 }, v: "thunder" },
+  { id: "fx-meteor", slot: "effect", name: "Mưa sao băng", rarity: "epic", gachaOnly: true, v: "meteor" },
+  { id: "fx-flame", slot: "effect", name: "Tàn lửa rực hồng", rarity: "legendary", studio: true, price: { gem: 8 }, v: "flame" },
   // ---- Danh hiệu trang trí (khác danh hiệu theo xu)
   { id: "title-nerd", slot: "title", name: "Mọt sách", rarity: "common", price: { xu: 450 } },
   { id: "title-speed", slot: "title", name: "Thần tốc", rarity: "rare", price: { xu: 900 } },
   { id: "title-pi", slot: "title", name: "Fan của số π", rarity: "rare", gachaOnly: true },
   { id: "title-boss", slot: "title", name: "Trùm cuối", rarity: "epic", gachaOnly: true },
   { id: "title-legend", slot: "title", name: "Huyền thoại lớp", rarity: "legendary", gachaOnly: true },
+  { id: "title-owl", slot: "title", name: "Cú đêm chăm chỉ", rarity: "common", studio: true, price: { xu: 600 } },
+  { id: "title-hunter10", slot: "title", name: "Thợ săn điểm 10", rarity: "rare", studio: true, price: { xu: 1200 } },
+  { id: "title-mathking", slot: "title", name: "Học bá Toán học", rarity: "epic", studio: true, price: { xu: 2400 } },
+  { id: "title-warrior", slot: "title", name: "Chiến thần giải đề", rarity: "epic", gachaOnly: true },
   // ---- Mèo Cún đồng hành (theo mockup "Tiệm Quà Học Đường"): hiện cạnh hồ sơ, bấm vuốt ve
   { id: "pet-bi", slot: "pet", name: "Mèo Mướp Bi", rarity: "common", free: true, v: "tabby" },
   { id: "pet-moka", slot: "pet", name: "Mèo Vàng Moka Béo Ú", rarity: "common", price: { xu: 450 }, v: "orange" },
   { id: "pet-peanut", slot: "pet", name: "Bé Mèo Tam Thể Peanut", rarity: "rare", price: { xu: 600 }, v: "calico" },
   { id: "pet-shadow", slot: "pet", name: "Mèo Đen Bóng Đêm", rarity: "epic", gachaOnly: true, v: "black" },
   { id: "pet-snow", slot: "pet", name: "Mèo Hoàng Thượng Snow", rarity: "legendary", price: { gem: 8 }, v: "snow" },
+  // GĐ8: thú cưng khác loài (PetSvg vẽ theo v)
+  { id: "pet-slime", slot: "pet", name: "Slime hoàng kim", rarity: "common", studio: true, price: { xu: 450 }, v: "slime" },
+  { id: "pet-bunny", slot: "pet", name: "Thỏ mây", rarity: "common", studio: true, price: { xu: 600 }, v: "bunny" },
+  { id: "pet-shiba", slot: "pet", name: "Shiba hạt dẻ", rarity: "rare", studio: true, price: { xu: 900 }, v: "shiba" },
+  { id: "pet-owl", slot: "pet", name: "Cú học giả", rarity: "rare", studio: true, price: { xu: 1200 }, v: "owl" },
+  { id: "pet-dragon", slot: "pet", name: "Rồng mini sấm sét", rarity: "epic", studio: true, price: { xu: 3000 }, v: "dragon" },
+  { id: "pet-robot", slot: "pet", name: "Robot trợ thủ", rarity: "epic", gachaOnly: true, v: "robot" },
+  { id: "pet-phoenix", slot: "pet", name: "Phượng hoàng lửa", rarity: "legendary", studio: true, price: { gem: 10 }, v: "phoenix" },
 ];
 
 export const ITEM_BY_ID: Record<string, Item> = Object.fromEntries(ITEMS.map((i) => [i.id, i]));

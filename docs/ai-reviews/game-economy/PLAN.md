@@ -234,3 +234,62 @@ Nguồn: https://gemini.google.com/share/5efaee92ce10 (thầy yêu cầu "đầy
 
 Không làm: "Góc Giáo Viên" trong tiệm học sinh (thầy không vào /rewards; phát mã đã có ở tab Mã quà tặng), "Reset demo".
 Test: E2E tiệm cập nhật (menu, thời tiết, danh hiệu, mở rương trong tiệm), audit 4 bề rộng, đo JS tải lần đầu /rewards.
+
+## 11. GĐ7–8 — Tiệm tràn màn hình, nhân vật anime, trang Hồ sơ & Trang trí (22/11/2026)
+
+**GĐ7 (đã commit b28cee4):** `/rewards` bỏ sidebar chung, tiệm tràn màn hình (biển gỗ + mái hiên); `Chibi.tsx` vẽ lại kiểu anime chibi, giữ API và slug.
+
+**GĐ8: trang `/profile` theo 8 ảnh mockup thầy gửi.** Ảnh mockup là ảnh AI dạng raster, còn ta vẽ toàn bộ bằng SVG/CSS (không tải ảnh ngoài, nhẹ).
+
+### 11.1 Bố cục
+- `/profile` (học sinh, khi bật Xu) có 2 tab: **Hồ sơ & Trang trí** (mặc định) và **Cài đặt tài khoản**. Tab Cài đặt chứa form tên, ảnh đại diện và mật khẩu hiện có, giữ nguyên logic. Thầy/admin, hoặc khi tắt Xu: chỉ hiện tab cài đặt như cũ.
+- **Thẻ trái** gồm:
+  - Banner là cảnh của Hình nền đang dùng, có lớp Hiệu ứng động; trong banner là nhân vật chibi và thú cưng.
+  - Ảnh đại diện tròn (ảnh tải lên hoặc chữ cái đầu), viền bằng Khung đang dùng, đè lên mép dưới banner.
+  - Chip danh hiệu, tên, email, 2 ô số liệu (bài đã học, xu).
+  - Hàng huy hiệu thành tích, tính từ dữ liệu có sẵn (bài đã học ≥10, chuỗi tuần ≥2, cấp ≥3, sở hữu ≥10 món). Huy hiệu chưa đạt hiện xám.
+  - Nút Đăng xuất.
+- **Thẻ phải "Trang trí & Vật phẩm"** có các tab: Nhân vật (gồm *Mẫu nhân vật* và *Tuỳ chỉnh*: màu tóc, kiểu tóc, màu mắt, trang phục & phụ kiện, màu da), Thú cưng, Khung viền, Hình nền, Hiệu ứng, Danh hiệu.
+  - Ô món hiện "Đã sở hữu", giá (nút mua ngay), hoặc "Chỉ từ rương".
+  - Bấm ô thì xem trước ngay ở thẻ trái.
+  - Chân thẻ: ⚙ (sang tab Cài đặt), 🗑 (hoàn tác về bản đã lưu), **Lưu trang trí** (`saveAvatar`).
+- `/profile/avatar` chuyển hướng về `/profile` để chỉ còn một trình tuỳ chỉnh. Hồ sơ công khai `/profile/[userId]` dùng chung banner, khung và hiệu ứng (chỉ xem).
+
+### 11.2 Nội dung mới (chỉ THÊM slug, không đổi/xoá)
+- **Ô mới `effect` (Hiệu ứng)**, tuỳ chọn. `sanitizeAvatar` xử lý chung theo SLOTS. Cấu hình cũ không có khoá thì để trống.
+- **Trang phục**: phù thuỷ, hoodie tai mèo, giáp hiệp sĩ, kimono.
+- **Phụ kiện**: mũ phù thuỷ, khăn quàng, kẹp hoa anh đào, bờm tai mèo.
+- **Thú cưng**: rồng mini, Shiba, cú học giả, thỏ mây, slime vàng, phượng hoàng, robot. `PetSvg` vẽ theo loài.
+- **Khung viền** (vòng tròn quanh ảnh đại diện; trong Chibi vẫn là khung chữ nhật màu tương ứng): Hoàng Gia, Nguyệt Quế, Anh Đào, Cyber Neon, Băng Tinh, Tai Mèo, Hoả Long, Tinh Vân Dạ Nguyệt.
+- **Hình nền** (cảnh SVG cho banner; trong Chibi là gradient v/v2): Thư viện đêm sao, Hoàng hôn mây tím, Lớp học nắng ấm, Công viên anh đào, Thành phố neon, Rừng kỳ ảo.
+- **Hiệu ứng** (lớp động CSS, `pointer-events:none`; khi `prefers-reduced-motion` thì đứng yên): lấp lánh, hoa anh đào rơi, tuyết, hào quang điện, bướm đêm, mưa sao băng, lửa, bong bóng.
+- **Danh hiệu**: thêm vài danh hiệu có giá (Thợ săn điểm 10, Cú đêm chăm chỉ, Vua tốc độ…), hiển thị dạng ruy băng.
+- **Mẫu nhân vật** (`lib/game/presets.ts`, không phải món):
+  - Mỗi mẫu là một bộ id {hair, hairColor, eyes, outfit, accessory}.
+  - Áp mẫu thì xem trước. Nếu thiếu món, nút "Mua bộ (tổng X)" gọi `buyBundle` mới.
+  - `buyBundle` chạy một giao dịch, được cả bộ hoặc không món nào: chạy `buyItemInTx` lần lượt, gặp lỗi thì throw để rollback toàn bộ. Món đã có thì bỏ qua. Không có giảm giá.
+- **Giá theo thang ×150 đã chốt** (không dùng giá 100–300 của mockup):
+  - Phổ thông: 300–600 xu.
+  - Hiếm: 900–1 500 xu.
+  - Sử thi: 2 400–4 500 xu hoặc chỉ từ rương.
+  - Huyền thoại: 6–10 ngọc hoặc chỉ từ rương.
+  - Món mới không miễn phí tự vào pool rương theo độ hiếm (như quy tắc hiện tại).
+
+### 11.3 Test
+- **Unit:**
+  - Slug là duy nhất và ô hợp lệ.
+  - Mỗi món có đúng một trong free / price / gachaOnly.
+  - Mẫu nhân vật chỉ tham chiếu món tồn tại, đúng ô.
+  - `sanitizeAvatar` nhận ô `effect` và từ chối món chưa sở hữu.
+  - `buyBundle`: thiếu tiền thì không mua món nào; món đã có thì bỏ qua; sổ cái khớp ví.
+- **E2E:**
+  - 2 tab hồ sơ; bấm món thì banner, xem trước đổi theo.
+  - Mua thú cưng thì lưu được, tải lại vẫn còn.
+  - Tab Cài đặt vẫn đổi được tên.
+  - `/profile/avatar` chuyển hướng.
+  - Hồ sơ công khai có banner.
+  - Không tràn ngang ở 320–1920px.
+
+### 11.4 Không làm
+- Danh hiệu theo thành tích tự mở ("Top 10 Hunter", "Bảng Vàng"): cần luật xét riêng, để sau.
+- Ảnh raster như mockup.
