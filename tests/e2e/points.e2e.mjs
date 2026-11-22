@@ -406,7 +406,7 @@ try {
     await sleep(200);
     expect(await click("item-hair-spiky"), "không có ô tóc dựng");
     expect(await click("item-acc-glasses"), "không có ô kính");
-    expect(await s.waitText(/Kính học bá · 450 xu/), "thanh hành động không báo món đang thử");
+    expect(await s.waitText(/1 vật phẩm chưa sở hữu · 450 xu/), "thanh hành động không báo món đang thử");
     expect(await s.ev(`return document.querySelector('[data-testid="profile-banner"] svg[role="img"]') !== null`), "banner thiếu nhân vật xem trước");
     const before = await balanceOf(data.student.id);
     expect(await click("decor-buy"), "không bấm được Mua & lưu");
@@ -420,7 +420,8 @@ try {
     await sleep(200);
     expect(await s.ev(`return !!document.querySelector('[data-testid="decor-buy"]')?.disabled`), "vương miện 10 ngọc phải bị khoá (chỉ có 3 ngọc)");
     expect(await click("decor-reset"), "không hoàn tác được");
-    expect(await s.waitText(/Hồ sơ đang hiển thị đúng như bạn thấy/), "hoàn tác chưa về bản đã lưu");
+    expect(await s.waitText(/Đã lưu trang trí|Không có thay đổi/), "hoàn tác chưa về bản đã lưu");
+    expect(await s.ev(`return !document.querySelector('[data-testid="decor-reset"]')`), "hoàn tác xong vẫn còn thay đổi");
     // Tab Cài đặt tài khoản vẫn có form cũ; đường dẫn cũ chuyển hướng
     expect(await click("tab-settings"), "thiếu tab Cài đặt tài khoản");
     expect(await s.waitText(/Thông tin cá nhân/), "tab cài đặt thiếu form thông tin");

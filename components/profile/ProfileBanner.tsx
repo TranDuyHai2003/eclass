@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { ProfileScene } from "./ProfileScene";
 import { EffectLayer } from "./EffectLayer";
 import { FrameRing } from "./FrameRing";
+import { Sprite, hasSprite } from "@/components/studio/Sprite";
 
 /**
  * Banner hồ sơ dùng chung (trang /profile và hồ sơ công khai): cảnh Hình nền + Hiệu ứng động + nhân vật + thú cưng,
@@ -26,18 +27,29 @@ export function ProfileBanner({
   return (
     <div className={cn("relative", className)} data-testid="profile-banner" data-bg={config.background ?? ""} data-effect-id={config.effect ?? ""}>
       <div className="relative h-[178px] overflow-hidden rounded-t-[20px]">
-        <ProfileScene bgId={config.background} className="absolute inset-0" />
+        {config.background && hasSprite(config.background) ? (
+          // Ảnh cảnh của canvas thiết kế: giữ tỉ lệ ô 112:62, phủ kín banner (cắt trên/dưới), không kéo méo
+          <span className="absolute inset-0 overflow-hidden" data-scene={config.background}>
+            <Sprite id={config.background} className="absolute left-1/2 top-1/2 w-full min-w-[322px] -translate-x-1/2 -translate-y-1/2" />
+          </span>
+        ) : (
+          <ProfileScene bgId={config.background} className="absolute inset-0" />
+        )}
         <EffectLayer effectId={config.effect} />
         {previewing && (
           <span className="absolute left-3 top-3 z-[1] inline-flex items-center gap-1.5 rounded-full bg-[#140e30]/70 px-2.5 py-1.5 text-xs font-semibold text-white" data-testid="previewing">
             <Eye className="h-3.5 w-3.5" aria-hidden /> Đang xem trước
           </span>
         )}
-        <div className="absolute inset-x-0 bottom-1 flex items-end justify-center gap-1 pl-16 sm:pl-10">
-          <Chibi config={{ ...config, background: null, frame: null, effect: null }} size={118} className="animate-float drop-shadow-[0_6px_8px_rgba(15,23,42,0.25)]" title={name ?? undefined} />
+        <div className={cn("absolute inset-x-0 bottom-0 flex items-end justify-center gap-1", showAvatar && "pl-16 sm:pl-10")}>
+          <Chibi config={{ ...config, background: null, frame: null, effect: null }} size={showAvatar ? 118 : 132} className="animate-float drop-shadow-[0_6px_8px_rgba(15,23,42,0.25)]" title={name ?? undefined} />
           {config.pet && (
             <span className="mb-1 shrink-0" title={ITEM_BY_ID[config.pet]?.name}>
-              <PetSvg itemId={config.pet} size={58} className="drop-shadow-[0_4px_6px_rgba(15,23,42,0.25)]" />
+              {hasSprite(config.pet) ? (
+                <Sprite id={config.pet} className="w-[78px] rounded-xl [mask-image:radial-gradient(closest-side,#000_70%,transparent_100%)]" />
+              ) : (
+                <PetSvg itemId={config.pet} size={58} className="drop-shadow-[0_4px_6px_rgba(15,23,42,0.25)]" />
+              )}
             </span>
           )}
         </div>
