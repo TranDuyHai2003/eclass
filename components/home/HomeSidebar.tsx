@@ -29,6 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { usePointsEnabled } from "@/components/points/PointsFlag";
+import { canUseShop } from "@/lib/points/shop-access";
 
 const DiscordIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 -28.5 256 256" fill="currentColor" {...props}>
@@ -62,7 +63,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
     { icon: BookOpen, label: "Khóa Học", href: "/courses" },
     { icon: Trophy, label: "Bảng xếp hạng Hunter", href: "/ranking" },
     ...(pointsEnabled ? [{ icon: Crown, label: "Bảng Vàng", href: "/leaderboard" }] : []),
-    ...(pointsEnabled && role === "STUDENT" ? [{ icon: Gift, label: "Tiệm quà", href: "/rewards" }] : []),
+    ...(pointsEnabled && role === "STUDENT" && canUseShop(currentUser) ? [{ icon: Gift, label: "Tiệm quà", href: "/rewards" }] : []),
     {
       icon: DiscordIcon,
       label: "Discord",

@@ -87,6 +87,19 @@ describe("Học sinh nhập mã", () => {
     assert.equal((await fx.wallet(s.id))!.lifetimeEarned, 0);
   });
 
+  test("mã thầy đặt tên dễ nhớ (4–16 ký tự, vd DIEM10) nhập được, mỗi bạn một lần; mã quá ngắn / quá dài bị từ chối", async () => {
+    const teacher = await fx.user({ role: "TEACHER" });
+    const code = `NAMED${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    await prisma.giftCode.create({ data: { code, currency: "XU", amount: 300, maxUses: 1000, note: fx.tag, createdById: teacher.id } });
+    const [a, b] = await Promise.all([fx.user(), fx.user()]);
+    assert.equal((await redeem(a.id, code.toLowerCase())).success, true);
+    assert.equal((await redeem(b.id, code)).success, true);
+    assert.equal((await redeem(a.id, code)).success, false, "mỗi bạn một lần");
+    assert.equal(await fx.balance(a.id), 300);
+    assert.equal((await redeem(a.id, "ABC")).success, false);
+    assert.equal((await redeem(a.id, "A".repeat(17))).success, false);
+  });
+
   test("mã dùng chung 2 lượt: bạn thứ 3 bị từ chối; usedCount đúng", async () => {
     const [a, b, c] = await Promise.all([fx.user(), fx.user(), fx.user()]);
     const { codes } = await batch({ maxUses: 2 });

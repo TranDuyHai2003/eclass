@@ -22,6 +22,7 @@ import { getAvatarThumbUrl } from "@/lib/game-rank";
 import { isPointsEnabled } from "@/lib/points/config";
 import { getHeaderPoints } from "@/lib/points/queries";
 import { getLevel } from "@/lib/points/levels";
+import { canUseShop } from "@/lib/points/shop-access";
 import { SoundToggle } from "@/components/game/SoundToggle";
 
 export default async function Header() {
@@ -97,7 +98,7 @@ export default async function Header() {
                   {showPoints && headerPoints && (
                     <>
                     <Link
-                      href="/rewards"
+                      href={canUseShop(session.user) ? "/rewards" : "/profile"}
                       data-wallet-chip
                       title={`${pointsLevel?.icon} ${pointsLevel?.name} · ${headerPoints.balance.toLocaleString("vi-VN")} xu · ${headerPoints.gems} ngọc · tiệm quà`}
                       className="h-10 sm:h-11 px-2.5 sm:px-3 inline-flex items-center gap-1.5 rounded-2xl border-2 border-amber-200 bg-amber-50 text-amber-700 shadow-[0_3px_0_0_#fde68a] hover:bg-amber-100 active:translate-y-[2px] active:shadow-[0_1px_0_0_#fde68a] transition-all"

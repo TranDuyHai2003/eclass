@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { canUseShop } from "@/lib/points/shop-access";
 import { auth } from "@/auth";
 import { HomeSidebar } from "@/components/home/HomeSidebar";
 import { GachaPage } from "@/components/game/GachaPage";
@@ -17,6 +18,7 @@ export default async function GachaRoute({ searchParams }: { searchParams: Promi
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   if (session.user.role !== "STUDENT") redirect("/teacher/rewards");
+  if (!canUseShop(session.user)) redirect("/rewards");
   const uid = session.user.id;
 
   const [wallet, today, history, me, { config, owned }, pityRow] = await Promise.all([

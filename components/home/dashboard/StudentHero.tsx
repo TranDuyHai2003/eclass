@@ -21,6 +21,8 @@ export interface StudentHeroProps {
   /** Nhân vật chibi (null khi tắt Xu) */
   avatar?: AvatarConfig | null;
   userId?: string;
+  /** Tiệm quà mở cho tài khoản này (tạm thời chỉ học sinh offline) */
+  shopOpen?: boolean;
 }
 
 /** Tên gọi: chữ cuối của họ tên tiếng Việt ("Nguyễn Văn An" → "An") */
@@ -30,7 +32,7 @@ function givenName(name?: string | null) {
 }
 
 /** Thẻ chào trên trang chủ học sinh: mình đang ở đâu, học tiếp gì, sắp đổi được gì */
-export function StudentHero({ name, points, lastLesson, stats, startHref, aside, avatar, userId }: StudentHeroProps) {
+export function StudentHero({ name, points, lastLesson, stats, startHref, aside, avatar, userId, shopOpen = true }: StudentHeroProps) {
   const level = points ? getLevel(points.lifetimeEarned) : null;
 
   return (
@@ -54,7 +56,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside,
             </div>
             {level && (
               <Link
-                href="/rewards"
+                href={shopOpen ? "/rewards" : "/profile"}
                 className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-black ring-1 ring-white/25 hover:bg-white/25"
               >
                 <span aria-hidden>{level.icon}</span> {level.name}
@@ -77,7 +79,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside,
           <div className={cn("grid gap-2", points ? "grid-cols-3" : "max-w-sm grid-cols-2")}>
             {points && (
               <>
-                <HeroStat href="/rewards" icon="🪙" value={points.balance} label="xu" accent="text-amber-300" />
+                <HeroStat href={shopOpen ? "/rewards" : undefined} icon="🪙" value={points.balance} label="xu" accent="text-amber-300" />
                 <HeroStat
                   icon="🔥"
                   value={points.weekStreak}
@@ -112,7 +114,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside,
       {(points || aside) && (
         <div className="flex min-w-0 flex-col gap-4">
           {aside}
-          {points && (
+          {points && shopOpen && (
             <div
               data-testid="hero-shop"
               className="flex min-w-0 flex-1 flex-col gap-3 rounded-3xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-4 shadow-[0_6px_0_0_#fde68a] sm:p-5"

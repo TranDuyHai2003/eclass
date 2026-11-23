@@ -15,6 +15,7 @@ import {
 } from "@/lib/points/redemption";
 import { normalizeRewardInput, type RewardInput } from "@/lib/points/reward-input";
 import { addShopTemplatesInTx } from "@/lib/points/shop-templates";
+import { canUseShop } from "@/lib/points/shop-access";
 
 /**
  * Server actions của Điểm thưởng: chỉ kiểm tra quyền rồi gọi phần lõi trong lib/points (đã có test ở tests/points).
@@ -44,8 +45,10 @@ export async function redeemReward(rewardId: string): Promise<PointsResult> {
   if (!isPointsEnabled()) return DISABLED;
   const blocked = await demoGuard();
   if (blocked) return blocked;
-  const userId = (await auth())?.user?.id;
+  const me = (await auth())?.user;
+  const userId = me?.id;
   if (!userId) return LOGIN;
+  if (!canUseShop(me)) return { success: false, error: "Tiệm quà đang mở thử cho lớp offline." };
   try {
     return await prisma.$transaction((tx) => redeemInTx(tx, userId, rewardId));
   } catch (err) {

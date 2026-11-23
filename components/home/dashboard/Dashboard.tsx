@@ -11,6 +11,7 @@ import { HomeCarousel } from "./HomeCarousel";
 import { RightSidebar } from "./RightSidebar";
 import { HomePromo } from "../HomePromo";
 import { StudentHero } from "./StudentHero";
+import { canUseShop } from "@/lib/points/shop-access";
 import type { PointsCardData } from "@/lib/points/queries";
 import type { HomeRecentResult, HomeTodoItem } from "@/lib/home/student-home";
 import type { AvatarConfig } from "@/lib/game/avatar";
@@ -99,6 +100,7 @@ export function Dashboard({
               aside={<HomePromo variant="card" />}
               avatar={avatar ?? null}
               userId={user?.id}
+              shopOpen={canUseShop(user)}
             />
           )}
 

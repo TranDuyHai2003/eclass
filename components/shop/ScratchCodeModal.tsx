@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { ShopModal } from "./ShopModal";
 import { redeemGiftCode } from "@/actions/giftcode";
-import { CODE_LENGTH, normalizeCode } from "@/lib/game/giftcode-shared";
+import { CODE_LENGTH, codeLengthOk, normalizeCode } from "@/lib/game/giftcode-shared";
 import { play } from "@/lib/sound";
 import { CoinBurst } from "@/components/game/CoinBurst";
 
@@ -137,14 +137,14 @@ export function ScratchCodeModal({ open, onOpenChange, inline, canEarn }: { open
                   data-testid="giftcode-input"
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  onKeyDown={(e) => e.key === "Enter" && clean.length === CODE_LENGTH && !pending && canEarn && submit()}
+                  onKeyDown={(e) => e.key === "Enter" && codeLengthOk(clean) && !pending && canEarn && submit()}
                   placeholder="VÍ DỤ: ABCD2345"
                   maxLength={12}
                   spellCheck={false}
                   autoComplete="off"
                   className="h-11 min-w-0 flex-1 rounded-xl border-[2.5px] border-[#5b3d1e] bg-white px-3 font-mono text-lg font-black uppercase tracking-[0.2em] text-[#3b2a14] outline-none placeholder:font-sans placeholder:text-sm placeholder:tracking-normal placeholder:text-[#b9a58a]"
                 />
-                <button type="button" data-testid="giftcode-submit" disabled={pending || clean.length !== CODE_LENGTH || !canEarn} onClick={submit} className="btn-pill btn-pill-yellow px-4 text-sm">
+                <button type="button" data-testid="giftcode-submit" disabled={pending || !codeLengthOk(clean) || !canEarn} onClick={submit} className="btn-pill btn-pill-yellow px-4 text-sm">
                   {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Nhận quà
                 </button>
               </div>

@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { demoGuard } from "@/lib/demo";
 import { isPointsEnabled } from "@/lib/points/config";
+import { canUseShop } from "@/lib/points/shop-access";
 import type { PointsResult } from "@/lib/points/redemption";
 import { createBatch, noteFailure, rateLimited, redeemGiftCodeInTx, validateBatchInput, type GiftCodeBatchInput } from "@/lib/game/giftcode";
 
@@ -23,8 +24,10 @@ export async function redeemGiftCode(code: string): Promise<RedeemGiftCodeResult
   if (!isPointsEnabled()) return DISABLED;
   const blocked = await demoGuard();
   if (blocked) return blocked;
-  const userId = (await auth())?.user?.id;
+  const me = (await auth())?.user;
+  const userId = me?.id;
   if (!userId) return { success: false, error: "Vui lòng đăng nhập." };
+  if (!canUseShop(me)) return { success: false, error: "Tiệm quà đang mở thử cho lớp offline." };
   if (rateLimited(userId)) return { success: false, error: "Bạn nhập sai quá nhiều lần, thử lại sau 10 phút nhé." };
   try {
     const res = await prisma.$transaction((tx) => redeemGiftCodeInTx(tx, userId, String(code ?? "")));

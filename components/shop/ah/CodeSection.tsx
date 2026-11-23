@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { redeemGiftCode } from "@/actions/giftcode";
-import { CODE_LENGTH, normalizeCode } from "@/lib/game/giftcode-shared";
+import { MAX_CODE_LENGTH, codeLengthOk, normalizeCode } from "@/lib/game/giftcode-shared";
 import { buzz, play } from "@/lib/sound";
 import { CoinDot, GemDot, fmt } from "./parts";
 
@@ -83,7 +83,7 @@ export function CodeSection({ canEarn, onWon }: { canEarn: boolean; onWon?: () =
     toast.error(msg);
   };
   const submit = () => {
-    if (clean.length !== CODE_LENGTH) return bad(`Mã gồm ${CODE_LENGTH} ký tự. Kiểm tra lại nhé.`);
+    if (!codeLengthOk(clean)) return bad("Mã chưa đúng, kiểm tra lại nhé.");
     start(async () => {
       play("click");
       const res = await redeemGiftCode(clean);
@@ -153,8 +153,8 @@ export function CodeSection({ canEarn, onWon }: { canEarn: boolean; onWon?: () =
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === "Enter" && !pending && canEarn && submit()}
-                placeholder="VD: ABCD2345"
-                maxLength={12}
+                placeholder="VD: DIEM10, CHAMCHI…"
+                maxLength={MAX_CODE_LENGTH + 4}
                 spellCheck={false}
                 autoComplete="off"
                 className={cn("h-12 min-w-0 flex-1 rounded-full border-[2.5px] border-[#241e1a] bg-[#fffdf8] px-[18px] font-extrabold uppercase tracking-[0.12em] outline-none placeholder:tracking-normal placeholder:text-[#b9a58a]", err && "ah-shake")}
@@ -163,7 +163,7 @@ export function CodeSection({ canEarn, onWon }: { canEarn: boolean; onWon?: () =
                 {pending && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />}Nhận quà
               </button>
             </div>
-            <div className="text-xs font-bold text-[#6e4722]">{canEarn ? `Mỗi mã ${CODE_LENGTH} ký tự, chỉ nhận được một lần.` : "Tài khoản cần được thầy duyệt mới nhập được mã."}</div>
+            <div className="text-xs font-bold text-[#6e4722]">{canEarn ? "Mỗi mã chỉ nhận được một lần." : "Tài khoản cần được thầy duyệt mới nhập được mã."}</div>
           </>
         )}
       </div>

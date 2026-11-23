@@ -3,7 +3,7 @@ import type { Currency } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { awardOnce, isEligibleStudent, lockWallet, type Tx } from "@/lib/points/engine";
 import type { PointsResult } from "@/lib/points/redemption";
-import { ALPHABET, CODE_LENGTH, MAX_AMOUNT, MAX_BATCH, normalizeCode, parseVnDateTime } from "./giftcode-shared";
+import { ALPHABET, CODE_LENGTH, MAX_AMOUNT, MAX_BATCH, codeLengthOk, normalizeCode, parseVnDateTime } from "./giftcode-shared";
 
 export { CODE_LENGTH, MAX_AMOUNT, MAX_BATCH, normalizeCode } from "./giftcode-shared";
 
@@ -80,7 +80,7 @@ const GENERIC = "Mã không hợp lệ hoặc đã được dùng.";
  */
 export async function redeemGiftCodeInTx(tx: Tx, userId: string, rawCode: string): Promise<PointsResult & { currency?: Currency; amount?: number }> {
   const code = normalizeCode(rawCode);
-  if (code.length !== CODE_LENGTH) return { success: false, error: GENERIC };
+  if (!codeLengthOk(code)) return { success: false, error: GENERIC };
   if (!(await isEligibleStudent(tx, userId))) return { success: false, error: "Tài khoản cần được thầy duyệt mới nhập được mã." };
 
   await lockWallet(tx, userId);

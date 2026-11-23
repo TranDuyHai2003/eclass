@@ -1,6 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { ShopPage } from "@/components/shop/ShopPage";
+import { ShopClosed } from "@/components/shop/ShopClosed";
+import { canUseShop } from "@/lib/points/shop-access";
+import { getHeaderPoints } from "@/lib/points/queries";
 import { isPointsEnabled } from "@/lib/points/config";
 import { getStudentPointsPage } from "@/lib/points/queries";
 import { expireStaleRedemptions } from "@/lib/points/redemption";
@@ -22,6 +25,7 @@ export default async function RewardsPage() {
   if (!session?.user?.id) redirect("/login");
   if (session.user.role === "ADMIN" || session.user.role === "TEACHER") redirect("/teacher/rewards");
   const uid = session.user.id;
+  if (!canUseShop(session.user)) return <ShopClosed balance={(await getHeaderPoints(uid).catch(() => null))?.balance ?? null} />;
 
   await expireStaleRedemptions().catch(() => {});
   const gachaOn = isGachaEnabled();
