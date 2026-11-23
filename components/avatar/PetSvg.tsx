@@ -116,6 +116,19 @@ const SPECIES: Record<string, () => React.ReactElement> = {
       <path d="M48 51l2 2 2-2M50 53c0 2-2 3-3 2M50 53c0 2 2 3 3 2" fill="none" stroke={L} strokeWidth="1.4" strokeLinecap="round" />
     </g>
   ),
+  redpanda: () => (
+    <g stroke="#241e1a" strokeWidth="2.6" strokeLinejoin="round">
+      <path d="M70 70c12-6 18 0 16 8-2 6-8 8-14 6" fill="#c2410c" />
+      <path d="M30 88c-4-14 0-30 20-30s24 16 20 30z" fill="#c2410c" />
+      <ellipse cx="50" cy="76" rx="11" ry="9" fill="#4a2512" stroke="none" />
+      <circle cx="29" cy="24" r="8" fill="#fffdf8" /><circle cx="71" cy="24" r="8" fill="#fffdf8" />
+      <ellipse cx="50" cy="42" rx="24" ry="19" fill="#c2410c" />
+      <ellipse cx="38" cy="47" rx="6.5" ry="4" fill="#fffdf8" stroke="none" />
+      <ellipse cx="62" cy="47" rx="6.5" ry="4" fill="#fffdf8" stroke="none" />
+      <circle cx="40" cy="38" r="2.6" fill="#241e1a" stroke="none" /><circle cx="60" cy="38" r="2.6" fill="#241e1a" stroke="none" />
+      <circle cx="50" cy="46" r="2.6" fill="#241e1a" stroke="none" />
+    </g>
+  ),
   shiba: () => (
     <g stroke="#7c2d12" strokeWidth="2.2" strokeLinejoin="round">
       <path d="M72 66c14-2 16-16 8-22 0 8-4 12-10 12" fill="#f59e0b" />

@@ -535,7 +535,11 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                   ))}
                   {list.length === 0 && (
                     <div className="ah-panel ah-hand col-span-full p-10 text-center text-base">
-                      {affordOnly ? "Chưa có món nào vừa túi tiền. Nộp thêm bài để kiếm xu nhé." : "Không có món nào phù hợp bộ lọc."}
+                      {affordOnly
+                        ? "Chưa có món nào vừa túi tiền. Nộp thêm bài để kiếm xu nhé."
+                        : (cat === "physical" || cat === "voucher") && counts[cat] === 0
+                          ? "Thầy đang chuẩn bị quà cho mục này, quay lại sau nhé! Trong lúc chờ, cứ nộp bài để dành xu."
+                          : "Không có món nào phù hợp bộ lọc."}
                     </div>
                   )}
                 </div>

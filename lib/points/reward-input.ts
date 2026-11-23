@@ -8,6 +8,8 @@ export interface RewardInput {
   stock?: number | null;
   perStudentMonthlyLimit?: number | null;
   kind: "PHYSICAL" | "VIRTUAL";
+  /** Chỉ học sinh offline — quà hiện vật luôn bật; thẻ đặc quyền dùng tại lớp (miễn trực nhật, chọn chỗ…) thầy tự bật */
+  offlineOnly?: boolean | null;
   costVnd?: number | null;
   classIds: string[];
   isActive: boolean;
@@ -52,8 +54,8 @@ export function normalizeRewardInput(input: RewardInput): NormalizeRewardResult 
       // 0 lần/tháng vô nghĩa → coi như không giới hạn
       perStudentMonthlyLimit: limit && limit > 0 ? limit : null,
       kind: input.kind === "VIRTUAL" ? "VIRTUAL" : "PHYSICAL",
-      // Quà hiện vật nhận tại lớp → chỉ học sinh offline
-      offlineOnly: input.kind !== "VIRTUAL",
+      // Quà hiện vật nhận tại lớp → chỉ học sinh offline; thẻ đặc quyền: theo lựa chọn của thầy
+      offlineOnly: input.kind !== "VIRTUAL" || input.offlineOnly === true,
       costVnd: intOrNull(input.costVnd),
       isActive: !!input.isActive,
     },

@@ -120,6 +120,50 @@ export function FrameRing({ frameId, className }: { frameId?: string | null; cla
           ))}
         </g>
       )}
+      {kind === "angel" && (
+        <g strokeLinejoin="round">
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#bae6fd" strokeWidth="6" />
+          <ellipse cx="60" cy="10" rx="17" ry="5" fill="none" stroke="#fbbf24" strokeWidth="5" />
+          <ellipse cx="60" cy="10" rx="17" ry="5" fill="none" stroke="#241e1a" strokeWidth="1.6" />
+          {[1, -1].map((d) => (
+            <path key={d} transform={`translate(60 0) scale(${d} 1)`} d="M-44 38c-8-6-10 4-4 8-6 2-6 10 2 10 4 0 6-4 6-8z" fill="#fffdf8" stroke="#241e1a" strokeWidth="2" />
+          ))}
+        </g>
+      )}
+      {kind === "clover" && (
+        <g>
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#86efac" strokeWidth="6" />
+          {around(5, 44, () => (
+            <g fill="#22c55e" stroke="#14532d" strokeWidth="0.9">
+              {[0, 90, 180, 270].map((r) => <circle key={r} cx="0" cy="-3.4" r="3.3" transform={`rotate(${r + 45})`} />)}
+              <circle r="1.3" fill="#bbf7d0" stroke="none" />
+            </g>
+          ), -90)}
+        </g>
+      )}
+      {kind === "butterfly" && (
+        <g strokeLinejoin="round">
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#c084fc" strokeWidth="5" strokeDasharray="9 7" />
+          {[[24, 24, 1], [96, 98, 0.65]].map(([x, y, k]) => (
+            <g key={x} transform={`translate(${x} ${y}) scale(${k}) rotate(-20)`} stroke="#4c1d95" strokeWidth="1.6">
+              <ellipse cx="-7" cy="-5" rx="8" ry="6" fill="#e9d5ff" /><ellipse cx="7" cy="-5" rx="8" ry="6" fill="#c4b5fd" />
+              <ellipse cx="-5" cy="6" rx="5" ry="4" fill="#d8b4fe" /><ellipse cx="5" cy="6" rx="5" ry="4" fill="#a78bfa" />
+            </g>
+          ))}
+        </g>
+      )}
+      {kind === "rose" && (
+        <g>
+          <circle cx="60" cy="60" r="45" fill="none" stroke="#312e81" strokeWidth="7" />
+          <circle cx="60" cy="60" r="41" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+          {[[60, 15], [33, 91], [87, 91]].map(([x, y], i) => (
+            <g key={x} transform={`translate(${x} ${y})`}>
+              <circle r={i ? 9 : 8} fill="#eef2ff" stroke="#312e81" strokeWidth="2.4" />
+              {i > 0 && <path d="M-4 1c0-4 7-5 8-1 1 3-3 5-5 3" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" />}
+            </g>
+          ))}
+        </g>
+      )}
     </svg>
   );
 }

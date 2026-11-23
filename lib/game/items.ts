@@ -121,8 +121,8 @@ export const ITEMS: Item[] = [
   { id: "acc-catears", slot: "accessory", name: "Bờm tai mèo", rarity: "rare", studio: true, price: { xu: 900 }, v: "catears" },
   { id: "acc-wizardhat", slot: "accessory", name: "Mũ phù thuỷ", rarity: "rare", studio: true, price: { xu: 1200 }, v: "wizardhat" },
   // ---- Khung
-  { id: "frame-blue", slot: "frame", name: "Khung xanh", rarity: "common", price: { xu: 600 }, v: "#60a5fa" },
-  { id: "frame-leaf", slot: "frame", name: "Khung lá", rarity: "rare", price: { xu: 1200 }, v: "#22c55e" },
+  { id: "frame-blue", slot: "frame", name: "Khung Thiên Thần Học Bá", rarity: "common", price: { xu: 600 }, v: "#60a5fa", v2: "angel" },
+  { id: "frame-leaf", slot: "frame", name: "Khung Cỏ 4 Lá May Mắn", rarity: "rare", price: { xu: 1200 }, v: "#22c55e", v2: "clover" },
   { id: "frame-rainbow", slot: "frame", name: "Khung mây cầu vồng", rarity: "epic", gachaOnly: true, v: "rainbow" },
   { id: "frame-gold", slot: "frame", name: "Khung hào quang vàng", rarity: "legendary", price: { gem: 6 }, v: "gold" },
   // v = màu khung chữ nhật trong Chibi; v2 = kiểu vòng quanh ảnh đại diện (FrameRing)
@@ -134,6 +134,9 @@ export const ITEMS: Item[] = [
   { id: "frame-neon", slot: "frame", name: "Vòng Cyber Neon", rarity: "epic", gachaOnly: true, v: "#22d3ee", v2: "neon" },
   { id: "frame-fire", slot: "frame", name: "Khung Hoả Long", rarity: "legendary", studio: true, price: { gem: 8 }, v: "#f97316", v2: "fire" },
   { id: "frame-moon", slot: "frame", name: "Tinh Vân Dạ Nguyệt", rarity: "legendary", gachaOnly: true, v: "#6366f1", v2: "moon" },
+  // Khung còn lại của canvas "Tiệm quà v2" (23/11): chỉ bán ở tiệm, không vào rương
+  { id: "frame-butterfly", slot: "frame", name: "Điệu Van Bướm Lượn", rarity: "epic", studio: true, price: { xu: 2400 }, v: "#c084fc", v2: "butterfly" },
+  { id: "frame-rose", slot: "frame", name: "Hoa Hồng Tinh Xảo", rarity: "legendary", studio: true, price: { gem: 8 }, v: "#312e81", v2: "rose" },
   // ---- Nền
   { id: "bg-sky", slot: "background", name: "Trời xanh", rarity: "common", price: { xu: 300 }, v: "#dbeafe", v2: "#bfdbfe" },
   { id: "bg-mint", slot: "background", name: "Bạc hà", rarity: "common", price: { xu: 300 }, v: "#d1fae5", v2: "#a7f3d0" },
@@ -188,6 +191,7 @@ export const ITEMS: Item[] = [
   { id: "pet-dragon", slot: "pet", name: "Rồng mini sấm sét", rarity: "epic", studio: true, price: { xu: 3000 }, v: "dragon" },
   { id: "pet-robot", slot: "pet", name: "Robot trợ thủ", rarity: "epic", gachaOnly: true, v: "robot" },
   { id: "pet-phoenix", slot: "pet", name: "Phượng hoàng lửa", rarity: "legendary", studio: true, price: { gem: 10 }, v: "phoenix" },
+  { id: "pet-redpanda", slot: "pet", name: "Gấu Trúc Đỏ Bông Xù", rarity: "epic", studio: true, price: { xu: 3000 }, v: "redpanda" },
 ];
 
 export const ITEM_BY_ID: Record<string, Item> = Object.fromEntries(ITEMS.map((i) => [i.id, i]));

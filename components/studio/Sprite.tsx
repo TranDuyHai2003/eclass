@@ -167,9 +167,9 @@ export const SPRITE_V2 = "/studio/shop-v2.webp";
 
 /** Ô ảnh v2 của món có tranh tương ứng trong canvas (khung viền tròn, thú cưng); món khác dùng ảnh cũ */
 const V2_ITEM: Record<string, number> = {
-  "frame-catear": 17, "frame-leaf": 18, "frame-blue": 19, "frame-rainbow": 20, "frame-sakura": 22, "frame-moon": 23, "frame-gold": 25,
+  "frame-catear": 17, "frame-leaf": 18, "frame-blue": 19, "frame-rainbow": 20, "frame-butterfly": 21, "frame-sakura": 22, "frame-moon": 23, "frame-rose": 24, "frame-gold": 25,
   "np-pond": 26, "np-sakura": 27, "np-starry": 28, "np-butterfly": 29, "np-catparty": 30, "np-crimson": 31, "np-celestial": 32,
-  "pet-moka": 33, "pet-shiba": 34, "pet-peanut": 35, "pet-bunny": 36, "pet-snow": 38,
+  "pet-moka": 33, "pet-shiba": 34, "pet-peanut": 35, "pet-bunny": 36, "pet-redpanda": 37, "pet-snow": 38,
 };
 export const V2_MASCOT = 38;
 export const v2Index = (id?: string | null): number | undefined => (id ? V2_ITEM[id] : undefined);

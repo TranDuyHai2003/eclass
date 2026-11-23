@@ -180,7 +180,7 @@ export async function getTeacherRewardsPage() {
       orderBy: [{ isActive: "desc" }, { price: "asc" }],
       select: {
         id: true, title: true, description: true, emoji: true, price: true, stock: true, perStudentMonthlyLimit: true,
-        kind: true, costVnd: true, isActive: true,
+        kind: true, offlineOnly: true, costVnd: true, isActive: true,
         classes: { select: { id: true, name: true } },
         _count: { select: { redemptions: { where: { status: "PENDING" } } } },
       },

@@ -281,6 +281,7 @@ try {
     await sleep(300);
     const pets = await s.ev(`return [...document.querySelectorAll('[data-testid="item-card"]')].map(c => c.dataset.item).join("|")`);
     expect(pets.includes("pet-snow") && pets.includes("pet-bi") && !pets.includes("hair-spiky"), `danh mục Mèo Cún sai: ${pets}`);
+    expect(pets.includes("pet-redpanda"), `thiếu Gấu Trúc Đỏ của canvas: ${pets}`);
     await s.ev(`document.querySelector('[data-testid="cat-box"]').click()`);
     await sleep(300);
     expect(await s.ev(`return document.querySelectorAll('[data-testid="chest-card"]').length === 2`), "Hộp bí ẩn phải có 2 hộp");
@@ -600,6 +601,8 @@ try {
     await s.ev(`document.querySelector('[data-testid="cat-frame"]').click()`);
     await sleep(300);
     expect(await s.ev(`const a=document.querySelector('[data-testid="item-card"][data-item="frame-catear"] [role="presentation"]'); return !!a && /studio\\/shop-v2\\.webp/.test(getComputedStyle(a).backgroundImage)`), "khung Tai Mèo chưa dùng tranh v2");
+    const frames = await s.ev(`return [...document.querySelectorAll('[data-testid="item-card"]')].map(c => c.dataset.item).join("|")`);
+    expect(["frame-blue", "frame-butterfly", "frame-rose"].every((id) => frames.includes(id)), `thiếu viền của canvas: ${frames}`);
     await s.ev(`document.querySelector('[data-testid="cat-deco"]').click()`);
     await sleep(300);
     await s.ev(`document.querySelector('[data-testid="deco-hair"]').click()`);

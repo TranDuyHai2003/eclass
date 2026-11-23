@@ -14,6 +14,7 @@ import {
   type PointsResult,
 } from "@/lib/points/redemption";
 import { normalizeRewardInput, type RewardInput } from "@/lib/points/reward-input";
+import { addShopTemplatesInTx } from "@/lib/points/shop-templates";
 
 /**
  * Server actions của Điểm thưởng: chỉ kiểm tra quyền rồi gọi phần lõi trong lib/points (đã có test ở tests/points).
@@ -109,6 +110,16 @@ export async function saveReward(input: RewardInput): Promise<PointsResult> {
   }
   revalidateAll();
   return { success: true, message: input.id ? "Đã lưu quà." : "Đã thêm quà." };
+}
+
+/** Thêm cả bộ quà của tiệm (quà hiện vật + thẻ đặc quyền theo canvas), bỏ qua món đã có */
+export async function addShopRewardTemplates(): Promise<PointsResult> {
+  const blocked = await demoGuard();
+  if (blocked) return blocked;
+  const staff = await requireStaff();
+  const n = await prisma.$transaction((tx) => addShopTemplatesInTx(tx, staff.id));
+  revalidateAll();
+  return n > 0 ? { success: true, message: `Đã thêm ${n} quà vào tiệm. Thầy sửa giá / số lượng ở từng thẻ quà nếu cần.` } : { success: false, error: "Tiệm đã có đủ bộ quà." };
 }
 
 /** Xoá mềm (giữ lịch sử đổi quà); yêu cầu đang chờ vẫn giữ để thầy trao hoặc từ chối */

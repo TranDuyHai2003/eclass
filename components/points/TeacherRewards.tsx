@@ -11,9 +11,10 @@ import {
   grantPoints,
   rejectRedemption,
   saveReward,
+  addShopRewardTemplates,
 } from "@/actions/points";
 import type { RewardInput } from "@/lib/points/reward-input";
-import { REWARD_TEMPLATES as TEMPLATES } from "@/lib/points/templates";
+import { REWARD_TEMPLATES as TEMPLATES, missingShopTemplates } from "@/lib/points/templates";
 import { rarityOf } from "@/lib/points/rarity";
 import type { TeacherRewardsPageData } from "@/lib/points/queries";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -315,6 +316,7 @@ function RewardsTab({ data, pending, run }: TabProps) {
   const classes = data.classes.filter((c) => c.id !== "__none__");
   const existingTitles = new Set(data.rewards.map((r) => r.title.toLowerCase()));
   const templates = TEMPLATES.filter((t) => !existingTitles.has(t.title.toLowerCase()));
+  const shopMissing = missingShopTemplates(existingTitles);
 
   const edit = (r: Data["rewards"][number]) =>
     setForm({
@@ -326,6 +328,7 @@ function RewardsTab({ data, pending, run }: TabProps) {
       stock: r.stock,
       perStudentMonthlyLimit: r.perStudentMonthlyLimit,
       kind: r.kind,
+      offlineOnly: r.offlineOnly,
       costVnd: r.costVnd,
       classIds: r.classes.map((c) => c.id),
       isActive: r.isActive,
@@ -362,7 +365,25 @@ function RewardsTab({ data, pending, run }: TabProps) {
 
       {templates.length > 0 && (
         <section className="rounded-3xl border border-dashed border-slate-300 bg-white/60 p-3 sm:p-4">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Thêm nhanh từ mẫu</p>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Thêm nhanh từ mẫu</p>
+            {shopMissing.length > 0 && (
+              <button
+                type="button"
+                disabled={pending}
+                data-testid="add-shop-templates"
+                onClick={() => run(() => addShopRewardTemplates())}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-1.5 text-sm font-black text-white hover:bg-amber-600 disabled:opacity-50"
+              >
+                <Plus className="h-4 w-4" /> Thêm cả bộ quà của tiệm ({shopMissing.length} món)
+              </button>
+            )}
+          </div>
+          {shopMissing.length > 0 && (
+            <p className="mb-2 text-xs text-slate-500">
+              Bộ quà theo thiết kế tiệm: {shopMissing.filter((t) => t.kind === "PHYSICAL").length} quà hiện vật + {shopMissing.filter((t) => t.kind === "VIRTUAL").length} thẻ đặc quyền, giá ≈ 2 xu cho 1 đồng chi phí. Thêm xong vẫn sửa được giá, số lượng, lớp áp dụng.
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             {templates.map((t) => (
               <button
@@ -485,6 +506,12 @@ function RewardsTab({ data, pending, run }: TabProps) {
                     </button>
                   ))}
                 </div>
+                {form.kind === "VIRTUAL" && (
+                  <label className="mt-2 flex items-center gap-2 text-xs font-semibold text-slate-600">
+                    <input type="checkbox" checked={!!form.offlineOnly} onChange={(e) => setForm({ ...form, offlineOnly: e.target.checked })} className="h-4 w-4" />
+                    Chỉ dùng tại lớp (ẩn với học sinh online), vd miễn trực nhật, chọn chỗ ngồi
+                  </label>
+                )}
               </div>
               {classes.length > 0 && (
                 <div>

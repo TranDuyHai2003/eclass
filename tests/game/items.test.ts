@@ -9,6 +9,8 @@ import { canEquip, defaultAvatar, sanitizeAvatar } from "@/lib/game/avatar";
 import { PRESETS } from "@/lib/game/presets";
 import { buyItemInTx, getAvatar, getAvatars, saveAvatarConfig } from "@/lib/game/inventory";
 import { createFixture, disconnect } from "../helpers/fixtures";
+import { v2Index } from "@/components/studio/Sprite";
+import { RARITY_ORDER, poolFor } from "@/lib/game/gacha-shared";
 
 const fx = createFixture();
 after(async () => {
@@ -40,6 +42,30 @@ describe("Danh mục đồ", () => {
       if (i.rarity === "common") assert.ok(i.price.xu <= 900, i.id);
       if (i.rarity === "rare") assert.ok(i.price.xu <= 3000, i.id);
       if (i.rarity === "epic") assert.ok(i.price.xu <= 6000, i.id);
+    }
+  });
+});
+
+describe("Đủ món của canvas Tiệm quà v2", () => {
+  test("9 viền, 7 bảng tên, 6 thú cưng có tranh v2 riêng (ô 17–38, trừ mèo Snow 38 đã có)", () => {
+    const byCell = new Map<number, string>();
+    for (const it of ITEMS) {
+      const i = v2Index(it.id);
+      if (i === undefined) continue;
+      assert.ok(!byCell.has(i), `ô ${i} dùng cho cả ${byCell.get(i)} và ${it.id}`);
+      byCell.set(i, it.id);
+    }
+    for (let i = 17; i <= 38; i++) assert.ok(byCell.has(i), `ô tranh ${i} chưa có món`);
+    assert.equal([...byCell].filter(([i]) => i >= 17 && i <= 25).every(([, id]) => ITEM_BY_ID[id].slot === "frame"), true);
+    assert.equal([...byCell].filter(([i]) => i >= 33).every(([, id]) => ITEM_BY_ID[id].slot === "pet"), true);
+  });
+
+  test("món mới chỉ bán ở tiệm (có giá, không vào rương)", () => {
+    for (const id of ["frame-butterfly", "frame-rose", "pet-redpanda"]) {
+      const it = ITEM_BY_ID[id];
+      assert.ok(it?.studio && it.price, id);
+      const inPool = (["xu", "gem"] as const).some((c) => RARITY_ORDER.some((r) => poolFor(c, r).some((p) => p.kind === "item" && p.item.id === id)));
+      assert.ok(!inPool, `${id} không vào rương`);
     }
   });
 });
