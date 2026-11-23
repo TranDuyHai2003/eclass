@@ -457,6 +457,8 @@ try {
     const hairIds = () => s.ev(`return [...document.querySelectorAll('[data-testid^="item-hair-"]')].map((b) => b.dataset.testid.slice(5))`);
     let hs = await hairIds();
     expect(hs.length === 10 && hs.includes("hair-sidepart") && !hs.includes("hair-bob"), `Nam phải có đúng 10 kiểu tóc nam: ${hs}`);
+    // thẻ kiểu tóc có ảnh (đầu nhân vật đội thử kiểu tóc, vẽ tay) + nhãn Mới cho kiểu mới
+    expect(await s.ev(`const c=document.querySelector('[data-testid="item-hair-sidepart"]'); return !!c && c.dataset.badge === "Mới" && !!c.querySelector('[data-head="16"]')`), "thẻ Rẽ ngôi lệch thiếu ảnh vẽ tay / nhãn Mới");
     expect(await click("item-hair-sidepart"), "thiếu Rẽ ngôi lệch");
     await sleep(200);
     expect(await hero(`[data-head="16"][data-painted="preset-student"]`), "Rẽ ngôi lệch phải vẽ tay trên đầu nam");

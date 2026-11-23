@@ -145,3 +145,17 @@ describe("Lưu nhân vật", () => {
     assert.deepEqual((await getAvatar(s.id)).config, saved);
   });
 });
+
+describe("Kiểu tóc Hot (thẻ kiểu tóc ở Tùy chỉnh)", () => {
+  test("mỗi giới tối đa 2 kiểu, ít nhất 2 bạn dùng, bỏ kiểu mặc định; kiểu nhiều người dùng được gắn Hot", async () => {
+    const users = await Promise.all(Array.from({ length: 6 }, () => fx.user()));
+    const hairOf = ["hair-wavy", "hair-wavy", "hair-wavy", "hair-wavy", "hair-bob", "hair-slick"];
+    await Promise.all(users.map((u, i) => prisma.userAvatar.create({ data: { userId: u.id, config: { hair: hairOf[i] } } })));
+    const { getHotHair } = await import("@/lib/game/inventory");
+    const hot = await getHotHair();
+    assert.ok(hot.includes("hair-wavy"), `hair-wavy (4 bạn) phải Hot: ${hot}`);
+    assert.ok(!hot.includes("hair-bob") && !hot.includes("hair-short"), "kiểu mặc định không gắn Hot");
+    for (const g of ["male", "female"]) assert.ok(hot.filter((h) => ITEM_BY_ID[h]?.gender === g).length <= 2, g);
+    assert.equal(itemsOfSlot("hair").filter((i) => i.isNew).length, 12, "12 kiểu tóc mới có nhãn Mới");
+  });
+});

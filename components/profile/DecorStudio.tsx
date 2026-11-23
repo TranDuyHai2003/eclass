@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { buyBundle, saveAvatar } from "@/actions/avatar";
 import { ITEM_BY_ID, itemsOfSlot, type Item, type Slot } from "@/lib/game/items";
 import { FACES, FACE_IDS, PRESETS, currentFaceId, faceIndexOf, genderOf, paintedLook, presetIndexOf, type Gender, type Preset } from "@/lib/game/presets";
-import { FACE_PART_KEYS, FACE_PART_OPTIONS, LOOK_EXTRA_KEYS, type FacePartKey, type LookExtraKey } from "@/lib/game/face-parts";
+import { FACE_PART_KEYS, FACE_PART_OPTIONS, LOOK_EXTRA_KEYS, skinToneOf, type FacePartKey, type LookExtraKey } from "@/lib/game/face-parts";
 import { Brows, FaceArt } from "@/components/avatar/FaceArt";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { play } from "@/lib/sound";
@@ -34,6 +34,8 @@ export interface DecorStudioProps {
   isDemo: boolean;
   completedLessons: number;
   level: { icon: string; level: number; name: string } | null;
+  /** Kiểu tóc nhiều bạn dùng nhất (nhãn "Hot" trên thẻ kiểu tóc) */
+  hotHair?: string[];
   /** `/profile?try=<itemId>` (nút "Thử trên hồ sơ" ở tiệm): mặc thử sẵn món này */
   initialTry?: string | null;
 }
@@ -86,7 +88,7 @@ const pill = (c: [string, string]) => ({ background: c[0], color: c[1] });
 const titlePill = (id: string) => pill(TITLE_COLORS[id] ?? LEVEL_PILL);
 
 /** Hồ sơ & Trang trí — dựng theo artboard "Hồ sơ & Trang trí – Desktop" của canvas thiết kế (GĐ9) */
-export default function DecorStudio({ user, config: initial, owned: ownedInit, wallet, canEarn, isDemo, completedLessons, level, initialTry }: DecorStudioProps) {
+export default function DecorStudio({ user, config: initial, owned: ownedInit, wallet, canEarn, isDemo, completedLessons, level, initialTry, hotHair = [] }: DecorStudioProps) {
   const router = useRouter();
   const tryItem = initialTry ? ITEM_BY_ID[initialTry] : undefined;
   const [config, setConfig] = useState<AvatarConfig>(() => (tryItem ? { ...initial, [tryItem.slot]: tryItem.id } : initial));
@@ -365,6 +367,19 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
 
       {/* ===== RIGHT: Tủ đồ & Cửa hàng ===== */}
       <section aria-label="Tủ đồ và cửa hàng" className="studio-card flex min-w-0 flex-[999_1_520px] flex-col" data-testid="decor-panel">
+        {/* Điện thoại: thẻ xem trước ở đầu trang, cuộn xuống tủ đồ là khuất → nhân vật dính trên đầu khung để thấy ngay khi chọn */}
+        <div className="sticky top-[60px] z-20 px-3 pt-3 lg:hidden" data-testid="decor-mini-preview">
+          <div className="flex items-center gap-3 rounded-2xl border border-[#E4E0F0] bg-gradient-to-b from-[#EAF0FF] to-[#F8F6FF] p-2 pr-3 shadow-[0_6px_18px_rgba(42,31,92,0.14)]">
+            <div className="h-[100px] w-[86px] shrink-0">
+              <Chibi config={{ ...config, background: null, frame: null, effect: null }} size={86} className="h-full w-full" title="Xem trước nhân vật" />
+            </div>
+            <div className="flex min-w-0 flex-col gap-0.5" aria-live="polite">
+              <span className="text-xs font-bold text-[#5B2BD6]">{dirty ? "Đang xem trước" : "Nhân vật của bạn"}</span>
+              <span className="truncate text-sm font-bold text-[#2A1F5C]">{bar.title}</span>
+              <span className="line-clamp-2 text-xs text-[#5F5B73]">{bar.sub}</span>
+            </div>
+          </div>
+        </div>
         <div className="flex flex-col gap-4 px-4 pt-[22px] sm:px-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-col gap-0.5">
@@ -372,9 +387,6 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
               <p className="text-[13px] text-[#5F5B73]">Chọn để xem thử trên hồ sơ trước khi lưu hoặc mua.</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="rounded-xl border border-[#ECE9F5] bg-[#F6F5FB] p-1 lg:hidden" data-testid="decor-mini-preview" aria-hidden>
-                <Chibi config={config} size={44} />
-              </div>
               <Link href="/courses" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#5B2BD6] hover:text-[#4319A8]">
                 <IconHelp /> Cách kiếm thêm xu
               </Link>
@@ -486,7 +498,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
               <Swatches slot="hairColor" config={config} has={has} put={put} color={(it) => (it.v?.startsWith("url(") ? "conic-gradient(#F87171,#FBBF24,#34D399,#60A5FA,#A78BFA,#F87171)" : it.v ?? "#000")} />
             </Section>
             <Section title={`Kiểu tóc ${gender === "female" ? "nữ" : "nam"}`}>
-              <Chips slot="hair" config={config} has={has} put={put} only={(it) => (it.gender ?? "male") === gender} />
+              <HairCards gender={gender} config={config} has={has} put={put} hot={hotHair} saved={saved.hair ?? null} />
             </Section>
             <Section title="Màu mắt">
               <Swatches slot="eyes" config={config} has={has} put={put} color={(it) => it.v ?? "#000"} />
@@ -611,8 +623,9 @@ function FacePartButton({ name, on, face, config, onClick, testId }: { name: str
       title={`${name} (miễn phí)`}
       data-testid={testId}
       onClick={onClick}
-      className="h-14 w-14 overflow-hidden rounded-full bg-[#FBE3D3]"
-      style={{ boxShadow: `0 0 0 3px #FFFFFF, 0 0 0 5px ${on ? ACCENT : "#E4E0F0"}` }}
+      className="h-14 w-14 overflow-hidden rounded-full"
+      // nền tròn cùng màu da đang xem (lỗi cũ: chỉ elip mặt đổi màu da, nền vẫn da sáng → như mảng tối giữa nút)
+      style={{ backgroundColor: skinToneOf(config.skinTone) ?? "#FBE3D3", boxShadow: `0 0 0 3px #FFFFFF, 0 0 0 5px ${on ? ACCENT : "#E4E0F0"}` }}
     >
       <svg viewBox="29 36 62 62" className="h-full w-full" aria-hidden>
         <FaceArt uid={`fp${uid}`} face={face} config={config} x={26} y={44} width={68} height={46} />
@@ -665,6 +678,55 @@ function Card({ name, selected, trying, locked, onClick, art, status, testId, wi
         {status}
       </span>
     </button>
+  );
+}
+
+/**
+ * Thẻ kiểu tóc (kiểu tủ đồ game nhập vai): ảnh = đầu nhân vật đang chỉnh đội thử kiểu tóc đó, tên, giá / Đã có,
+ * nhãn Mới (món mới ra) / Hot (nhiều bạn dùng), nút Chọn. Mỗi giới 10 kiểu.
+ */
+function HairCards({ gender, config, has, put, hot, saved }: { gender: Gender; config: AvatarConfig; has: (it: Item) => boolean; put: (slot: Slot, id: string | null) => void; hot: string[]; saved: string | null }) {
+  const items = itemsOfSlot("hair").filter((it) => (it.gender ?? "male") === gender);
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(132px,1fr))]" role="radiogroup" aria-label="Kiểu tóc">
+      {items.map((it) => {
+        const own = has(it);
+        const on = config.hair === it.id;
+        const price = it.price ? ("xu" in it.price ? `${fmt(it.price.xu)} xu` : `${it.price.gem} ngọc`) : "Hộp bí ẩn";
+        const badge = hot.includes(it.id) ? "Hot" : it.isNew ? "Mới" : null;
+        return (
+          <button
+            key={it.id}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            aria-label={`${it.name}${own ? "" : `, ${price}`}`}
+            data-testid={`item-${it.id}`}
+            data-badge={badge ?? undefined}
+            onClick={() => put("hair", it.id)}
+            className={cn("relative flex flex-col overflow-hidden rounded-2xl border-2 bg-white text-left transition-shadow", on ? "border-[#5B2BD6] shadow-[0_6px_16px_rgba(91,43,214,0.18)]" : "border-[#ECE9F5] hover:shadow-[0_4px_12px_rgba(42,31,92,0.08)]")}
+          >
+            {badge && (
+              <span className={cn("absolute left-1.5 top-1.5 z-10 rounded-md px-1.5 py-0.5 text-[11px] font-extrabold text-white shadow", badge === "Hot" ? "bg-[#E5484D]" : "bg-[#2F80ED]")}>{badge}</span>
+            )}
+            <span className="relative block aspect-square overflow-hidden bg-gradient-to-b from-[#EEF2FF] to-[#F8F6FF]" aria-hidden>
+              <span className="block h-full w-full" style={{ transform: "scale(1.38) translateY(13%)" }}>
+                <Chibi config={{ ...config, hair: it.id, gender, accessory: null, background: null, frame: null, effect: null }} size={96} className="h-full w-full" />
+              </span>
+            </span>
+            <span className="flex flex-col gap-1.5 px-2.5 pb-2.5 pt-2">
+              <span className="truncate text-[13px] font-bold text-[#2A1F5C]">{it.name}</span>
+              <span className="flex items-center justify-between gap-1.5">
+                <span className={cn("truncate text-xs font-semibold", own ? "text-[#1F8A4C]" : "text-[#8A5A00]")}>
+                  {saved === it.id ? "Đang dùng" : own ? (it.free ? "Miễn phí" : "Đã có") : price}
+                </span>
+                <span className={cn("shrink-0 rounded-full py-1 text-[11px] font-bold", on ? "bg-[#5B2BD6] px-2 text-white" : "bg-[#FFE7A3] px-2.5 text-[#6B4A00]")} aria-hidden>{on ? "✓" : "Chọn"}</span>
+              </span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

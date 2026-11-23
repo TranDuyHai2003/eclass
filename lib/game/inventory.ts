@@ -20,6 +20,21 @@ export async function getAvatar(userId: string) {
   return { config: sanitizeAvatar(row?.config, userId, owned), owned };
 }
 
+/**
+ * Kiểu tóc "Hot" (thẻ kiểu tóc ở Tùy chỉnh): mỗi giới 2 kiểu được nhiều bạn dùng nhất (ít nhất 2 người),
+ * bỏ kiểu mặc định (tóc ngắn / tóc bob) vì ai chưa đổi cũng dùng.
+ */
+export async function getHotHair(): Promise<string[]> {
+  const rows = await prisma.$queryRaw<{ hair: string; n: number }[]>`
+    SELECT config->>'hair' AS hair, COUNT(*)::int AS n FROM "UserAvatar"
+    WHERE config->>'hair' IS NOT NULL GROUP BY 1 ORDER BY n DESC`;
+  const hot: string[] = [];
+  for (const g of ["male", "female"] as const) {
+    hot.push(...rows.filter((r) => r.n >= 2 && r.hair !== "hair-short" && r.hair !== "hair-bob" && ITEM_BY_ID[r.hair]?.slot === "hair" && ITEM_BY_ID[r.hair]?.gender === g).slice(0, 2).map((r) => r.hair));
+  }
+  return hot;
+}
+
 /** Nhiều nhân vật một lúc (bảng vàng): 2 truy vấn `in` */
 /** Client tối thiểu để đọc nhân vật (prisma thường hoặc prismaBase trong unstable_cache) */
 type AvatarDb = {

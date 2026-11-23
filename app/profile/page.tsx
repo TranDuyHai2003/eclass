@@ -8,7 +8,7 @@ import type { AvatarConfig } from "@/lib/game/avatar";
 import { isPointsEnabled } from "@/lib/points/config";
 import { getHeaderPoints } from "@/lib/points/queries";
 import { getLevel } from "@/lib/points/levels";
-import { getAvatar } from "@/lib/game/inventory";
+import { getAvatar, getHotHair } from "@/lib/game/inventory";
 import type { DecorStudioProps } from "@/components/profile/DecorStudio";
 import { ITEM_BY_ID } from "@/lib/game/items";
 import { beVietnam } from "@/lib/fonts";
@@ -46,7 +46,9 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
     };
     // "Hồ sơ & Trang trí": học sinh khi bật Xu (demo/chưa duyệt vẫn xem, nút mua/lưu bị khoá theo quyền)
     if (wallet && av) {
+      const hotHair = await getHotHair().catch(() => []);
       decor = {
+        hotHair,
         config: av.config,
         owned: av.owned,
         wallet: { balance: wallet.balance, gems: wallet.gems },

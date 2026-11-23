@@ -35,6 +35,8 @@ export interface Item {
   studio?: boolean;
   /** Cấp tối thiểu (theo xu tích luỹ) mới mua được — canvas "Tiệm quà v2" */
   minLevel?: number;
+  /** Món mới ra (nhãn "Mới" trên thẻ) */
+  isNew?: boolean;
   /** Kiểu tóc theo giới (ô Giới tính ở Tùy chỉnh lọc danh sách kiểu tóc) */
   gender?: "male" | "female";
   /** Tham số vẽ (màu, biến thể) — Chibi.tsx đọc */
@@ -62,18 +64,18 @@ export const ITEMS: Item[] = [
   { id: "hair-bun", slot: "hair", name: "Búi củ tỏi", rarity: "epic", gachaOnly: true, v: "bun", gender: "female" },
   { id: "hair-mohawk", slot: "hair", name: "Mohawk", rarity: "epic", gachaOnly: true, v: "mohawk", gender: "male" },
   // Kiểu tóc thêm (23/11): bán ở Hồ sơ & Trang trí, không vào bể rương (studio) — giữ tỉ lệ rương
-  { id: "hair-buzz", slot: "hair", name: "Đầu đinh", rarity: "common", free: true, studio: true, v: "short", gender: "male" },
-  { id: "hair-sidepart", slot: "hair", name: "Rẽ ngôi lệch", rarity: "common", free: true, studio: true, v: "short", gender: "male" },
-  { id: "hair-slick", slot: "hair", name: "Vuốt ngược", rarity: "rare", price: { xu: 900 }, studio: true, v: "short", gender: "male" },
-  { id: "hair-curly", slot: "hair", name: "Xoăn bồng", rarity: "rare", price: { xu: 900 }, studio: true, v: "spiky", gender: "male" },
-  { id: "hair-wolf", slot: "hair", name: "Tóc wolf", rarity: "rare", price: { xu: 1200 }, studio: true, v: "spiky", gender: "male" },
-  { id: "hair-longm", slot: "hair", name: "Dài lãng tử", rarity: "rare", price: { xu: 1200 }, studio: true, v: "long", gender: "male" },
-  { id: "hair-manbun", slot: "hair", name: "Búi samurai", rarity: "epic", price: { xu: 1500 }, studio: true, v: "bun", gender: "male" },
-  { id: "hair-pixie", slot: "hair", name: "Tóc tém", rarity: "common", free: true, studio: true, v: "bob", gender: "female" },
-  { id: "hair-twintail", slot: "hair", name: "Hai đuôi cao", rarity: "rare", price: { xu: 900 }, studio: true, v: "twin", gender: "female" },
-  { id: "hair-sidetail", slot: "hair", name: "Đuôi lệch vai", rarity: "rare", price: { xu: 900 }, studio: true, v: "ponytail", gender: "female" },
-  { id: "hair-odango", slot: "hair", name: "Búi đôi", rarity: "rare", price: { xu: 1200 }, studio: true, v: "bun", gender: "female" },
-  { id: "hair-wavy", slot: "hair", name: "Xoăn sóng dài", rarity: "epic", price: { xu: 1500 }, studio: true, v: "long", gender: "female" },
+  { id: "hair-buzz", slot: "hair", name: "Đầu đinh", rarity: "common", free: true, studio: true, isNew: true, v: "short", gender: "male" },
+  { id: "hair-sidepart", slot: "hair", name: "Rẽ ngôi lệch", rarity: "common", free: true, studio: true, isNew: true, v: "short", gender: "male" },
+  { id: "hair-slick", slot: "hair", name: "Vuốt ngược", rarity: "rare", price: { xu: 900 }, studio: true, isNew: true, v: "short", gender: "male" },
+  { id: "hair-curly", slot: "hair", name: "Xoăn bồng", rarity: "rare", price: { xu: 900 }, studio: true, isNew: true, v: "spiky", gender: "male" },
+  { id: "hair-wolf", slot: "hair", name: "Tóc wolf", rarity: "rare", price: { xu: 1200 }, studio: true, isNew: true, v: "spiky", gender: "male" },
+  { id: "hair-longm", slot: "hair", name: "Dài lãng tử", rarity: "rare", price: { xu: 1200 }, studio: true, isNew: true, v: "long", gender: "male" },
+  { id: "hair-manbun", slot: "hair", name: "Búi samurai", rarity: "epic", price: { xu: 1500 }, studio: true, isNew: true, v: "bun", gender: "male" },
+  { id: "hair-pixie", slot: "hair", name: "Tóc tém", rarity: "common", free: true, studio: true, isNew: true, v: "bob", gender: "female" },
+  { id: "hair-twintail", slot: "hair", name: "Hai đuôi cao", rarity: "rare", price: { xu: 900 }, studio: true, isNew: true, v: "twin", gender: "female" },
+  { id: "hair-sidetail", slot: "hair", name: "Đuôi lệch vai", rarity: "rare", price: { xu: 900 }, studio: true, isNew: true, v: "ponytail", gender: "female" },
+  { id: "hair-odango", slot: "hair", name: "Búi đôi", rarity: "rare", price: { xu: 1200 }, studio: true, isNew: true, v: "bun", gender: "female" },
+  { id: "hair-wavy", slot: "hair", name: "Xoăn sóng dài", rarity: "epic", price: { xu: 1500 }, studio: true, isNew: true, v: "long", gender: "female" },
   // ---- Màu tóc
   hairColor("hc-black", "Đen", "#1f2937"),
   hairColor("hc-brown", "Nâu", "#6b3f1d"),
