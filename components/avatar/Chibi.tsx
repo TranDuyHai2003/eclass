@@ -1,8 +1,15 @@
 import type { ReactNode } from "react";
 import { ITEM_BY_ID } from "@/lib/game/items";
-import { PRESETS } from "@/lib/game/presets";
+import { FACES, PRESETS, faceIndexOf, paintedLook } from "@/lib/game/presets";
 
 const CHAR_STRIP = "/studio/characters.webp";
+// Mặt nạ tóc / tròng mắt của tranh + mặt vẽ tay đã căn theo mắt SVG (scripts/studio/gen-face-assets.py)
+const CHAR_HAIR = "/studio/char-hair.webp";
+const CHAR_EYES = "/studio/char-eyes.webp";
+const FACE_STRIP = "/studio/faces.webp";
+const FACE_EYES = "/studio/faces-eyes.webp";
+const FACE_W = 204;
+const FACE_H = 138;
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { cn } from "@/lib/utils";
 
@@ -14,9 +21,12 @@ import { cn } from "@/lib/utils";
  */
 export function Chibi({ config, size = 120, className, title, painted = true }: { config: AvatarConfig; size?: number; className?: string; title?: string; painted?: boolean }) {
   const get = (slot: keyof AvatarConfig) => (config[slot] ? ITEM_BY_ID[config[slot] as string] : undefined);
-  // Trùng một "Mẫu nhân vật" của canvas thiết kế → vẽ bằng tranh của design (public/studio/characters.webp)
-  const presetIdx = painted ? PRESETS.findIndex((p) => (Object.keys(p.items) as (keyof AvatarConfig)[]).every((k) => (config[k] ?? null) === (p.items[k] ?? null))) : -1;
-  const skin = get("skin")?.v ?? "#fde7d2";
+  // Dáng (tóc, áo, phụ kiện) trùng một "Mẫu nhân vật" của canvas → vẽ bằng tranh của design, màu tóc/mắt khác thì tô lại trên tranh
+  const look = painted ? paintedLook(config) : null;
+  // Tự chỉnh khác mẫu → thân SVG + khuôn mặt vẽ tay của mẫu (màu da theo mặt đó cho liền)
+  const faceIdx = painted && !look ? faceIndexOf(config) : -1;
+  const faceOf = faceIdx >= 0 ? FACES[faceIdx] : null;
+  const skin = faceOf?.skin ?? get("skin")?.v ?? "#fde7d2";
   const hair = get("hair")?.v ?? "short";
   const hairRaw = get("hairColor")?.v ?? "#1f2937";
   const eye = get("eyes")?.v ?? "#4b2e1e";
@@ -24,7 +34,8 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
   const outfitId = outfit?.id ?? "outfit-tee";
   const shirt = outfit?.v ?? "#60a5fa";
   const accent = outfit?.v2 ?? "#1e3a8a";
-  const acc = get("accessory")?.v;
+  const accRaw = get("accessory")?.v;
+  const acc = faceOf?.id === "preset-scholar" && accRaw === "glasses" ? undefined : accRaw; // mặt Học giả đã có kính
   const fx = get("effect")?.v;
   const frame = get("frame")?.v;
   const bg = get("background");
@@ -112,10 +123,15 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
         </g>
       )}
 
-      {presetIdx >= 0 ? (
+      {look ? (
         // Tranh nhân vật của design: ô 332×272 trong dải 8 ô, canh đáy khung
-        <svg x="-12" y="10" width="144" height="128" viewBox={`${presetIdx * 332} 0 332 272`} preserveAspectRatio="xMidYMax meet" data-painted={PRESETS[presetIdx].id}>
+        <svg
+          x="-12" y="10" width="144" height="128" viewBox={`${look.index * 332} 0 332 272`} preserveAspectRatio="xMidYMax meet"
+          data-painted={PRESETS[look.index].id} data-hair={look.hairColor ?? undefined} data-eyes={look.eyes ?? undefined}
+        >
           <image href={CHAR_STRIP} width="2656" height="272" />
+          {look.hairColor && <Tint id={`${uid}-th`} href={CHAR_HAIR} x={look.index * 332} w={332} h={272} total={2656} fill={tintOf(look.hairColor, uid)} />}
+          {look.eyes && <Tint id={`${uid}-te`} href={CHAR_EYES} x={look.index * 332} w={332} h={272} total={2656} fill={tintOf(look.eyes, uid)} />}
         </svg>
       ) : (
       <>
@@ -148,11 +164,20 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
         <ellipse cx="27" cy="60" rx="4.5" ry="6" /><ellipse cx="93" cy="60" rx="4.5" ry="6" />
         <path d="M26 52C26 31 41 19 60 19s34 12 34 33c0 14-6 24-16 30-7 4-12 6-18 6s-11-2-18-6C32 76 26 66 26 52z" />
       </g>
-      {/* bóng mái tóc trên trán */}
-      <path d="M29 47q31-10 62 0v7q-31-9-62 0z" fill={skinShade} opacity="0.7" />
 
-      {/* Mặt */}
-      <Face eye={eye} uid={uid} skinLine={skinLine} />
+      {/* Mặt: vẽ tay theo mẫu (khuôn mặt đã chọn); painted=false → mặt SVG cũ */}
+      {faceOf ? (
+        <svg x="26" y="44" width="68" height="46" viewBox={`${faceIdx * FACE_W} 0 ${FACE_W} ${FACE_H}`} data-face={faceOf.id}>
+          <image href={FACE_STRIP} width={FACE_W * FACES.length} height={FACE_H} />
+          {config.eyes && config.eyes !== PRESETS.find((p) => p.id === faceOf.id)?.items.eyes && (
+            <Tint id={`${uid}-tf`} href={FACE_EYES} x={faceIdx * FACE_W} w={FACE_W} h={FACE_H} total={FACE_W * FACES.length} fill={tintOf(config.eyes, uid)} />
+          )}
+        </svg>
+      ) : (
+        <Face eye={eye} uid={uid} skinLine={skinLine} />
+      )}
+      {/* bóng mái tóc trên trán (vẽ sau mặt để che mép trên của mặt vẽ tay) */}
+      <path d="M29 47q31-10 62 0v7q-31-9-62 0z" fill={skinShade} opacity="0.7" />
 
       {/* Tóc trước */}
       <g {...hp}>{hairStyle.front}</g>
@@ -169,6 +194,30 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
       {/* Hiệu ứng (bản tĩnh; banner hồ sơ có bản động) */}
       {fx && <FxStatic kind={fx} />}
     </svg>
+  );
+}
+
+/* ============================== Tô màu trên tranh ============================== */
+
+/** Màu tô của món tóc/mắt (cầu vồng → gradient của nhân vật này) */
+function tintOf(itemId: string, uid: string) {
+  const v = ITEM_BY_ID[itemId]?.v ?? "#000";
+  return v.startsWith("url(") ? `url(#${uid}-hairRainbow)` : v;
+}
+
+/**
+ * Tô lại một vùng của tranh: ảnh `href` có A = mặt nạ vùng, RGB = độ sáng đã chuẩn hoá.
+ * Phủ màu đặc theo mặt nạ rồi nhân với độ sáng → giữ nét vẽ, bóng đổ, viền đen của tranh.
+ */
+function Tint({ id, href, x, w, h, total, fill }: { id: string; href: string; x: number; w: number; h: number; total: number; fill: string }) {
+  return (
+    <g style={{ isolation: "isolate" }}>
+      <mask id={id} maskUnits="userSpaceOnUse" x={x} y="0" width={w} height={h} style={{ maskType: "alpha" }}>
+        <image href={href} width={total} height={h} />
+      </mask>
+      <rect x={x} y="0" width={w} height={h} fill={fill} mask={`url(#${id})`} />
+      <image href={href} width={total} height={h} style={{ mixBlendMode: "multiply" }} />
+    </g>
   );
 }
 

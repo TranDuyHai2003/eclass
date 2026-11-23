@@ -9,14 +9,14 @@ import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { buyBundle, saveAvatar } from "@/actions/avatar";
 import { ITEM_BY_ID, itemsOfSlot, type Item, type Slot } from "@/lib/game/items";
-import { PRESETS, type Preset } from "@/lib/game/presets";
+import { FACES, PRESETS, faceIndexOf, paintedLook, presetIndexOf, type Preset } from "@/lib/game/presets";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { play } from "@/lib/sound";
 import { Chibi, FxShape } from "@/components/avatar/Chibi";
 import { PetSvg } from "@/components/avatar/PetSvg";
 import { CoinBurst } from "@/components/game/CoinBurst";
 import { Confetti } from "@/components/points/Confetti";
-import { ShopArt, Sprite, frameSpriteStyle, hasSprite, shopItemIndex } from "@/components/studio/Sprite";
+import { ShopArt, Sprite, faceStyle, frameSpriteStyle, hasSprite, shopItemIndex } from "@/components/studio/Sprite";
 import { Nameplate } from "@/components/studio/Nameplate";
 import { AvatarFace } from "@/components/studio/AvatarFace";
 import { ProfileBanner } from "./ProfileBanner";
@@ -49,7 +49,7 @@ const TABS: { key: Tab; label: string; slots: Slot[] }[] = [
 ];
 const TAB_OF: Partial<Record<Slot, Tab>> = Object.fromEntries(TABS.flatMap((t) => t.slots.map((s) => [s, t.key])));
 const SLOT_KEYS: Slot[] = ["skin", "hair", "hairColor", "eyes", "outfit", "accessory", "frame", "background", "effect", "nameplate", "title", "pet"];
-const same = (a: AvatarConfig, b: AvatarConfig) => SLOT_KEYS.every((k) => (a[k] ?? null) === (b[k] ?? null));
+const same = (a: AvatarConfig, b: AvatarConfig) => (a.face ?? null) === (b.face ?? null) && SLOT_KEYS.every((k) => (a[k] ?? null) === (b[k] ?? null));
 const fmt = (n: number) => n.toLocaleString("vi-VN");
 const priceText = (xu: number, gem: number) => [xu ? `${fmt(xu)} xu` : "", gem ? `${gem} ngọc` : ""].filter(Boolean).join(" + ") || "0 xu";
 const noFx = { background: null, frame: null, effect: null } as const;
@@ -102,8 +102,8 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
   const lackGem = Math.max(0, cost.gem - gems);
   const enough = lackXu === 0 && lackGem === 0;
   const dirty = !same(config, saved);
-  const changedTabs = TABS.filter((t) => t.slots.some((k) => (config[k] ?? null) !== (saved[k] ?? null)));
-  const matchPreset = (c: AvatarConfig, p: Preset) => (Object.keys(p.items) as Slot[]).every((k) => (c[k] ?? null) === (p.items[k] ?? null));
+  const changedTabs = TABS.filter((t) => (t.key === "char" && (config.face ?? null) !== (saved.face ?? null)) || t.slots.some((k) => (config[k] ?? null) !== (saved[k] ?? null)));
+  const matchPreset = (c: AvatarConfig, p: Preset) => presetIndexOf(c) === PRESETS.indexOf(p);
   const currentPreset = PRESETS.find((p) => matchPreset(config, p));
 
   const put = (slot: Slot, id: string | null) => {
@@ -111,10 +111,18 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
     setJustSaved(false);
     setConfig((c) => ({ ...c, [slot]: id }));
   };
+  const putFace = (id: string) => {
+    play("click");
+    setJustSaved(false);
+    setConfig((c) => ({ ...c, face: id }));
+  };
+  // Mặt đang hiện: theo tranh mẫu (khi dáng trùng mẫu) hoặc mặt đã chọn / mặc định theo kiểu tóc
+  const look = paintedLook(config);
+  const faceNow = look ? PRESETS[look.index].id : FACES[faceIndexOf(config)].id;
   const applyPreset = (p: Preset) => {
     play("click");
     setJustSaved(false);
-    setConfig((c) => ({ ...c, ...p.items }));
+    setConfig((c) => ({ ...c, ...p.items, face: null }));
   };
   const goTab = (t: Tab) => {
     play("tick");
@@ -362,7 +370,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
           <div className="flex flex-wrap items-center justify-between gap-2.5">
             {tab === "char" && (
               <div className="flex gap-1 rounded-xl bg-[#F3F1FA] p-1" role="radiogroup" aria-label="Kiểu chỉnh nhân vật">
-                {([["preset", "Mẫu có sẵn"], ["custom", "Tùy chỉnh tóc & mắt"]] as const).map(([k, label]) => (
+                {([["preset", "Mẫu có sẵn"], ["custom", "Tùy chỉnh mặt, tóc & mắt"]] as const).map(([k, label]) => (
                   <button key={k} type="button" role="radio" aria-checked={charMode === k} data-testid={`char-${k}`} onClick={() => { play("tick"); setCharMode(k); }} className={cn("h-9 rounded-[9px] px-3.5 text-[13px] font-bold", charMode === k ? "bg-white text-[#2A1F5C] shadow-[0_1px_3px_rgba(30,27,46,0.12)]" : "text-[#5F5B73]")}>
                     {label}
                   </button>
@@ -413,6 +421,28 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
           </div>
         ) : (
           <div className="flex min-h-[420px] flex-col gap-[22px] px-4 pb-6 pt-4 sm:px-6" role="tabpanel">
+            <Section title="Khuôn mặt">
+              <div className="flex flex-wrap gap-3" role="radiogroup" aria-label="Khuôn mặt">
+                {FACES.map((f) => {
+                  const on = faceNow === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      aria-label={`Mặt ${f.name}`}
+                      title={`Mặt ${f.name} (miễn phí)`}
+                      data-testid={`face-${f.id}`}
+                      onClick={() => putFace(f.id)}
+                      className="h-16 w-16 rounded-full bg-[#F3F1FA]"
+                      style={{ ...faceStyle(PRESETS.findIndex((p) => p.id === f.id)), boxShadow: `0 0 0 3px #FFFFFF, 0 0 0 5px ${on ? ACCENT : "#E4E0F0"}` }}
+                    />
+                  );
+                })}
+              </div>
+              <p className="text-xs text-[#6B6680]">Miễn phí · giữ nét vẽ của các mẫu. Tóc và mắt đổi màu ngay trên nhân vật.</p>
+            </Section>
             <Section title="Màu tóc">
               <Swatches slot="hairColor" config={config} has={has} put={put} color={(it) => (it.v?.startsWith("url(") ? "conic-gradient(#F87171,#FBBF24,#34D399,#60A5FA,#A78BFA,#F87171)" : it.v ?? "#000")} />
             </Section>
@@ -422,9 +452,6 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
             </Section>
             <Section title="Trang phục"><Chips slot="outfit" config={config} has={has} put={put} /></Section>
             <Section title="Phụ kiện"><Chips slot="accessory" optional config={config} has={has} put={put} /></Section>
-            <Section title="Màu da">
-              <Swatches slot="skin" config={config} has={has} put={put} color={(it) => it.v ?? "#fde7d2"} />
-            </Section>
           </div>
         )}
 

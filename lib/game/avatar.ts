@@ -2,9 +2,10 @@
  * Cấu hình nhân vật (món đang trang bị ở từng ô) — thuần, dùng ở cả client lẫn server.
  */
 import { ITEM_BY_ID, SLOTS, itemsOfSlot, type Slot } from "./items";
-import { PRESETS } from "./presets";
+import { FACE_IDS, PRESETS } from "./presets";
 
-export type AvatarConfig = Partial<Record<Slot, string | null>>;
+/** Món đang trang bị ở từng ô + `face`: khuôn mặt vẽ tay chọn riêng (id mẫu trong FACES, miễn phí, không phải món) */
+export type AvatarConfig = Partial<Record<Slot, string | null>> & { face?: string | null };
 
 const REQUIRED: Slot[] = ["skin", "hair", "hairColor", "eyes", "outfit"];
 
@@ -67,6 +68,7 @@ export function sanitizeAvatar(raw: unknown, userId: string, owned: Iterable<str
     if (!item.free && !has.has(item.id)) continue;
     out[key] = item.id;
   }
+  if (typeof input.face === "string" && FACE_IDS.includes(input.face)) out.face = input.face;
   return out;
 }
 

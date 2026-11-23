@@ -432,6 +432,29 @@ try {
     expect([307, 308].includes(res.status) && /\/profile$/.test(res.headers.get("location") ?? ""), `/profile/avatar phải chuyển về /profile (${res.status} ${res.headers.get("location")})`);
   });
 
+  await step("Học sinh: đổi màu tóc vẫn giữ tranh mẫu (tô lại trên tranh); chọn khuôn mặt vẽ tay → lưu được", async () => {
+    await s.goto("/profile", /Tủ đồ & Cửa hàng/i);
+    const click = (id) => s.ev(`const b=document.querySelector('[data-testid="${id}"]'); if(!b||b.disabled) return false; b.click(); return true;`);
+    const hero = (sel) => s.ev(`return !!document.querySelector('[data-testid="profile-banner"] ${sel}')`);
+    expect(await click("char-preset"), "thiếu nút Mẫu có sẵn");
+    await sleep(200);
+    expect(await click("preset-preset-student"), "thiếu mẫu Học sinh nam");
+    await sleep(200);
+    expect(await hero(`[data-painted="preset-student"]:not([data-hair])`), "mẫu Học sinh nam chưa vẽ bằng tranh");
+    expect(await click("char-custom"), "thiếu nút Tuỳ chỉnh");
+    await sleep(200);
+    expect(await click("item-hc-black"), "thiếu màu tóc Đen");
+    await sleep(200);
+    expect(await hero(`[data-painted="preset-student"][data-hair="hc-black"]`), "đổi màu tóc phải giữ tranh Học sinh nam và tô lại tóc");
+    expect(await click("face-preset-kimono"), "thiếu khuôn mặt Cô gái kimono");
+    await sleep(200);
+    expect(await hero(`[data-face="preset-kimono"]`) && !(await hero("[data-painted]")), "chọn mặt khác phải vẽ nhân vật với mặt kimono");
+    expect(await click("decor-save"), "không bấm được Lưu trang trí");
+    expect(await s.waitText(/Đã lưu trang trí/), "chưa lưu");
+    const av = await prisma.userAvatar.findUnique({ where: { userId: data.student.id } });
+    expect(av?.config.face === "preset-kimono" && av.config.hairColor === "hc-black", `cấu hình lưu sai: ${JSON.stringify(av?.config)}`);
+  });
+
   await step("Học sinh: hồ sơ cá nhân hiện nhân vật, danh hiệu, xu tích luỹ; bạn khác xem không thấy kết quả gần đây; hồ sơ thầy → 404", async () => {
     await s.goto(`/profile/${data.student.id}`, /Thang danh hiệu/i);
     const txt = await s.text();
@@ -545,8 +568,9 @@ try {
     await sleep(300);
     await s.ev(`document.querySelector('[data-testid="deco-hair"]').click()`);
     await sleep(300);
-    const chibi = await s.ev(`const svg=document.querySelector('[data-testid="item-card"] svg[role="img"]'); return svg ? [!!svg.querySelector('linearGradient[id$="-iris"]'), svg.querySelectorAll('ellipse').length] : null`);
-    expect(chibi && chibi[0] && chibi[1] >= 10, `nhân vật chưa phải bản anime: ${JSON.stringify(chibi)}`);
+    // Nhân vật tự chỉnh: thân SVG + khuôn mặt vẽ tay của mẫu (ảnh faces.webp), không còn mặt SVG cũ
+    const chibi = await s.ev(`const svg=document.querySelector('[data-testid="item-card"] svg[role="img"]'); const f=svg?.querySelector('[data-face] image'); return svg ? [!!f && /studio\\/faces\\.webp/.test(f.getAttribute('href')), svg.querySelectorAll('path').length] : null`);
+    expect(chibi && chibi[0] && chibi[1] >= 10, `nhân vật chưa có mặt vẽ tay: ${JSON.stringify(chibi)}`);
     await s.ev(`document.querySelector('[data-testid="deco-all"]').click(); document.querySelector('[data-testid="cat-all"]').click()`);
     await sleep(200);
     await s.ev(`document.querySelector('[data-testid="menu-open"]').click()`);
