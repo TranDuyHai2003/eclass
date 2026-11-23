@@ -35,6 +35,8 @@ export interface Item {
   studio?: boolean;
   /** Cấp tối thiểu (theo xu tích luỹ) mới mua được — canvas "Tiệm quà v2" */
   minLevel?: number;
+  /** Kiểu tóc theo giới (ô Giới tính ở Tùy chỉnh lọc danh sách kiểu tóc) */
+  gender?: "male" | "female";
   /** Tham số vẽ (màu, biến thể) — Chibi.tsx đọc */
   v?: string;
   v2?: string;
@@ -51,14 +53,27 @@ export const ITEMS: Item[] = [
   skin("skin-tan", "Nâu nhạt", "#d9a877"),
   skin("skin-brown", "Nâu", "#a86f45"),
   // ---- Kiểu tóc
-  { id: "hair-short", slot: "hair", name: "Tóc ngắn", rarity: "common", free: true, v: "short" },
-  { id: "hair-bob", slot: "hair", name: "Tóc bob", rarity: "common", free: true, v: "bob" },
-  { id: "hair-ponytail", slot: "hair", name: "Tóc đuôi ngựa", rarity: "common", free: true, v: "ponytail" },
-  { id: "hair-spiky", slot: "hair", name: "Tóc dựng", rarity: "rare", price: { xu: 900 }, v: "spiky" },
-  { id: "hair-twin", slot: "hair", name: "Tóc hai bím", rarity: "rare", price: { xu: 900 }, v: "twin" },
-  { id: "hair-long", slot: "hair", name: "Tóc dài", rarity: "rare", price: { xu: 1200 }, v: "long" },
-  { id: "hair-bun", slot: "hair", name: "Búi củ tỏi", rarity: "epic", gachaOnly: true, v: "bun" },
-  { id: "hair-mohawk", slot: "hair", name: "Mohawk", rarity: "epic", gachaOnly: true, v: "mohawk" },
+  { id: "hair-short", slot: "hair", name: "Tóc ngắn", rarity: "common", free: true, v: "short", gender: "male" },
+  { id: "hair-bob", slot: "hair", name: "Tóc bob", rarity: "common", free: true, v: "bob", gender: "female" },
+  { id: "hair-ponytail", slot: "hair", name: "Tóc đuôi ngựa", rarity: "common", free: true, v: "ponytail", gender: "female" },
+  { id: "hair-spiky", slot: "hair", name: "Tóc dựng", rarity: "rare", price: { xu: 900 }, v: "spiky", gender: "male" },
+  { id: "hair-twin", slot: "hair", name: "Tóc hai bím", rarity: "rare", price: { xu: 900 }, v: "twin", gender: "female" },
+  { id: "hair-long", slot: "hair", name: "Tóc dài", rarity: "rare", price: { xu: 1200 }, v: "long", gender: "female" },
+  { id: "hair-bun", slot: "hair", name: "Búi củ tỏi", rarity: "epic", gachaOnly: true, v: "bun", gender: "female" },
+  { id: "hair-mohawk", slot: "hair", name: "Mohawk", rarity: "epic", gachaOnly: true, v: "mohawk", gender: "male" },
+  // Kiểu tóc thêm (23/11): bán ở Hồ sơ & Trang trí, không vào bể rương (studio) — giữ tỉ lệ rương
+  { id: "hair-buzz", slot: "hair", name: "Đầu đinh", rarity: "common", free: true, studio: true, v: "short", gender: "male" },
+  { id: "hair-sidepart", slot: "hair", name: "Rẽ ngôi lệch", rarity: "common", free: true, studio: true, v: "short", gender: "male" },
+  { id: "hair-slick", slot: "hair", name: "Vuốt ngược", rarity: "rare", price: { xu: 900 }, studio: true, v: "short", gender: "male" },
+  { id: "hair-curly", slot: "hair", name: "Xoăn bồng", rarity: "rare", price: { xu: 900 }, studio: true, v: "spiky", gender: "male" },
+  { id: "hair-wolf", slot: "hair", name: "Tóc wolf", rarity: "rare", price: { xu: 1200 }, studio: true, v: "spiky", gender: "male" },
+  { id: "hair-longm", slot: "hair", name: "Dài lãng tử", rarity: "rare", price: { xu: 1200 }, studio: true, v: "long", gender: "male" },
+  { id: "hair-manbun", slot: "hair", name: "Búi samurai", rarity: "epic", price: { xu: 1500 }, studio: true, v: "bun", gender: "male" },
+  { id: "hair-pixie", slot: "hair", name: "Tóc tém", rarity: "common", free: true, studio: true, v: "bob", gender: "female" },
+  { id: "hair-twintail", slot: "hair", name: "Hai đuôi cao", rarity: "rare", price: { xu: 900 }, studio: true, v: "twin", gender: "female" },
+  { id: "hair-sidetail", slot: "hair", name: "Đuôi lệch vai", rarity: "rare", price: { xu: 900 }, studio: true, v: "ponytail", gender: "female" },
+  { id: "hair-odango", slot: "hair", name: "Búi đôi", rarity: "rare", price: { xu: 1200 }, studio: true, v: "bun", gender: "female" },
+  { id: "hair-wavy", slot: "hair", name: "Xoăn sóng dài", rarity: "epic", price: { xu: 1500 }, studio: true, v: "long", gender: "female" },
   // ---- Màu tóc
   hairColor("hc-black", "Đen", "#1f2937"),
   hairColor("hc-brown", "Nâu", "#6b3f1d"),

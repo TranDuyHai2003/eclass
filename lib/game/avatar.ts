@@ -74,6 +74,7 @@ export function sanitizeAvatar(raw: unknown, userId: string, owned: Iterable<str
   }
   if (typeof input.face === "string" && FACE_IDS.includes(input.face)) out.face = input.face;
   Object.assign(out, sanitizeFaceParts(input));
+  if (input.gender === "male" || input.gender === "female") out.gender = input.gender;
   return out;
 }
 

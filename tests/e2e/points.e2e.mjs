@@ -451,11 +451,24 @@ try {
     expect(await hero(`[data-painted="preset-student"] [data-body="outfit-tee"]`), "thay áo phông phải giữ đầu Học sinh nam, chỉ đổi thân");
     // Tùy chỉnh không còn hàng "mặt của mẫu" (muốn mặt mẫu thì chọn nguyên mẫu)
     expect(!(await s.ev(`return !!document.querySelector('[data-testid="face-preset-kimono"]')`)), "Tùy chỉnh không được còn nút chọn mặt của mẫu");
+    // Giới tính: Nam chỉ thấy 10 kiểu tóc nam; kiểu mới (Rẽ ngôi lệch) vẽ tay trên đầu nam
+    const hairIds = () => s.ev(`return [...document.querySelectorAll('[data-testid^="item-hair-"]')].map((b) => b.dataset.testid.slice(5))`);
+    let hs = await hairIds();
+    expect(hs.length === 10 && hs.includes("hair-sidepart") && !hs.includes("hair-bob"), `Nam phải có đúng 10 kiểu tóc nam: ${hs}`);
+    expect(await click("item-hair-sidepart"), "thiếu Rẽ ngôi lệch");
+    await sleep(200);
+    expect(await hero(`[data-head="16"][data-painted="preset-student"]`), "Rẽ ngôi lệch phải vẽ tay trên đầu nam");
+    expect(await click("gender-female"), "thiếu nút Nữ");
+    await sleep(250);
+    hs = await hairIds();
+    expect(hs.length === 10 && hs.includes("hair-pixie") && !hs.includes("hair-short"), `Nữ phải có đúng 10 kiểu tóc nữ: ${hs}`);
+    expect(await hero(`[data-head="8"]`), "chọn Nữ → kiểu tóc chuyển về tóc bob");
+    await s.screenshot(path.join(SHOTS, "profile-female.png"));
     expect(await click("item-hair-ponytail"), "thiếu Tóc đuôi ngựa");
     await sleep(200);
     await s.screenshot(path.join(SHOTS, "profile-ponytail.png"));
     expect(await hero(`[data-head="9"] [data-hairback="9"]`), "đuôi ngựa phải vẽ bằng đầu vẽ tay + tóc sau lưng (không ra nhân vật SVG)");
-    expect(await hero(`[data-head="9"] [data-face="preset-student"]`), "đổi kiểu tóc vẫn giữ mặt đang có (Học sinh nam)");
+    expect(await hero(`[data-head="9"][data-painted="preset-kimono"]`), "tóc nữ dùng đầu + mặt nữ");
     expect(await click("item-hair-bob"), "thiếu Tóc bob");
     await sleep(200);
     expect(await hero(`[data-head="8"]`), "tóc bob phải vẽ bằng đầu tóc bob vẽ tay");
@@ -471,7 +484,7 @@ try {
     expect(await s.waitText(/Đã lưu trang trí/), "chưa lưu");
     const av = await prisma.userAvatar.findUnique({ where: { userId: data.student.id } });
     const cf = av?.config ?? {};
-    expect(cf.hairColor === "hc-black" && cf.hair === "hair-bob" && cf.eyeShape === "big" && cf.mouth === "cat" && cf.faceDeco === "star" && cf.skinTone === "tan" && cf.brows === "thick", `cấu hình lưu sai: ${JSON.stringify(cf)}`);
+    expect(cf.gender === "female" && cf.hairColor === "hc-black" && cf.hair === "hair-bob" && cf.eyeShape === "big" && cf.mouth === "cat" && cf.faceDeco === "star" && cf.skinTone === "tan" && cf.brows === "thick", `cấu hình lưu sai: ${JSON.stringify(cf)}`);
   });
 
   await step("Học sinh: hồ sơ cá nhân hiện nhân vật, danh hiệu, xu tích luỹ; bạn khác xem không thấy kết quả gần đây; hồ sơ thầy → 404", async () => {

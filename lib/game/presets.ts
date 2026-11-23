@@ -2,7 +2,7 @@
  * "Mẫu nhân vật" (trang Hồ sơ & Trang trí): bộ món áp một lần — không phải món, không lưu DB.
  * Món thiếu mua cả bộ qua `buyBundle` (một giao dịch, được cả bộ hoặc không món nào).
  */
-import type { Slot } from "./items";
+import { ITEM_BY_ID, type Slot } from "./items";
 import { BODIES, EYE_GEO, HAIR_HEADS, HEAD_ANCHOR } from "./painted-data";
 
 export interface Preset {
@@ -33,7 +33,14 @@ export type LookExtraKey = "skinTone" | "brows";
 export const LOOK_EXTRA_KEYS: LookExtraKey[] = ["skinTone", "brows"];
 
 /** Cấu hình nhân vật kèm khuôn mặt + bộ phận mặt chọn riêng (không phải món, miễn phí) */
-export type LookConfig = Partial<Record<Slot, string | null>> & { face?: string | null } & Partial<Record<FacePartKey | LookExtraKey, string | null>>;
+export type LookConfig = Partial<Record<Slot, string | null>> & { face?: string | null; gender?: Gender | null } & Partial<Record<FacePartKey | LookExtraKey, string | null>>;
+export type Gender = "male" | "female";
+
+/** Giới của nhân vật: đã chọn, chưa chọn thì suy từ kiểu tóc (tóc nữ → nữ) — nhân vật cũ không đổi */
+export function genderOf(config: LookConfig): Gender {
+  if (config.gender === "male" || config.gender === "female") return config.gender;
+  return (config.hair && ITEM_BY_ID[config.hair]?.gender) === "female" ? "female" : "male";
+}
 
 /**
  * "Khuôn mặt" chọn được ở mục Tùy chỉnh: mặt vẽ tay của các mẫu (bỏ hiệp sĩ, nhà du hành vì đội mũ kín).
@@ -50,13 +57,12 @@ export const FACES: { id: string; name: string; skin: string }[] = [
 export const FACE_IDS = FACES.map((f) => f.id);
 /** Mặt đã chọn không làm lệch mẫu: chưa chọn, chọn đúng mặt của mẫu, hoặc mẫu che kín mặt (nhà du hành) */
 const faceFits = (config: LookConfig, p: Preset) => !hasFaceParts(config) && LOOK_EXTRA_KEYS.every((k) => !config[k]) && (!config.face || config.face === p.id || p.id === "preset-astro");
-const GIRL_HAIR = new Set(["hair-bob", "hair-ponytail", "hair-twin", "hair-long", "hair-bun"]);
 
 /** Khuôn mặt dùng khi vẽ nhân vật tự chỉnh: mặt đã chọn, chưa chọn thì theo kiểu tóc (tóc dài/búi → mặt cô gái kimono) */
 export function faceIndexOf(config: LookConfig): number {
   const i = config.face ? FACE_IDS.indexOf(config.face) : -1;
   if (i >= 0) return i;
-  return config.hair && GIRL_HAIR.has(config.hair) ? FACE_IDS.indexOf("preset-kimono") : 0;
+  return genderOf(config) === "female" ? FACE_IDS.indexOf("preset-kimono") : 0;
 }
 
 export interface PaintedLook {

@@ -9,7 +9,7 @@ import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { buyBundle, saveAvatar } from "@/actions/avatar";
 import { ITEM_BY_ID, itemsOfSlot, type Item, type Slot } from "@/lib/game/items";
-import { FACES, FACE_IDS, PRESETS, currentFaceId, faceIndexOf, paintedLook, presetIndexOf, type Preset } from "@/lib/game/presets";
+import { FACES, FACE_IDS, PRESETS, currentFaceId, faceIndexOf, genderOf, paintedLook, presetIndexOf, type Gender, type Preset } from "@/lib/game/presets";
 import { FACE_PART_KEYS, FACE_PART_OPTIONS, LOOK_EXTRA_KEYS, type FacePartKey, type LookExtraKey } from "@/lib/game/face-parts";
 import { Brows, FaceArt } from "@/components/avatar/FaceArt";
 import type { AvatarConfig } from "@/lib/game/avatar";
@@ -51,7 +51,7 @@ const TABS: { key: Tab; label: string; slots: Slot[] }[] = [
 ];
 const TAB_OF: Partial<Record<Slot, Tab>> = Object.fromEntries(TABS.flatMap((t) => t.slots.map((s) => [s, t.key])));
 const SLOT_KEYS: Slot[] = ["skin", "hair", "hairColor", "eyes", "outfit", "accessory", "frame", "background", "effect", "nameplate", "title", "pet"];
-const LOOK_KEYS = ["face", ...FACE_PART_KEYS, ...LOOK_EXTRA_KEYS] as const; // khuôn mặt + bộ phận mặt + màu da, lông mày (miễn phí, không phải món)
+const LOOK_KEYS = ["face", "gender", ...FACE_PART_KEYS, ...LOOK_EXTRA_KEYS] as const; // khuôn mặt + bộ phận mặt + màu da, lông mày (miễn phí, không phải món)
 type PartKey = FacePartKey | LookExtraKey;
 const PART_ROWS: PartKey[] = ["skinTone", "eyeShape", "brows", "mouth", "faceDeco"];
 const sameLook = (a: AvatarConfig, b: AvatarConfig) => LOOK_KEYS.every((k) => (a[k] ?? null) === (b[k] ?? null));
@@ -124,7 +124,21 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
     play("click");
     setJustSaved(false);
     // Đổi tóc / áo / phụ kiện mà chưa chọn mặt riêng → giữ mặt đang hiện (không bị đổi sang mặt của tranh khác)
-    setConfig((c) => ({ ...c, ...(!c.face && KEEP_FACE.includes(slot) ? { face: currentFaceId(c) } : {}), [slot]: id }));
+    setConfig((c) => {
+      const g = slot === "hair" && id ? ITEM_BY_ID[id]?.gender : undefined;
+      if (g && g !== genderOf(c)) return { ...c, gender: g, face: null, [slot]: id }; // kiểu tóc của giới kia (vd thử từ tiệm) → đổi giới
+      return { ...c, ...(!c.face && KEEP_FACE.includes(slot) ? { face: currentFaceId(c) } : {}), [slot]: id };
+    });
+  };
+  const gender = genderOf(config);
+  // Đổi giới: kiểu tóc không thuộc giới mới → kiểu mặc định của giới (miễn phí); mặt nền theo đầu của kiểu tóc
+  const putGender = (g: Gender) => {
+    play("click");
+    setJustSaved(false);
+    setConfig((c) => {
+      const hairOk = c.hair && (ITEM_BY_ID[c.hair]?.gender ?? "male") === g;
+      return { ...c, gender: g, ...(hairOk ? {} : { hair: g === "female" ? "hair-bob" : "hair-short", face: null }) };
+    });
   };
   const putPart = (key: PartKey, id: string | null) => {
     play("click");
@@ -139,7 +153,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
   const applyPreset = (p: Preset) => {
     play("click");
     setJustSaved(false);
-    setConfig((c) => ({ ...c, ...p.items, face: null, eyeShape: null, mouth: null, faceDeco: null, skinTone: null, brows: null }));
+    setConfig((c) => ({ ...c, ...p.items, face: null, gender: null, eyeShape: null, mouth: null, faceDeco: null, skinTone: null, brows: null }));
   };
   const goTab = (t: Tab) => {
     play("tick");
@@ -438,6 +452,25 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
           </div>
         ) : (
           <div className="flex min-h-[420px] flex-col gap-[22px] px-4 pb-6 pt-4 sm:px-6" role="tabpanel">
+            <Section title="Giới tính">
+              <div className="flex gap-2.5" role="radiogroup" aria-label="Giới tính">
+                {(["male", "female"] as const).map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    role="radio"
+                    aria-checked={gender === g}
+                    data-testid={`gender-${g}`}
+                    onClick={() => putGender(g)}
+                    className={cn("flex h-11 min-w-[96px] items-center justify-center gap-1.5 rounded-xl border-2 px-4 text-sm font-bold", gender === g ? "border-[#5B2BD6] bg-[#F5F1FF] text-[#2A1F5C]" : "border-[#ECE9F5] bg-white text-[#3B3650]")}
+                  >
+                    <span aria-hidden>{g === "male" ? "👦" : "👧"}</span>
+                    {g === "male" ? "Nam" : "Nữ"}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-[#6B6680]">Mỗi giới có 10 kiểu tóc riêng · đổi giới thì kiểu tóc và khuôn mặt chuyển theo.</p>
+            </Section>
             {PART_ROWS.map((key) => (
               <Section key={key} title={PART_LABEL[key].title}>
                 <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label={PART_LABEL[key].title}>
@@ -452,7 +485,9 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
             <Section title="Màu tóc">
               <Swatches slot="hairColor" config={config} has={has} put={put} color={(it) => (it.v?.startsWith("url(") ? "conic-gradient(#F87171,#FBBF24,#34D399,#60A5FA,#A78BFA,#F87171)" : it.v ?? "#000")} />
             </Section>
-            <Section title="Kiểu tóc"><Chips slot="hair" config={config} has={has} put={put} /></Section>
+            <Section title={`Kiểu tóc ${gender === "female" ? "nữ" : "nam"}`}>
+              <Chips slot="hair" config={config} has={has} put={put} only={(it) => (it.gender ?? "male") === gender} />
+            </Section>
             <Section title="Màu mắt">
               <Swatches slot="eyes" config={config} has={has} put={put} color={(it) => it.v ?? "#000"} />
             </Section>
@@ -633,14 +668,14 @@ function Card({ name, selected, trying, locked, onClick, art, status, testId, wi
   );
 }
 
-function Chips({ slot, config, has, put, optional }: { slot: Slot; config: AvatarConfig; has: (it: Item) => boolean; put: (slot: Slot, id: string | null) => void; optional?: boolean }) {
+function Chips({ slot, config, has, put, optional, only }: { slot: Slot; config: AvatarConfig; has: (it: Item) => boolean; put: (slot: Slot, id: string | null) => void; optional?: boolean; only?: (it: Item) => boolean }) {
   const chip = (on: boolean) => (on ? "border-[#5B2BD6] bg-[#F5F1FF] text-[#2A1F5C]" : "border-[#ECE9F5] bg-white text-[#3B3650]");
   return (
     <div className="flex flex-wrap gap-2.5">
       {optional && (
         <button type="button" aria-pressed={!config[slot]} onClick={() => put(slot, null)} data-testid={`none-${slot}`} className={cn("h-11 rounded-xl border-2 px-4 text-[13px] font-semibold", chip(!config[slot]))}>Không có</button>
       )}
-      {itemsOfSlot(slot).map((it) => {
+      {itemsOfSlot(slot).filter((it) => !only || only(it)).map((it) => {
         const own = has(it);
         const on = config[slot] === it.id;
         const price = it.price ? ("xu" in it.price ? `${fmt(it.price.xu)} xu` : `${it.price.gem} ngọc`) : "Hộp bí ẩn";

@@ -5,7 +5,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { FACES, FACE_IDS, PRESETS, currentFaceId, faceIndexOf, paintedLook, presetIndexOf } from "@/lib/game/presets";
+import { FACES, FACE_IDS, PRESETS, currentFaceId, faceIndexOf, genderOf, paintedLook, presetIndexOf } from "@/lib/game/presets";
 import { sanitizeAvatar } from "@/lib/game/avatar";
 import { BODIES, HAIR_BACK, HAIR_HEADS, HEAD_ANCHOR, HEAD_CELLS_N } from "@/lib/game/painted-data";
 import { ITEMS } from "@/lib/game/items";
@@ -171,5 +171,37 @@ describe("Bộ phận mặt phối riêng (mắt / miệng / trang điểm)", ()
     assert.equal(paintedLook({ ...student, skinTone: "brown", brows: "thin" })?.face, null, "đổi da / lông mày không cần dán mặt");
     assert.equal(skinToneOf("deep"), "#6f432a");
     assert.equal(skinToneOf(null), null);
+  });
+});
+
+describe("Giới tính + kiểu tóc theo giới", () => {
+  const hairs = ITEMS.filter((i) => i.slot === "hair");
+  test("mỗi giới đúng 10 kiểu tóc, kiểu nào cũng có đầu vẽ tay", () => {
+    for (const g of ["male", "female"] as const) {
+      const list = hairs.filter((h) => h.gender === g);
+      assert.equal(list.length, 10, `${g}: ${list.map((h) => h.id).join(",")}`);
+      for (const h of list) {
+        const look = paintedLook({ ...student, hair: h.id, outfit: "outfit-tee", gender: g });
+        assert.ok(look && look.index in HEAD_ANCHOR, `${h.id} chưa có đầu vẽ tay`);
+        assert.equal(PRESETS[look.base].id, g === "female" ? "preset-kimono" : "preset-student", `${h.id}: đầu nền đúng giới`);
+      }
+    }
+    assert.ok(hairs.every((h) => h.gender), "món tóc nào cũng gắn giới");
+  });
+
+  test("kiểu tóc mới không vào bể rương (giữ tỉ lệ rương), có giá hoặc miễn phí", () => {
+    const fresh = hairs.filter((h) => !["hair-short", "hair-bob", "hair-ponytail", "hair-spiky", "hair-twin", "hair-long", "hair-bun", "hair-mohawk"].includes(h.id));
+    assert.equal(fresh.length, 12);
+    assert.ok(fresh.every((h) => h.studio && !h.gachaOnly && (h.free || h.price)), "món tóc mới phải là món Trang trí (studio)");
+  });
+
+  test("genderOf: đã chọn → theo chọn; chưa chọn → suy từ kiểu tóc (nhân vật cũ không đổi)", () => {
+    assert.equal(genderOf({ hair: "hair-short" }), "male");
+    assert.equal(genderOf({ hair: "hair-ponytail" }), "female");
+    assert.equal(genderOf({ hair: "hair-short", gender: "female" }), "female");
+    assert.equal(genderOf({}), "male");
+    assert.equal(faceIndexOf({ hair: "hair-pixie" }), FACE_IDS.indexOf("preset-kimono"));
+    assert.equal(sanitizeAvatar({ gender: "female" }, "u", []).gender, "female");
+    assert.equal(sanitizeAvatar({ gender: "x" }, "u", []).gender, undefined);
   });
 });
