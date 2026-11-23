@@ -20,3 +20,8 @@ export const PRESETS: Preset[] = [
   { id: "preset-gamer", name: "Game thủ", items: { hair: "hair-short", hairColor: "hc-black", eyes: "eye-black", outfit: "outfit-gamer", accessory: "acc-headphones" } },
   { id: "preset-kimono", name: "Cô gái kimono", items: { hair: "hair-bob", hairColor: "hc-black", eyes: "eye-brown", outfit: "outfit-kimono", accessory: "acc-sakura" } },
 ];
+
+/** Chỉ số mẫu nhân vật mà cấu hình trùng khớp (tóc, màu tóc, mắt, trang phục, phụ kiện); -1 nếu tự chỉnh khác mẫu */
+export function presetIndexOf(config: Partial<Record<Slot, string | null>>): number {
+  return PRESETS.findIndex((p) => (Object.keys(p.items) as Slot[]).every((k) => (config[k] ?? null) === (p.items[k] ?? null)));
+}

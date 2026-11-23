@@ -150,3 +150,13 @@ export function ShopArt({ index, className, style }: { index: number; className?
     />
   );
 }
+
+/** Khuôn mặt nhân vật mẫu cắt từ sprite đồ vật — đúng công thức canvas (phóng 1,5× ô, lấy phần đầu) */
+export function faceStyle(presetIdx: number, row = 0): React.CSSProperties {
+  return {
+    backgroundImage: `url(${SPRITE_ITEMS})`,
+    backgroundRepeat: "no-repeat",
+    backgroundSize: "1200% 491.6%",
+    backgroundPosition: `${(((1.5 * presetIdx + 0.25) / 11) * 100).toFixed(3)}% ${(((row * 1.229 + 0.02) / 3.916) * 100).toFixed(3)}%`,
+  };
+}

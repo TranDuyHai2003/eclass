@@ -26,7 +26,7 @@ export function ProfileBanner({
 }) {
   return (
     <div className={cn("relative", className)} data-testid="profile-banner" data-bg={config.background ?? ""} data-effect-id={config.effect ?? ""}>
-      <div className="relative h-[178px] overflow-hidden rounded-t-[20px]">
+      <div className="relative h-[196px] overflow-hidden rounded-t-[20px]">
         {config.background && hasSprite(config.background) ? (
           // Ảnh cảnh của canvas thiết kế: giữ tỉ lệ ô 112:62, phủ kín banner (cắt trên/dưới), không kéo méo
           <span className="absolute inset-0 overflow-hidden" data-scene={config.background}>

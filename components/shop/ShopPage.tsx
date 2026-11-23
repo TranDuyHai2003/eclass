@@ -20,6 +20,7 @@ import { CHESTS, type ChestId, type Outcome } from "@/lib/game/gacha-shared";
 import { buildNpcLines } from "@/lib/game/npc";
 import { buzz, isSoundOn, onSoundChange, play, setSoundOn } from "@/lib/sound";
 import { Nameplate } from "@/components/studio/Nameplate";
+import { AvatarFace } from "@/components/studio/AvatarFace";
 import { LevelUpDialog, Mascot, OfflineBanner, useOnline, useTweenNumber } from "@/components/studio/effects";
 import { Chibi } from "@/components/avatar/Chibi";
 import { PetSvg } from "@/components/avatar/PetSvg";
@@ -289,7 +290,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       <section className="flex flex-wrap gap-[18px]" data-testid="shop-hud">
         <div className="flex flex-[999_1_520px] flex-wrap items-center gap-[18px] rounded-[20px] border border-[#ECE9F5] bg-white p-[18px]">
           <Link href="/profile" title="Tùy chỉnh hồ sơ" className="relative h-24 w-24 shrink-0 rounded-full" style={avatar.frame ? frameSpriteStyle(avatar.frame, 96) : undefined}>
-            <span className="absolute inset-5 overflow-hidden rounded-full bg-[#EDE7FD]"><Chibi config={{ ...avatar, background: null, frame: null, effect: null }} size={56} className="h-full w-full" /></span>
+            <AvatarFace config={avatar} title={user.name ?? undefined} className="absolute inset-[22px]" />
             {avatar.frame && !frameSpriteStyle(avatar.frame, 96) && <FrameRing frameId={avatar.frame} className="absolute inset-0 h-full w-full" />}
           </Link>
           <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-2.5">

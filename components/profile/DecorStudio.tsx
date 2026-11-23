@@ -18,6 +18,7 @@ import { CoinBurst } from "@/components/game/CoinBurst";
 import { Confetti } from "@/components/points/Confetti";
 import { ShopArt, Sprite, frameSpriteStyle, hasSprite, shopItemIndex } from "@/components/studio/Sprite";
 import { Nameplate } from "@/components/studio/Nameplate";
+import { AvatarFace } from "@/components/studio/AvatarFace";
 import { ProfileBanner } from "./ProfileBanner";
 import { ProfileScene } from "./ProfileScene";
 import { FrameRing } from "./FrameRing";
@@ -233,14 +234,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
         <div className="flex flex-col gap-[18px] px-6 pb-6">
           <div className="-mt-[52px] flex items-end gap-3.5">
             <div className="relative h-28 w-28 shrink-0 rounded-full bg-[#EEF0FB] shadow-[0_0_0_4px_#fff]" style={frameStyle} data-testid="profile-avatar-ring" data-frame={config.frame ?? ""}>
-              <div className="absolute inset-7 flex items-center justify-center overflow-hidden rounded-full bg-[#5B2BD6] text-[26px] font-extrabold text-white">
-                {user.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.image} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  (user.name?.trim()?.[0] ?? "H").toUpperCase()
-                )}
-              </div>
+              <AvatarFace config={config} bg="#EDE7FD" title={user.name ?? undefined} className="absolute inset-6" />
               {config.frame && !frameStyle && <FrameRing frameId={config.frame} className="absolute inset-0 h-full w-full" />}
             </div>
             {config.nameplate ? (
