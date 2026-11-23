@@ -452,6 +452,10 @@ try {
     expect(await click("face-preset-kimono"), "thiếu khuôn mặt Cô gái kimono");
     await sleep(200);
     expect(await hero(`[data-painted="preset-student"] [data-face="preset-kimono"]`), "chọn mặt kimono phải dán lên tranh Học sinh nam (không đổi sang SVG)");
+    expect(await click("item-hair-ponytail"), "thiếu Tóc đuôi ngựa");
+    await sleep(200);
+    await s.screenshot(path.join(SHOTS, "profile-ponytail.png"));
+    expect(await hero(`[data-head="9"] [data-hairback="9"]`) && (await hero(`[data-head="9"] [data-face="preset-kimono"]`)) === false, "đuôi ngựa phải vẽ bằng đầu vẽ tay + tóc sau lưng (không ra nhân vật SVG)");
     expect(await click("item-hair-bob"), "thiếu Tóc bob");
     await sleep(200);
     // đầu tóc bob vẽ sẵn mang đúng mặt kimono → không cần dán mặt
@@ -575,9 +579,10 @@ try {
     await sleep(300);
     await s.ev(`document.querySelector('[data-testid="deco-hair"]').click()`);
     await sleep(300);
-    // Nhân vật tự chỉnh: thân SVG + khuôn mặt vẽ tay của mẫu (ảnh faces.webp), không còn mặt SVG cũ
-    const chibi = await s.ev(`const svg=document.querySelector('[data-testid="item-card"] svg[role="img"]'); const f=svg?.querySelector('[data-face] image'); return svg ? [!!f && /studio\\/faces\\.webp/.test(f.getAttribute('href')), svg.querySelectorAll('path').length] : null`);
-    expect(chibi && chibi[0] && chibi[1] >= 10, `nhân vật chưa có mặt vẽ tay: ${JSON.stringify(chibi)}`);
+    await s.screenshot(path.join(SHOTS, "shop-hair.png"));
+    // Thẻ kiểu tóc: mọi kiểu tóc đều vẽ bằng đầu vẽ tay (char-heads.webp), không còn nhân vật SVG / mặt SVG cũ
+    const chibi = await s.ev(`const cards=[...document.querySelectorAll('[data-testid="item-card"] svg[role="img"]')]; return cards.map((svg)=>!!svg.querySelector('[data-head] image[href*="char-heads"]') && !svg.querySelector('ellipse[rx="7.2"]'))`);
+    expect(chibi.length >= 3 && chibi.every(Boolean), `thẻ kiểu tóc chưa vẽ tay hết: ${JSON.stringify(chibi)}`);
     await s.ev(`document.querySelector('[data-testid="deco-all"]').click(); document.querySelector('[data-testid="cat-all"]').click()`);
     await sleep(200);
     await s.ev(`document.querySelector('[data-testid="menu-open"]').click()`);

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ITEM_BY_ID } from "@/lib/game/items";
 import { FACES, PRESETS, faceIndexOf, paintedLook } from "@/lib/game/presets";
-import { BODIES, BODY_H, EYE_GEO, HEAD_ANCHOR, HEAD_CELLS_N } from "@/lib/game/painted-data";
+import { BODIES, BODY_H, EYE_GEO, HAIR_BACK, HAIR_BACK_TOP, HEAD_ANCHOR, HEAD_CELLS_N } from "@/lib/game/painted-data";
 
 const CHAR_STRIP = "/studio/characters.webp";
 // Mặt nạ tóc / tròng mắt của tranh + mặt vẽ tay đã căn theo mắt SVG (scripts/studio/gen-face-assets.py)
@@ -11,6 +11,11 @@ const CHAR_EYES = "/studio/char-eyes.webp";
 const CHAR_HEADS = "/studio/char-heads.webp";
 const CHAR_BODIES = "/studio/char-bodies.webp";
 const CHAR_FACEMASK = "/studio/char-facemask.webp"; // vùng da mặt của từng đầu (dán khuôn mặt đã chọn)
+const CHAR_BACK = "/studio/char-hairback.webp"; // tóc sau lưng (đuôi ngựa, tóc dài, búi, tóc dựng…), ô cao 272 + HAIR_BACK_TOP
+const CHAR_BACK_SHADE = "/studio/char-hairback-shade.webp";
+// Khung tranh cao thêm HAIR_BACK_TOP px phía trên đầu (búi, ngọn tóc dựng); cùng tỉ lệ 144/332, đáy vẫn ở y=138
+const PAINT_SCALE = 144 / 332;
+const PAINT_H = (272 + HAIR_BACK_TOP) * PAINT_SCALE;
 const MASK_W = HEAD_CELLS_N * 332;
 const FACE_STRIP = "/studio/faces.webp";
 const FACE_EYES = "/studio/faces-eyes.webp";
@@ -132,13 +137,19 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
       {look ? (
         // Tranh nhân vật của design: ô 332×272 trong dải 8 ô, canh đáy khung
         <svg
-          x="-12" y="10" width="144" height="128" viewBox={`${look.index * 332} 0 332 272`} preserveAspectRatio="xMidYMax meet"
+          x="-12" y={138 - PAINT_H} width="144" height={PAINT_H} viewBox={`${look.index * 332} ${-HAIR_BACK_TOP} 332 ${272 + HAIR_BACK_TOP}`} preserveAspectRatio="xMidYMax meet"
           data-painted={PRESETS[look.base].id} data-head={look.index} data-hair={look.hairColor ?? undefined} data-eyes={look.eyes ?? undefined}
         >
           {look.body === null ? (
             <image href={CHAR_STRIP} width="2656" height="272" />
           ) : (
             <>
+              {HAIR_BACK.includes(look.index) && (
+                <g data-hairback={look.index}>
+                  <image href={CHAR_BACK} y={-HAIR_BACK_TOP} width={MASK_W} height={272 + HAIR_BACK_TOP} />
+                  {look.hairColor && <Tint id={`${uid}-tb`} href={CHAR_BACK_SHADE} x={look.index * 332} y={-HAIR_BACK_TOP} w={332} h={272 + HAIR_BACK_TOP} total={MASK_W} fill={tintOf(look.hairColor, uid)} />}
+                </g>
+              )}
               {/* thân dịch cho cổ khớp đường cằm của đầu; ô thân cao hơn để chân không hở đáy */}
               <svg
                 x={look.index * 332 + HEAD_ANCHOR[look.index][0] - BODIES[look.body].anchor[0]}
@@ -231,14 +242,14 @@ function tintOf(itemId: string, uid: string) {
  * Tô lại một vùng của tranh: ảnh `href` có A = mặt nạ vùng, RGB = độ sáng đã chuẩn hoá.
  * Phủ màu đặc theo mặt nạ rồi nhân với độ sáng → giữ nét vẽ, bóng đổ, viền đen của tranh.
  */
-function Tint({ id, href, x, w, h, total, fill }: { id: string; href: string; x: number; w: number; h: number; total: number; fill: string }) {
+function Tint({ id, href, x, y = 0, w, h, total, fill }: { id: string; href: string; x: number; y?: number; w: number; h: number; total: number; fill: string }) {
   return (
     <g style={{ isolation: "isolate" }}>
-      <mask id={id} maskUnits="userSpaceOnUse" x={x} y="0" width={w} height={h} style={{ maskType: "alpha" }}>
-        <image href={href} width={total} height={h} />
+      <mask id={id} maskUnits="userSpaceOnUse" x={x} y={y} width={w} height={h} style={{ maskType: "alpha" }}>
+        <image href={href} y={y} width={total} height={h} />
       </mask>
-      <rect x={x} y="0" width={w} height={h} fill={fill} mask={`url(#${id})`} />
-      <image href={href} width={total} height={h} style={{ mixBlendMode: "multiply" }} />
+      <rect x={x} y={y} width={w} height={h} fill={fill} mask={`url(#${id})`} />
+      <image href={href} y={y} width={total} height={h} style={{ mixBlendMode: "multiply" }} />
     </g>
   );
 }

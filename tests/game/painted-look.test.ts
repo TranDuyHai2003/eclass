@@ -7,7 +7,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { FACES, FACE_IDS, PRESETS, currentFaceId, faceIndexOf, paintedLook, presetIndexOf } from "@/lib/game/presets";
 import { sanitizeAvatar } from "@/lib/game/avatar";
-import { BODIES } from "@/lib/game/painted-data";
+import { BODIES, HAIR_BACK, HAIR_HEADS, HEAD_ANCHOR, HEAD_CELLS_N } from "@/lib/game/painted-data";
 import { ITEMS } from "@/lib/game/items";
 
 const preset = (id: string) => PRESETS.find((p) => p.id === id)!;
@@ -44,9 +44,30 @@ describe("paintedLook — tô màu trên tranh mẫu", () => {
     assert.deepEqual([PRESETS[cat!.index].id, cat!.body], ["preset-catgirl", null], "hoodie tai mèo liền mũ → nguyên tranh");
   });
 
-  test("kiểu tóc / phụ kiện không có đầu vẽ sẵn → nhân vật SVG (mặt vẫn vẽ tay)", () => {
-    assert.equal(paintedLook({ ...student, hair: "hair-long" }), null);
+  test("phụ kiện không có đầu vẽ sẵn → nhân vật SVG (mặt vẫn vẽ tay)", () => {
     assert.equal(paintedLook({ ...student, accessory: "acc-crown" }), null);
+    assert.equal(paintedLook({ ...student, hair: "hair-ponytail", accessory: "acc-bow" }), null);
+  });
+
+  test("mọi kiểu tóc đều có đầu vẽ tay (lỗi cũ: đuôi ngựa, hai bím, dài, búi, dựng, mohawk ra nhân vật SVG)", () => {
+    for (const it of ITEMS.filter((i) => i.slot === "hair")) {
+      const look = paintedLook({ ...student, hair: it.id, outfit: "outfit-hoodie", hairColor: "hc-pink", face: "preset-student" });
+      assert.ok(look, `${it.id} chưa có tranh`);
+      assert.ok(look.index in HEAD_ANCHOR && look.index < HEAD_CELLS_N, it.id);
+      assert.equal(BODIES[look.body!].outfit, "outfit-hoodie");
+      assert.equal(look.hairColor, "hc-pink", `${it.id}: tô màu tóc trên tranh`);
+    }
+    const cellOf = (hair: string) => Number(Object.entries(HAIR_HEADS).find(([, [h]]) => h === hair)![0]);
+    for (const hair of ["hair-ponytail", "hair-twin", "hair-long", "hair-bun", "hair-spiky", "hair-mohawk"]) {
+      assert.equal(paintedLook({ ...student, hair })?.index, cellOf(hair), hair);
+    }
+    assert.ok(["hair-ponytail", "hair-long", "hair-bun", "hair-spiky", "hair-mohawk"].every((h) => HAIR_BACK.includes(cellOf(h))), "tóc sau lưng vẽ trước thân");
+    // tóc dựng / mohawk từ đầu Học sinh nam: giữ mặt + màu tóc gốc; tóc nữ từ đầu tóc bob (cô gái kimono)
+    const spiky = paintedLook({ ...student, hair: "hair-spiky" })!;
+    assert.deepEqual([PRESETS[spiky.base].id, spiky.face, spiky.hairColor], ["preset-student", null, null]);
+    const pony = paintedLook({ ...student, hair: "hair-ponytail", face: "preset-student" })!;
+    assert.equal(PRESETS[pony.base].id, "preset-kimono");
+    assert.equal(pony.face, FACE_IDS.indexOf("preset-student"), "đổi sang đuôi ngựa vẫn giữ mặt học sinh");
   });
 
   test("tóc bob không cài hoa → đầu vẽ tóc bob trơn (ô 8), không ra nhân vật SVG (lỗi cũ: tóc bob xấu hơn tóc ngắn)", () => {
@@ -86,7 +107,7 @@ describe("Khuôn mặt (face)", () => {
   test("mặt chỉ lấy từ mẫu có lộ mặt, ảnh mặt và mặt nạ tô màu có trong public/studio", () => {
     assert.ok(FACE_IDS.every((id) => PRESETS.some((p) => p.id === id)));
     assert.ok(!FACE_IDS.includes("preset-astro") && !FACE_IDS.includes("preset-knight"));
-    for (const f of ["faces.webp", "faces-eyes.webp", "char-hair.webp", "char-eyes.webp", "char-heads.webp", "char-bodies.webp", "char-facemask.webp"]) {
+    for (const f of ["faces.webp", "faces-eyes.webp", "char-hair.webp", "char-eyes.webp", "char-heads.webp", "char-bodies.webp", "char-facemask.webp", "char-hairback.webp", "char-hairback-shade.webp"]) {
       assert.ok(existsSync(path.join(process.cwd(), "public/studio", f)), f);
     }
   });
@@ -95,6 +116,7 @@ describe("Khuôn mặt (face)", () => {
     assert.equal(faceIndexOf({ face: "preset-catgirl", hair: "hair-short" }), FACE_IDS.indexOf("preset-catgirl"));
     assert.equal(faceIndexOf({ hair: "hair-short" }), 0);
     assert.equal(faceIndexOf({ hair: "hair-long" }), FACE_IDS.indexOf("preset-kimono"));
+    assert.equal(faceIndexOf({ hair: "hair-twin" }), FACE_IDS.indexOf("preset-kimono"), "id món là hair-twin (lỗi cũ: hair-twintail)");
     assert.equal(faceIndexOf({ face: "khong-co", hair: "hair-spiky" }), 0);
   });
 

@@ -3,7 +3,7 @@
  * Món thiếu mua cả bộ qua `buyBundle` (một giao dịch, được cả bộ hoặc không món nào).
  */
 import type { Slot } from "./items";
-import { BODIES, EYE_GEO, HEAD_ANCHOR } from "./painted-data";
+import { BODIES, EYE_GEO, HAIR_HEADS, HEAD_ANCHOR } from "./painted-data";
 
 export interface Preset {
   id: string;
@@ -40,7 +40,7 @@ export const FACES: { id: string; name: string; skin: string }[] = [
 export const FACE_IDS = FACES.map((f) => f.id);
 /** Mặt đã chọn không làm lệch mẫu: chưa chọn, chọn đúng mặt của mẫu, hoặc mẫu che kín mặt (nhà du hành) */
 const faceFits = (config: LookConfig, p: Preset) => !config.face || config.face === p.id || p.id === "preset-astro";
-const GIRL_HAIR = new Set(["hair-bob", "hair-ponytail", "hair-twintail", "hair-long", "hair-bun"]);
+const GIRL_HAIR = new Set(["hair-bob", "hair-ponytail", "hair-twin", "hair-long", "hair-bun"]);
 
 /** Khuôn mặt dùng khi vẽ nhân vật tự chỉnh: mặt đã chọn, chưa chọn thì theo kiểu tóc (tóc dài/búi → mặt cô gái kimono) */
 export function faceIndexOf(config: LookConfig): number {
@@ -50,7 +50,7 @@ export function faceIndexOf(config: LookConfig): number {
 }
 
 export interface PaintedLook {
-  /** Ô đầu / cả nhân vật: 0–7 = characters.webp, 8 = tóc bob không hoa (chỉ có trong char-heads.webp) */
+  /** Ô đầu / cả nhân vật: 0–7 = characters.webp, 8 = tóc bob không hoa, 9+ = kiểu tóc vẽ thêm (chỉ có trong char-heads.webp) */
   index: number;
   /** Mẫu gốc của ô (màu tóc/mắt/mặt/trang phục gốc) */
   base: number;
@@ -63,10 +63,14 @@ export interface PaintedLook {
   eyes: string | null;
 }
 
-/** Đầu vẽ sẵn: ô tranh → kiểu tóc + phụ kiện của đầu đó; ô 8 = đầu cô gái kimono bỏ hoa (tóc bob trơn) */
+/**
+ * Đầu vẽ sẵn: ô tranh → kiểu tóc + phụ kiện của đầu đó; ô 8 = đầu cô gái kimono bỏ hoa (tóc bob trơn);
+ * ô 9+ = đầu tóc bob / tóc ngắn vẽ thêm kiểu tóc (đuôi ngựa, hai bím, dài, búi, dựng, mohawk — HAIR_HEADS).
+ */
 const HEADS: { cell: number; base: number; hair: string | null; accessory: string | null }[] = [
   ...[0, 1, 4, 6, 7].map((i) => ({ cell: i, base: i, hair: PRESETS[i].items.hair ?? null, accessory: PRESETS[i].items.accessory ?? null })),
   { cell: 8, base: 7, hair: "hair-bob", accessory: null },
+  ...Object.entries(HAIR_HEADS).map(([cell, [hair, base]]) => ({ cell: Number(cell), base, hair, accessory: null })),
 ];
 
 /**

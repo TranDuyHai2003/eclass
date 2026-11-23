@@ -355,11 +355,177 @@ if len(xs):
         idx = idx[(idx > x0 + 3) & (idx < x1 - 3)]
         heads[r, 8 * CELL + idx] = heads[SHIFT + 3, 8 * CELL + idx]
         hair_ext[r, 8 * CELL + idx] = hair_ext[SHIFT + 3, 8 * CELL + idx]
-Image.fromarray((hair_ext * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-hair.webp"), lossless=True)
-Image.fromarray((eye_ext * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-eyes.webp"), lossless=True)
 anchor[8] = (anchor[7][0], anchor[7][1] + SHIFT, anchor[7][2] + SHIFT)
 eye_geo[8] = (eye_geo[7][0], round(eye_geo[7][1] + SHIFT, 1), eye_geo[7][2])
-fm = np.zeros((H, W + CELL, 4)); fm[..., :3] = 1; fm[..., 3] = np.clip(facemask, 0, 1)
+# nét cổ áo kimono lọt dưới cằm (thành vạch lạ trên áo khác)
+for arr in (heads, hair_ext):
+    arr[anchor[8][1] + 18:, 8 * CELL:9 * CELL] = 0
+
+# ======================= Kiểu tóc vẽ thêm (ô 9–14): đầu tóc bob / tóc ngắn + tóc vẽ theo nét tranh =======================
+# Lớp trước (bím, lọn dài) nằm dưới đầu trong char-heads; lớp sau (đuôi ngựa, tóc dài, búi, tóc dựng, mohawk) trong
+# char-hairback.webp (ô 332×(272+TOP), có TOP px trống trên đầu), Chibi vẽ trước thân.
+import sys
+from types import SimpleNamespace
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hair_paint import Layer, bez, chain, lock, palette, under  # noqa: E402
+
+TOP = 40
+TIE = "#f472b6"
+cellv = lambda arr, c: arr[:, c * CELL:(c + 1) * CELL]
+_lw = np.array([0.299, 0.587, 0.114])
+PAL = {c: palette(cellv(heads, c)[..., :3], cellv(hair_ext, c)[..., 3] > 0.9, cellv(heads, c)[..., :3] @ _lw) for c in (0, 8)}
+mir = lambda pts, cx: np.stack([2 * cx - np.asarray(pts)[:, 0], np.asarray(pts)[:, 1]], 1)
+
+
+def ellipse(cx, cy, rx, ry, rot=0.0, n=40):
+    t = np.linspace(0, 2 * np.pi, n, endpoint=False)
+    x, y = rx * np.cos(t), ry * np.sin(t)
+    c, s = np.cos(rot), np.sin(rot)
+    return np.stack([cx + x * c - y * s, cy + x * s + y * c], 1)
+
+
+def ponytail(front, back, p, over=None):
+    outer = chain(bez((212, 18), (266, 12), (300, 70), (288, 140)), bez((288, 140), (280, 188), (266, 208), (252, 230)))
+    inner = chain(bez((212, 64), (242, 76), (258, 112), (257, 150)), bez((257, 150), (256, 186), (254, 206), (252, 230)))
+    _paint(back, _lk(inner, outer), p, root=(214, 42), root_r=55)
+    o2 = chain(bez((250, 96), (276, 124), (280, 176), (266, 218)))
+    i2 = chain(bez((244, 110), (258, 140), (262, 182), (266, 218)))
+    _paint(back, _lk(i2, o2), p, edge=0.35)
+    back.paint(ellipse(225, 40, 9, 13, 0.35), p, color=TIE, hair=False)
+
+
+def _lk(left, right):
+    poly, strands, lights = lock(left, right)
+    return poly, None, strands, lights
+
+
+def _paint(layer, item, p, **kw):
+    poly, _, strands, lights = item
+    layer.paint(poly, p, strands=strands, lights=lights, **kw)
+
+
+def braid(layer, p, top, bot, n=6):
+    (x0, y0), (x1, y1) = top, bot
+    step = (y1 - y0) / n
+    for i in range(n):
+        f = (i + 0.5) / n
+        cx, cy = x0 + (x1 - x0) * f, y0 + (y1 - y0) * f
+        w, h, s = 27 - i * 1.3, step * 1.45, (1 if i % 2 else -1)
+        left = bez((cx + 4 * s, cy - h / 2), (cx - w / 2 - 3, cy - h * 0.25), (cx - w / 2, cy + h * 0.25), (cx - 3 * s, cy + h / 2), n=16)
+        right = bez((cx + 4 * s, cy - h / 2), (cx + w / 2 + 3, cy - h * 0.25), (cx + w / 2, cy + h * 0.25), (cx - 3 * s, cy + h / 2), n=16)
+        layer.paint(chain(left, right[::-1]), p, strands=[bez((cx - w * 0.3 * s, cy - h * 0.3), (cx, cy), (cx + w * 0.2 * s, cy + h * 0.4), n=10)],
+                    lights=[bez((cx - w * 0.15, cy - h * 0.32), (cx + w * 0.05, cy - h * 0.18), n=6)], edge=0.55)
+    tuft = chain(bez((x1 - 6, y1), (x1 - 12, y1 + 8), (x1 - 15, y1 + 20), n=10), [(x1 - 8, y1 + 15), (x1 - 2, y1 + 24), (x1 + 4, y1 + 15), (x1 + 11, y1 + 22)],
+                 bez((x1 + 11, y1 + 22), (x1 + 11, y1 + 8), (x1 + 6, y1), n=10))
+    layer.paint(tuft, p, strands=[bez((x1 - 2, y1 + 2), (x1 - 4, y1 + 12), (x1 - 6, y1 + 18), n=8), bez((x1 + 3, y1 + 2), (x1 + 4, y1 + 10), (x1 + 6, y1 + 17), n=8)])
+    band = chain(bez((x1 - 9, y1 - 3), (x1, y1 - 5), (x1 + 9, y1 - 3), n=8), bez((x1 + 9, y1 + 4), (x1, y1 + 6), (x1 - 9, y1 + 4), n=8))
+    layer.paint(band, p, color=TIE, hair=False, outline=1.6)
+
+
+def twin(front, back, p, over=None):
+    braid(front, p, (97, 128), (92, 222))
+    braid(front, p, (213, 128), (218, 222))
+
+
+def long_hair(front, back, p, over=None):
+    left = chain(bez((112, 8), (70, 28), (60, 90), (63, 150)), bez((63, 150), (66, 196), (60, 226), (58, 250)))
+    zig = [(70, 240), (82, 254), (96, 242), (110, 252), (126, 240), (155, 246), (184, 240), (200, 252), (214, 242), (228, 254), (240, 240)]
+    right = mir(left, 155)[::-1]
+    poly = chain(left, zig, right, bez((198, 8), (155, -12), (112, 8), n=12))
+    strands = [bez((78, 60), (70, 150), (72, 240)), bez((92, 74), (84, 160), (88, 246)), bez((232, 60), (240, 150), (238, 240)), bez((218, 74), (226, 160), (222, 246))]
+    lights = [bez((80, 70), (74, 100), (74, 126)), bez((230, 70), (236, 100), (236, 126))]
+    back.paint(poly, p, strands=strands, lights=lights, dark=0.18)
+    l_out = bez((80, 112), (74, 150), (78, 192), (92, 234))
+    l_in = bez((104, 112), (112, 150), (108, 196), (92, 234))
+    _paint(front, _lk(l_out, l_in), p, edge=0.45)
+    _paint(front, _lk(mir(l_in, 155), mir(l_out, 155)), p, edge=0.45)
+
+
+def bun(front, back, p, over=None):
+    poly = chain(bez((131, 16), (116, -2), (126, -26), (155, -37)), bez((155, -37), (184, -26), (194, -2), (179, 16)), bez((179, 16), (155, 24), (131, 16), n=12))
+    strands = [bez((140, 12), (132, -10), (150, -31)), bez((170, 12), (180, -10), (160, -31)), bez((155, 14), (151, -10), (156, -33))]
+    back.paint(poly, p, strands=strands, lights=[bez((134, -6), (138, -20), (150, -28))], edge=0.6)
+    band = chain(bez((128, 2), (155, 8), (182, 2), n=12), bez((184, 11), (155, 17), (126, 11), n=12))
+    back.paint(band, p, color=TIE, hair=False)
+
+
+def _dir(a):
+    return np.array([np.cos(np.radians(a)), np.sin(np.radians(a))])
+
+
+def spiky(front, back, p, over=None):
+    """Tóc dựng: các mảng nhọn to quanh đỉnh và hai bên đầu (gốc khuất sau tóc, ngọn nhô ra ~40px)"""
+    c = np.array([162.0, 100.0])
+    spikes = [(-178, 128), (-150, 138), (-120, 140), (-92, 137), (-62, 140), (-32, 138), (-4, 128)]
+    for a, rt in sorted(spikes, key=lambda s: -abs(s[0] + 90)):
+        sw = 8 if a < -95 else -8 if a > -85 else 3  # ngọn hơi vuốt ra ngoài
+        d = _dir(a + sw)
+        if c[1] + rt * d[1] < -37:
+            rt = (c[1] + 37) / -d[1]
+        tip = c + rt * d
+        bl, br = c + 66 * _dir(a - 21), c + 66 * _dir(a + 21)
+        m = (66 + rt) / 2
+        left = bez(bl, c + m * _dir(a - 13 + sw / 2), tip, n=22)
+        right = bez(br, c + m * _dir(a + 13 + sw / 2), tip, n=22)
+        _paint(back, _lk(left, right), p, root=tuple(c), root_r=105, edge=0.45)
+
+
+def mohawk(front, back, p, over=None):
+    """Mào liền giữa đầu (răng cưa nhỏ trên đỉnh) + lọn mào đổ ra trước đỉnh đầu"""
+    left = bez((134, 50), (124, 10), (134, -20), (149, -36))
+    right = bez((178, -37), (192, -20), (200, 10), (190, 50))
+    poly = chain(left, [(156, -27), (163, -39), (170, -28)], right)
+    strands = [bez((146, 40), (140, 0), (150, -28)), bez((162, 40), (161, 0), (163, -34)), bez((178, 40), (184, 0), (175, -30))]
+    back.paint(poly, p, strands=strands, lights=[bez((154, 16), (153, -4), (157, -24))], root=(162, 60), root_r=60, edge=0.4)
+    l_ = bez((142, -16), (136, 8), (148, 30), (166, 50))
+    r_ = bez((184, -16), (190, 8), (180, 30), (166, 50))
+    _paint(over, _lk(l_, r_), p, edge=0.35)
+
+
+def dome(back, p, cx=155):
+    """Đỉnh đầu tròn sau tóc bob (tranh gốc chạm mép trên → đỉnh phẳng)"""
+    back.paint(ellipse(cx, 62, 64, 66, n=72), p, strands=[bez((cx - 30, 4), (cx - 10, -2), (cx + 10, -2), (cx + 30, 4))], edge=0.4)
+
+
+NEW_HAIR = [("hair-ponytail", 8, ponytail), ("hair-twin", 8, twin), ("hair-long", 8, long_hair), ("hair-bun", 8, bun), ("hair-spiky", 0, spiky), ("hair-mohawk", 0, mohawk)]
+first = heads.shape[1] // CELL  # 9
+ncell = first + len(NEW_HAIR)
+back_img = np.zeros((H + TOP, ncell * CELL, 4))
+back_sh = np.zeros_like(back_img)
+add_h, add_s, add_e, add_f = [], [], [], []
+new_cells = {}
+for j, (hid, base, fn) in enumerate(NEW_HAIR):
+    c = first + j
+    front, back, over = Layer(H, CELL, 0), Layer(H + TOP, CELL, -TOP), Layer(H, CELL, 0)
+    if base == 8:
+        dome(back, PAL[8])
+    fn(front, back, PAL[base], over)
+    hd, hs = under(cellv(heads, base), cellv(hair_ext, base), front)
+    if over.img[..., 3].any():  # lớp đè lên đầu (lọn mào mohawk)
+        hd, hs = under(over.img, over.shade, SimpleNamespace(img=hd, shade=hs))
+    add_h.append(hd); add_s.append(hs); add_e.append(cellv(eye_ext, base)); add_f.append(cellv(facemask, base))
+    back_img[:, c * CELL:(c + 1) * CELL] = back.img
+    back_sh[:, c * CELL:(c + 1) * CELL] = back.shade
+    anchor[c], eye_geo[c] = anchor[base], eye_geo[base]
+    new_cells[c] = (hid, base)
+b8 = Layer(H + TOP, CELL, -TOP)
+dome(b8, PAL[8])
+back_img[:, 8 * CELL:9 * CELL], back_sh[:, 8 * CELL:9 * CELL] = b8.img, b8.shade
+new_back = [8]
+heads = np.concatenate([heads, *add_h], 1)
+for c in [8, *new_cells]:  # mép đầu còn ánh nền trắng của tranh → lộ chấm trắng trên tóc sau lưng
+    hc = cellv(heads, c)
+    fr = (hc[..., 3] > 0.02) & (hc[..., 3] < 0.95) & ((hc[..., :3] @ _lw) > 0.5)
+    hc[fr, :3] = PAL[8 if c < 13 else 0]["line"]
+hair_ext = np.concatenate([hair_ext, *add_s], 1)
+eye_ext = np.concatenate([eye_ext, *add_e], 1)
+facemask = np.concatenate([facemask, *add_f], 1)
+HEAD_CELLS = HEAD_CELLS + list(new_cells)
+Image.fromarray((np.clip(back_img, 0, 1) * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-hairback.webp"), lossless=True)
+Image.fromarray((np.clip(back_sh, 0, 1) * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-hairback-shade.webp"), lossless=True)
+Image.fromarray((np.clip(hair_ext, 0, 1) * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-hair.webp"), lossless=True)
+Image.fromarray((np.clip(eye_ext, 0, 1) * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-eyes.webp"), lossless=True)
+fm = np.zeros((H, facemask.shape[1], 4)); fm[..., :3] = 1; fm[..., 3] = np.clip(facemask, 0, 1)
 Image.fromarray((fm * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-facemask.webp"), lossless=True)
 Image.fromarray((np.clip(heads, 0, 1) * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-heads.webp"), lossless=True)
 strip = np.concatenate(bodies, 1)
@@ -369,8 +535,13 @@ ts = [
     f"export const BODY_H = {H + EXT};",
     "/** Ô trong characters.webp có đầu rời (char-heads.webp) → [tâm x, đường cằm y] */",
     "export const HEAD_ANCHOR: Record<number, [number, number]> = { " + ", ".join(f"{c}: [{anchor[c][0]}, {anchor[c][1]}]" for c in HEAD_CELLS) + " };",
-    "/** Số ô của char-heads / char-hair / char-eyes / char-facemask (8 ô tranh + ô 8 = tóc bob không hoa) */",
-    f"export const HEAD_CELLS_N = {W // CELL + 1};",
+    "/** Số ô của char-heads / char-hair / char-eyes / char-facemask / char-hairback (8 ô tranh + ô 8 = tóc bob không hoa + kiểu tóc vẽ thêm) */",
+    f"export const HEAD_CELLS_N = {ncell};",
+    "/** Đầu vẽ thêm kiểu tóc: ô → [kiểu tóc, mẫu gốc (màu tóc/mắt/mặt gốc)] */",
+    "export const HAIR_HEADS: Record<number, [string, number]> = { " + ", ".join(f'{c}: ["{h}", {7 if b == 8 else b}]' for c, (h, b) in new_cells.items()) + " };",
+    "/** Ô có tóc sau lưng trong char-hairback.webp (ô cao 272 + HAIR_BACK_TOP, vẽ trước thân) */",
+    f"export const HAIR_BACK_TOP = {TOP};",
+    "export const HAIR_BACK: number[] = [" + ", ".join(str(c) for c in [*new_back, *new_cells] if back_img[:, c * CELL:(c + 1) * CELL, 3].any()) + "];",
     "/** Mắt của từng ô (dán khuôn mặt đã chọn): [giữa hai mắt x, y, khoảng cách hai mắt] */",
     "export const EYE_GEO: Record<number, [number, number, number]> = { " + ", ".join(f"{c}: [{g[0]}, {g[1]}, {g[2]}]" for c, g in sorted(eye_geo.items())) + " };",
     "/** Thân theo trang phục: thứ tự ô trong char-bodies.webp, [tâm x, đường cằm y] của tranh gốc */",
