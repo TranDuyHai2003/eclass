@@ -1,11 +1,15 @@
 import type { ReactNode } from "react";
 import { ITEM_BY_ID } from "@/lib/game/items";
 import { FACES, PRESETS, faceIndexOf, paintedLook } from "@/lib/game/presets";
+import { BODIES, BODY_H, HEAD_ANCHOR } from "@/lib/game/painted-data";
 
 const CHAR_STRIP = "/studio/characters.webp";
 // Mặt nạ tóc / tròng mắt của tranh + mặt vẽ tay đã căn theo mắt SVG (scripts/studio/gen-face-assets.py)
 const CHAR_HAIR = "/studio/char-hair.webp";
 const CHAR_EYES = "/studio/char-eyes.webp";
+// Đầu rời (cắt ở cằm) + thân theo trang phục → thay đồ vẫn giữ đầu của nhân vật
+const CHAR_HEADS = "/studio/char-heads.webp";
+const CHAR_BODIES = "/studio/char-bodies.webp";
 const FACE_STRIP = "/studio/faces.webp";
 const FACE_EYES = "/studio/faces-eyes.webp";
 const FACE_W = 204;
@@ -129,7 +133,22 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
           x="-12" y="10" width="144" height="128" viewBox={`${look.index * 332} 0 332 272`} preserveAspectRatio="xMidYMax meet"
           data-painted={PRESETS[look.index].id} data-hair={look.hairColor ?? undefined} data-eyes={look.eyes ?? undefined}
         >
-          <image href={CHAR_STRIP} width="2656" height="272" />
+          {look.body === null ? (
+            <image href={CHAR_STRIP} width="2656" height="272" />
+          ) : (
+            <>
+              {/* thân dịch cho cổ khớp đường cằm của đầu; ô thân cao hơn để chân không hở đáy */}
+              <svg
+                x={look.index * 332 + HEAD_ANCHOR[look.index][0] - BODIES[look.body].anchor[0]}
+                y={HEAD_ANCHOR[look.index][1] - BODIES[look.body].anchor[1]}
+                width="332" height={BODY_H} viewBox={`${look.body * 332} 0 332 ${BODY_H}`}
+                data-body={BODIES[look.body].outfit}
+              >
+                <image href={CHAR_BODIES} width={BODIES.length * 332} height={BODY_H} />
+              </svg>
+              <image href={CHAR_HEADS} width="2656" height="272" />
+            </>
+          )}
           {look.hairColor && <Tint id={`${uid}-th`} href={CHAR_HAIR} x={look.index * 332} w={332} h={272} total={2656} fill={tintOf(look.hairColor, uid)} />}
           {look.eyes && <Tint id={`${uid}-te`} href={CHAR_EYES} x={look.index * 332} w={332} h={272} total={2656} fill={tintOf(look.eyes, uid)} />}
         </svg>

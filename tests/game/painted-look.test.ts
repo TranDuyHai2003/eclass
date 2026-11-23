@@ -7,25 +7,45 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { FACES, FACE_IDS, PRESETS, faceIndexOf, paintedLook, presetIndexOf } from "@/lib/game/presets";
 import { sanitizeAvatar } from "@/lib/game/avatar";
+import { BODIES } from "@/lib/game/painted-data";
+import { ITEMS } from "@/lib/game/items";
 
 const preset = (id: string) => PRESETS.find((p) => p.id === id)!;
 const student = preset("preset-student").items;
 
 describe("paintedLook — tô màu trên tranh mẫu", () => {
   test("trùng mẫu hoàn toàn → tranh gốc, không tô", () => {
-    assert.deepEqual(paintedLook(student), { index: 0, hairColor: null, eyes: null });
+    assert.deepEqual(paintedLook(student), { index: 0, body: null, hairColor: null, eyes: null });
     assert.equal(presetIndexOf(student), 0);
   });
 
   test("chỉ đổi màu tóc / màu mắt → vẫn là tranh Học sinh nam, tô lại màu (lỗi cũ: chuyển sang nhân vật SVG khác hẳn)", () => {
     const cfg = { ...student, hairColor: "hc-pink", eyes: "eye-blue" };
-    assert.deepEqual(paintedLook(cfg), { index: 0, hairColor: "hc-pink", eyes: "eye-blue" });
+    assert.deepEqual(paintedLook(cfg), { index: 0, body: null, hairColor: "hc-pink", eyes: "eye-blue" });
     assert.equal(presetIndexOf(cfg), -1, "không còn trùng mẫu hoàn toàn → ô mẫu không báo Đang dùng");
   });
 
-  test("đổi kiểu tóc / trang phục / phụ kiện khác mọi mẫu → không vẽ tranh", () => {
+  test("thay trang phục → giữ đầu (mặt, tóc) của nhân vật, đổi thân (lỗi cũ: áo phông ra nhân vật SVG khác hẳn)", () => {
+    const tee = paintedLook({ ...student, outfit: "outfit-tee", hairColor: "hc-black" });
+    assert.equal(tee?.index, 0);
+    assert.equal(BODIES[tee!.body!].outfit, "outfit-tee");
+    assert.equal(tee?.hairColor, "hc-black");
+    const kimonoGamer = paintedLook({ ...preset("preset-kimono").items, outfit: "outfit-gamer" });
+    assert.equal(PRESETS[kimonoGamer!.index].id, "preset-kimono");
+    assert.equal(BODIES[kimonoGamer!.body!].outfit, "outfit-gamer");
+  });
+
+  test("mọi trang phục đều có tranh: thân rời hoặc nguyên tranh (đồ liền mũ)", () => {
+    for (const it of ITEMS.filter((i) => i.slot === "outfit")) {
+      const look = paintedLook({ ...student, outfit: it.id });
+      assert.ok(look, `${it.id} chưa có tranh`);
+    }
+    const cat = paintedLook({ ...student, outfit: "outfit-cathoodie" });
+    assert.deepEqual([PRESETS[cat!.index].id, cat!.body], ["preset-catgirl", null], "hoodie tai mèo liền mũ → nguyên tranh");
+  });
+
+  test("kiểu tóc / phụ kiện không có đầu vẽ sẵn → nhân vật SVG (mặt vẫn vẽ tay)", () => {
     assert.equal(paintedLook({ ...student, hair: "hair-long" }), null);
-    assert.equal(paintedLook({ ...student, outfit: "outfit-ninja" }), null);
     assert.equal(paintedLook({ ...student, accessory: "acc-crown" }), null);
   });
 

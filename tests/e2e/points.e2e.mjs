@@ -432,7 +432,7 @@ try {
     expect([307, 308].includes(res.status) && /\/profile$/.test(res.headers.get("location") ?? ""), `/profile/avatar phải chuyển về /profile (${res.status} ${res.headers.get("location")})`);
   });
 
-  await step("Học sinh: đổi màu tóc vẫn giữ tranh mẫu (tô lại trên tranh); chọn khuôn mặt vẽ tay → lưu được", async () => {
+  await step("Học sinh: đổi màu tóc / thay áo vẫn giữ nhân vật vẽ tay; chọn khuôn mặt vẽ tay → lưu được", async () => {
     await s.goto("/profile", /Tủ đồ & Cửa hàng/i);
     const click = (id) => s.ev(`const b=document.querySelector('[data-testid="${id}"]'); if(!b||b.disabled) return false; b.click(); return true;`);
     const hero = (sel) => s.ev(`return !!document.querySelector('[data-testid="profile-banner"] ${sel}')`);
@@ -446,6 +446,9 @@ try {
     expect(await click("item-hc-black"), "thiếu màu tóc Đen");
     await sleep(200);
     expect(await hero(`[data-painted="preset-student"][data-hair="hc-black"]`), "đổi màu tóc phải giữ tranh Học sinh nam và tô lại tóc");
+    expect(await click("item-outfit-tee"), "thiếu Áo phông");
+    await sleep(200);
+    expect(await hero(`[data-painted="preset-student"] [data-body="outfit-tee"]`), "thay áo phông phải giữ đầu Học sinh nam, chỉ đổi thân");
     expect(await click("face-preset-kimono"), "thiếu khuôn mặt Cô gái kimono");
     await sleep(200);
     expect(await hero(`[data-face="preset-kimono"]`) && !(await hero("[data-painted]")), "chọn mặt khác phải vẽ nhân vật với mặt kimono");

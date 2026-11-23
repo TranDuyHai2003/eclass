@@ -3,6 +3,7 @@
  * Món thiếu mua cả bộ qua `buyBundle` (một giao dịch, được cả bộ hoặc không món nào).
  */
 import type { Slot } from "./items";
+import { BODIES, HEAD_ANCHOR } from "./painted-data";
 
 export interface Preset {
   id: string;
@@ -48,22 +49,43 @@ export function faceIndexOf(config: LookConfig): number {
   return config.hair && GIRL_HAIR.has(config.hair) ? FACE_IDS.indexOf("preset-kimono") : 0;
 }
 
+export interface PaintedLook {
+  /** Ô tranh trong characters.webp (đầu / cả nhân vật) */
+  index: number;
+  /** Thân thay theo trang phục: ô trong char-bodies.webp; null = giữ nguyên tranh */
+  body: number | null;
+  /** itemId màu tóc / màu mắt cần tô lại trên tranh; null = giữ màu tranh */
+  hairColor: string | null;
+  eyes: string | null;
+}
+
 /**
- * Vẽ bằng tranh của mẫu khi dáng (kiểu tóc, trang phục, phụ kiện) trùng một mẫu và khuôn mặt chưa chọn khác đi.
- * Màu tóc / màu mắt khác mẫu thì tô lại ngay trên tranh (`hairColor`, `eyes` = itemId cần tô, null = giữ màu tranh).
+ * Vẽ bằng tranh của design (thay vì nhân vật SVG):
+ * - trang phục liền đầu (hoodie tai mèo, giáp hiệp sĩ, đồ phi hành gia) → nguyên tranh mẫu đó;
+ * - còn lại: kiểu tóc + phụ kiện trùng một mẫu lộ đầu (và mặt chưa chọn khác) → đầu của mẫu đó + thân theo trang phục
+ *   (thân có sẵn hoặc trang phục tạo thêm trong char-bodies.webp), cổ ghép đúng đường cằm.
+ * Màu tóc / màu mắt khác mẫu thì tô lại ngay trên tranh.
  */
-export function paintedLook(config: LookConfig): { index: number; hairColor: string | null; eyes: string | null } | null {
-  const index = PRESETS.findIndex(
-    (p) =>
-      faceFits(config, p) && (["hair", "outfit", "accessory"] as const).every((k) => (config[k] ?? null) === (p.items[k] ?? null)),
-  );
-  if (index < 0) return null;
-  const p = PRESETS[index].items;
-  return {
-    index,
-    hairColor: config.hairColor && config.hairColor !== p.hairColor ? config.hairColor : null,
-    eyes: config.eyes && config.eyes !== p.eyes ? config.eyes : null,
+export function paintedLook(config: LookConfig): PaintedLook | null {
+  const outfit = config.outfit ?? null;
+  const recolor = (index: number, body: number | null): PaintedLook => {
+    const p = PRESETS[index].items;
+    return {
+      index,
+      body,
+      hairColor: config.hairColor && config.hairColor !== p.hairColor ? config.hairColor : null,
+      eyes: config.eyes && config.eyes !== p.eyes ? config.eyes : null,
+    };
   };
+  const whole = PRESETS.findIndex((p, i) => !(i in HEAD_ANCHOR) && p.items.outfit === outfit);
+  if (whole >= 0) return recolor(whole, null);
+  const head = PRESETS.findIndex(
+    (p, i) => i in HEAD_ANCHOR && faceFits(config, p) && (["hair", "accessory"] as const).every((k) => (config[k] ?? null) === (p.items[k] ?? null)),
+  );
+  if (head < 0) return null;
+  if (PRESETS[head].items.outfit === outfit) return recolor(head, null);
+  const body = BODIES.findIndex((b) => b.outfit === outfit);
+  return body < 0 ? null : recolor(head, body);
 }
 
 /** Chỉ số mẫu nhân vật mà cấu hình trùng khớp hoàn toàn (tóc, màu tóc, mắt, trang phục, phụ kiện, mặt); -1 nếu tự chỉnh khác mẫu */
