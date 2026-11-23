@@ -252,7 +252,7 @@ try {
     await s.click(/^Nhận quà$/, '[data-testid="scratch-open"] button');
     expect(await s.waitText(/đã dùng mã này/i), "nhập lại không báo đã dùng");
     await s.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
-    const gems = await s.ev(`return document.querySelector('[data-testid="header-gems"]')?.innerText || ""`);
+    const gems = await s.ev(`return document.querySelector('[data-testid="hud-gems"]')?.innerText || ""`);
     expect(/3/.test(gems), `chip ngọc trên header sai: ${gems}`);
   });
 
@@ -517,7 +517,7 @@ try {
 
   await step("Học sinh: Tiệm quà v2 (Adorable Home) — thanh gỗ không sidebar, lọc độ hiếm + chỉ món mua được, hộp chi tiết có ảnh thật + Thử trên hồ sơ; nhân vật anime", async () => {
     await s.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
-    expect(await s.ev(`return !!document.querySelector('.ah-wood') && !document.querySelector('aside a[href="/rewards"]')`), "thiếu thanh gỗ / còn sidebar chung");
+    expect(await s.ev(`return !!document.querySelector('.ah-wood') && !document.querySelector('aside a[href="/rewards"]') && !document.querySelector('header [data-wallet-chip]')`), "thiếu thanh gỗ / còn sidebar hoặc header chung");
     // Lọc Huyền thoại → mọi thẻ đều Huyền thoại
     await s.ev(`document.querySelector('[data-testid="rar-legendary"]').click()`);
     await sleep(200);

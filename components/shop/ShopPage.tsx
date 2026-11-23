@@ -155,7 +155,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       return;
     }
     const el = mainRef.current;
-    if (el && el.getBoundingClientRect().top < 80) el.scrollIntoView({ block: "start", behavior: "smooth" });
+    if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [sec, cat]);
   // Đóng hộp chi tiết bằng phím Esc
   useEffect(() => {
@@ -483,7 +483,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
             </div>
           </aside>
 
-          <main ref={mainRef} className="flex min-w-0 flex-[999_1_600px] scroll-mt-24 flex-col gap-[18px]">
+          <main ref={mainRef} className="flex min-w-0 flex-[999_1_600px] scroll-mt-4 flex-col gap-[18px]">
             {sec === "shop" ? (
               <div className="flex flex-col gap-[18px]">
                 <div className="flex flex-wrap items-center gap-2.5">
@@ -744,14 +744,6 @@ function Card({ e, st, avatar, name, onOpen }: { e: Entry; st: St; avatar: Stude
       <span className="ah-part">
         {leg && <span className="ah-sun" aria-hidden />}
         {e.kind === "reward" ? <V2Art index={rewardArtV2(e.r.title, e.r.kind)} className="relative h-[82%]" /> : <ItemArt it={e.it} avatar={avatar} name={name} />}
-        {st.locked && (
-          <span className="absolute inset-0 flex items-center justify-center bg-[rgba(36,30,26,0.45)]" data-testid="level-lock">
-            <span className="ah-ink flex items-center gap-1.5 rounded-full bg-[#fffdf8] px-3.5 py-1.5 font-black">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="4" y="11" width="16" height="10" rx="2" fill="#fbd048" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
-              Mở khóa ở Lv.{minLevel}
-            </span>
-          </span>
-        )}
       </span>
       <span className={cn("ah-btn h-[46px] text-base", cls)}>
         {icon === "coin" && <CoinDot size={18} className="border-2" />}
