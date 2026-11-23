@@ -377,8 +377,11 @@ try {
     await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
     await sleep(400);
     await s.ev(`document.querySelector('[data-testid="board-open"]').click()`);
-    expect(await s.waitText(/Bảng Vàng server khối/), "mục Bảng Vàng không mở");
+    expect(await s.waitText(/Bảng Vàng Server Khối/), "mục Bảng Vàng không mở");
     expect(await s.ev(`return !!document.querySelector('[data-testid="board-g7"]')`), "thiếu tab khối 7");
+    expect(await s.ev(`return document.querySelector('[data-testid="leaderboard-modal"]')?.getAttribute("role") === "dialog"`), "Bảng Vàng phải là hộp nổi như mẫu Gemini");
+    await sleep(700);
+    await s.screenshot(path.join(SHOTS, "gold-modal.png"));
     expect(/Học sinh/.test(await s.ev(`return document.querySelector('[data-testid="leaderboard-modal"]')?.innerText || ""`)), "bảng khối 7 không có mình");
     await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
     await sleep(400);

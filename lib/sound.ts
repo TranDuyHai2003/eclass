@@ -8,6 +8,8 @@
 export type SoundName = "click" | "coin" | "success" | "levelup" | "tick" | "reveal-common" | "reveal-rare" | "reveal-epic" | "reveal-legendary" | "error" | "build" | "reveal" | "meow";
 
 const KEY = "sound";
+/** Âm lượng chung; mỗi tiếng có g tương đối → âm lượng thật bằng đúng mẫu (vd click 0,6 × 0,15 = 0,09) */
+const MASTER = 0.15;
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 const listeners = new Set<(on: boolean) => void>();
@@ -45,7 +47,7 @@ function getCtx(): AudioContext | null {
   if (!ctx) {
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = 0.15;
+    master.gain.value = MASTER;
     master.connect(ctx.destination);
   }
   if (ctx.state === "suspended") void ctx.resume();
@@ -71,9 +73,9 @@ function tone(notes: Note[]) {
     o.type = n.type ?? "sine";
     o.frequency.setValueAtTime(n.f, now + n.t);
     if (n.f2) o.frequency.exponentialRampToValueAtTime(n.f2, now + n.t + n.d * 0.8);
-    g.gain.setValueAtTime(0.0001, now + n.t);
-    g.gain.exponentialRampToValueAtTime(n.g ?? 1, now + n.t + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + n.t + n.d);
+    // Đường âm lượng y như mẫu: bật ngay ở mức đỉnh rồi tắt dần tới 0,001 (tính trên âm lượng thật = master × g)
+    g.gain.setValueAtTime(n.g ?? 1, now + n.t);
+    g.gain.exponentialRampToValueAtTime(0.001 / MASTER, now + n.t + n.d);
     o.connect(g).connect(master);
     o.start(now + n.t);
     o.stop(now + n.t + n.d + 0.02);

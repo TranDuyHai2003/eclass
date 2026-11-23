@@ -53,7 +53,7 @@ export function ShopMenuModal({
               role="radio"
               aria-checked={weather === o.key}
               data-testid={`weather-${o.key}`}
-              onClick={() => { play("tick"); onWeather(o.key); }}
+              onClick={() => { play("click"); onWeather(o.key); }}
               className={cn("btn-pill py-1.5 text-xs", o.cls, weather === o.key && "ring-4 ring-white/80")}
             >
               {o.label}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { openChest } from "@/actions/gacha";
 import { CHESTS, type ChestId, type Outcome } from "@/lib/game/gacha-shared";
-import { play } from "@/lib/sound";
+import { buzz, play } from "@/lib/sound";
 
 export type GachaPhase = "idle" | "shaking" | "reveal";
 
@@ -71,11 +71,9 @@ export function useGachaPull({
     setResult(null);
     setPhase("shaking");
     play("click");
-    const ticks = [150, 350, 550, 750].map((t) => setTimeout(() => play("tick"), t));
-    timers.current.push(...ticks);
+    // Như mẫu: không có tiếng tích tắc — chỉ tiếng "dựng" khi sao băng bay (GachaCinematic) rồi "reveal"
     start(async () => {
       const res = await openChest(id);
-      ticks.forEach(clearTimeout);
       if (!res.success || !res.outcome) {
         inFlight.current = false;
         setPhase("idle");
@@ -98,7 +96,8 @@ export function useGachaPull({
         if (typeof res.pity === "number") setPity(res.pity);
         if (id === "xu") setToday((n) => n + 1);
         if (outcome.kind === "item" && !outcome.duplicate) setOwned((o) => new Set([...o, outcome.itemId]));
-        play(`reveal-${outcome.rarity}` as Parameters<typeof play>[0]);
+        play("reveal");
+        buzz([40, 30, 60]);
         if (outcome.kind !== "item" || outcome.duplicate) setBurst((n) => n + 1);
         if (outcome.rarity === "epic" || outcome.rarity === "legendary") setConfetti((n) => n + 1);
         onDone?.({ outcome, wallet: res.wallet });

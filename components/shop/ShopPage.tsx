@@ -32,7 +32,7 @@ import { AvatarRing, CoinDot, GemDot, ItemArt, PlateBox, QUICK_EQUIP, RAR_LABEL,
 import { EarnSection } from "./ah/EarnSection";
 import { CodeSection } from "./ah/CodeSection";
 import { GachaSection } from "./ah/GachaSection";
-import { GoldSection } from "./ah/GoldSection";
+import { GoldModal } from "./ah/GoldSection";
 import { BagSection } from "./ah/BagSection";
 import { CustomizeModal } from "./ah/CustomizeModal";
 
@@ -94,6 +94,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   const [selKey, setSelKey] = useState<string | null>(null);
   const [modal, setModal] = useState<null | "history" | "menu" | "titles">(null);
   const [custom, setCustom] = useState(false);
+  const [gold, setGold] = useState(false);
   const [lvUp, setLvUp] = useState<number | null>(null);
   const [soundOn, setSoundState] = useState(true);
   const [weather, setWeather] = useWeather();
@@ -160,15 +161,16 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   }, [sec, cat]);
   // Đóng hộp chi tiết bằng phím Esc
   useEffect(() => {
-    if (!selKey && !custom) return;
+    if (!selKey && !custom && !gold) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       setSelKey(null);
       setCustom(false);
+      setGold(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selKey, custom]);
+  }, [selKey, custom, gold]);
 
   const goSec = (k: Sec) => {
     play("click");
@@ -211,7 +213,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       const next = { ...avatar, [item.slot]: item.id };
       const res = await saveAvatar(next);
       if (res.success) {
-        play("success");
+        play("click");
         setAvatar(res.config ?? next);
         setSelKey(null);
         toast.success(`Đã trang bị "${item.name}"`);
@@ -228,7 +230,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       if (res.success) {
         play("coin");
         buzz(25);
-        setTimeout(() => play("success"), 200);
         setBurst((n) => n + 1);
         flyCoins("out");
         setOwned((o) => new Set([...o, item.id]));
@@ -253,7 +254,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         setSelKey(null);
         setCelebrated((n) => n + 1);
         flyCoins("out");
-        play("success");
+        play("coin");
         buzz(20);
       },
     );
@@ -282,7 +283,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
     else if (a === "box") setSec("gacha");
     else if (a === "tasks") setSec("earn");
     else if (a === "scratch") setSec("code");
-    else if (a === "board") setSec("gold");
+    else if (a === "board") setGold(true);
     else if (a === "bag") setSec("bag");
     else setTimeout(() => setModal(a), 120);
   };
@@ -335,7 +336,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   });
   const sel = selKey ? entriesFor(cat).find((e) => e.key === selKey) ?? null : null;
   const open = (e: Entry) => {
-    play("tick");
     setSelKey(e.key);
   };
 
@@ -432,7 +432,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
               {todoTotal > 0 && <Badge n={todoTotal} />}
             </span>
             <button type="button" data-testid="code-open" onClick={() => goSec("code")} className={cn(navBtn, "ah-coral")}>Thẻ cào &amp; Code</button>
-            <button type="button" data-testid="board-open" onClick={() => goSec("gold")} className={cn(navBtn, "ah-sky")}>Bảng Vàng</button>
+            <button type="button" data-testid="board-open" onClick={() => { play("click"); setGold(true); }} className={cn(navBtn, "ah-sky")}>Bảng Vàng</button>
             <button type="button" data-testid="sec-gacha" onClick={() => goSec("gacha")} className={cn(navBtn, "ah-mint")}>Hộp bí ẩn</button>
             <Link href="/profile" className={cn(navBtn, "ah-cream")}>Hồ sơ</Link>
           </nav>
@@ -498,7 +498,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                         type="button"
                         aria-pressed={rar === k}
                         data-testid={`rar-${k}`}
-                        onClick={() => { play("tick"); setRar(k); }}
+                        onClick={() => { play("click"); setRar(k); }}
                         className={cn("h-[30px] cursor-pointer rounded-full border-2 border-[#241e1a] px-3 text-xs font-black", k !== "all" && `r-${k}`, rar === k ? "-translate-y-px shadow-[0_3px_0_#241e1a]" : "opacity-[0.72]")}
                         style={{ background: k === "all" ? "#fffdf8" : "var(--pl)", color: k === "all" ? "#241e1a" : "var(--pt)" }}
                       >
@@ -510,7 +510,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                       role="switch"
                       aria-checked={affordOnly}
                       data-testid="afford-only"
-                      onClick={() => { play("tick"); setAffordOnly((v) => !v); }}
+                      onClick={() => { play("click"); setAffordOnly((v) => !v); }}
                       className={cn("h-[30px] cursor-pointer rounded-full border-2 border-[#241e1a] px-3 text-xs font-black", affordOnly ? "bg-[#8cd184] shadow-[0_3px_0_#241e1a]" : "bg-[#fffdf8] opacity-80")}
                     >
                       Chỉ món mua được
@@ -520,7 +520,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                 {cat === "deco" && (
                   <div className="flex flex-wrap gap-1.5" role="group" aria-label="Lọc theo ô trang trí" data-testid="deco-slots">
                     {([{ key: "all", label: "Tất cả" }, ...DECO_SLOTS] as { key: DecoSlot; label: string }[]).map((sl) => (
-                      <button key={sl.key} type="button" aria-pressed={decoSlot === sl.key} data-testid={`deco-${sl.key}`} onClick={() => { play("tick"); setDecoSlot(sl.key); }} className={cn("ah-btn h-9 px-3.5 text-[13px]", decoSlot === sl.key ? "ah-woodbtn" : "ah-cream")}>
+                      <button key={sl.key} type="button" aria-pressed={decoSlot === sl.key} data-testid={`deco-${sl.key}`} onClick={() => { play("click"); setDecoSlot(sl.key); }} className={cn("ah-btn h-9 px-3.5 text-[13px]", decoSlot === sl.key ? "ah-woodbtn" : "ah-cream")}>
                         {sl.label}
                       </button>
                     ))}
@@ -558,7 +558,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                   ) : (
                     <div className="ah-panel ah-hand p-10 text-center text-base">Hộp bí ẩn đang tạm đóng. Quay lại sau nhé!</div>
                   ))}
-                {sec === "gold" && <GoldSection boards={boards} myGrade={user.grade} me={{ id: user.id, avatar, name: user.name }} event={event} onPlates={() => goCat("nameplate")} />}
                 {sec === "bag" && <BagSection redemptions={data.redemptions} owned={[...owned]} avatar={avatar} pending={pending} name={user.name} onEquip={equip} onCancel={(id) => run(() => cancelRedemption(id))} />}
               </>
             )}
@@ -569,6 +568,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       {/* ===== Hộp chi tiết món (canvas: thẻ theo độ hiếm) ===== */}
       {sel && renderModal(sel)}
 
+      {gold && <GoldModal boards={boards} myGrade={user.grade} me={{ id: user.id, avatar, name: user.name }} event={event} onClose={() => setGold(false)} />}
       {custom && (
         <CustomizeModal avatar={avatar} owned={owned} level={level.level} name={user.name} grade={user.grade} pending={pending} onCancel={() => setCustom(false)} onSave={saveCustom} />
       )}

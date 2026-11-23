@@ -56,7 +56,6 @@ export function CodeSection({ canEarn, onWon }: { canEarn: boolean; onWon?: () =
     c.beginPath();
     c.arc(((e.clientX - r.left) / r.width) * 640, ((e.clientY - r.top) / r.height) * 168, 34, 0, Math.PI * 2);
     c.fill();
-    if (Math.random() < 0.2) play("tick");
   };
   const scrUp = () => {
     if (!down.current || !cv.current) return;

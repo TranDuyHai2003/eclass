@@ -84,7 +84,7 @@ function Opt({ on, lock, label, wide, onClick, children }: { on: boolean; lock?:
       aria-label={label}
       title={label}
       disabled={!!lock}
-      onClick={() => { play("tick"); onClick(); }}
+      onClick={() => { play("click"); onClick(); }}
       className={`relative flex items-center justify-center overflow-hidden bg-[#fffaf0] p-0 ${wide ? "h-[42px] rounded-xl" : "h-[62px] w-[62px] rounded-2xl"} ${lock ? "cursor-not-allowed" : "cursor-pointer"}`}
       style={on ? { border: "3px solid #ea6a51", boxShadow: "0 3px 0 #241e1a" } : { border: "2.5px solid #241e1a" }}
     >
