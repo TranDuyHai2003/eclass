@@ -9,6 +9,7 @@ import { FACES, FACE_IDS, PRESETS, currentFaceId, faceIndexOf, paintedLook, pres
 import { sanitizeAvatar } from "@/lib/game/avatar";
 import { BODIES, HAIR_BACK, HAIR_HEADS, HEAD_ANCHOR, HEAD_CELLS_N } from "@/lib/game/painted-data";
 import { ITEMS } from "@/lib/game/items";
+import { FACE_PART_OPTIONS } from "@/lib/game/face-parts";
 
 const preset = (id: string) => PRESETS.find((p) => p.id === id)!;
 const student = preset("preset-student").items;
@@ -126,5 +127,33 @@ describe("Khuôn mặt (face)", () => {
     assert.equal(sanitizeAvatar({ face: "<script>" }, "u", []).face, undefined);
     assert.equal(sanitizeAvatar({ face: 7 }, "u", []).face, undefined);
     assert.equal(FACES.length, 6);
+  });
+});
+
+describe("Bộ phận mặt phối riêng (mắt / miệng / trang điểm)", () => {
+  test("có bộ phận → dán mặt của chính tranh làm nền (không đổi sang SVG), không còn là mẫu", () => {
+    const look = paintedLook({ ...student, eyeShape: "heart", mouth: "cat" });
+    assert.equal(look?.index, 0);
+    assert.equal(look?.face, FACE_IDS.indexOf("preset-student"));
+    assert.equal(presetIndexOf({ ...student, faceDeco: "star" }), -1);
+    assert.equal(currentFaceId({ ...student, mouth: "grin" }), "preset-student");
+    const knight = paintedLook({ ...preset("preset-knight").items, eyeShape: "heart" });
+    assert.equal(knight?.face, null, "hiệp sĩ đội mũ giáp: không có mặt nền để phối");
+  });
+
+  test("sanitizeAvatar giữ id bộ phận hợp lệ, bỏ id lạ", () => {
+    const out = sanitizeAvatar({ eyeShape: "preset-gamer", mouth: "tongue", faceDeco: "bandaid" }, "u", []);
+    assert.deepEqual([out.eyeShape, out.mouth, out.faceDeco], ["preset-gamer", "tongue", "bandaid"]);
+    const bad = sanitizeAvatar({ eyeShape: "preset-astro", mouth: "<b>", faceDeco: 3 }, "u", []);
+    assert.deepEqual([bad.eyeShape, bad.mouth, bad.faceDeco], [undefined, undefined, undefined]);
+  });
+
+  test("mỗi lựa chọn có tên, id không trùng; mặt trơn có trong public/studio", () => {
+    for (const [k, opts] of Object.entries(FACE_PART_OPTIONS)) {
+      assert.ok(opts.length >= 7, k);
+      assert.equal(new Set(opts.map((o) => o.id)).size, opts.length, k);
+      assert.ok(opts.every((o) => o.name.length > 2), k);
+    }
+    assert.ok(existsSync(path.join(process.cwd(), "public/studio/faces-blank.webp")));
   });
 });

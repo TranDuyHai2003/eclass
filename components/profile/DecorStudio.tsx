@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useId, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -9,7 +9,9 @@ import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { buyBundle, saveAvatar } from "@/actions/avatar";
 import { ITEM_BY_ID, itemsOfSlot, type Item, type Slot } from "@/lib/game/items";
-import { FACES, PRESETS, currentFaceId, presetIndexOf, type Preset } from "@/lib/game/presets";
+import { FACES, FACE_IDS, PRESETS, currentFaceId, faceIndexOf, paintedLook, presetIndexOf, type Preset } from "@/lib/game/presets";
+import { FACE_PART_KEYS, FACE_PART_OPTIONS, type FacePartKey } from "@/lib/game/face-parts";
+import { FaceArt } from "@/components/avatar/FaceArt";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { play } from "@/lib/sound";
 import { Chibi, FxShape } from "@/components/avatar/Chibi";
@@ -49,7 +51,14 @@ const TABS: { key: Tab; label: string; slots: Slot[] }[] = [
 ];
 const TAB_OF: Partial<Record<Slot, Tab>> = Object.fromEntries(TABS.flatMap((t) => t.slots.map((s) => [s, t.key])));
 const SLOT_KEYS: Slot[] = ["skin", "hair", "hairColor", "eyes", "outfit", "accessory", "frame", "background", "effect", "nameplate", "title", "pet"];
-const same = (a: AvatarConfig, b: AvatarConfig) => (a.face ?? null) === (b.face ?? null) && SLOT_KEYS.every((k) => (a[k] ?? null) === (b[k] ?? null));
+const LOOK_KEYS = ["face", ...FACE_PART_KEYS] as const; // khuôn mặt + bộ phận mặt (miễn phí, không phải món)
+const sameLook = (a: AvatarConfig, b: AvatarConfig) => LOOK_KEYS.every((k) => (a[k] ?? null) === (b[k] ?? null));
+const same = (a: AvatarConfig, b: AvatarConfig) => sameLook(a, b) && SLOT_KEYS.every((k) => (a[k] ?? null) === (b[k] ?? null));
+const PART_LABEL: Record<FacePartKey, { title: string; none: string }> = {
+  eyeShape: { title: "Mắt", none: "Mắt của khuôn mặt" },
+  mouth: { title: "Miệng", none: "Miệng của khuôn mặt" },
+  faceDeco: { title: "Trang điểm & sticker", none: "Không trang điểm" },
+};
 const fmt = (n: number) => n.toLocaleString("vi-VN");
 const priceText = (xu: number, gem: number) => [xu ? `${fmt(xu)} xu` : "", gem ? `${gem} ngọc` : ""].filter(Boolean).join(" + ") || "0 xu";
 const noFx = { background: null, frame: null, effect: null } as const;
@@ -103,7 +112,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
   const lackGem = Math.max(0, cost.gem - gems);
   const enough = lackXu === 0 && lackGem === 0;
   const dirty = !same(config, saved);
-  const changedTabs = TABS.filter((t) => (t.key === "char" && (config.face ?? null) !== (saved.face ?? null)) || t.slots.some((k) => (config[k] ?? null) !== (saved[k] ?? null)));
+  const changedTabs = TABS.filter((t) => (t.key === "char" && !sameLook(config, saved)) || t.slots.some((k) => (config[k] ?? null) !== (saved[k] ?? null)));
   const matchPreset = (c: AvatarConfig, p: Preset) => presetIndexOf(c) === PRESETS.indexOf(p);
   const currentPreset = PRESETS.find((p) => matchPreset(config, p));
 
@@ -118,12 +127,20 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
     setJustSaved(false);
     setConfig((c) => ({ ...c, face: id }));
   };
+  const putPart = (key: FacePartKey, id: string | null) => {
+    play("click");
+    setJustSaved(false);
+    setConfig((c) => ({ ...c, [key]: id }));
+  };
   // Mặt đang hiện: theo tranh mẫu (khi dáng trùng mẫu) hoặc mặt đã chọn / mặc định theo kiểu tóc
   const faceNow = currentFaceId(config);
+  // Mặt nền để xem trước bộ phận; mũ kín (hiệp sĩ, nhà du hành) không phối được mặt
+  const partBase = faceNow ? FACE_IDS.indexOf(faceNow) : faceIndexOf(config);
+  const partsHidden = !faceNow && !!paintedLook(config);
   const applyPreset = (p: Preset) => {
     play("click");
     setJustSaved(false);
-    setConfig((c) => ({ ...c, ...p.items, face: null }));
+    setConfig((c) => ({ ...c, ...p.items, face: null, eyeShape: null, mouth: null, faceDeco: null }));
   };
   const goTab = (t: Tab) => {
     play("tick");
@@ -444,6 +461,16 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
               </div>
               <p className="text-xs text-[#6B6680]">Miễn phí · giữ nét vẽ của các mẫu. Tóc và mắt đổi màu ngay trên nhân vật.</p>
             </Section>
+            {FACE_PART_KEYS.map((key) => (
+              <Section key={key} title={PART_LABEL[key].title}>
+                <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label={PART_LABEL[key].title}>
+                  {[{ id: null, name: PART_LABEL[key].none }, ...FACE_PART_OPTIONS[key]].map((o) => (
+                    <FacePartButton key={o.id ?? "none"} testId={`${key}-${o.id ?? "none"}`} name={o.name} on={(config[key] ?? null) === o.id} face={partBase} config={{ ...config, [key]: o.id }} onClick={() => putPart(key, o.id)} />
+                  ))}
+                </div>
+              </Section>
+            ))}
+            {partsHidden && <p className="-mt-3 text-xs text-[#B4540A]">Trang phục đang che kín mặt (mũ giáp / mũ phi hành gia) nên chưa thấy mắt, miệng đã phối.</p>}
             <Section title="Màu tóc">
               <Swatches slot="hairColor" config={config} has={has} put={put} color={(it) => (it.v?.startsWith("url(") ? "conic-gradient(#F87171,#FBBF24,#34D399,#60A5FA,#A78BFA,#F87171)" : it.v ?? "#000")} />
             </Section>
@@ -558,6 +585,28 @@ const Price = ({ text }: { text: string }) => (
   </span>
 );
 const LockNote = ({ text }: { text: string }) => <span className="text-xs font-semibold text-[#8A3B12]">Mở khóa: {text}</span>;
+
+/** Nút chọn bộ phận mặt: xem trước bộ phận đó trên khuôn mặt đang dùng */
+function FacePartButton({ name, on, face, config, onClick, testId }: { name: string; on: boolean; face: number; config: AvatarConfig; onClick: () => void; testId: string }) {
+  const uid = useId().replace(/:/g, "");
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={on}
+      aria-label={name}
+      title={`${name} (miễn phí)`}
+      data-testid={testId}
+      onClick={onClick}
+      className="h-14 w-14 overflow-hidden rounded-full bg-[#FBE3D3]"
+      style={{ boxShadow: `0 0 0 3px #FFFFFF, 0 0 0 5px ${on ? ACCENT : "#E4E0F0"}` }}
+    >
+      <svg viewBox="29 36 62 62" className="h-full w-full" aria-hidden>
+        <FaceArt uid={`fp${uid}`} face={face} config={config} x={26} y={44} width={68} height={46} />
+      </svg>
+    </button>
+  );
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

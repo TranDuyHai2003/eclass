@@ -22,8 +22,14 @@ export const PRESETS: Preset[] = [
   { id: "preset-kimono", name: "Cô gái kimono", items: { hair: "hair-bob", hairColor: "hc-black", eyes: "eye-brown", outfit: "outfit-kimono", accessory: "acc-sakura" } },
 ];
 
-/** Cấu hình nhân vật kèm khuôn mặt chọn riêng (không phải món, miễn phí) */
-export type LookConfig = Partial<Record<Slot, string | null>> & { face?: string | null };
+/** Bộ phận mặt phối riêng (lib/game/face-parts.ts): mắt, miệng, trang điểm */
+export type FacePartKey = "eyeShape" | "mouth" | "faceDeco";
+export const FACE_PART_KEYS: FacePartKey[] = ["eyeShape", "mouth", "faceDeco"];
+/** Có phối bộ phận mặt riêng không */
+export const hasFaceParts = (c: Partial<Record<FacePartKey, string | null>>) => FACE_PART_KEYS.some((k) => !!c[k]);
+
+/** Cấu hình nhân vật kèm khuôn mặt + bộ phận mặt chọn riêng (không phải món, miễn phí) */
+export type LookConfig = Partial<Record<Slot, string | null>> & { face?: string | null } & Partial<Record<FacePartKey, string | null>>;
 
 /**
  * "Khuôn mặt" chọn được ở mục Tùy chỉnh: mặt vẽ tay của các mẫu (bỏ hiệp sĩ, nhà du hành vì đội mũ kín).
@@ -39,7 +45,7 @@ export const FACES: { id: string; name: string; skin: string }[] = [
 ];
 export const FACE_IDS = FACES.map((f) => f.id);
 /** Mặt đã chọn không làm lệch mẫu: chưa chọn, chọn đúng mặt của mẫu, hoặc mẫu che kín mặt (nhà du hành) */
-const faceFits = (config: LookConfig, p: Preset) => !config.face || config.face === p.id || p.id === "preset-astro";
+const faceFits = (config: LookConfig, p: Preset) => !hasFaceParts(config) && (!config.face || config.face === p.id || p.id === "preset-astro");
 const GIRL_HAIR = new Set(["hair-bob", "hair-ponytail", "hair-twin", "hair-long", "hair-bun"]);
 
 /** Khuôn mặt dùng khi vẽ nhân vật tự chỉnh: mặt đã chọn, chưa chọn thì theo kiểu tóc (tóc dài/búi → mặt cô gái kimono) */
@@ -78,14 +84,17 @@ const HEADS: { cell: number; base: number; hair: string | null; accessory: strin
  * - trang phục liền đầu (hoodie tai mèo, giáp hiệp sĩ, đồ phi hành gia) → nguyên tranh mẫu đó;
  * - còn lại: kiểu tóc + phụ kiện trùng một đầu vẽ sẵn → đầu đó + thân theo trang phục
  *   (thân có sẵn hoặc trang phục tạo thêm trong char-bodies.webp), cổ ghép đúng đường cằm.
- * Khuôn mặt đã chọn khác mặt của tranh → dán mặt đó lên vùng da mặt của tranh (không đè tóc/mũ).
+ * Khuôn mặt đã chọn khác mặt của tranh (hoặc có phối mắt/miệng/trang điểm) → dán mặt lên vùng da mặt của tranh (không đè tóc/mũ).
  * Màu tóc / màu mắt khác mẫu thì tô lại ngay trên tranh.
  */
 export function paintedLook(config: LookConfig): PaintedLook | null {
   const outfit = config.outfit ?? null;
   const make = (index: number, base: number, body: number | null): PaintedLook => {
     const p = PRESETS[base];
-    const fi = config.face && config.face !== p.id && index in EYE_GEO ? FACE_IDS.indexOf(config.face) : -1;
+    // mặt đã chọn khác mặt tranh → dán mặt đó; có phối bộ phận mặt → dán mặt của chính tranh làm nền (hiệp sĩ / nhà du hành: bỏ qua)
+    const own = hasFaceParts(config) && FACE_IDS.includes(p.id) ? p.id : null;
+    const want = config.face && config.face !== p.id ? config.face : own;
+    const fi = want && index in EYE_GEO ? FACE_IDS.indexOf(want) : -1;
     const eyeBase = fi >= 0 ? PRESETS.find((x) => x.id === FACE_IDS[fi])?.items.eyes : p.items.eyes;
     return {
       index,

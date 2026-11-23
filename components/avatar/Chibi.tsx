@@ -17,11 +17,8 @@ const CHAR_BACK_SHADE = "/studio/char-hairback-shade.webp";
 const PAINT_SCALE = 144 / 332;
 const PAINT_H = (272 + HAIR_BACK_TOP) * PAINT_SCALE;
 const MASK_W = HEAD_CELLS_N * 332;
-const FACE_STRIP = "/studio/faces.webp";
-const FACE_EYES = "/studio/faces-eyes.webp";
-const FACE_W = 204;
-const FACE_H = 138;
 import type { AvatarConfig } from "@/lib/game/avatar";
+import { FaceArt, Tint, tintOf } from "./FaceArt";
 import { cn } from "@/lib/utils";
 
 /**
@@ -162,7 +159,7 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
               <image href={CHAR_HEADS} width={MASK_W} height="272" />
             </>
           )}
-          {look.face !== null && <PaintedFaceSwap uid={uid} cell={look.index} face={look.face} eyes={look.eyes} />}
+          {look.face !== null && <PaintedFaceSwap uid={uid} cell={look.index} face={look.face} config={config} />}
           {look.hairColor && <Tint id={`${uid}-th`} href={CHAR_HAIR} x={look.index * 332} w={332} h={272} total={MASK_W} fill={tintOf(look.hairColor, uid)} />}
           {look.eyes && look.face === null && <Tint id={`${uid}-te`} href={CHAR_EYES} x={look.index * 332} w={332} h={272} total={MASK_W} fill={tintOf(look.eyes, uid)} />}
         </svg>
@@ -200,12 +197,7 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
 
       {/* Mặt: vẽ tay theo mẫu (khuôn mặt đã chọn); painted=false → mặt SVG cũ */}
       {faceOf ? (
-        <svg x="26" y="44" width="68" height="46" viewBox={`${faceIdx * FACE_W} 0 ${FACE_W} ${FACE_H}`} data-face={faceOf.id}>
-          <image href={FACE_STRIP} width={FACE_W * FACES.length} height={FACE_H} />
-          {config.eyes && config.eyes !== PRESETS.find((p) => p.id === faceOf.id)?.items.eyes && (
-            <Tint id={`${uid}-tf`} href={FACE_EYES} x={faceIdx * FACE_W} w={FACE_W} h={FACE_H} total={FACE_W * FACES.length} fill={tintOf(config.eyes, uid)} />
-          )}
-        </svg>
+        <FaceArt uid={uid} face={faceIdx} config={config} x={26} y={44} width={68} height={46} />
       ) : (
         <Face eye={eye} uid={uid} skinLine={skinLine} />
       )}
@@ -233,32 +225,11 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
 /* ============================== Tô màu trên tranh ============================== */
 
 /** Màu tô của món tóc/mắt (cầu vồng → gradient của nhân vật này) */
-function tintOf(itemId: string, uid: string) {
-  const v = ITEM_BY_ID[itemId]?.v ?? "#000";
-  return v.startsWith("url(") ? `url(#${uid}-hairRainbow)` : v;
-}
-
-/**
- * Tô lại một vùng của tranh: ảnh `href` có A = mặt nạ vùng, RGB = độ sáng đã chuẩn hoá.
- * Phủ màu đặc theo mặt nạ rồi nhân với độ sáng → giữ nét vẽ, bóng đổ, viền đen của tranh.
- */
-function Tint({ id, href, x, y = 0, w, h, total, fill }: { id: string; href: string; x: number; y?: number; w: number; h: number; total: number; fill: string }) {
-  return (
-    <g style={{ isolation: "isolate" }}>
-      <mask id={id} maskUnits="userSpaceOnUse" x={x} y={y} width={w} height={h} style={{ maskType: "alpha" }}>
-        <image href={href} y={y} width={total} height={h} />
-      </mask>
-      <rect x={x} y={y} width={w} height={h} fill={fill} mask={`url(#${id})`} />
-      <image href={href} y={y} width={total} height={h} style={{ mixBlendMode: "multiply" }} />
-    </g>
-  );
-}
-
 /**
  * Dán khuôn mặt đã chọn (faces.webp, căn theo mắt) lên tranh: co theo khoảng cách hai mắt của đầu,
  * chỉ hiện trong vùng da mặt của đầu đó (char-facemask.webp) nên không đè tóc, mũ, tai nghe.
  */
-function PaintedFaceSwap({ uid, cell, face, eyes }: { uid: string; cell: number; face: number; eyes: string | null }) {
+function PaintedFaceSwap({ uid, cell, face, config }: { uid: string; cell: number; face: number; config: AvatarConfig }) {
   const [gx, gy, dist] = EYE_GEO[cell];
   const s = dist / 29; // px tranh trên một đơn vị của mặt SVG
   return (
@@ -267,10 +238,7 @@ function PaintedFaceSwap({ uid, cell, face, eyes }: { uid: string; cell: number;
         <image href={CHAR_FACEMASK} width={MASK_W} height="272" />
       </mask>
       <g mask={`url(#${uid}-fm)`}>
-        <svg x={cell * 332 + gx - 34 * s} y={gy - 17 * s} width={68 * s} height={46 * s} viewBox={`${face * FACE_W} 0 ${FACE_W} ${FACE_H}`} data-face={FACES[face].id}>
-          <image href={FACE_STRIP} width={FACE_W * FACES.length} height={FACE_H} />
-          {eyes && <Tint id={`${uid}-tfp`} href={FACE_EYES} x={face * FACE_W} w={FACE_W} h={FACE_H} total={FACE_W * FACES.length} fill={tintOf(eyes, uid)} />}
-        </svg>
+        <FaceArt uid={`${uid}-p`} face={face} config={config} x={cell * 332 + gx - 34 * s} y={gy - 17 * s} width={68 * s} height={46 * s} />
       </g>
     </g>
   );

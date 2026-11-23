@@ -123,6 +123,25 @@ Image.fromarray((np.clip(faces, 0, 1) * 255).astype(np.uint8), "RGBA").save(os.p
 Image.fromarray((np.clip(face_eyes, 0, 1) * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "faces-eyes.webp"), lossless=True)
 print(json.dumps({"patch": [PW, PH], "skin": skin_hex}))
 
+# ---- Mặt trơn (xoá mắt + miệng, lấp da bằng nội suy điều hoà) → phối bộ phận mặt (mắt/miệng/trang điểm) trong Chibi
+blank = faces.copy()
+for j, c in enumerate(FACE_CELLS):
+    P = blank[:, j * PW:(j + 1) * PW]
+    gl = c == 4
+    rx, ry = (14.5, 13.5) if gl else (12.0, 12.5)
+    E = (((u - 45.5) / rx) ** 2 + ((v - 61) / ry) ** 2 < 1) | (((u - 74.5) / rx) ** 2 + ((v - 61) / ry) ** 2 < 1)
+    E |= (u > 51.5) & (u < 68.5) & (v > 66) & (v < 78)
+    if gl:
+        E |= ((u > 52) & (u < 68) & (v > 54) & (v < 66)) | (((u < 34) | (u > 86)) & (v > 53) & (v < 68))  # cầu + gọng kính
+    E &= (pu > 0) & (pu < PW - 1) & (pv > 0) & (pv < PH - 1)
+    col = P[..., :3].copy()
+    col[E] = col[~E & (P[..., 3] > 0.9)].mean(0)
+    for _ in range(600):
+        avg = (np.roll(col, 1, 0) + np.roll(col, -1, 0) + np.roll(col, 1, 1) + np.roll(col, -1, 1)) / 4
+        col[E] = avg[E]
+    P[..., :3] = col
+Image.fromarray((np.clip(blank, 0, 1) * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "faces-blank.webp"), lossless=True)
+
 # ======================= Đầu + thân rời: thay trang phục vẫn giữ đầu (mặt, tóc) của nhân vật =======================
 # char-heads.webp : đầu của các mẫu lộ tóc (cùng toạ độ với characters.webp, cắt ở đường cằm)
 # char-bodies.webp: thân theo trang phục, mỗi ô 332x(272+EXT); 5 thân có sẵn + 6 trang phục tạo thêm bằng cách tô lại thân có sẵn
@@ -360,6 +379,11 @@ eye_geo[8] = (eye_geo[7][0], round(eye_geo[7][1] + SHIFT, 1), eye_geo[7][2])
 # nét cổ áo kimono lọt dưới cằm (thành vạch lạ trên áo khác)
 for arr in (heads, hair_ext):
     arr[anchor[8][1] + 18:, 8 * CELL:9 * CELL] = 0
+# hàng trên cùng của đầu tóc bob sáng hơn tóc bên dưới (mép cắt của tranh) → lộ vạch sáng trên đỉnh khi tô màu tóc
+for x in range(8 * CELL, 9 * CELL):
+    ys = np.where(heads[:40, x, 3] > 0.5)[0]
+    if len(ys) and heads[ys[0], x, :3].mean() > heads[ys[0] + 1, x, :3].mean() + 0.04:
+        heads[ys[0], x], hair_ext[ys[0], x] = heads[ys[0] + 1, x], hair_ext[ys[0] + 1, x]
 
 # ======================= Kiểu tóc vẽ thêm (ô 9–14): đầu tóc bob / tóc ngắn + tóc vẽ theo nét tranh =======================
 # Lớp trước (bím, lọn dài) nằm dưới đầu trong char-heads; lớp sau (đuôi ngựa, tóc dài, búi, tóc dựng, mohawk) trong
