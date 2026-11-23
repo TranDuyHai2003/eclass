@@ -39,7 +39,7 @@ export default async function RewardsPage() {
   const [extras, myRank, ...boardRows] = await Promise.all([
     getVisibleCourseIds(uid).then((ids) => getStudentHomeExtras(uid, ids, 6)).catch(() => ({ todo: [], todoTotal: 0, recent: [] })),
     myGrade ? getMyRank(uid, { grade: myGrade }, "all").catch(() => null) : Promise.resolve(null),
-    ...grades.map((g) => getLeaderboard({ grade: g }, "all", 5).catch(() => [])),
+    ...grades.map((g) => getLeaderboard({ grade: g }, "all", 20).catch(() => [])),
   ]);
   // Che tên demo ngoài cache (dữ liệu Bảng Vàng dùng chung)
   const boards: BoardData[] = await Promise.all(

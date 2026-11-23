@@ -535,45 +535,33 @@ try {
     await s.screenshot(path.join(SHOTS, "gacha-result.png"));
   });
 
-  await step("Học sinh: Bảng Vàng khối 7 — bục top 3 có mình, tab tháng này, tab lớp; trang chủ có NPC + top 3", async () => {
-    await s.goto("/leaderboard?tab=g7&period=all", /Bảng Vàng/i);
-    expect(await s.ev(`return !!document.querySelector('[data-testid="podium"]')`), "không thấy bục top 3");
-    const podium = await s.ev(`return document.querySelector('[data-testid="podium"]')?.innerText || ""`);
-    expect(podium.includes("Học sinh") && /17\.100|16\.|15\./.test(podium), `bục không có mình: ${podium.slice(0, 80)}`);
-    expect(await s.ev(`return document.querySelectorAll('[data-testid="podium"] svg[role="img"]').length >= 1`), "bục thiếu nhân vật");
-    await s.goto("/leaderboard?tab=g7&period=month", /Bảng Vàng/i);
-    expect(/Tháng này/.test(await s.text()), "thiếu tab Tháng này");
-    await s.goto("/leaderboard?tab=class&period=all", /Bảng Vàng/i);
-    expect((await s.text()).includes(`${tag} lớp`), "tab lớp tôi không hiện tên lớp");
+  await step("Bảng Vàng: học sinh vào tiệm → /leaderboard mở hộp Bảng Vàng trong tiệm (không còn mục ở thanh bên); thầy vẫn xem trang đầy đủ; trang chủ có NPC + top 3", async () => {
+    await s.goto("/leaderboard?tab=g7&period=all", /Bảng Vàng Server Khối/i);
+    expect(await s.ev(`return location.pathname === "/rewards" && !!document.querySelector('[data-testid="leaderboard-modal"]')`), "học sinh vào /leaderboard không được đưa vào hộp Bảng Vàng của tiệm");
+    expect(/Học sinh/.test(await s.ev(`return document.querySelector('[data-testid="leaderboard-modal"]')?.innerText || ""`)), "hộp Bảng Vàng không có mình");
+    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
+    await t.goto("/leaderboard?tab=g7&period=all", /Bảng Vàng/i);
+    expect(await t.ev(`return !!document.querySelector('[data-testid="podium"]')`), "không thấy bục top 3");
+    const podium = await t.ev(`return document.querySelector('[data-testid="podium"]')?.innerText || ""`);
+    expect(podium.includes("Học sinh") && /17\.100|16\.|15\./.test(podium), `bục không có học sinh thử: ${podium.slice(0, 80)}`);
+    expect(await t.ev(`return document.querySelectorAll('[data-testid="podium"] svg[role="img"]').length >= 1`), "bục thiếu nhân vật");
+    await t.goto("/leaderboard?tab=g7&period=month", /Bảng Vàng/i);
+    expect(/Tháng này/.test(await t.text()), "thiếu tab Tháng này");
     await s.goto("/", /Tiệm quà/i);
     expect(await s.ev(`return !!document.querySelector('[data-testid="npc"]') && !!document.querySelector('[data-testid="home-top3"]')`), "trang chủ thiếu NPC hoặc top 3");
+    expect(await s.ev(`return !document.querySelector('aside a[href="/leaderboard"]')`), "thanh bên vẫn còn mục Bảng Vàng riêng");
     const npc = await s.ev(`return document.querySelector('[data-testid="npc"]')?.innerText || ""`);
     expect(/lucky boy/i.test(npc) && !/rương/i.test(npc), `NPC sai: ${npc.slice(0, 80)}`);
   });
 
   // -------------------------------------------------- Tiệm Quà GĐ6 (mockup Canvas 2)
-  await step("Học sinh: Menu Tiệm Quà — chọn Tuyết thì có lớp tuyết rơi, tải lại vẫn nhớ; lối tắt Danh hiệu mở hệ thống danh hiệu", async () => {
+  await step("Học sinh: tiệm không còn nút Menu (thầy bỏ 24/11); huy hiệu cấp mở Hệ Thống Danh Hiệu", async () => {
     await s.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
-    await s.ev(`document.querySelector('[data-testid="menu-open"]').click()`);
-    expect(await s.waitText(/Menu Tiệm Quà/), "menu không mở");
-    expect(await s.ev(`return document.querySelectorAll('[data-testid^="menu-"]').length >= 9`), "menu thiếu lối tắt");
-    await s.ev(`document.querySelector('[data-testid="weather-snow"]').click()`);
-    await sleep(300);
-    expect(await s.ev(`return document.querySelector('[data-weather]')?.dataset.weather === "snow" && document.querySelectorAll('.weather-layer[data-weather="snow"] .weather-flake').length > 10`), "chọn Tuyết không có tuyết rơi");
-    await s.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
-    await sleep(300);
-    expect(await s.ev(`return document.querySelector('[data-weather]')?.dataset.weather === "snow"`), "tải lại không nhớ thời tiết");
-    await s.ev(`document.querySelector('[data-testid="menu-open"]').click()`);
-    await sleep(400);
-    await s.ev(`document.querySelector('[data-testid="weather-sun"]').click()`);
-    await s.ev(`document.querySelector('[data-testid="menu-titles"]').click()`);
-    expect(await s.waitText(/Hệ Thống Danh Hiệu/), "lối tắt Danh hiệu không mở hộp danh hiệu");
-    const rows = await s.ev(`return [...document.querySelectorAll('[data-testid="title-row"]')].map(r => r.dataset.unlocked).join("")`);
-    expect(rows.length === 8 && rows.startsWith("1"), `danh hiệu sai: ${rows}`);
-    await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
-    await sleep(400);
+    expect(await s.ev(`return !document.querySelector('[data-testid="menu-open"]') && !document.querySelector('[aria-label="Menu Tiệm Quà"]')`), "vẫn còn nút Menu Tiệm Quà");
     await s.ev(`document.querySelector('[data-testid="titles-open"]').click()`);
     expect(await s.waitText(/Tổng xu tích luỹ/), "bấm huy hiệu cấp không mở hộp danh hiệu");
+    const rows = await s.ev(`return [...document.querySelectorAll('[data-testid="title-row"]')].map(r => r.dataset.unlocked).join("")`);
+    expect(rows.length === 8 && rows.startsWith("1"), `danh hiệu sai: ${rows}`);
     await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
     await sleep(400);
   });
@@ -616,11 +604,7 @@ try {
     expect(chibi.length >= 3 && chibi.every(Boolean), `thẻ kiểu tóc chưa vẽ tay hết: ${JSON.stringify(chibi)}`);
     await s.ev(`document.querySelector('[data-testid="deco-all"]').click(); document.querySelector('[data-testid="cat-all"]').click()`);
     await sleep(200);
-    await s.ev(`document.querySelector('[data-testid="menu-open"]').click()`);
-    expect(await s.waitText(/Menu Tiệm Quà/), "menu không mở");
-    expect(await s.ev(`return document.querySelector('[data-testid="menu-home"]')?.getAttribute('href') === "/"`), "menu thiếu lối tắt Trang Chủ");
-    await s.ev(`document.querySelector('[role=dialog] [data-testid="shop-modal-close"]').click()`);
-    await sleep(400);
+    expect(await s.ev(`return !!document.querySelector('.ah-wood a[href="/"]')`), "thanh gỗ thiếu nút về Trang chủ");
   });
 
   await step("Học sinh: [GĐ10] Tiệm quà v2 — khối hồ sơ + ví, các mục (Kiếm xu, Hộp bí ẩn, Bảng Vàng, Túi đồ), lên cấp, âm thanh, mèo linh vật", async () => {
@@ -741,7 +725,7 @@ try {
     expect(new RegExp(petName).test(await s.ev(`return document.querySelector('[data-testid="mascot"]')?.innerText || ""`)), `tải lại không còn mèo ${petName}`);
   });
 
-  await step("[review GĐ6] 320px: tablist chỉ chứa tab; hộp chi tiết vừa màn hình; menu có nút loa", async () => {
+  await step("[review GĐ6] 320px: tablist chỉ chứa tab; hộp chi tiết vừa màn hình; thanh gỗ có nút loa", async () => {
     await s.setSize(320, 640);
     await s.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
     expect(await s.ev(`const t=document.querySelector('[role="tablist"][aria-label="Danh mục quà"]'); return !!t && [...t.children].every(c => c.getAttribute("role") === "tab")`), "tablist chứa phần tử không phải tab");
@@ -754,10 +738,7 @@ try {
     await s.ev(`document.querySelector('[data-testid="cat-box"]').click()`);
     await sleep(300);
     for (const x of await s.layoutProblems()) throw new Error(`320px Hộp bí ẩn: ${x}`);
-    await s.ev(`document.querySelector('[data-testid="menu-open"]').click()`);
-    await sleep(500);
-    expect(await s.ev(`return !!document.querySelector('[data-testid="shop-menu"] button[aria-label*="âm thanh" i], [data-testid="shop-menu"] button[title*="âm thanh" i]')`), "menu thiếu nút bật/tắt âm thanh");
-    await s.ev(`document.querySelector('[role=dialog] [data-testid="shop-modal-close"]').click()`);
+    expect(await s.ev(`return !!document.querySelector('.ah-wood button[aria-label="Âm thanh hiệu ứng"]')`), "thanh gỗ thiếu nút bật/tắt âm thanh");
     await s.setSize(1366, 900);
   });
 
@@ -781,7 +762,6 @@ try {
         ["/profile", /Tủ đồ & Cửa hàng/i, "profile-decor"],
         [`/profile/${data.student.id}`, /Thang danh hiệu/i, "profile"],
         ["/rewards/gacha", /Rương kho báu bí ẩn/i, "gacha"],
-        ["/leaderboard?tab=g7&period=all", /Bảng Vàng/i, "leaderboard"],
       ]) {
         await s.goto(p, ready);
         for (const tab of p === "/rewards" ? ["cat-physical", "cat-voucher", "cat-deco", "cat-pet", "cat-box"] : [null]) {

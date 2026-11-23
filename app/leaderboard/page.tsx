@@ -5,6 +5,7 @@ import { LeaderboardView } from "@/components/game/Leaderboard";
 import { getGrades, getLeaderboard, getMyRank, type Period, type Scope } from "@/lib/game/leaderboard";
 import { isPointsEnabled } from "@/lib/points/config";
 import { notFound } from "next/navigation";
+import { canUseShop } from "@/lib/points/shop-access";
 import { maskUsersForDemo } from "@/lib/demo-privacy";
 import { prisma, prismaBase } from "@/lib/prisma";
 
@@ -16,6 +17,8 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   if (!isPointsEnabled()) notFound();
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+  // Học sinh vào được tiệm: Bảng Vàng nằm trong Tiệm quà (mở sẵn hộp Bảng Vàng)
+  if (session.user.role === "STUDENT" && canUseShop(session.user)) redirect("/rewards#bang-vang");
   const sp = await searchParams;
   const period: Period = sp.period === "month" ? "month" : "all";
 

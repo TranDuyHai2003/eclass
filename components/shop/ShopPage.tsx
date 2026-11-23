@@ -26,8 +26,7 @@ import { type RecentDone } from "./TasksModal";
 import { type BoardData } from "./LeaderboardModal";
 import { HistoryModal } from "./HistoryModal";
 import { TitlesModal } from "./TitlesModal";
-import { ShopMenuModal, type MenuAction } from "./ShopMenuModal";
-import { WeatherLayer, useWeather } from "./Weather";
+import { WeatherLayer } from "./Weather";
 import { AvatarRing, CoinDot, GemDot, ItemArt, PlateBox, QUICK_EQUIP, RAR_LABEL, fmt, shortName } from "./ah/parts";
 import { EarnSection } from "./ah/EarnSection";
 import { CodeSection } from "./ah/CodeSection";
@@ -92,12 +91,13 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   const [decoSlot, setDecoSlot] = useState<DecoSlot>("all");
   const [affordOnly, setAffordOnly] = useState(false);
   const [selKey, setSelKey] = useState<string | null>(null);
-  const [modal, setModal] = useState<null | "history" | "menu" | "titles">(null);
+  const [modal, setModal] = useState<null | "history" | "titles">(null);
   const [custom, setCustom] = useState(false);
   const [gold, setGold] = useState(false);
   const [lvUp, setLvUp] = useState<number | null>(null);
   const [soundOn, setSoundState] = useState(true);
-  const [weather, setWeather] = useWeather();
+  // Menu tiệm (chọn thời tiết) đã bỏ theo yêu cầu thầy 24/11 → luôn trời nắng
+  const weather = "sun" as const;
   const [pending, start] = useTransition();
   const [celebrated, setCelebrated] = useState(0);
   const [burst, setBurst] = useState(0);
@@ -133,6 +133,13 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       }).map((l) => l.replace(/Mình là Lucky Boy, bấm vào mình để nghe tiếp nhé 😉/, "Meo~ vuốt ve tớ đi, tớ kể tiếp cho nghe 🐾")),
     [user.name, data.canEarn, todoTotal, wallet, level, goal],
   );
+
+  // Đi từ /leaderboard (hoặc link "#bang-vang") → mở sẵn hộp Bảng Vàng trong tiệm
+  useEffect(() => {
+    if (window.location.hash !== "#bang-vang") return;
+    setGold(true);
+    history.replaceState(null, "", window.location.pathname);
+  }, []);
 
   // Âm thanh: đọc/ghi localStorage trong effect (HTML server/client khớp)
   useEffect(() => {
@@ -277,16 +284,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   const onGachaDone = ({ outcome }: { outcome: Outcome }) => {
     if (outcome.kind === "item" && !outcome.duplicate) setOwned((o) => new Set([...o, outcome.itemId]));
   };
-  const menuAction = (a: MenuAction) => {
-    setModal(null);
-    if (a === "shop") { setSec("shop"); setCat("all"); }
-    else if (a === "box") setSec("gacha");
-    else if (a === "tasks") setSec("earn");
-    else if (a === "scratch") setSec("code");
-    else if (a === "board") setGold(true);
-    else if (a === "bag") setSec("bag");
-    else setTimeout(() => setModal(a), 120);
-  };
+
   const petIt = () => {
     play("meow");
     buzz(15);
@@ -373,9 +371,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
             </span>
             <button type="button" data-testid="history-open" onClick={() => { play("click"); setModal("history"); }} aria-label="Lịch sử xu" title="Lịch sử xu" className="ah-btn ah-cream h-11 w-11 p-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="9" fill="#fef3c7" /><path d="M12 7v5l3 2" /></svg>
-            </button>
-            <button type="button" data-testid="menu-open" onClick={() => { play("click"); setModal("menu"); }} aria-label="Menu Tiệm Quà" title="Menu Tiệm Quà" className="ah-btn ah-cream h-11 w-11 p-0">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.4" strokeLinecap="round" aria-hidden><path d="M5 7h14M5 12h14M5 17h14" /></svg>
             </button>
             <button type="button" role="switch" aria-checked={soundOn} aria-label="Âm thanh hiệu ứng" title={soundOn ? "Âm thanh: Bật" : "Âm thanh: Tắt"} onClick={() => setSoundOn(!soundOn)} className="ah-btn ah-cream h-11 w-11 p-0">
               {soundOn ? (
@@ -594,7 +589,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         ))}
 
       <TitlesModal open={modal === "titles"} onOpenChange={(o) => setModal(o ? "titles" : null)} lifetimeEarned={wallet.lifetimeEarned} />
-      <ShopMenuModal open={modal === "menu"} onOpenChange={(o) => setModal(o ? "menu" : null)} weather={weather} onWeather={setWeather} onAction={menuAction} showBox={!!gacha} />
       <HistoryModal open={modal === "history"} onOpenChange={(o) => setModal(o ? "history" : null)} ledger={data.ledger} levelIndex={level.level - 1} />
     </div>
   );

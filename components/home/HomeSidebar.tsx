@@ -62,7 +62,8 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
       : [{ icon: LogIn, label: "Đăng nhập", href: "/login" }]),
     { icon: BookOpen, label: "Khóa Học", href: "/courses" },
     { icon: Trophy, label: "Bảng xếp hạng Hunter", href: "/ranking" },
-    ...(pointsEnabled ? [{ icon: Crown, label: "Bảng Vàng", href: "/leaderboard" }] : []),
+    // Học sinh vào được tiệm: Bảng Vàng nằm trong Tiệm quà nên không cần mục riêng
+    ...(pointsEnabled && !(role === "STUDENT" && canUseShop(currentUser)) ? [{ icon: Crown, label: "Bảng Vàng", href: "/leaderboard" }] : []),
     ...(pointsEnabled && role === "STUDENT" && canUseShop(currentUser) ? [{ icon: Gift, label: "Tiệm quà", href: "/rewards" }] : []),
     {
       icon: DiscordIcon,

@@ -62,7 +62,7 @@ export function GoldModal({ boards, myGrade, me, event, onClose }: {
             </ol>
           </>
         )}
-        <Link href="/leaderboard" className="self-center text-xs font-extrabold text-[#6e4722] underline decoration-dotted">Xem Bảng Vàng đầy đủ →</Link>
+        <p className="self-center text-[11px] font-bold text-[#6e4722]">Top 20 mỗi khối · xếp theo tổng xu tích lũy, đổi quà không tụt hạng</p>
       </div>
     </div>
   );
