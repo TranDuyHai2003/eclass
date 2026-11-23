@@ -54,6 +54,17 @@ for i, area in enumerate(areas, 1):
         eyes |= m
         eye_at.setdefault(c, []).append((cx, cy))
 hair &= ~((cell_of == 7) & (xx % CELL > 222) & (yy < 80))  # hoa cài của cô gái kimono
+# vệt bóng sáng nằm lọt trong tóc (tóc kimono) cũng là tóc — không thì đổi màu còn dải xám
+_skin = (a > 0.5) & (mx > 0.8) & (sat > 0.05) & (sat < 0.4) & ((hue < 40) | (hue > 340))
+_enclosed = nd.binary_fill_holes(nd.binary_closing(hair, iterations=3)) & (a > 0.5) & ~_skin & ~nd.binary_dilation(eyes, iterations=6)
+_enclosed &= (sat < 0.25) | ((hue < 50) | (hue > 330))  # chỉ xám / nâu (không lấy hoa, mũ màu)
+hair |= _enclosed & ~((cell_of == 7) & (xx % CELL > 222) & (yy < 80))
+# Tóc kimono màu tím xám (lọc nâu chỉ bắt phần tối): mọi điểm trên đầu không phải da / mắt / hoa / trắng / cổ áo
+_c7 = cell_of == 7
+_dx7 = np.abs(xx % CELL - 155)
+_white = (mx > 0.88) & (sat < 0.12)
+hair |= _c7 & (a > 0.5) & (yy < 200) & ~nd.binary_fill_holes(_skin & _c7) & ~_skin & ~nd.binary_dilation(eyes, iterations=6) \
+    & ~((xx % CELL > 205) & (yy < 100)) & ~_white & ((yy < 146) | ((_dx7 > 42) & (mx < 0.6) & (yy < 185))) & (_dx7 < 95)
 
 
 def shade(mask, pct):
@@ -265,6 +276,95 @@ derived("outfit-dress", 7, dress)
 derived("outfit-sport", 0, sport)
 derived("outfit-royal", 1, royal)
 
+# ---- Đầu biến thể ô 8: tóc bob không hoa / búi (từ cô gái kimono): soi gương nửa trái (tóc bob sạch) sang nửa phải,
+#      giữ da mặt + mắt gốc ở nửa phải để mắt không bị lật
+ly8, lx8 = np.mgrid[0:H, 0:CELL]
+AX = int(round(anchor[7][0]))  # trục đối xứng = giữa hai mắt
+def mirror(arr):
+    out = arr.copy()
+    src = 2 * AX - lx8
+    ok = (lx8 > AX) & (src >= 0)
+    out[ok] = arr[ly8[ok], src[ok]]
+    out[(lx8 > AX) & (src < 0)] = 0
+    return out
+h7 = heads[:, 7 * CELL:8 * CELL]
+hm7 = hair[:, 7 * CELL:8 * CELL]
+skin7 = (nd.binary_fill_holes(skin_all[:, 7 * CELL:8 * CELL]) | nd.binary_dilation(eyes[:, 7 * CELL:8 * CELL], iterations=9)) & (np.abs(lx8 - AX) < 60) & (ly8 > anchor[7][2] - 30)  # không lấy cánh hoa
+hm_m = mirror(hm7)
+take = (lx8 > AX + 4) & ~(skin7 & ~hm_m & (ly8 < anchor[7][1]))  # nửa phải: lấy ảnh soi gương trừ da mặt gốc
+h8 = h7.copy(); h8[take] = mirror(h7)[take]
+hm8 = hm7.copy(); hm8[take] = hm_m[take]
+heads = np.concatenate([heads, h8], 1)
+c8 = hair_sh[:, 7 * CELL:8 * CELL].copy(); c8[take] = mirror(hair_sh[:, 7 * CELL:8 * CELL])[take]
+hair_ext = np.concatenate([hair_sh, c8], 1)
+e8 = eye_sh[:, 7 * CELL:8 * CELL].copy(); e8[take & ~skin7] = 0
+eye_ext = np.concatenate([eye_sh, e8], 1)
+flower = take  # vùng đổi ở ô 8 (dùng cho mặt nạ mặt bên dưới)
+Image.fromarray((hair_ext * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-hair.webp"), lossless=True)
+Image.fromarray((eye_ext * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-eyes.webp"), lossless=True)
+
+# ---- Vùng mặt từng đầu (da + mắt, trừ tóc) → dán khuôn mặt đã chọn lên tranh mà không đè tóc/mũ/tai nghe
+lab_s, _ = nd.label(skin_all)
+SWAP_CELLS = [0, 1, 2, 3, 4, 6, 7]
+facemask = np.zeros((H, W + CELL))
+eye_geo = {}
+for c in SWAP_CELLS:
+    (lx_, ly_), (rx_, ry_) = sorted(eye_at[c])
+    mxp, myp = (lx_ + rx_) / 2, (ly_ + ry_) / 2
+    box = lab_s[int(myp + 12):int(myp + 35), int(mxp - 20):int(mxp + 20)]
+    l = np.bincount(box[box > 0]).argmax()
+    m = nd.binary_fill_holes(lab_s == l) & (yy < myp + 62)
+    m |= nd.binary_dilation(eyes & (cell_of == c), iterations=9)
+    m &= ~nd.binary_dilation(hair, iterations=1) & (cell_of == c)
+    facemask[:, :W] = np.maximum(facemask[:, :W], nd.gaussian_filter(m.astype(float), 0.8) * m.astype(float) + m * 0)
+    eye_geo[c] = (round(mxp - c * CELL, 1), round(myp, 1), round(float(np.hypot(rx_ - lx_, ry_ - ly_)), 1))
+facemask[:, 8 * CELL:] = facemask[:, 7 * CELL:8 * CELL] * ~(flower & hm8)
+eye_geo[8] = eye_geo[7]
+anchor[8] = anchor[7]
+HEAD_CELLS = HEAD_CELLS + [8]
+
+# Đỉnh tóc kimono chạm mép trên ô (bị phẳng) → hạ ô 8 xuống SHIFT px rồi vẽ nối đỉnh tròn theo cung đầu
+SHIFT = 8
+def shift8(arr):
+    c8_ = arr[:, 8 * CELL:].copy()
+    arr[:, 8 * CELL:] = 0
+    arr[SHIFT:, 8 * CELL:] = c8_[:-SHIFT]
+for arr in (heads, hair_ext, eye_ext):
+    shift8(arr)
+fm8 = facemask[:, 8 * CELL:].copy(); facemask[:, 8 * CELL:] = 0; facemask[SHIFT:, 8 * CELL:] = fm8[:-SHIFT]
+top = heads[SHIFT, 8 * CELL:]
+xs = np.where(top[:, 3] > 0.5)[0]
+if len(xs):
+    x0, x1 = xs.min(), xs.max()
+    w0, cxm, R = (x1 - x0) / 2, (x0 + x1) / 2, 95.0
+    dd = np.sqrt(max(R * R - w0 * w0, 0))
+    for hgt in range(1, SHIFT + 1):
+        y = SHIFT - hgt
+        w = np.sqrt(max(R * R - (dd + hgt) ** 2, 0))
+        for x in range(int(np.ceil(cxm - w)), int(cxm + w) + 1):
+            edge = x < cxm - w + 2 or x > cxm + w - 2
+            src = heads[SHIFT + 2, 8 * CELL + x].copy()  # màu tóc ngay dưới (bỏ qua viền)
+            heads[y, 8 * CELL + x] = (0.14, 0.11, 0.1, 1) if edge else src
+            hair_ext[y, 8 * CELL + x] = (0.3, 0.3, 0.3, 1) if edge else hair_ext[SHIFT + 2, 8 * CELL + x]
+        # viền đỉnh
+        heads[y, 8 * CELL + int(np.ceil(cxm - w)):8 * CELL + int(cxm + w) + 1][:1] = (0.14, 0.11, 0.1, 1)
+    xs_top = np.where(heads[0, 8 * CELL:, 3] > 0.5)[0]
+    heads[0, 8 * CELL + xs_top] = (0.14, 0.11, 0.1, 1)
+    hair_ext[0, 8 * CELL + xs_top] = (0.3, 0.3, 0.3, 1)
+    # bỏ viền phẳng cũ ở hàng SHIFT (giờ nằm giữa tóc)
+    for r in range(SHIFT, SHIFT + 2):
+        row = heads[r, 8 * CELL:]
+        dark = (row[:, :3].mean(1) < 0.25) & (row[:, 3] > 0.5)
+        idx = np.where(dark)[0]
+        idx = idx[(idx > x0 + 3) & (idx < x1 - 3)]
+        heads[r, 8 * CELL + idx] = heads[SHIFT + 3, 8 * CELL + idx]
+        hair_ext[r, 8 * CELL + idx] = hair_ext[SHIFT + 3, 8 * CELL + idx]
+Image.fromarray((hair_ext * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-hair.webp"), lossless=True)
+Image.fromarray((eye_ext * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-eyes.webp"), lossless=True)
+anchor[8] = (anchor[7][0], anchor[7][1] + SHIFT, anchor[7][2] + SHIFT)
+eye_geo[8] = (eye_geo[7][0], round(eye_geo[7][1] + SHIFT, 1), eye_geo[7][2])
+fm = np.zeros((H, W + CELL, 4)); fm[..., :3] = 1; fm[..., 3] = np.clip(facemask, 0, 1)
+Image.fromarray((fm * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-facemask.webp"), lossless=True)
 Image.fromarray((np.clip(heads, 0, 1) * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-heads.webp"), lossless=True)
 strip = np.concatenate(bodies, 1)
 Image.fromarray((np.clip(strip, 0, 1) * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-bodies.webp"), lossless=True)
@@ -273,6 +373,10 @@ ts = [
     f"export const BODY_H = {H + EXT};",
     "/** Ô trong characters.webp có đầu rời (char-heads.webp) → [tâm x, đường cằm y] */",
     "export const HEAD_ANCHOR: Record<number, [number, number]> = { " + ", ".join(f"{c}: [{anchor[c][0]}, {anchor[c][1]}]" for c in HEAD_CELLS) + " };",
+    "/** Số ô của char-heads / char-hair / char-eyes / char-facemask (8 ô tranh + ô 8 = tóc bob không hoa) */",
+    f"export const HEAD_CELLS_N = {W // CELL + 1};",
+    "/** Mắt của từng ô (dán khuôn mặt đã chọn): [giữa hai mắt x, y, khoảng cách hai mắt] */",
+    "export const EYE_GEO: Record<number, [number, number, number]> = { " + ", ".join(f"{c}: [{g[0]}, {g[1]}, {g[2]}]" for c, g in sorted(eye_geo.items())) + " };",
     "/** Thân theo trang phục: thứ tự ô trong char-bodies.webp, [tâm x, đường cằm y] của tranh gốc */",
     "export const BODIES: { outfit: string; anchor: [number, number] }[] = [",
     *[f'  {{ outfit: "{o}", anchor: [{an[0]}, {an[1]}] }},' for o, an in zip(body_ids, body_anchor)],

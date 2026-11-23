@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ITEM_BY_ID } from "@/lib/game/items";
 import { FACES, PRESETS, faceIndexOf, paintedLook } from "@/lib/game/presets";
-import { BODIES, BODY_H, HEAD_ANCHOR } from "@/lib/game/painted-data";
+import { BODIES, BODY_H, EYE_GEO, HEAD_ANCHOR, HEAD_CELLS_N } from "@/lib/game/painted-data";
 
 const CHAR_STRIP = "/studio/characters.webp";
 // Mặt nạ tóc / tròng mắt của tranh + mặt vẽ tay đã căn theo mắt SVG (scripts/studio/gen-face-assets.py)
@@ -10,6 +10,8 @@ const CHAR_EYES = "/studio/char-eyes.webp";
 // Đầu rời (cắt ở cằm) + thân theo trang phục → thay đồ vẫn giữ đầu của nhân vật
 const CHAR_HEADS = "/studio/char-heads.webp";
 const CHAR_BODIES = "/studio/char-bodies.webp";
+const CHAR_FACEMASK = "/studio/char-facemask.webp"; // vùng da mặt của từng đầu (dán khuôn mặt đã chọn)
+const MASK_W = HEAD_CELLS_N * 332;
 const FACE_STRIP = "/studio/faces.webp";
 const FACE_EYES = "/studio/faces-eyes.webp";
 const FACE_W = 204;
@@ -131,7 +133,7 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
         // Tranh nhân vật của design: ô 332×272 trong dải 8 ô, canh đáy khung
         <svg
           x="-12" y="10" width="144" height="128" viewBox={`${look.index * 332} 0 332 272`} preserveAspectRatio="xMidYMax meet"
-          data-painted={PRESETS[look.index].id} data-hair={look.hairColor ?? undefined} data-eyes={look.eyes ?? undefined}
+          data-painted={PRESETS[look.base].id} data-head={look.index} data-hair={look.hairColor ?? undefined} data-eyes={look.eyes ?? undefined}
         >
           {look.body === null ? (
             <image href={CHAR_STRIP} width="2656" height="272" />
@@ -146,11 +148,12 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
               >
                 <image href={CHAR_BODIES} width={BODIES.length * 332} height={BODY_H} />
               </svg>
-              <image href={CHAR_HEADS} width="2656" height="272" />
+              <image href={CHAR_HEADS} width={MASK_W} height="272" />
             </>
           )}
-          {look.hairColor && <Tint id={`${uid}-th`} href={CHAR_HAIR} x={look.index * 332} w={332} h={272} total={2656} fill={tintOf(look.hairColor, uid)} />}
-          {look.eyes && <Tint id={`${uid}-te`} href={CHAR_EYES} x={look.index * 332} w={332} h={272} total={2656} fill={tintOf(look.eyes, uid)} />}
+          {look.face !== null && <PaintedFaceSwap uid={uid} cell={look.index} face={look.face} eyes={look.eyes} />}
+          {look.hairColor && <Tint id={`${uid}-th`} href={CHAR_HAIR} x={look.index * 332} w={332} h={272} total={MASK_W} fill={tintOf(look.hairColor, uid)} />}
+          {look.eyes && look.face === null && <Tint id={`${uid}-te`} href={CHAR_EYES} x={look.index * 332} w={332} h={272} total={MASK_W} fill={tintOf(look.eyes, uid)} />}
         </svg>
       ) : (
       <>
@@ -236,6 +239,28 @@ function Tint({ id, href, x, w, h, total, fill }: { id: string; href: string; x:
       </mask>
       <rect x={x} y="0" width={w} height={h} fill={fill} mask={`url(#${id})`} />
       <image href={href} width={total} height={h} style={{ mixBlendMode: "multiply" }} />
+    </g>
+  );
+}
+
+/**
+ * Dán khuôn mặt đã chọn (faces.webp, căn theo mắt) lên tranh: co theo khoảng cách hai mắt của đầu,
+ * chỉ hiện trong vùng da mặt của đầu đó (char-facemask.webp) nên không đè tóc, mũ, tai nghe.
+ */
+function PaintedFaceSwap({ uid, cell, face, eyes }: { uid: string; cell: number; face: number; eyes: string | null }) {
+  const [gx, gy, dist] = EYE_GEO[cell];
+  const s = dist / 29; // px tranh trên một đơn vị của mặt SVG
+  return (
+    <g>
+      <mask id={`${uid}-fm`} maskUnits="userSpaceOnUse" x={cell * 332} y="0" width="332" height="272" style={{ maskType: "alpha" }}>
+        <image href={CHAR_FACEMASK} width={MASK_W} height="272" />
+      </mask>
+      <g mask={`url(#${uid}-fm)`}>
+        <svg x={cell * 332 + gx - 34 * s} y={gy - 17 * s} width={68 * s} height={46 * s} viewBox={`${face * FACE_W} 0 ${FACE_W} ${FACE_H}`} data-face={FACES[face].id}>
+          <image href={FACE_STRIP} width={FACE_W * FACES.length} height={FACE_H} />
+          {eyes && <Tint id={`${uid}-tfp`} href={FACE_EYES} x={face * FACE_W} w={FACE_W} h={FACE_H} total={FACE_W * FACES.length} fill={tintOf(eyes, uid)} />}
+        </svg>
+      </g>
     </g>
   );
 }

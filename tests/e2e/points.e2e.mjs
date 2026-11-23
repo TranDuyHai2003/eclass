@@ -451,11 +451,15 @@ try {
     expect(await hero(`[data-painted="preset-student"] [data-body="outfit-tee"]`), "thay áo phông phải giữ đầu Học sinh nam, chỉ đổi thân");
     expect(await click("face-preset-kimono"), "thiếu khuôn mặt Cô gái kimono");
     await sleep(200);
-    expect(await hero(`[data-face="preset-kimono"]`) && !(await hero("[data-painted]")), "chọn mặt khác phải vẽ nhân vật với mặt kimono");
+    expect(await hero(`[data-painted="preset-student"] [data-face="preset-kimono"]`), "chọn mặt kimono phải dán lên tranh Học sinh nam (không đổi sang SVG)");
+    expect(await click("item-hair-bob"), "thiếu Tóc bob");
+    await sleep(200);
+    // đầu tóc bob vẽ sẵn mang đúng mặt kimono → không cần dán mặt
+    expect(await hero(`[data-head="8"]`) && !(await hero("[data-head] [data-face]")), "tóc bob phải vẽ bằng đầu tóc bob trơn (mặt kimono có sẵn)");
     expect(await click("decor-save"), "không bấm được Lưu trang trí");
     expect(await s.waitText(/Đã lưu trang trí/), "chưa lưu");
     const av = await prisma.userAvatar.findUnique({ where: { userId: data.student.id } });
-    expect(av?.config.face === "preset-kimono" && av.config.hairColor === "hc-black", `cấu hình lưu sai: ${JSON.stringify(av?.config)}`);
+    expect(av?.config.face === "preset-kimono" && av.config.hairColor === "hc-black" && av.config.hair === "hair-bob", `cấu hình lưu sai: ${JSON.stringify(av?.config)}`);
   });
 
   await step("Học sinh: hồ sơ cá nhân hiện nhân vật, danh hiệu, xu tích luỹ; bạn khác xem không thấy kết quả gần đây; hồ sơ thầy → 404", async () => {

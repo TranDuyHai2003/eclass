@@ -3,7 +3,7 @@
  * Món thiếu mua cả bộ qua `buyBundle` (một giao dịch, được cả bộ hoặc không món nào).
  */
 import type { Slot } from "./items";
-import { BODIES, HEAD_ANCHOR } from "./painted-data";
+import { BODIES, EYE_GEO, HEAD_ANCHOR } from "./painted-data";
 
 export interface Preset {
   id: string;
@@ -50,42 +50,64 @@ export function faceIndexOf(config: LookConfig): number {
 }
 
 export interface PaintedLook {
-  /** Ô tranh trong characters.webp (đầu / cả nhân vật) */
+  /** Ô đầu / cả nhân vật: 0–7 = characters.webp, 8 = tóc bob không hoa (chỉ có trong char-heads.webp) */
   index: number;
+  /** Mẫu gốc của ô (màu tóc/mắt/mặt/trang phục gốc) */
+  base: number;
   /** Thân thay theo trang phục: ô trong char-bodies.webp; null = giữ nguyên tranh */
   body: number | null;
+  /** Khuôn mặt dán lên tranh (chỉ số FACES); null = mặt của tranh */
+  face: number | null;
   /** itemId màu tóc / màu mắt cần tô lại trên tranh; null = giữ màu tranh */
   hairColor: string | null;
   eyes: string | null;
 }
 
+/** Đầu vẽ sẵn: ô tranh → kiểu tóc + phụ kiện của đầu đó; ô 8 = đầu cô gái kimono bỏ hoa (tóc bob trơn) */
+const HEADS: { cell: number; base: number; hair: string | null; accessory: string | null }[] = [
+  ...[0, 1, 4, 6, 7].map((i) => ({ cell: i, base: i, hair: PRESETS[i].items.hair ?? null, accessory: PRESETS[i].items.accessory ?? null })),
+  { cell: 8, base: 7, hair: "hair-bob", accessory: null },
+];
+
 /**
  * Vẽ bằng tranh của design (thay vì nhân vật SVG):
  * - trang phục liền đầu (hoodie tai mèo, giáp hiệp sĩ, đồ phi hành gia) → nguyên tranh mẫu đó;
- * - còn lại: kiểu tóc + phụ kiện trùng một mẫu lộ đầu (và mặt chưa chọn khác) → đầu của mẫu đó + thân theo trang phục
+ * - còn lại: kiểu tóc + phụ kiện trùng một đầu vẽ sẵn → đầu đó + thân theo trang phục
  *   (thân có sẵn hoặc trang phục tạo thêm trong char-bodies.webp), cổ ghép đúng đường cằm.
+ * Khuôn mặt đã chọn khác mặt của tranh → dán mặt đó lên vùng da mặt của tranh (không đè tóc/mũ).
  * Màu tóc / màu mắt khác mẫu thì tô lại ngay trên tranh.
  */
 export function paintedLook(config: LookConfig): PaintedLook | null {
   const outfit = config.outfit ?? null;
-  const recolor = (index: number, body: number | null): PaintedLook => {
-    const p = PRESETS[index].items;
+  const make = (index: number, base: number, body: number | null): PaintedLook => {
+    const p = PRESETS[base];
+    const fi = config.face && config.face !== p.id && index in EYE_GEO ? FACE_IDS.indexOf(config.face) : -1;
+    const eyeBase = fi >= 0 ? PRESETS.find((x) => x.id === FACE_IDS[fi])?.items.eyes : p.items.eyes;
     return {
       index,
+      base,
       body,
-      hairColor: config.hairColor && config.hairColor !== p.hairColor ? config.hairColor : null,
-      eyes: config.eyes && config.eyes !== p.eyes ? config.eyes : null,
+      face: fi >= 0 ? fi : null,
+      hairColor: config.hairColor && config.hairColor !== p.items.hairColor ? config.hairColor : null,
+      eyes: config.eyes && config.eyes !== eyeBase ? config.eyes : null,
     };
   };
   const whole = PRESETS.findIndex((p, i) => !(i in HEAD_ANCHOR) && p.items.outfit === outfit);
-  if (whole >= 0) return recolor(whole, null);
-  const head = PRESETS.findIndex(
-    (p, i) => i in HEAD_ANCHOR && faceFits(config, p) && (["hair", "accessory"] as const).every((k) => (config[k] ?? null) === (p.items[k] ?? null)),
-  );
-  if (head < 0) return null;
-  if (PRESETS[head].items.outfit === outfit) return recolor(head, null);
+  if (whole >= 0) return make(whole, whole, null);
+  const head = HEADS.find((h) => h.hair === (config.hair ?? null) && h.accessory === (config.accessory ?? null));
+  if (!head) return null;
+  if (head.cell < PRESETS.length && PRESETS[head.cell].items.outfit === outfit) return make(head.cell, head.base, null);
   const body = BODIES.findIndex((b) => b.outfit === outfit);
-  return body < 0 ? null : recolor(head, body);
+  return body < 0 ? null : make(head.cell, head.base, body);
+}
+
+/** Khuôn mặt đang hiện của cấu hình (id trong FACES) — để đổi tóc / áo vẫn giữ mặt; null nếu mặt bị che (nhà du hành, hiệp sĩ) */
+export function currentFaceId(config: LookConfig): string | null {
+  const look = paintedLook(config);
+  if (!look) return FACES[faceIndexOf(config)].id;
+  if (look.face !== null) return FACES[look.face].id;
+  const id = PRESETS[look.base].id;
+  return FACE_IDS.includes(id) ? id : null;
 }
 
 /** Chỉ số mẫu nhân vật mà cấu hình trùng khớp hoàn toàn (tóc, màu tóc, mắt, trang phục, phụ kiện, mặt); -1 nếu tự chỉnh khác mẫu */

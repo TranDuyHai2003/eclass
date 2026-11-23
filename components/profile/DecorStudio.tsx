@@ -9,7 +9,7 @@ import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { buyBundle, saveAvatar } from "@/actions/avatar";
 import { ITEM_BY_ID, itemsOfSlot, type Item, type Slot } from "@/lib/game/items";
-import { FACES, PRESETS, faceIndexOf, paintedLook, presetIndexOf, type Preset } from "@/lib/game/presets";
+import { FACES, PRESETS, currentFaceId, presetIndexOf, type Preset } from "@/lib/game/presets";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { play } from "@/lib/sound";
 import { Chibi, FxShape } from "@/components/avatar/Chibi";
@@ -54,6 +54,7 @@ const fmt = (n: number) => n.toLocaleString("vi-VN");
 const priceText = (xu: number, gem: number) => [xu ? `${fmt(xu)} xu` : "", gem ? `${gem} ngọc` : ""].filter(Boolean).join(" + ") || "0 xu";
 const noFx = { background: null, frame: null, effect: null } as const;
 const ACCENT = "#5B2BD6";
+const KEEP_FACE: Slot[] = ["hair", "outfit", "accessory"];
 
 /** Màu ruy băng danh hiệu theo canvas (nền, chữ); món khác lấy theo độ hiếm */
 const TITLE_COLORS: Record<string, [string, string]> = {
@@ -109,7 +110,8 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
   const put = (slot: Slot, id: string | null) => {
     play("click");
     setJustSaved(false);
-    setConfig((c) => ({ ...c, [slot]: id }));
+    // Đổi tóc / áo / phụ kiện mà chưa chọn mặt riêng → giữ mặt đang hiện (không bị đổi sang mặt của tranh khác)
+    setConfig((c) => ({ ...c, ...(!c.face && KEEP_FACE.includes(slot) ? { face: currentFaceId(c) } : {}), [slot]: id }));
   };
   const putFace = (id: string) => {
     play("click");
@@ -117,8 +119,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
     setConfig((c) => ({ ...c, face: id }));
   };
   // Mặt đang hiện: theo tranh mẫu (khi dáng trùng mẫu) hoặc mặt đã chọn / mặc định theo kiểu tóc
-  const look = paintedLook(config);
-  const faceNow = look ? PRESETS[look.index].id : FACES[faceIndexOf(config)].id;
+  const faceNow = currentFaceId(config);
   const applyPreset = (p: Preset) => {
     play("click");
     setJustSaved(false);
