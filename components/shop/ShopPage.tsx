@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import dynamic from "next/dynamic";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Coin, GemSmall, IconEye, IconHeart, IconHistory, IconInfo, IconMenu } from "@/components/studio/icons";
-import { ShopArt, SHOP_CHEST, Sprite, frameSpriteStyle, hasSprite, rewardArtIndex, shopItemIndex } from "@/components/studio/Sprite";
-import { FrameRing } from "@/components/profile/FrameRing";
 import { cn } from "@/lib/utils";
+import { mali, nunito } from "@/lib/fonts";
 import { cancelRedemption, redeemReward, setGoalReward } from "@/actions/points";
 import { buyItem, saveAvatar } from "@/actions/avatar";
 import type { StudentPointsPageData } from "@/lib/points/queries";
@@ -16,65 +13,60 @@ import type { HomeTodoItem } from "@/lib/home/student-home";
 import { LEVELS, getLevel } from "@/lib/points/levels";
 import { rarityOf, type Rarity } from "@/lib/points/rarity";
 import { ITEMS, ITEM_BY_ID, SLOTS, type Item } from "@/lib/game/items";
-import { CHESTS, type ChestId, type Outcome } from "@/lib/game/gacha-shared";
+import type { Outcome } from "@/lib/game/gacha-shared";
 import { buildNpcLines } from "@/lib/game/npc";
 import { buzz, isSoundOn, onSoundChange, play, setSoundOn } from "@/lib/sound";
-import { Nameplate } from "@/components/studio/Nameplate";
-import { AvatarFace } from "@/components/studio/AvatarFace";
-import { LevelUpDialog, Mascot, OfflineBanner, useOnline, useTweenNumber } from "@/components/studio/effects";
-import { Chibi } from "@/components/avatar/Chibi";
+import { V2Art, V2_MASCOT, rewardArtV2, v2Index } from "@/components/studio/Sprite";
+import { LevelUpDialog, useOnline, useTweenNumber } from "@/components/studio/effects";
 import { PetSvg } from "@/components/avatar/PetSvg";
 import { Confetti } from "@/components/points/Confetti";
 import { CoinBurst } from "@/components/game/CoinBurst";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RAR_STYLE } from "@/components/studio/rarity";
-import { ScratchCodeModal } from "./ScratchCodeModal";
-import { TasksModal, type RecentDone } from "./TasksModal";
-import { InventoryModal } from "./InventoryModal";
-import { LeaderboardModal, type BoardData } from "./LeaderboardModal";
+import { type RecentDone } from "./TasksModal";
+import { type BoardData } from "./LeaderboardModal";
 import { HistoryModal } from "./HistoryModal";
 import { TitlesModal } from "./TitlesModal";
 import { ShopMenuModal, type MenuAction } from "./ShopMenuModal";
 import { WeatherLayer, useWeather } from "./Weather";
-
-// Hộp thoại cầu nguyện (hoạt ảnh + gọi server) chỉ tải khi mở
-const GachaModal = dynamic(() => import("./GachaModal").then((m) => m.GachaModal), { ssr: false });
+import { AvatarRing, CoinDot, GemDot, ItemArt, PlateBox, QUICK_EQUIP, RAR_LABEL, fmt, shortName } from "./ah/parts";
+import { EarnSection } from "./ah/EarnSection";
+import { CodeSection } from "./ah/CodeSection";
+import { GachaSection } from "./ah/GachaSection";
+import { GoldSection } from "./ah/GoldSection";
+import { BagSection } from "./ah/BagSection";
+import { CustomizeModal } from "./ah/CustomizeModal";
 
 type Reward = StudentPointsPageData["rewards"][number];
-type Cat = "all" | "physical" | "voucher" | "deco" | "pet" | "box";
-type Sec = "shop" | "earn" | "gacha" | "gold" | "bag";
-const SECS: { key: Sec; label: string }[] = [
-  { key: "shop", label: "Cửa hàng" },
-  { key: "earn", label: "Kiếm xu" },
-  { key: "gacha", label: "Hộp bí ẩn" },
-  { key: "gold", label: "Bảng Vàng" },
-  { key: "bag", label: "Túi đồ" },
-];
-type DecoSlot = "all" | Item["slot"];
+type Sec = "shop" | "earn" | "code" | "gacha" | "gold" | "bag";
+type Cat = "all" | "physical" | "voucher" | "frame" | "nameplate" | "pet" | "deco";
 type RarFilter = "all" | Rarity;
-type Sort = "pop" | "asc" | "desc";
-/** Ô có đồ bán/rương — chip lọc trong danh mục Trang trí */
-const DECO_SLOTS = SLOTS.filter((sl) => sl.key !== "pet" && ITEMS.some((i) => i.slot === sl.key && !i.free));
-/** "Tất cả" chỉ trưng đồ trang trí hồ sơ (khung, nền, phụ kiện, danh hiệu); tóc/mắt/trang phục xem ở Trang trí */
-const ALL_SLOTS: Item["slot"][] = ["frame", "background", "accessory", "title"];
-/** Ô mặc được ngay từ tiệm (không cần trình tuỳ chỉnh) */
-const QUICK_EQUIP: Item["slot"][] = ["frame", "background", "title", "accessory", "pet", "effect", "nameplate"];
-const GEM_XU = 1500; // quy đổi chỉ để sắp xếp theo giá
+type DecoSlot = "all" | Item["slot"];
 
-const CATS: { key: Cat; label: string }[] = [
+const CATS: { key: Cat | "box"; label: string }[] = [
   { key: "all", label: "Tất cả" },
   { key: "physical", label: "Quà hiện vật" },
   { key: "voucher", label: "Thẻ đặc quyền" },
-  { key: "deco", label: "Trang trí" },
-  { key: "pet", label: "Thú cưng" },
-  { key: "box", label: "Hộp bí ẩn" },
+  { key: "frame", label: "Viền avatar" },
+  { key: "nameplate", label: "Bảng tên" },
+  { key: "pet", label: "Mèo cún" },
+  { key: "deco", label: "Trang trí khác" },
+  { key: "box", label: "Hộp bí ẩn (Gacha)" },
 ];
+const CAT_TITLE: Record<Cat, string> = { all: "Tất cả sản phẩm", physical: "Quà hiện vật", voucher: "Thẻ đặc quyền", frame: "Viền avatar", nameplate: "Bảng tên", pet: "Mèo cún", deco: "Trang trí khác" };
+const SEC_TITLE: Record<Exclude<Sec, "shop">, string> = { earn: "Nộp bài tập nhận xu", code: "Thẻ cào Điểm 10 & Code", gold: "Bảng Vàng server khối", gacha: "Hộp bí ẩn", bag: "Túi đồ của bé" };
+/** Các ô "Trang trí khác": tóc, mắt, trang phục, phụ kiện, nền, hiệu ứng, danh hiệu (có món bán/rương) */
+const DECO_SLOTS = SLOTS.filter((sl) => !["skin", "frame", "nameplate", "pet"].includes(sl.key) && ITEMS.some((i) => i.slot === sl.key && !i.free));
+const HOW: Record<string, string> = {
+  PHYSICAL: "Nhận tại lớp học offline. Thầy sẽ xác nhận khi trao quà cho bạn.",
+  VIRTUAL: "Cất vào Túi đồ. Báo thầy khi bạn muốn dùng thẻ.",
+  frame: "Tự động đeo lên hồ sơ và Bảng Vàng.",
+  nameplate: "Tự động đổi bảng tên trên hồ sơ và Bảng Vàng.",
+  pet: "Thú cưng đi cùng nhân vật của bạn.",
+};
 
-/** Một ô trong lưới: quà của thầy, đồ trang trí/thú cưng, hoặc rương */
+/** Một ô trong lưới: quà của thầy hoặc đồ trang trí/thú cưng */
 type Entry =
-  | { key: string; kind: "reward"; rarity: Rarity; name: string; price: { xu: number }; r: Reward }
-  | { key: string; kind: "item"; rarity: Rarity; name: string; price: Item["price"] | null; it: Item }
-  | { key: string; kind: "chest"; rarity: Rarity; name: string; price: { xu: number } | { gem: number }; chest: ChestId };
+  | { key: string; kind: "reward"; rarity: Rarity; name: string; r: Reward }
+  | { key: string; kind: "item"; rarity: Rarity; name: string; it: Item };
 
 export interface ShopPageProps {
   data: StudentPointsPageData;
@@ -83,42 +75,44 @@ export interface ShopPageProps {
   todoTotal: number;
   recent?: RecentDone[];
   boards: BoardData[];
-  /** Banner thử thách tuần ở hộp Bảng Vàng (dữ liệu thật của ví) */
+  /** Banner thử thách tuần ở Bảng Vàng (dữ liệu thật của ví) */
   event?: { title: string; text: string; badge: string } | null;
   /** null khi rương đang tắt (GACHA_ENABLED=off) */
   gacha?: { pullsToday: number } | null;
 }
 
-const fmt = (n: number) => n.toLocaleString("vi-VN");
-
-/** Tiệm quà — bố cục theo artifact thiết kế GĐ9 (ví + mục tiêu + lọc + lưới + bảng chi tiết); logic xu/ngọc/quà/đồ/rương giữ nguyên */
+/** Tiệm quà — giao diện "Adorable Home" của canvas ShopV2 (thanh gỗ, khối hồ sơ, mèo linh vật, danh mục trái, thẻ theo độ hiếm); logic xu/ngọc/quà/đồ/rương giữ nguyên */
 export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, event = null, gacha = null }: ShopPageProps) {
   const router = useRouter();
-  const [cat, setCat] = useState<Cat>("all");
-  // Các mục của "Tiệm quà v2" (canvas thiết kế): Cửa hàng · Kiếm xu · Hộp bí ẩn · Bảng Vàng · Túi đồ
+  const online = useOnline();
   const [sec, setSec] = useState<Sec>("shop");
+  const [cat, setCat] = useState<Cat>("all");
+  const [rar, setRar] = useState<RarFilter>("all");
+  const [decoSlot, setDecoSlot] = useState<DecoSlot>("all");
+  const [affordOnly, setAffordOnly] = useState(false);
+  const [selKey, setSelKey] = useState<string | null>(null);
+  const [modal, setModal] = useState<null | "history" | "menu" | "titles">(null);
+  const [custom, setCustom] = useState(false);
   const [lvUp, setLvUp] = useState<number | null>(null);
   const [soundOn, setSoundState] = useState(true);
-  const online = useOnline();
-  const [modal, setModal] = useState<null | "tasks" | "bag" | "scratch" | "board" | "history" | "menu" | "titles">(null);
-  const [decoSlot, setDecoSlot] = useState<DecoSlot>("all");
-  const [rar, setRar] = useState<RarFilter>("all");
-  const [affordOnly, setAffordOnly] = useState(false);
-  const [sort, setSort] = useState<Sort>("pop");
-  const [selKey, setSelKey] = useState<string | null>(null);
-  const [sheet, setSheet] = useState(false);
-  const [gachaOpen, setGachaOpen] = useState<{ chest: ChestId; rates: boolean } | null>(null);
   const [weather, setWeather] = useWeather();
-  const [confirm, setConfirm] = useState<Reward | null>(null);
   const [pending, start] = useTransition();
   const [celebrated, setCelebrated] = useState(0);
   const [burst, setBurst] = useState(0);
+  const [fly, setFly] = useState<{ k: number; dx: number; dy: number; x: number; y: number } | null>(null);
+  const [hearts, setHearts] = useState<number[]>([]);
+  const [tipI, setTipI] = useState(0);
   const [avatar, setAvatar] = useState(data.avatar);
   const [owned, setOwned] = useState(() => new Set(data.ownedItems));
+  const coinRef = useRef<HTMLSpanElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
+  const firstSec = useRef(true);
   const { wallet, goal } = data;
   const level = getLevel(wallet.lifetimeEarned);
+  const xuShown = useTweenNumber(wallet.balance);
   const pet = avatar.pet ? ITEM_BY_ID[avatar.pet] : null;
   const bagCount = data.redemptions.filter((r) => r.status === "PENDING").length + owned.size;
+  const plateDark = !!avatar.nameplate && ITEM_BY_ID[avatar.nameplate]?.v2 === "dark";
 
   const lines = useMemo(
     () =>
@@ -137,7 +131,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       }).map((l) => l.replace(/Mình là Lucky Boy, bấm vào mình để nghe tiếp nhé 😉/, "Meo~ vuốt ve tớ đi, tớ kể tiếp cho nghe 🐾")),
     [user.name, data.canEarn, todoTotal, wallet, level, goal],
   );
-  const xuShown = useTweenNumber(wallet.balance);
+
   // Âm thanh: đọc/ghi localStorage trong effect (HTML server/client khớp)
   useEffect(() => {
     setSoundState(isSoundOn());
@@ -154,9 +148,48 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       /* bỏ qua */
     }
   }, [level.level, user.id]);
+  // Chuyển mục: nếu đầu mục đã trôi khỏi màn hình thì cuộn lên (canvas: nội dung mục thay ngay tại chỗ)
+  useEffect(() => {
+    if (firstSec.current) {
+      firstSec.current = false;
+      return;
+    }
+    const el = mainRef.current;
+    if (el && el.getBoundingClientRect().top < 80) el.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [sec, cat]);
+  // Đóng hộp chi tiết bằng phím Esc
+  useEffect(() => {
+    if (!selKey && !custom) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setSelKey(null);
+      setCustom(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selKey, custom]);
+
   const goSec = (k: Sec) => {
     play("click");
     setSec(k);
+    setSelKey(null);
+  };
+  const goCat = (k: Cat) => {
+    play("click");
+    setSec("shop");
+    setCat(k);
+    setSelKey(null);
+  };
+  /** Đồng xu bay từ giữa màn hình về ví (hoặc ngược lại) như canvas */
+  const flyCoins = (dir: "in" | "out") => {
+    const pill = coinRef.current?.getBoundingClientRect();
+    if (!pill) return;
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight * 0.55;
+    const px = pill.left + 10;
+    const py = pill.top + 10;
+    setFly(dir === "in" ? { k: Date.now(), x: cx, y: cy, dx: px - cx, dy: py - cy } : { k: Date.now(), x: px, y: py, dx: cx - px, dy: cy - py });
+    setTimeout(() => setFly(null), 1100);
   };
 
   const run = (fn: () => Promise<{ success: boolean; message?: string; error?: string }>, after?: () => void) =>
@@ -179,7 +212,8 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       if (res.success) {
         play("success");
         setAvatar(res.config ?? next);
-        toast.success(`Đang dùng "${item.name}"`);
+        setSelKey(null);
+        toast.success(`Đã trang bị "${item.name}"`);
         router.refresh();
       } else {
         play("error");
@@ -195,7 +229,9 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         buzz(25);
         setTimeout(() => play("success"), 200);
         setBurst((n) => n + 1);
+        flyCoins("out");
         setOwned((o) => new Set([...o, item.id]));
+        setSelKey(null);
         toast.success(res.message);
         // Mua đồ mặc nhanh thì dùng luôn — phải LƯU lên server (buyItem chỉ thêm vào túi) (review Gemini GĐ6)
         if (QUICK_EQUIP.includes(item.slot) && item.slot !== "accessory") {
@@ -209,13 +245,33 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       }
     });
 
+  const redeem = (r: Reward) =>
+    run(
+      () => redeemReward(r.id),
+      () => {
+        setSelKey(null);
+        setCelebrated((n) => n + 1);
+        flyCoins("out");
+        play("success");
+        buzz(20);
+      },
+    );
 
-  const openGacha = (chest: ChestId, rates = false) => {
-    if (!gacha) return;
-    play("click");
-    setSheet(false);
-    setGachaOpen({ chest, rates });
-  };
+  const saveCustom = (next: { frame: string | null; nameplate: string | null }) =>
+    start(async () => {
+      const res = await saveAvatar({ ...avatar, ...next });
+      if (res.success) {
+        play("coin");
+        setAvatar(res.config ?? { ...avatar, ...next });
+        setCustom(false);
+        toast.success("Đã lưu hồ sơ");
+        router.refresh();
+      } else {
+        play("error");
+        toast.error(res.error);
+      }
+    });
+
   const onGachaDone = ({ outcome }: { outcome: Outcome }) => {
     if (outcome.kind === "item" && !outcome.duplicate) setOwned((o) => new Set([...o, outcome.itemId]));
   };
@@ -223,649 +279,498 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
     setModal(null);
     if (a === "shop") { setSec("shop"); setCat("all"); }
     else if (a === "box") setSec("gacha");
-    else if (a === "tasks" || a === "scratch") setSec("earn");
+    else if (a === "tasks") setSec("earn");
+    else if (a === "scratch") setSec("code");
     else if (a === "board") setSec("gold");
     else if (a === "bag") setSec("bag");
     else setTimeout(() => setModal(a), 120);
+  };
+  const petIt = () => {
+    play("meow");
+    buzz(15);
+    const k = Date.now();
+    setHearts([k, k + 1, k + 2]);
+    setTimeout(() => setHearts((h) => h.filter((x) => x < k || x > k + 2)), 1300);
+    setTipI((n) => n + 1);
   };
 
   // ---------- Danh sách theo danh mục
   const entriesFor = (c: Cat): Entry[] => {
     const rewards: Entry[] = data.rewards
       .filter((r) => (c === "all" ? true : c === "physical" ? r.kind === "PHYSICAL" : c === "voucher" ? r.kind === "VIRTUAL" : false))
-      .map((r) => ({ key: `r:${r.id}`, kind: "reward", rarity: rarityOf(r.price).key, name: r.title, price: { xu: r.price }, r }));
-    const cosmetics =
-      c === "deco"
-        ? ITEMS.filter((i) => !i.free && i.slot !== "pet" && (i.price || i.gachaOnly) && (decoSlot === "all" || i.slot === decoSlot))
-        : c === "all"
-          ? ITEMS.filter((i) => !i.free && !i.gachaOnly && !i.studio && i.price && ALL_SLOTS.includes(i.slot))
-          : [];
-    const pets = c === "all" || c === "pet" ? ITEMS.filter((i) => i.slot === "pet" && (c === "pet" || !i.studio)) : [];
-    const items: Entry[] = [...cosmetics, ...pets].map((it) => ({ key: `i:${it.id}`, kind: "item", rarity: it.rarity, name: it.name, price: it.price ?? null, it }));
-    const chests: Entry[] = gacha && (c === "all" || c === "box")
-      ? (["xu", "gem"] as const).map((id) => ({ key: `c:${id}`, kind: "chest", rarity: id === "xu" ? "epic" : "legendary", name: id === "xu" ? "Hộp Sao Mèo" : "Hộp Tinh Tú VIP", price: CHESTS[id].cost, chest: id }))
-      : [];
-    return [...rewards, ...items, ...chests];
+      .map((r) => ({ key: `r:${r.id}`, kind: "reward", rarity: rarityOf(r.price).key, name: r.title, r }));
+    const pick = (i: Item) => {
+      if (c === "all") return !i.free && !!i.price && (i.slot === "frame" || i.slot === "nameplate" || i.slot === "pet");
+      if (c === "frame" || c === "nameplate") return i.slot === c && (!!i.price || !!i.gachaOnly);
+      if (c === "pet") return i.slot === "pet";
+      if (c === "deco") return DECO_SLOTS.some((s) => s.key === i.slot) && !i.free && (!!i.price || !!i.gachaOnly) && (decoSlot === "all" || i.slot === decoSlot);
+      return false;
+    };
+    const items: Entry[] = ITEMS.filter(pick).map((it) => ({ key: `i:${it.id}`, kind: "item", rarity: it.rarity, name: it.name, it }));
+    return [...rewards, ...items];
   };
-  const counts = Object.fromEntries(CATS.map((c) => [c.key, c.key === "box" ? (gacha ? 2 : 0) : entriesFor(c.key).length])) as Record<Cat, number>;
-  const ownsEntry = (e: Entry) => e.kind === "item" && (!!e.it.free || owned.has(e.it.id));
-  const costOf = (p: Entry["price"]) => (!p ? 0 : "xu" in p ? p.xu : p.gem * GEM_XU);
-  const haveFor = (p: Entry["price"]) => (!p ? 0 : "xu" in p ? wallet.balance : wallet.gems);
-  const enough = (p: Entry["price"]) => !!p && haveFor(p) >= ("xu" in p ? p.xu : p.gem);
 
-  let list = entriesFor(cat).filter((e) => (rar === "all" || e.rarity === rar) && (!affordOnly || ownsEntry(e) || enough(e.price)));
-  if (sort === "asc") list = [...list].sort((a, b) => costOf(a.price) - costOf(b.price));
-  if (sort === "desc") list = [...list].sort((a, b) => costOf(b.price) - costOf(a.price));
-  const sel = list.find((e) => e.key === selKey) ?? list[0] ?? null;
-  const pick = (e: Entry) => {
+  const stateOf = (e: Entry) => {
+    if (e.kind === "reward") {
+      const r = e.r;
+      const soldOut = r.stock !== null && r.stock <= 0;
+      const limitHit = r.perStudentMonthlyLimit !== null && r.usedThisMonth >= r.perStudentMonthlyLimit;
+      return { own: false, on: false, locked: false, gachaOnly: false, soldOut, limitHit, ok: wallet.balance >= r.price, gem: false, need: r.price, have: wallet.balance };
+    }
+    const it = e.it;
+    const own = !!it.free || owned.has(it.id);
+    const gem = !!it.price && "gem" in it.price;
+    const need = !it.price ? 0 : "xu" in it.price ? it.price.xu : it.price.gem;
+    const have = gem ? wallet.gems : wallet.balance;
+    return { own, on: avatar[it.slot] === it.id, locked: !own && (it.minLevel ?? 0) > level.level, gachaOnly: !own && !it.price, soldOut: false, limitHit: false, ok: !!it.price && have >= need, gem, need, have };
+  };
+
+  const counts = Object.fromEntries((["all", "physical", "voucher", "frame", "nameplate", "pet", "deco"] as Cat[]).map((c) => [c, entriesFor(c).length])) as Record<Cat, number>;
+  const list = entriesFor(cat).filter((e) => {
+    if (rar !== "all" && e.rarity !== rar) return false;
+    if (!affordOnly) return true;
+    const s = stateOf(e);
+    return s.ok && !s.own && !s.locked && !s.soldOut && !s.limitHit;
+  });
+  const sel = selKey ? entriesFor(cat).find((e) => e.key === selKey) ?? null : null;
+  const open = (e: Entry) => {
     play("tick");
     setSelKey(e.key);
-    // Điện thoại/máy tính bảng: chi tiết mở dạng sheet đáy
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) setSheet(true);
   };
 
-  const showPanel = cat === "box";
+  const navBtn = "ah-btn h-12 px-5 text-base";
 
   return (
-    <div className="studio flex flex-col gap-5" data-testid="shop-frame" data-celebrated={celebrated} data-weather={weather}>
+    <div className={cn("ah min-h-screen pb-12", mali.variable, nunito.variable)} data-testid="shop-frame" data-celebrated={celebrated} data-weather={weather}>
       <Confetti burst={celebrated} />
       <CoinBurst burst={burst} />
       <WeatherLayer weather={weather} />
 
-      {/* ===== Đầu trang (canvas "Tiệm quà v2") ===== */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-[28px] font-extrabold tracking-tight" data-testid="shop-title">Tiệm Quà Học Đường</h1>
-          <p className="text-[#5F5B73]">Chăm làm bài, đổi quà xinh. Xu tiêu thoải mái, cấp độ không tụt.</p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button type="button" data-testid="history-open" onClick={() => { play("click"); setModal("history"); }} className="flex h-10 items-center gap-1.5 rounded-[10px] px-3 text-[13px] font-bold text-[#3B3650] hover:bg-white"><IconHistory /> Lịch sử</button>
-          <button type="button" data-testid="menu-open" onClick={() => { play("click"); setModal("menu"); }} aria-label="Menu Tiệm Quà" title="Menu Tiệm Quà" className="flex h-10 w-10 items-center justify-center rounded-[10px] text-[#3B3650] hover:bg-white"><IconMenu /></button>
-        </div>
-      </div>
-
-      {!online && <OfflineBanner onRetry={() => router.refresh()} />}
-
-      {/* ===== Cấp độ + ví ===== */}
-      <section className="flex flex-wrap gap-[18px]" data-testid="shop-hud">
-        <div className="flex flex-[999_1_520px] flex-wrap items-center gap-[18px] rounded-[20px] border border-[#ECE9F5] bg-white p-[18px]">
-          <Link href="/profile" title="Tùy chỉnh hồ sơ" className="relative h-24 w-24 shrink-0 rounded-full" style={avatar.frame ? frameSpriteStyle(avatar.frame, 96) : undefined}>
-            <AvatarFace config={avatar} title={user.name ?? undefined} className="absolute inset-[22px]" />
-            {avatar.frame && !frameSpriteStyle(avatar.frame, 96) && <FrameRing frameId={avatar.frame} className="absolute inset-0 h-full w-full" />}
+      {/* ===== Thanh gỗ ===== */}
+      <header className="ah-wood">
+        <div className="relative mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-4 gap-y-3 px-6 py-2.5 max-sm:px-4">
+          <Link href="/" aria-label="Về trang chủ" className="ah-btn ah-cream h-[46px] w-[46px] rounded-[14px] p-0">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="#ea6a51" /></svg>
           </Link>
-          <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-2.5">
-            <Nameplate id={avatar.nameplate} className="flex min-h-14 items-center px-3.5 py-2.5" testId="hud-nameplate">
-              <div className="flex flex-col">
-                <span className="text-[17px] font-extrabold">{user.name || "Học sinh"}</span>
-                <span className="text-xs">{user.grade ? `Khối ${user.grade} · ` : ""}{level.name}</span>
-              </div>
-            </Nameplate>
-            <div className="flex flex-wrap justify-between gap-2.5 text-[13px]">
-              <button type="button" data-testid="titles-open" onClick={() => { play("click"); setModal("titles"); }} title="Xem hệ thống danh hiệu" className="text-left hover:underline">
-                <b>Lv.{level.level}</b> <span className="text-[#5F5B73]">{level.name}</span>
-              </button>
-              <span className="text-[#5F5B73]"><b className="text-[#1E1B2E]">{fmt(wallet.lifetimeEarned)}</b> xu tích lũy</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-[#F1EEF8]" role="progressbar" aria-label="Xu tích luỹ đến cấp sau" aria-valuenow={level.progress} aria-valuemin={0} aria-valuemax={100}>
-              <div className="h-full rounded-full bg-[#5B2BD6]" style={{ width: `${Math.max(2, level.progress)}%` }} />
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="flex-[1_1_240px] text-xs text-[#5F5B73]">{level.next ? `Còn ${fmt(level.toNext)} xu nữa để lên Lv.${level.level + 1} · ${level.next.name}` : "Bạn đã đạt cấp cao nhất 👑"}</span>
-              <Link href="/profile" className="flex h-9 items-center rounded-[10px] border border-[#E4E0F0] bg-white px-3 text-[13px] font-bold text-[#2A1F5C]">Tùy chỉnh hồ sơ</Link>
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-[1_1_300px] flex-col gap-3.5 rounded-[20px] bg-[#1E1745] p-[18px] text-white">
-          <div className="flex gap-6">
-            <div data-testid="hud-balance">
-              <div className="text-xs text-[#C9BEFF]">Xu tiêu được</div>
-              <div className="flex items-center gap-2 text-[26px] font-extrabold"><Coin size={18} /><span key={xuShown.bump} className={cn(xuShown.bump > 0 && "v2-bump")}>{fmt(xuShown.shown)}</span></div>
-            </div>
-            <div data-testid="hud-gems">
-              <div className="text-xs text-[#C9BEFF]">Kim cương</div>
-              <div className="flex items-center gap-2 text-[26px] font-extrabold"><GemSmall size={14} />{wallet.gems}</div>
-            </div>
-          </div>
-          <p className="text-xs leading-normal text-[#D9D3F5]">Tiêu xu không làm giảm cấp độ. Cấp độ tính theo tổng xu tích lũy.</p>
-          <div className="mt-auto flex flex-wrap gap-2">
-            <button type="button" onClick={() => goSec("earn")} className="h-11 rounded-xl bg-white px-4 font-bold text-[#2A1F5C]">+ Kiếm xu</button>
-            <button type="button" data-testid="bag-open" onClick={() => goSec("bag")} className="relative h-11 rounded-xl bg-white/[0.12] px-4 font-bold">
-              Túi đồ{bagCount > 0 && <span className="ml-1.5 rounded-full bg-[#5B2BD6] px-1.5 text-[11px]">{bagCount}</span>}
+          <span className="relative inline-flex">
+            <button type="button" data-testid="bag-open" onClick={() => goSec("bag")} aria-label={`Túi đồ (${bagCount} món)`} className="ah-btn ah-cream h-[46px] w-[46px] rounded-[14px] p-0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.2" strokeLinejoin="round" aria-hidden><path d="M3 8l9-4 9 4v9l-9 4-9-4z" fill="#e7d0a3" /><path d="M3 8l9 4 9-4M12 12v9" /></svg>
             </button>
-            <button type="button" role="switch" aria-checked={soundOn} aria-label="Âm thanh hiệu ứng" onClick={() => setSoundOn(!soundOn)} className="ml-auto flex h-11 items-center gap-2 rounded-xl bg-white/[0.12] px-3.5 font-bold">
+            {bagCount > 0 && <Badge n={bagCount} />}
+          </span>
+          <div className="flex flex-col">
+            <h1 className="ah-hand text-[22px] font-bold leading-tight" data-testid="shop-title">Tiệm Quà Học Đường</h1>
+            <span className="text-xs font-extrabold text-[#6e4722]">Chăm làm bài · Đổi quà xinh</span>
+          </div>
+          <div className="ml-auto flex flex-wrap items-center gap-2.5">
+            <span className="ah-ink flex h-[42px] items-center gap-2 rounded-full bg-[#fffdf8] px-4 text-base font-black shadow-[0_3px_0_#241e1a]" data-testid="hud-balance" title="Xu tiêu được">
+              <span ref={coinRef}><CoinDot size={20} /></span>
+              <span key={xuShown.bump} className={cn("tabular-nums", xuShown.bump > 0 && "v2-bump")}>{fmt(xuShown.shown)}</span>
+            </span>
+            <span className="ah-ink flex h-[42px] items-center gap-2 rounded-full bg-[#fffdf8] px-4 text-base font-black shadow-[0_3px_0_#241e1a]" data-testid="hud-gems" title="Kim cương">
+              <GemDot size={15} />{wallet.gems}
+            </span>
+            <button type="button" data-testid="history-open" onClick={() => { play("click"); setModal("history"); }} aria-label="Lịch sử xu" title="Lịch sử xu" className="ah-btn ah-cream h-11 w-11 p-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="9" fill="#fef3c7" /><path d="M12 7v5l3 2" /></svg>
+            </button>
+            <button type="button" data-testid="menu-open" onClick={() => { play("click"); setModal("menu"); }} aria-label="Menu Tiệm Quà" title="Menu Tiệm Quà" className="ah-btn ah-cream h-11 w-11 p-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.4" strokeLinecap="round" aria-hidden><path d="M5 7h14M5 12h14M5 17h14" /></svg>
+            </button>
+            <button type="button" role="switch" aria-checked={soundOn} aria-label="Âm thanh hiệu ứng" title={soundOn ? "Âm thanh: Bật" : "Âm thanh: Tắt"} onClick={() => setSoundOn(!soundOn)} className="ah-btn ah-cream h-11 w-11 p-0">
               {soundOn ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M11 5L6 9H2v6h4l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" /></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M11 5L6 9H2v6h4l5 4z" fill="#7dd3fc" /><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" /></svg>
               ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M11 5L6 9H2v6h4l5 4z" /><path d="M22 9l-6 6M16 9l6 6" /></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M11 5L6 9H2v6h4l5 4z" fill="#e7d0a3" /><path d="M22 9l-6 6M16 9l6 6" /></svg>
               )}
-              {soundOn ? "Âm thanh: Bật" : "Âm thanh: Tắt"}
             </button>
           </div>
         </div>
-      </section>
+      </header>
 
-      {!data.canEarn && (
-        <p className="rounded-2xl border border-[#F3DC8E] bg-[#FFF6DB] px-4 py-2.5 text-sm font-semibold text-[#7A4E00]">Tài khoản cần được thầy duyệt để bắt đầu nhận xu và đổi quà.</p>
-      )}
-
-      {/* ===== Các mục ===== */}
-      <div role="tablist" aria-label="Tiệm quà" className="flex flex-wrap border-b border-[#E4E0F0]">
-        {SECS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            role="tab"
-            aria-selected={sec === t.key}
-            data-testid={t.key === "earn" ? "tasks-open" : t.key === "gold" ? "board-open" : `sec-${t.key}`}
-            onClick={() => goSec(t.key)}
-            className={cn("mr-[22px] px-1 py-3 text-[15px]", sec === t.key ? "font-bold text-[#5B2BD6] shadow-[inset_0_-3px_0_#5B2BD6]" : "font-semibold text-[#5F5B73]")}
-          >
-            {t.label}
-            {t.key === "earn" && todoTotal > 0 && <span className="ml-1.5 rounded-full bg-[#5B2BD6] px-1.5 text-[11px] text-white">{todoTotal}</span>}
-          </button>
-        ))}
-      </div>
-
-      {sec === "shop" && (
-        <>
-      {/* ===== Danh mục ===== */}
-      <div role="tablist" aria-label="Danh mục quà" className="flex gap-1 overflow-x-auto border-b border-[#E4E0F0] [scrollbar-width:none]">
-        {CATS.map((c) => (
-          <button
-            key={c.key}
-            type="button"
-            role="tab"
-            aria-selected={cat === c.key}
-            data-testid={`cat-${c.key}`}
-            onClick={() => { play("tick"); setCat(c.key); setSelKey(null); }}
-            className={cn("flex shrink-0 items-center gap-2 px-3.5 py-3 text-[15px]", cat === c.key ? "font-bold text-[#4319A8] shadow-[inset_0_-3px_0_#5B2BD6]" : "font-semibold text-[#5F5B73] hover:text-[#2A1F5C]")}
-          >
-            {c.label}
-            <span className="rounded-full bg-[#F3F1FA] px-1.5 py-0.5 text-[11px] font-bold text-[#4B4566]">{counts[c.key]}</span>
-          </button>
-        ))}
-      </div>
-
-      {showPanel && !gacha ? (
-        <div className="studio-card p-8 text-center font-semibold text-[#5F5B73]">Hộp bí ẩn đang tạm đóng. Quay lại sau nhé!</div>
-      ) : (
-        <>
-          {/* ===== Thanh lọc ===== */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {([["all", "Mọi độ hiếm", "#A8A3BA"], ...(["common", "rare", "epic", "legendary"] as Rarity[]).map((k) => [k, RAR_STYLE[k].label, RAR_STYLE[k].dot])] as [RarFilter, string, string][]).map(([k, label, dot]) => (
-              <button key={k} type="button" aria-pressed={rar === k} data-testid={`rar-${k}`} onClick={() => { play("tick"); setRar(k); }} className={cn("flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold", rar === k ? "border-[#2A1F5C] bg-[#2A1F5C] text-white" : "border-[#E4E0F0] bg-white text-[#3B3650]")}>
-                <span className="h-2 w-2 rounded-full" style={{ background: dot }} aria-hidden /> {label}
-              </button>
-            ))}
-            <div className="ml-auto flex flex-wrap items-center gap-3.5">
-              <button type="button" role="switch" aria-checked={affordOnly} data-testid="afford-only" onClick={() => { play("tick"); setAffordOnly((v) => !v); }} className="flex items-center gap-2 py-2 text-[13px] font-semibold text-[#3B3650]">
-                <span className={cn("relative h-5 w-9 rounded-full transition-colors", affordOnly ? "bg-[#5B2BD6]" : "bg-[#D6D1E6]")}>
-                  <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all", affordOnly ? "left-[18px]" : "left-0.5")} />
-                </span>
-                Chỉ món đủ tiền
-              </button>
-              <label className="flex items-center gap-2 text-[13px] text-[#5F5B73]">
-                Sắp xếp
-                <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} data-testid="shop-sort" className="h-9 rounded-[10px] border border-[#E4E0F0] bg-white px-2.5 font-semibold text-[#1E1B2E]">
-                  <option value="pop">Nổi bật</option>
-                  <option value="asc">Giá thấp → cao</option>
-                  <option value="desc">Giá cao → thấp</option>
-                </select>
-              </label>
-            </div>
+      <div className="mx-auto flex max-w-[1240px] flex-col gap-[22px] p-6 max-sm:px-4">
+        {!online && (
+          <div role="alert" className="ah-panel flex flex-wrap items-center gap-3 bg-[#fde2dc] px-[18px] py-3.5" data-testid="offline">
+            <b className="ah-hand text-base">Mất kết nối mạng.</b>
+            <span className="flex-[1_1_240px]">Bạn vẫn xem được tiệm, nhưng chưa đổi quà hay mở hộp được.</span>
+            <button type="button" onClick={() => router.refresh()} className="ah-btn ah-coral h-10 px-4">Thử lại</button>
           </div>
-          {cat === "deco" && (
-            <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]" role="tablist" aria-label="Lọc theo ô trang trí" data-testid="deco-slots">
-              {([{ key: "all", label: "Tất cả", icon: "" }, ...DECO_SLOTS] as { key: DecoSlot; label: string; icon: string }[]).map((sl) => (
-                <button key={sl.key} type="button" role="tab" aria-selected={decoSlot === sl.key} data-testid={`deco-${sl.key}`} onClick={() => { play("tick"); setDecoSlot(sl.key); setSelKey(null); }} className={cn("h-8 shrink-0 rounded-full border px-3 text-xs font-semibold", decoSlot === sl.key ? "border-[#5B2BD6] bg-[#F3F0FF] text-[#4319A8]" : "border-[#E4E0F0] bg-white text-[#3B3650]")}>
-                  {sl.label}
-                </button>
-              ))}
-            </div>
-          )}
-          {!data.isOffline && (cat === "all" || cat === "physical") && !data.rewards.some((r) => r.kind === "PHYSICAL") && (
-            <p className="text-xs text-[#5F5B73]">Quà hiện vật được trao tại lớp học offline, vì vậy bạn chỉ thấy các quà dành cho mọi học sinh.</p>
-          )}
+        )}
+        {!data.canEarn && (
+          <div className="ah-panel bg-[#fff1c9] px-[18px] py-3 font-bold text-[#6e4722]">Tài khoản cần được thầy duyệt để bắt đầu nhận xu và đổi quà.</div>
+        )}
 
-          {/* ===== Lưới + chi tiết ===== */}
-          <div className="flex items-start gap-6">
-            <div className="grid min-w-0 flex-1 grid-cols-2 gap-3.5 sm:grid-cols-[repeat(auto-fill,minmax(180px,1fr))]">
-              {list.map((e) => (
-                <ShopCard key={e.key} e={e} lv={level.level} selected={sel?.key === e.key} avatar={avatar} owned={ownsEntry(e)} using={e.kind === "item" && avatar[e.it.slot] === e.it.id} enough={enough(e.price)} have={haveFor(e.price)} onPick={() => pick(e)} />
-              ))}
-              {list.length === 0 && (
-                <div className="col-span-full rounded-[18px] border border-dashed border-[#E4E0F0] bg-white px-4 py-12 text-center text-[#5F5B73]">
-                  {affordOnly ? "Chưa có món nào vừa túi tiền. Nộp thêm bài để kiếm xu nhé." : "Thầy đang chuẩn bị quà — cứ chăm học tích xu nhé!"}
+        {/* ===== Khối hồ sơ ===== */}
+        <section className="ah-panel flex flex-wrap items-center gap-[18px] p-[18px]" data-testid="shop-hud">
+          <PlateBox id={avatar.nameplate} className="min-w-0 flex-[999_1_560px]" testId="hud-nameplate">
+            <div className="flex flex-wrap items-center gap-4 px-[18px] py-3.5">
+              <Link href="/profile" title="Hồ sơ của bạn" className="shrink-0 rounded-full">
+                <AvatarRing config={avatar} size={104} inset={22} title={user.name ?? undefined} />
+              </Link>
+              <div className={cn("flex min-w-0 flex-[1_1_300px] flex-col gap-2", plateDark ? "text-white" : "text-[#1E1B2E]")}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="ah-hand text-[22px] font-bold">{user.name || "Học sinh"}</span>
+                  {user.grade && <span className="rounded-full border-2 border-[#241e1a] bg-[#fef3c7] px-2.5 py-0.5 text-xs font-black text-[#241e1a]">Khối {user.grade}</span>}
                 </div>
-              )}
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" data-testid="titles-open" onClick={() => { play("click"); setModal("titles"); }} title="Xem hệ thống danh hiệu" className="ah-btn ah-gold h-[34px] px-3.5 text-sm">
+                    <span>{level.name} (<b>Lv.{level.level}</b>)</span>
+                  </button>
+                  <button type="button" data-testid="customize-open" onClick={() => { play("click"); setCustom(true); }} className="ah-btn ah-cream h-[34px] px-3.5 text-[13px]">Đổi viền &amp; bảng tên</button>
+                </div>
+                <div className="flex justify-between gap-2 text-xs font-extrabold"><span>Cấp độ {level.level}</span><span>{fmt(wallet.lifetimeEarned)}{level.next ? ` / ${fmt(level.next.min)}` : ""} xu tích lũy</span></div>
+                <div className="h-3.5 overflow-hidden rounded-full border-[2.5px] border-[#241e1a] bg-[#fffdf8]" role="progressbar" aria-label="Xu tích luỹ đến cấp sau" aria-valuenow={level.progress} aria-valuemin={0} aria-valuemax={100}>
+                  <div className="h-full bg-gradient-to-r from-[#fbd048] to-[#ea6a51]" style={{ width: `${Math.max(2, level.progress)}%` }} />
+                </div>
+                <div className="text-xs font-bold opacity-90">{level.next ? `Còn ${fmt(level.toNext)} xu tích lũy để lên Lv.${level.level + 1} · ${level.next.name}` : "Bạn đã đạt cấp cao nhất"}</div>
+              </div>
             </div>
-            {sel && (
-              <aside aria-label="Chi tiết món quà" className="studio-card sticky top-24 hidden w-[340px] shrink-0 flex-col gap-3.5 p-4 lg:flex" data-testid="shop-detail">
-                {renderDetail(sel)}
-              </aside>
-            )}
-          </div>
-        </>
-      )}
+          </PlateBox>
+          <nav aria-label="Menu tiệm quà" className="flex flex-[1_1_360px] flex-wrap justify-end gap-3">
+            <span className="relative inline-flex">
+              <button type="button" data-testid="tasks-open" onClick={() => goSec("earn")} className={cn(navBtn, "ah-gold")}>Nộp bài +</button>
+              {todoTotal > 0 && <Badge n={todoTotal} />}
+            </span>
+            <button type="button" data-testid="code-open" onClick={() => goSec("code")} className={cn(navBtn, "ah-coral")}>Thẻ cào &amp; Code</button>
+            <button type="button" data-testid="board-open" onClick={() => goSec("gold")} className={cn(navBtn, "ah-sky")}>Bảng Vàng</button>
+            <button type="button" data-testid="sec-gacha" onClick={() => goSec("gacha")} className={cn(navBtn, "ah-mint")}>Hộp bí ẩn</button>
+            <Link href="/profile" className={cn(navBtn, "ah-cream")}>Hồ sơ</Link>
+          </nav>
+        </section>
 
-        </>
-      )}
-
-      {/* ===== Kiếm xu: nộp bài + thẻ cào & GiftCode + thang cấp độ ===== */}
-      {sec === "earn" && (
-        <div className="flex flex-col gap-[18px]">
-          <div className="flex flex-wrap items-start gap-[18px]">
-            <div className="min-w-0 flex-[999_1_520px]">
-              <TasksModal inline open onOpenChange={() => setSec("shop")} todo={todo} todoTotal={todoTotal} recent={recent} />
-            </div>
-            <div className="min-w-0 flex-[1_1_320px]" data-testid="scratch-open">
-              <ScratchCodeModal inline open onOpenChange={() => setSec("shop")} canEarn={data.canEarn} />
-            </div>
+        {/* ===== Mèo linh vật ===== */}
+        <section className="ah-panel flex items-center gap-4 px-[18px] py-3.5" data-testid="mascot">
+          <div className="relative shrink-0">
+            <button type="button" onClick={petIt} aria-label={`Vuốt ve ${pet?.name ?? "mèo Snow"}`} data-testid="pet-card" className="v2-float relative flex h-[78px] w-[78px] cursor-pointer items-center justify-center overflow-hidden rounded-[18px] border-[2.5px] border-[#241e1a] bg-[#fef3c7] p-0 shadow-[0_4px_0_#241e1a]">
+              <PetArt pet={pet} />
+            </button>
+            {hearts.map((k, n) => (
+              <span key={k} className="v2-heart" style={{ left: 14 + n * 18, top: -6, animationDelay: `${n * 0.12}s` }} aria-hidden>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#f472b6" stroke="#241e1a" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z" /></svg>
+              </span>
+            ))}
           </div>
-          <div className="studio-card flex flex-col gap-3.5 p-5">
-            <h2 className="text-lg font-extrabold">Cấp độ &amp; danh hiệu</h2>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-2.5">
-              {LEVELS.map((l, i) => {
-                const on = i + 1 === level.level;
-                const reached = wallet.lifetimeEarned >= l.min;
+          <div role="status" className="flex min-w-0 flex-1 flex-col gap-1 rounded-[18px] border-[2.5px] border-[#241e1a] bg-[#fffdf8] px-4 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <b className="ah-hand text-sm text-[#9e6b3f]">{pet ? pet.name : "Mèo Hoàng Thượng Snow"}</b>
+              <button type="button" onClick={petIt} className="h-7 shrink-0 cursor-pointer rounded-full border-2 border-[#ea6a51] bg-[#fff5f2] px-3 text-xs font-extrabold text-[#b83d27]">Vuốt ve</button>
+            </div>
+            <div className="text-[15px] font-extrabold leading-normal" data-testid="pet-line">{lines[tipI % Math.max(1, lines.length)]}</div>
+          </div>
+        </section>
+
+        {/* ===== Thân trang ===== */}
+        <div className="flex flex-wrap items-start gap-[22px]">
+          <aside className="ah-panel flex max-w-[290px] flex-[1_1_250px] flex-col gap-2.5 p-4 max-md:max-w-none" aria-label="Danh mục tiệm quà">
+            <div className="ah-hand px-1 pb-1 pt-0.5 font-bold text-[#6e4722]">Danh mục tiệm quà</div>
+            <div role="tablist" aria-label="Danh mục quà" aria-orientation="vertical" className="flex flex-col gap-2.5 max-md:flex-row max-md:overflow-x-auto max-md:pb-2 max-md:[scrollbar-width:none]">
+              {CATS.filter((c) => c.key !== "box" || gacha).map((c) => {
+                const on = c.key === "box" ? sec === "gacha" : sec === "shop" && cat === c.key;
                 return (
-                  <div key={l.name} className={cn("flex flex-col gap-1.5 rounded-[14px] p-3.5", on ? "bg-[#EDE7FD] ring-2 ring-[#5B2BD6]" : reached ? "bg-[#F6F5FB]" : "border border-dashed border-[#E4E0F0] bg-white")}>
-                    <div className={cn("flex justify-between text-xs font-extrabold", on ? "text-[#4319A8]" : "text-[#5F5B73]")}><span>Lv.{i + 1}</span><span>{fmt(l.min)} xu</span></div>
-                    <div className="font-extrabold">{l.icon} {l.name}</div>
-                    <div className="text-xs leading-snug text-[#5F5B73]">{on ? "Cấp hiện tại của bạn" : reached ? "Đã đạt" : `Còn ${fmt(l.min - wallet.lifetimeEarned)} xu`}</div>
-                  </div>
+                  <button
+                    key={c.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    data-testid={`cat-${c.key}`}
+                    onClick={() => (c.key === "box" ? goSec("gacha") : goCat(c.key))}
+                    className={cn("ah-btn ah-catbtn shrink-0 max-md:w-auto", on ? "ah-coral" : "ah-cream")}
+                  >
+                    {c.label}
+                    <span className="ml-auto pl-2 font-[family-name:var(--font-nunito)] text-xs font-black opacity-80">{c.key === "box" ? 2 : counts[c.key]}</span>
+                  </button>
                 );
               })}
             </div>
-          </div>
-        </div>
-      )}
+          </aside>
 
-      {/* ===== Hộp bí ẩn: 2 rương + thanh tỉ lệ + sao bảo hiểm ===== */}
-      {sec === "gacha" && (
-        gacha ? (
-          <div className="flex flex-col gap-[18px]">
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-[18px]">
-              {(["xu", "gem"] as const).map((id) => {
-                const c = CHESTS[id];
-                const dark = id === "gem";
-                return (
-                  <div key={id} className={cn("flex flex-col gap-3.5 rounded-[20px] p-[22px]", dark ? "bg-[#1E1745] text-white" : "border border-[#ECE9F5] bg-white")} data-testid="chest-card" data-chest={id}>
-                    <div className="flex items-center justify-between"><h2 className="text-[19px] font-extrabold">{id === "xu" ? "Hộp Sao Mèo" : "Hộp Tinh Tú VIP"}</h2><span className="font-extrabold">{"xu" in c.cost ? `${fmt(c.cost.xu)} xu` : `${c.cost.gem} KC`}</span></div>
-                    <div className="relative flex h-[170px] items-center justify-center">
-                      <span aria-hidden className="absolute h-[190px] w-[190px] rounded-full" style={{ background: dark ? "radial-gradient(circle, rgba(253,230,138,0.35), transparent 65%)" : "radial-gradient(circle, rgba(91,43,214,0.16), transparent 65%)" }} />
-                      <span aria-hidden className="absolute bottom-1.5 h-[18px] w-[150px] rounded-full" style={{ background: dark ? "rgba(0,0,0,0.35)" : "rgba(30,27,46,0.09)" }} />
-                      <ShopArt index={SHOP_CHEST[id]} className="v2-float relative h-40 w-40" />
-                    </div>
-                    {(["common", "rare", "epic", "legendary"] as Rarity[]).filter((r) => (c.rates[r] ?? 0) > 0).map((r) => (
-                      <div key={r} className="grid grid-cols-[100px_1fr_40px] items-center gap-2.5 text-[13px]">
-                        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: RAR_STYLE[r].dot }} />{RAR_STYLE[r].label}</span>
-                        <div className={cn("h-2 overflow-hidden rounded-full", dark ? "bg-white/15" : "bg-[#F1EEF8]")}><div className="h-full rounded-full" style={{ width: `${c.rates[r]}%`, background: RAR_STYLE[r].dot }} /></div>
-                        <b className="text-right">{c.rates[r]}%</b>
-                      </div>
+          <main ref={mainRef} className="flex min-w-0 flex-[999_1_600px] scroll-mt-24 flex-col gap-[18px]">
+            {sec === "shop" ? (
+              <div className="flex flex-col gap-[18px]">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h2 className="ah-hand text-[26px] font-bold">
+                    {CAT_TITLE[cat]} <span className="font-[family-name:var(--font-nunito)] text-sm font-extrabold text-[#9e6b3f]">({list.length} món)</span>
+                  </h2>
+                  <div className="ml-auto flex flex-wrap gap-1.5">
+                    {(["all", "common", "rare", "epic", "legendary"] as RarFilter[]).map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        aria-pressed={rar === k}
+                        data-testid={`rar-${k}`}
+                        onClick={() => { play("tick"); setRar(k); }}
+                        className={cn("h-[30px] cursor-pointer rounded-full border-2 border-[#241e1a] px-3 text-xs font-black", k !== "all" && `r-${k}`, rar === k ? "-translate-y-px shadow-[0_3px_0_#241e1a]" : "opacity-[0.72]")}
+                        style={{ background: k === "all" ? "#fffdf8" : "var(--pl)", color: k === "all" ? "#241e1a" : "var(--pt)" }}
+                      >
+                        {k === "all" ? "Mọi độ hiếm" : RAR_LABEL[k]}
+                      </button>
                     ))}
-                    <button type="button" data-testid={`chest-open-${id}`} onClick={() => openGacha(id)} className={cn("h-[46px] rounded-xl font-extrabold", dark ? "bg-[#FDE68A] text-[#2A1F5C]" : "bg-[#5B2BD6] text-white")}>
-                      Mở hộp · {"xu" in c.cost ? `${fmt(c.cost.xu)} xu` : `${c.cost.gem} KC`}{id === "xu" && c.dailyLimit ? ` (còn ${Math.max(0, c.dailyLimit - gacha.pullsToday)}/${c.dailyLimit} hôm nay)` : ""}
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={affordOnly}
+                      data-testid="afford-only"
+                      onClick={() => { play("tick"); setAffordOnly((v) => !v); }}
+                      className={cn("h-[30px] cursor-pointer rounded-full border-2 border-[#241e1a] px-3 text-xs font-black", affordOnly ? "bg-[#8cd184] shadow-[0_3px_0_#241e1a]" : "bg-[#fffdf8] opacity-80")}
+                    >
+                      Chỉ món mua được
                     </button>
                   </div>
-                );
-              })}
-            </div>
-            <div className="flex flex-wrap items-center gap-4 rounded-[20px] border border-[#ECE9F5] bg-white px-5 py-[18px]" data-testid="pity">
-              <div className="flex-[1_1_300px]">
-                <div className="font-extrabold">Bảo hiểm nhân phẩm ({wallet.gachaPity}/{CHESTS.xu.pity})</div>
-                <div className="text-[13px] text-[#5F5B73]">Mở thêm {Math.max(0, (CHESTS.xu.pity ?? 5) - wallet.gachaPity)} lượt Hộp Sao Mèo chưa ra Sử thi thì lượt tiếp chắc chắn Sử thi trở lên.</div>
+                </div>
+                {cat === "deco" && (
+                  <div className="flex flex-wrap gap-1.5" role="group" aria-label="Lọc theo ô trang trí" data-testid="deco-slots">
+                    {([{ key: "all", label: "Tất cả" }, ...DECO_SLOTS] as { key: DecoSlot; label: string }[]).map((sl) => (
+                      <button key={sl.key} type="button" aria-pressed={decoSlot === sl.key} data-testid={`deco-${sl.key}`} onClick={() => { play("tick"); setDecoSlot(sl.key); }} className={cn("ah-btn h-9 px-3.5 text-[13px]", decoSlot === sl.key ? "ah-woodbtn" : "ah-cream")}>
+                        {sl.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {!data.isOffline && (cat === "all" || cat === "physical") && !data.rewards.some((r) => r.kind === "PHYSICAL") && (
+                  <p className="text-xs font-bold text-[#6e4722]">Quà hiện vật được trao tại lớp học offline, vì vậy bạn chỉ thấy các quà dành cho mọi học sinh.</p>
+                )}
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(min(240px,100%),1fr))] gap-x-[22px] gap-y-[26px] pt-1.5">
+                  {list.map((e) => (
+                    <Card key={e.key} e={e} st={stateOf(e)} avatar={avatar} name={user.name} onOpen={() => open(e)} />
+                  ))}
+                  {list.length === 0 && (
+                    <div className="ah-panel ah-hand col-span-full p-10 text-center text-base">
+                      {affordOnly ? "Chưa có món nào vừa túi tiền. Nộp thêm bài để kiếm xu nhé." : "Không có món nào phù hợp bộ lọc."}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex gap-1.5">
-                {Array.from({ length: CHESTS.xu.pity ?? 5 }, (_, i) => (
-                  <span key={i} className={cn("flex h-[30px] w-[30px] items-center justify-center rounded-full font-extrabold", i < wallet.gachaPity ? "bg-[#FDE68A] text-[#7A4300]" : "bg-[#F1EEF8] text-[#C9C4DA]")}>★</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="studio-card p-8 text-center font-semibold text-[#5F5B73]">Hộp bí ẩn đang tạm đóng. Quay lại sau nhé!</div>
-        )
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button type="button" data-testid="shop-modal-close" onClick={() => goSec("shop")} className="ah-btn ah-cream h-10 px-3.5 text-sm">← Về cửa hàng</button>
+                  <h2 className="ah-hand text-[26px] font-bold" data-testid="sec-title">{SEC_TITLE[sec]}</h2>
+                </div>
+                {sec === "earn" && <EarnSection todo={todo} todoTotal={todoTotal} recent={recent} lifetimeEarned={wallet.lifetimeEarned} level={level.level} />}
+                {sec === "code" && <CodeSection canEarn={data.canEarn} onWon={() => flyCoins("in")} />}
+                {sec === "gacha" &&
+                  (gacha ? (
+                    <GachaSection wallet={{ balance: wallet.balance, gems: wallet.gems }} pity={wallet.gachaPity} pullsToday={gacha.pullsToday} owned={[...owned]} avatar={avatar} canEarn={data.canEarn} onDone={onGachaDone} />
+                  ) : (
+                    <div className="ah-panel ah-hand p-10 text-center text-base">Hộp bí ẩn đang tạm đóng. Quay lại sau nhé!</div>
+                  ))}
+                {sec === "gold" && <GoldSection boards={boards} myGrade={user.grade} me={{ id: user.id, avatar, name: user.name }} event={event} onPlates={() => goCat("nameplate")} />}
+                {sec === "bag" && <BagSection redemptions={data.redemptions} owned={[...owned]} avatar={avatar} pending={pending} name={user.name} onEquip={equip} onCancel={(id) => run(() => cancelRedemption(id))} />}
+              </>
+            )}
+          </main>
+        </div>
+      </div>
+
+      {/* ===== Hộp chi tiết món (canvas: thẻ theo độ hiếm) ===== */}
+      {sel && renderModal(sel)}
+
+      {custom && (
+        <CustomizeModal avatar={avatar} owned={owned} level={level.level} name={user.name} grade={user.grade} pending={pending} onCancel={() => setCustom(false)} onSave={saveCustom} />
       )}
 
-      {sec === "gold" && <LeaderboardModal inline open onOpenChange={() => setSec("shop")} boards={boards} myGrade={user.grade} currentUserId={user.id} event={event} />}
-      {sec === "bag" && <InventoryModal inline open onOpenChange={() => setSec("shop")} redemptions={data.redemptions} owned={[...owned]} avatar={avatar} pending={pending} onEquip={equip} onCancel={(id) => run(() => cancelRedemption(id))} />}
-
-      {/* Chi tiết dạng sheet đáy (điện thoại/máy tính bảng) */}
-      <Dialog open={sheet && !!sel} onOpenChange={setSheet}>
-        <DialogContent showCloseButton={false} className="studio fixed bottom-0 left-0 right-0 top-auto flex max-h-[88dvh] max-w-none translate-x-0 translate-y-0 flex-col gap-3.5 overflow-y-auto rounded-b-none rounded-t-3xl border-0 p-5 pt-2.5 sm:max-w-none lg:hidden" data-testid="shop-sheet">
-          <span className="mx-auto h-1 w-10 rounded-full bg-[#D6D1E6]" aria-hidden />
-          <DialogTitle className="sr-only">{sel?.name ?? "Chi tiết"}</DialogTitle>
-          <DialogDescription className="sr-only">Chi tiết món quà</DialogDescription>
-          {sel && renderDetail(sel)}
-        </DialogContent>
-      </Dialog>
-
-      {/* Mèo linh vật (canvas v2): trôi góc trái, bấm vuốt ve → tim + meo + lời nhắc tiếp */}
-      <Mascot
-        name={pet ? pet.name : "Mèo Mướp Bi"}
-        tips={lines}
-        art={pet && pet.id !== "pet-bi" ? <ItemArt it={pet} avatar={avatar} /> : undefined}
-      />
       {lvUp && (
         <LevelUpDialog
           level={lvUp}
           title={level.name}
-          note={level.next ? `Còn ${fmt(level.toNext)} xu nữa để lên ${level.next.name}. Đồ trang trí mới đang chờ bạn ở Cửa hàng!` : "Bạn đã đạt cấp cao nhất 👑"}
+          note={level.next ? `Còn ${fmt(level.toNext)} xu nữa để lên ${level.next.name}. Viền avatar và bảng tên mới đang chờ bạn ở Cửa hàng!` : "Bạn đã đạt cấp cao nhất 👑"}
           onClose={() => setLvUp(null)}
-          onSee={() => { setLvUp(null); setSec("shop"); setCat("deco"); }}
+          onSee={() => { setLvUp(null); goCat("frame"); }}
         />
       )}
 
-      {/* ===== Hộp thoại ===== */}
+      {fly &&
+        Array.from({ length: 7 }, (_, i) => (
+          <span
+            key={`${fly.k}-${i}`}
+            aria-hidden
+            className="ah-fly h-6 w-6 rounded-full border-[3px] border-[#241e1a] bg-[#fbd048]"
+            style={{ left: fly.x + i * 14 - 42, top: fly.y, animationDelay: `${i * 0.05}s`, ["--dx" as string]: `${fly.dx - (i * 14 - 42)}px`, ["--dy" as string]: `${fly.dy}px` }}
+          />
+        ))}
+
       <TitlesModal open={modal === "titles"} onOpenChange={(o) => setModal(o ? "titles" : null)} lifetimeEarned={wallet.lifetimeEarned} />
       <ShopMenuModal open={modal === "menu"} onOpenChange={(o) => setModal(o ? "menu" : null)} weather={weather} onWeather={setWeather} onAction={menuAction} showBox={!!gacha} />
-      {gachaOpen && gacha && (
-        <GachaModal
-          open
-          onOpenChange={(o) => !o && setGachaOpen(null)}
-          initialChest={gachaOpen.chest}
-          initialRates={gachaOpen.rates}
-          wallet={{ balance: wallet.balance, gems: wallet.gems }}
-          pity={wallet.gachaPity}
-          pullsToday={gacha.pullsToday}
-          owned={[...owned]}
-          avatar={avatar}
-          canEarn={data.canEarn}
-          onDone={onGachaDone}
-        />
-      )}
       <HistoryModal open={modal === "history"} onOpenChange={(o) => setModal(o ? "history" : null)} ledger={data.ledger} levelIndex={level.level - 1} />
-      <Dialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
-        <DialogContent className="studio rounded-[20px] border-[#ECE9F5] sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-extrabold">Đổi {confirm?.title}?</DialogTitle>
-            <DialogDescription className="text-[#5F5B73]">{confirm?.kind === "PHYSICAL" ? "Trao trực tiếp tại lớp học offline. Thầy sẽ xác nhận khi bạn nhận quà." : "Thẻ được cất vào túi đồ, bạn dùng khi cần."}</DialogDescription>
-          </DialogHeader>
-          {confirm && (
-            <div className="flex flex-col gap-2 rounded-xl bg-[#F6F5FB] px-3.5 py-3 text-sm">
-              <div className="flex justify-between"><span className="text-[#5F5B73]">Giá</span><b>{fmt(confirm.price)} xu</b></div>
-              <div className="flex justify-between"><span className="text-[#5F5B73]">Số dư sau khi đổi</span><b>{fmt(wallet.balance - confirm.price)} xu</b></div>
-            </div>
-          )}
-          <DialogFooter className="gap-2.5 sm:gap-2.5">
-            <button type="button" onClick={() => setConfirm(null)} className="h-12 flex-1 rounded-xl border border-[#E4E0F0] bg-white font-bold text-[#3B3650]">Để sau</button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() =>
-                confirm &&
-                run(
-                  () => redeemReward(confirm.id),
-                  () => {
-                    setConfirm(null);
-                    setCelebrated((n) => n + 1);
-                    play("success");
-                  },
-                )
-              }
-              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#5B2BD6] font-extrabold text-white disabled:opacity-60"
-            >
-              {pending && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />} Xác nhận đổi
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 
-  /** Bảng chi tiết (dùng chung cho cột phải và sheet đáy) */
-  function renderDetail(e: Entry) {
-    const st = RAR_STYLE[e.rarity];
-    const ownIt = ownsEntry(e);
-    const ok = enough(e.price);
-    const have = haveFor(e.price);
-    const need = e.price ? ("xu" in e.price ? e.price.xu : e.price.gem) : 0;
-    const unit = e.price && "gem" in e.price ? "kim cương" : "xu";
-    const pct = need ? Math.max(3, Math.min(100, Math.round((have / need) * 100))) : 100;
-    let how = "";
-    let catLabel = "";
+  /** Hộp chi tiết một món: tiêu đề theo độ hiếm, ảnh xem trước, cách nhận, ghi chú số dư, Đóng / hành động */
+  function renderModal(e: Entry) {
+    const s = stateOf(e);
+    const priceText = s.gem ? `${s.need} KC` : `${fmt(s.need)} xu`;
+    let how: string;
+    let meta: string;
+    let note = "";
+    let action: React.ReactNode;
+    const btn = "ah-btn h-12 flex-[2] text-base";
     if (e.kind === "reward") {
-      how = e.r.kind === "PHYSICAL" ? "Trao trực tiếp tại lớp học offline. Thầy sẽ xác nhận khi bạn nhận quà." : "Thẻ được cất vào túi đồ, bạn dùng khi cần.";
-      catLabel = e.r.kind === "PHYSICAL" ? "Quà hiện vật" : "Thẻ đặc quyền";
-    } else if (e.kind === "chest") {
-      how = "Mở ra ngẫu nhiên một món theo tỉ lệ rơi của rương.";
-      catLabel = "Hộp bí ẩn";
-    } else {
-      const it = e.it;
-      catLabel = it.slot === "pet" ? "Thú cưng" : "Trang trí";
-      how = it.slot === "pet" ? "Thú cưng đi cùng nhân vật trên hồ sơ. Có thể thử trước khi đổi." : "Dùng ngay trên hồ sơ. Có thể thử trước khi đổi.";
-    }
-    const isGoal = e.kind === "reward" && goal?.id === e.r.id;
-    return (
-      <>
-        <div className={cn("flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[14px]", st.tile)} data-testid="detail-art">
-          <span className="flex aspect-square h-[92%] items-center justify-center"><EntryArt e={e} avatar={avatar} /></span>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold", st.tag)}>{st.label}</span>
-            <span className="text-xs text-[#6B6680]">{catLabel}</span>
-          </div>
-          <h2 className="text-xl font-extrabold" data-testid="detail-name">{e.name}</h2>
-        </div>
-        <div className="flex items-start gap-2.5 rounded-xl bg-[#F6F5FB] px-3 py-2.5 text-[13px] text-[#3B3650]">
-          <IconInfo className="mt-px shrink-0" />
-          <span>{how}</span>
-        </div>
-        {e.price && !ownIt && (
-          <div className="flex flex-col gap-2">
-            <div className="flex items-baseline justify-between">
-              <span className="text-[13px] text-[#5F5B73]">Giá</span>
-              <PriceTag price={e.price} big />
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-[#F1EEF8]"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: ok ? "#22A05A" : unit === "xu" ? "#F5B82E" : "#60A5FA" }} /></div>
-            <p className={cn("text-xs", ok ? "font-semibold text-[#17603A]" : "text-[#5F5B73]")} data-testid="detail-note">
-              {ok ? `Bạn đủ ${unit} để đổi món này.` : `Bạn có ${fmt(have)} ${unit === "xu" ? "xu" : "KC"}, còn thiếu ${fmt(need - have)} ${unit === "xu" ? "xu" : "KC"}.`}
-            </p>
-          </div>
-        )}
-        <div className="flex flex-col gap-2">
-          {e.kind === "reward" && renderRewardActions(e.r)}
-          {e.kind === "chest" && (
-            <>
-              <button type="button" data-testid={`chest-open-${e.chest}`} onClick={() => openGacha(e.chest)} className="h-12 rounded-xl bg-[#5B2BD6] text-[15px] font-extrabold text-white hover:bg-[#4C22BC]">
-                Mở ngay · {"xu" in e.price ? `${fmt(e.price.xu)} xu` : `${e.price.gem} KC`}
-              </button>
-              <button type="button" onClick={() => openGacha(e.chest, true)} className="h-11 rounded-xl border border-[#E4E0F0] bg-white font-bold text-[#3B3650]">Xem tỉ lệ rơi</button>
-            </>
-          )}
-          {e.kind === "item" && renderItemActions(e.it)}
-          {e.kind === "reward" && (
-            <button type="button" data-testid="pin" disabled={pending} aria-pressed={isGoal} onClick={() => run(() => setGoalReward(isGoal ? null : e.r.id))} className="flex h-10 items-center justify-center gap-2 rounded-xl font-semibold text-[#5F5B73]">
-              <IconHeart filled={isGoal} /> {isGoal ? "Đã thêm vào danh sách mong muốn" : "Thêm vào danh sách mong muốn"}
-            </button>
-          )}
-        </div>
-      </>
-    );
-  }
-
-  function renderRewardActions(r: Reward) {
-    const soldOut = r.stock !== null && r.stock <= 0;
-    const limitReached = r.perStudentMonthlyLimit !== null && r.usedThisMonth >= r.perStudentMonthlyLimit;
-    const ok = wallet.balance >= r.price;
-    const can = ok && !soldOut && !limitReached && data.canEarn;
-    const label = soldOut ? "Hết hàng" : limitReached ? "Hết lượt tháng này" : !data.canEarn ? "Chờ thầy duyệt tài khoản" : ok ? `Đổi quà · ${fmt(r.price)} xu` : "Chưa đủ xu";
-    return (
-      <>
-        {(r.stock !== null || r.perStudentMonthlyLimit !== null) && (
-          <p className="text-xs text-[#6B6680]">{r.stock !== null ? `Còn ${r.stock} món` : ""}{r.stock !== null && r.perStudentMonthlyLimit !== null ? " · " : ""}{r.perStudentMonthlyLimit !== null ? `Đã đổi ${r.usedThisMonth}/${r.perStudentMonthlyLimit} tháng này` : ""}</p>
-        )}
-        <button type="button" data-testid="redeem" disabled={!can || pending} onClick={() => { play("click"); setSheet(false); setConfirm(r); }} className={cn("h-12 rounded-xl text-[15px] font-extrabold", can ? "bg-[#5B2BD6] text-white hover:bg-[#4C22BC]" : "cursor-not-allowed bg-[#ECE9F5] text-[#6B6680]")}>
+      const r = e.r;
+      how = HOW[r.kind];
+      meta = [r.kind === "PHYSICAL" ? "Quà hiện vật" : "Thẻ đặc quyền", r.stock !== null ? `Còn ${r.stock}` : "", r.perStudentMonthlyLimit !== null ? `Đã đổi ${r.usedThisMonth}/${r.perStudentMonthlyLimit} tháng này` : ""].filter(Boolean).join(" · ");
+      const can = s.ok && !s.soldOut && !s.limitHit && data.canEarn && online;
+      if (s.soldOut) note = "";
+      else if (s.limitHit) note = "Bạn đã đổi đủ lượt của tháng này.";
+      else if (!data.canEarn) note = "Tài khoản cần được thầy duyệt để đổi quà.";
+      else if (!online) note = "Kết nối lại để đổi quà.";
+      else if (!s.ok) note = `Bạn có ${fmt(s.have)} xu, còn thiếu ${fmt(s.need - s.have)} xu. Nộp bài để kiếm thêm.`;
+      else note = `Số dư sau khi đổi: ${fmt(wallet.balance - r.price)} xu`;
+      const label = s.soldOut ? "Hết hàng" : s.limitHit ? "Hết lượt tháng này" : !data.canEarn ? "Chờ thầy duyệt" : !online ? "Đang mất mạng" : s.ok ? `Đổi · ${priceText}` : "Chưa đủ xu";
+      action = (
+        <button type="button" data-testid="redeem" disabled={!can || pending} onClick={() => redeem(r)} className={cn(btn, can ? "ah-gold" : "ah-cream")}>
+          {pending && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />}
           {label}
         </button>
-      </>
-    );
-  }
-
-  function renderItemActions(it: Item) {
-    const own = !!it.free || owned.has(it.id);
-    const on = avatar[it.slot] === it.id;
-    const quick = QUICK_EQUIP.includes(it.slot);
-    const ok = enough(it.price ?? null);
-    const tryLink = (
-      <Link href={`/profile?try=${it.id}`} data-testid={`try-${it.id}`} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#E4E0F0] bg-white font-bold text-[#3B3650] hover:bg-[#F6F5FB]">
-        <IconEye /> {own ? "Mặc trên hồ sơ" : "Thử trên hồ sơ"}
-      </Link>
-    );
-    if (own) {
-      return on ? (
-        <button type="button" disabled className="h-12 rounded-xl bg-[#E7F7EE] text-[15px] font-extrabold text-[#17703F]">Đang dùng ✓</button>
-      ) : quick ? (
-        <button type="button" data-testid={`equip-${it.id}`} disabled={pending} onClick={() => equip(it)} className="h-12 rounded-xl bg-[#22A05A] text-[15px] font-extrabold text-white hover:bg-[#1C8A4D]">Dùng ngay</button>
-      ) : (
-        tryLink
       );
+    } else {
+      const it = e.it;
+      const quick = QUICK_EQUIP.includes(it.slot);
+      how = HOW[it.slot] ?? (quick ? "Dùng ngay trên hồ sơ của bạn." : "Mặc lên nhân vật ở trang Hồ sơ.");
+      meta = [SLOTS.find((x) => x.key === it.slot)?.label ?? "Trang trí", it.minLevel ? `Từ Lv.${it.minLevel}` : "", it.gachaOnly ? "Chỉ từ Hộp bí ẩn" : ""].filter(Boolean).join(" · ");
+      if (s.own) {
+        action = s.on ? (
+          <button type="button" disabled className={cn(btn, "ah-mint")}>Đang dùng</button>
+        ) : quick ? (
+          <button type="button" data-testid={`equip-${it.id}`} disabled={pending} onClick={() => equip(it)} className={cn(btn, "ah-mint")}>Trang bị</button>
+        ) : (
+          <Link href={`/profile?try=${it.id}`} data-testid={`try-${it.id}`} className={cn(btn, "ah-woodbtn")}>Mặc trên hồ sơ</Link>
+        );
+      } else if (s.gachaOnly) {
+        note = "Món này chỉ có trong Hộp bí ẩn.";
+        action = <button type="button" disabled={!gacha} onClick={() => { setSelKey(null); goSec("gacha"); }} className={cn(btn, "ah-grape")}>Mở Hộp bí ẩn</button>;
+      } else if (s.locked) {
+        const min = LEVELS[(it.minLevel ?? 1) - 1]?.min ?? 0;
+        note = `Còn ${fmt(Math.max(0, min - wallet.lifetimeEarned))} xu tích lũy để mở khóa.`;
+        action = <button type="button" disabled data-testid={`shop-buy-${it.id}`} className={cn(btn, "ah-cream")}>Cần Lv.{it.minLevel}</button>;
+      } else {
+        const can = s.ok && data.canEarn && online;
+        if (!data.canEarn) note = "Tài khoản cần được thầy duyệt để đổi quà.";
+        else if (!online) note = "Kết nối lại để đổi quà.";
+        else if (!s.ok) note = s.gem ? `Bạn có ${s.have} KC, còn thiếu ${s.need - s.have} KC. Cào thẻ hoặc nhập mã thầy phát để nhận thêm.` : `Bạn có ${fmt(s.have)} xu, còn thiếu ${fmt(s.need - s.have)} xu. Nộp bài để kiếm thêm.`;
+        else note = `Số dư sau khi đổi: ${s.gem ? `${wallet.gems - s.need} KC` : `${fmt(wallet.balance - s.need)} xu`}`;
+        action = (
+          <button type="button" data-testid={`shop-buy-${it.id}`} disabled={!can || pending} onClick={() => purchase(it)} className={cn(btn, !can ? "ah-cream" : s.gem ? "ah-sky" : "ah-gold")}>
+            {!data.canEarn ? "Chờ thầy duyệt" : !online ? "Đang mất mạng" : s.ok ? `Đổi · ${priceText}` : `Chưa đủ ${s.gem ? "kim cương" : "xu"}`}
+          </button>
+        );
+      }
     }
-    if (!it.price) {
-      return (
-        <>
-          <button type="button" disabled={!gacha} onClick={() => openGacha("xu")} className="h-12 rounded-xl bg-[#2A1F5C] text-[15px] font-extrabold text-white disabled:opacity-50">Chỉ có trong Hộp bí ẩn · Mở rương</button>
-          {tryLink}
-        </>
-      );
-    }
-    if ((it.minLevel ?? 0) > level.level)
-      return (
-        <>
-          <button type="button" disabled className="h-12 cursor-not-allowed rounded-xl bg-[#ECE9F5] text-[15px] font-extrabold text-[#6B6680]" data-testid={`shop-buy-${it.id}`}>Cần đạt Lv.{it.minLevel} để mở khoá</button>
-          {tryLink}
-        </>
-      );
+    const isGoal = e.kind === "reward" && goal?.id === e.r.id;
+    const frame = e.kind === "item" && e.it.slot === "frame";
+    const plate = e.kind === "item" && e.it.slot === "nameplate";
+    const plateIsDark = plate && e.kind === "item" && e.it.v2 === "dark";
     return (
-      <>
-        <button
-          type="button"
-          data-testid={`shop-buy-${it.id}`}
-          disabled={pending || !ok || !data.canEarn}
-          onClick={() => purchase(it)}
-          title={!data.canEarn ? "Tài khoản cần được thầy duyệt" : !ok ? "Chưa đủ tiền" : "Mua"}
-          className={cn("h-12 rounded-xl text-[15px] font-extrabold", ok && data.canEarn ? "bg-[#5B2BD6] text-white hover:bg-[#4C22BC]" : "cursor-not-allowed bg-[#ECE9F5] text-[#6B6680]")}
-        >
-          {!data.canEarn ? "Chờ thầy duyệt tài khoản" : ok ? `Mua · ${"xu" in it.price ? `${fmt(it.price.xu)} xu` : `${it.price.gem} kim cương`}` : `Chưa đủ ${"xu" in it.price ? "xu" : "kim cương"}`}
-        </button>
-        {tryLink}
-      </>
+      <div className="fixed inset-0 z-[55] flex items-center justify-center bg-[rgba(36,30,26,0.55)] p-4" onClick={(ev) => ev.target === ev.currentTarget && setSelKey(null)}>
+        <div role="dialog" aria-modal="true" aria-label={e.name} data-testid="shop-detail" className={cn("ah-dialog ah-pcard v2-pop w-full max-w-[460px] cursor-default gap-3.5 p-[18px] hover:transform-none", `r-${e.rarity}`)}>
+          <div className="ah-phead ah-hand text-lg" data-testid="detail-name">{e.name}</div>
+          <div className="ah-part aspect-video" data-testid="detail-art">
+            {e.rarity === "legendary" && <span className="ah-sun" aria-hidden />}
+            {e.kind === "reward" ? (
+              <V2Art index={rewardArtV2(e.r.title, e.r.kind)} className="relative h-[88%]" />
+            ) : plate ? (
+              <PlateBox id={e.it.id} className="w-[92%] rounded-[14px] border-[2.5px] shadow-none">
+                <div className={cn("flex min-h-[72px] items-center gap-3 px-3.5 py-2", plateIsDark ? "text-white" : "text-[#1E1B2E]")}>
+                  <AvatarRing config={{ ...avatar, nameplate: e.it.id }} size={52} inset={10} />
+                  <div><div className="ah-hand text-base font-bold">{shortName(user.name)}</div><div className="text-xs font-extrabold">Xem trước trên Bảng Vàng</div></div>
+                </div>
+              </PlateBox>
+            ) : (
+              <span className="relative flex h-full w-full items-center justify-center"><ItemArt it={e.it} avatar={avatar} name={user.name} withFace={frame} /></span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2"><span className="ah-ppill">{RAR_LABEL[e.rarity]}</span><span className="text-xs font-extrabold">{meta}</span></div>
+          <div className="text-[13px] font-bold">{how}</div>
+          {note && <div className="rounded-[14px] border-2 border-dashed border-[#241e1a] bg-[#fffdf8] px-3 py-2.5 text-[13px] font-extrabold" data-testid="detail-note">{note}</div>}
+          <div className="flex gap-2.5">
+            <button type="button" onClick={() => { play("click"); setSelKey(null); }} className="ah-btn ah-cream h-12 flex-1">Đóng</button>
+            {action}
+          </div>
+          {e.kind === "reward" && (
+            <button type="button" data-testid="pin" disabled={pending} aria-pressed={isGoal} onClick={() => run(() => setGoalReward(isGoal ? null : e.r.id))} className="self-center text-[13px] font-extrabold text-[#9e6b3f] underline decoration-dotted underline-offset-4">
+              {isGoal ? "♥ Đã là quà mong muốn (bỏ ghim)" : "♡ Ghim làm quà mong muốn"}
+            </button>
+          )}
+          {e.kind === "item" && !s.own && e.it.slot !== "nameplate" && (
+            <Link href={`/profile?try=${e.it.id}`} data-testid={`try-${e.it.id}`} className="self-center text-[13px] font-extrabold text-[#9e6b3f] underline decoration-dotted underline-offset-4">Thử trên hồ sơ trước khi đổi</Link>
+          )}
+        </div>
+      </div>
     );
   }
 }
 
 /* ============================== Thẻ trong lưới ============================== */
 
-function ShopCard({ e, lv, selected, avatar, owned, using, enough, have, onPick }: {
-  e: Entry; lv: number; selected: boolean; avatar: StudentPointsPageData["avatar"]; owned: boolean; using: boolean; enough: boolean; have: number; onPick: () => void;
-}) {
-  const st = RAR_STYLE[e.rarity];
-  const need = e.price ? ("xu" in e.price ? e.price.xu : e.price.gem) : 0;
-  const pct = owned ? 100 : need ? Math.max(3, Math.min(100, Math.round((have / need) * 100))) : 0;
-  const isGem = !!e.price && "gem" in e.price;
-  const tryable = e.kind === "item";
-  let catLabel: string;
-  const extra: Record<string, string> = {};
-  if (e.kind === "reward") {
-    catLabel = e.r.kind === "PHYSICAL" ? "Quà hiện vật" : "Thẻ đặc quyền";
-    extra["data-title"] = e.r.title;
-    extra["data-rarity"] = e.rarity;
-  } else if (e.kind === "chest") {
-    catLabel = "Hộp bí ẩn";
-    extra["data-chest"] = e.chest;
-  } else {
-    catLabel = e.it.slot === "pet" ? "Thú cưng" : "Trang trí";
-    extra["data-item"] = e.it.id;
-  }
-  const status = e.kind === "item" && owned ? (using ? "Đang dùng" : "Đã có") : null;
-  const tip = !owned && e.price && !enough ? `Còn thiếu ${fmt(need - have)} ${isGem ? "kim cương" : "xu"} — nộp thêm bài để nhận nhé!` : undefined;
-  return (
-    <div className="relative" title={tip}>
-      <button
-        type="button"
-        onClick={onPick}
-        aria-pressed={selected}
-        aria-label={`${e.name}, ${st.label}${e.price && !owned ? `, ${fmt(need)} ${isGem ? "kim cương" : "xu"}` : status ? `, ${status}` : ""}`}
-        data-testid={e.kind === "reward" ? "reward-card" : e.kind === "chest" ? "chest-card" : "item-card"}
-        {...extra}
-        className={cn(
-          "studio-item flex w-full flex-col gap-2.5 rounded-[18px] border-2 bg-white p-2 pb-3 text-left",
-          selected ? "border-[#5B2BD6] shadow-[0_8px_22px_rgba(91,43,214,0.16)]" : "border-transparent shadow-[0_1px_2px_rgba(30,27,46,0.05)] hover:shadow-[0_8px_22px_rgba(42,31,92,0.1)]",
-        )}
-      >
-        <span className={cn("relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl", st.tile)}>
-          <span className="studio-art flex aspect-square w-[84%] items-center justify-center"><EntryArt e={e} avatar={avatar} /></span>
-          <span className={cn("absolute left-2 top-2 rounded-full px-2 py-0.5 text-[11px] font-bold", st.tag)}>{st.label}</span>
-          {e.kind === "item" && !owned && (e.it.minLevel ?? 0) > lv && (
-            <span className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-[rgba(30,27,46,0.5)] text-[13px] font-extrabold text-white" data-testid="level-lock">
-              <span className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-white text-[#2A1F5C]"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg></span>
-              Cần Lv.{e.it.minLevel}
-            </span>
-          )}
-        </span>
-        <span className="flex min-w-0 flex-col gap-1.5 px-1">
-          <span className="truncate text-sm font-bold">{e.name}</span>
-          <span className="flex items-center justify-between gap-1.5">
-            {status ? (
-              <span className={cn("text-[13px] font-bold", using ? "text-[#5B2BD6]" : "text-[#17703F]")}>{status}</span>
-            ) : e.price ? (
-              <PriceTag price={e.price} dim={!enough} />
-            ) : (
-              <span className="text-xs font-semibold text-[#8A3B12]">Chỉ từ Hộp bí ẩn</span>
-            )}
-            <span className="truncate text-[11px] text-[#6B6680]">{catLabel}</span>
-          </span>
-          <span className="h-1 overflow-hidden rounded-full bg-[#F1EEF8]" aria-hidden>
-            <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: owned || enough ? "#22A05A" : isGem ? "#60A5FA" : "#F5B82E" }} />
-          </span>
-        </span>
-      </button>
-      {tryable && (
-        <button type="button" onClick={onPick} aria-label={`Thử đồ: ${e.name}`} title="Thử đồ" data-testid="try-on" className="absolute right-4 top-4 flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white/90 text-[#3B3650] shadow-sm hover:bg-white">
-          <IconEye size={14} />
-        </button>
-      )}
-    </div>
-  );
-}
+type St = { own: boolean; on: boolean; locked: boolean; gachaOnly: boolean; soldOut: boolean; limitHit: boolean; ok: boolean; gem: boolean; need: number; have: number };
 
-function PriceTag({ price, big, dim }: { price: { xu: number } | { gem: number }; big?: boolean; dim?: boolean }) {
-  const xu = "xu" in price;
+function Card({ e, st, avatar, name, onOpen }: { e: Entry; st: St; avatar: StudentPointsPageData["avatar"]; name: string | null; onOpen: () => void }) {
+  const leg = e.rarity === "legendary";
+  const quick = e.kind === "item" && QUICK_EQUIP.includes(e.it.slot);
+  const minLevel = e.kind === "item" ? e.it.minLevel : undefined;
+  const [cls, text, icon]: [string, string, "coin" | "gem" | null] = st.on
+    ? ["ah-mint", "Đang đeo", null]
+    : st.own
+      ? ["ah-woodbtn", quick ? "Đã có · Trang bị" : "Đã có", null]
+      : st.locked
+        ? ["ah-cream", `Cần Lv.${minLevel}`, null]
+        : st.gachaOnly
+          ? ["ah-grape", "Chỉ từ Hộp bí ẩn", null]
+          : st.soldOut
+            ? ["ah-cream", "Hết hàng", null]
+            : st.gem
+              ? ["ah-sky", `${st.need} Kim Cương`, "gem"]
+              : ["ah-gold", `${fmt(st.need)} Xu`, "coin"];
+  const stock =
+    e.kind === "reward"
+      ? e.r.stock !== null ? `Còn ${e.r.stock}` : "Không giới hạn"
+      : minLevel ? `Lv.${minLevel}+` : e.it.gachaOnly ? "Hộp bí ẩn" : "Vĩnh viễn";
+  const extra: Record<string, string> = e.kind === "reward" ? { "data-title": e.r.title, "data-rarity": e.rarity } : { "data-item": e.it.id };
+  const priceAria = st.own ? (st.on ? "Đang dùng" : "Đã có") : st.gachaOnly ? "Chỉ từ Hộp bí ẩn" : st.gem ? `${st.need} kim cương` : `${fmt(st.need)} xu`;
   return (
-    <span className={cn("inline-flex items-center gap-1.5 font-extrabold", big ? "text-xl" : "text-[13px]", xu ? "text-[#7A4E00]" : "text-[#1D4ED8]", dim && "opacity-70")}>
-      {xu ? <Coin size={big ? 18 : 14} /> : <GemSmall size={big ? 18 : 14} />}
-      {xu ? `${fmt(price.xu)} xu` : `${price.gem} KC`}
-    </span>
-  );
-}
-
-/** Ảnh thật của một món trang trí: ảnh tiệm → ảnh hồ sơ → hình vẽ đúng của món (khung/danh hiệu/nhân vật mặc thử) */
-function ItemArt({ it, avatar }: { it: Item; avatar: StudentPointsPageData["avatar"] }) {
-  const idx = shopItemIndex(it.id);
-  if (idx !== undefined) return <ShopArt index={idx} className="h-full w-full" />;
-  if (hasSprite(it.id)) return <Sprite id={it.id} className="w-full rounded-lg" />;
-  if (it.slot === "pet") return <PetSvg itemId={it.id} size={120} className="h-full w-full" />;
-  if (it.slot === "frame")
-    return (
-      <span className="relative block h-[86%] w-[86%]">
-        <span className="absolute inset-[15%] rounded-full bg-white/70" />
-        <FrameRing frameId={it.id} className="absolute inset-0 h-full w-full" />
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`${e.name}, ${RAR_LABEL[e.rarity]}, ${priceAria}`}
+      title={!st.own && !st.gachaOnly && !st.ok ? `Còn thiếu ${st.gem ? st.need - st.have : fmt(st.need - st.have)} ${st.gem ? "kim cương" : "xu"}` : undefined}
+      data-testid={e.kind === "reward" ? "reward-card" : "item-card"}
+      {...extra}
+      className={cn("ah-pcard", `r-${e.rarity}`)}
+    >
+      {leg && <span className="ah-tabtop">CỰC PHẨM HUYỀN THOẠI</span>}
+      <span className="ah-phead ah-hand">{e.name}</span>
+      <span className="flex items-center justify-between gap-1.5">
+        <span className="ah-ppill">{RAR_LABEL[e.rarity]}</span>
+        <span className="ah-pstock">{stock}</span>
       </span>
-    );
-  if (it.slot === "nameplate")
-    return (
-      <Nameplate id={it.id} className="flex aspect-[420/100] w-[96%] items-center px-2.5">
-        <span className="text-xs font-extrabold">Học Sinh</span>
-      </Nameplate>
-    );
-  if (it.slot === "title") return <span className="rounded-full bg-[#2A1F5C] px-3 py-1.5 text-center text-xs font-extrabold text-[#FDE68A]">{it.name}</span>;
-  return <Chibi config={{ ...avatar, background: null, effect: null, [it.slot]: it.id }} size={120} className="h-full w-auto" />;
+      <span className="ah-part">
+        {leg && <span className="ah-sun" aria-hidden />}
+        {e.kind === "reward" ? <V2Art index={rewardArtV2(e.r.title, e.r.kind)} className="relative h-[82%]" /> : <ItemArt it={e.it} avatar={avatar} name={name} />}
+        {st.locked && (
+          <span className="absolute inset-0 flex items-center justify-center bg-[rgba(36,30,26,0.45)]" data-testid="level-lock">
+            <span className="ah-ink flex items-center gap-1.5 rounded-full bg-[#fffdf8] px-3.5 py-1.5 font-black">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="4" y="11" width="16" height="10" rx="2" fill="#fbd048" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+              Mở khóa ở Lv.{minLevel}
+            </span>
+          </span>
+        )}
+      </span>
+      <span className={cn("ah-btn h-[46px] text-base", cls)}>
+        {icon === "coin" && <CoinDot size={18} className="border-2" />}
+        {icon === "gem" && <GemDot size={13} className="mx-[3px] border-2" />}
+        {text}
+      </span>
+    </button>
+  );
 }
 
-function EntryArt({ e, avatar }: { e: Entry; avatar: StudentPointsPageData["avatar"] }) {
-  if (e.kind === "reward") return <ShopArt index={rewardArtIndex(e.r.title, e.r.kind)} className="h-full w-full" />;
-  if (e.kind === "chest") return <ShopArt index={SHOP_CHEST[e.chest]} className="h-full w-full" />;
-  return <ItemArt it={e.it} avatar={avatar} />;
+/** Số đỏ góc nút (túi đồ, bài cần nộp) — đặt ngoài nút để ánh quét của nút không tràn ra */
+function Badge({ n }: { n: number }) {
+  return <span className="pointer-events-none absolute -right-2 -top-2 z-[1] flex h-[22px] min-w-[22px] items-center justify-center rounded-full border-2 border-[#241e1a] bg-[#ea6a51] px-1 text-[11px] font-black text-[#fffdf8]">{n}</span>;
+}
+
+/** Ảnh thú cưng ở dải mèo linh vật: tranh v2 nếu có, mặc định mèo Snow của canvas */
+function PetArt({ pet }: { pet: Item | null }) {
+  const i = v2Index(pet?.id);
+  if (i !== undefined) return <V2Art index={i} className="absolute inset-1" />;
+  if (!pet) return <V2Art index={V2_MASCOT} className="absolute inset-1" />;
+  return <PetSvg itemId={pet.id} size={70} className="h-[70px] w-[70px]" />;
 }

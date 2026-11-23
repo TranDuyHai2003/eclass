@@ -6,6 +6,7 @@ import { buzz, play } from "@/lib/sound";
 import type { Rarity } from "@/lib/points/rarity";
 import { ShopArt, SHOP_MASCOT } from "./Sprite";
 import { IconHeart } from "./icons";
+import { mali, nunito } from "@/lib/fonts";
 
 /* Hiệu ứng theo canvas "Tiệm quà v2": sao băng mở rương, lên cấp, mèo linh vật, mất mạng, số xu nhảy */
 
@@ -25,35 +26,35 @@ export function GachaCinematic({ rarity, onSkip }: { rarity?: Rarity | null; onS
   }, []);
   // Portal ra body: nằm trong hộp thoại Radix thì "fixed" bị lệch và vùng ngoài bị chặn bấm → bật lại pointer-events
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Đang mở hộp" className="pointer-events-auto fixed inset-0 z-[60] flex items-center justify-center overflow-hidden bg-[#0F0B2B]" data-testid="gacha-cinematic">
+    <div role="dialog" aria-modal="true" aria-label="Đang mở hộp" className={`${mali.variable} ${nunito.variable} ah-dialog pointer-events-auto fixed inset-0 z-[60] flex items-center justify-center overflow-hidden bg-[#0F0B2B]`} data-testid="gacha-cinematic">
       {[[18, 22, 4, 0], [72, 16, 3, 0.4], [84, 64, 4, 0.8], [28, 76, 3, 1.1], [50, 10, 2, 0.2]].map(([l, t, z, d]) => (
-        <span key={`${l}-${t}`} className="v2-tw rounded-full bg-white" style={{ left: `${l}%`, top: `${t}%`, width: z, height: z, animationDelay: `${d}s` }} />
+        <span key={`${l}-${t}`} className="v2-tw rounded-full bg-[#fffdf8]" style={{ left: `${l}%`, top: `${t}%`, width: z, height: z, animationDelay: `${d}s` }} />
       ))}
       <div className="v2-shoot absolute left-1/2 top-1/2 -ml-[210px] -mt-[3px] h-1.5 w-[220px] rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${c})`, boxShadow: `0 0 18px ${glow}` }} />
       <div className="v2-burst h-[180px] w-[180px] rounded-full" style={{ background: `radial-gradient(circle, #fff 0%, ${c} 35%, transparent 70%)`, boxShadow: `0 0 80px ${glow}` }} />
-      <p className="absolute inset-x-0 bottom-16 text-center font-semibold text-[#D9D3F5]">Đang triệu hồi ngôi sao ước nguyện…</p>
-      <button type="button" onClick={onSkip} data-testid="gacha-skip" className="absolute right-6 top-6 h-10 rounded-full border border-white/30 px-4 font-bold text-white">Bỏ qua</button>
+      <p className="ah-hand absolute inset-x-0 bottom-16 text-center text-[17px] font-bold text-[#fef08a]">Đang triệu hồi ngôi sao ước nguyện…</p>
+      <button type="button" onClick={onSkip} data-testid="gacha-skip" className="ah-btn ah-cream absolute right-6 top-6 h-[42px] px-[18px]">Bỏ qua</button>
     </div>,
     document.body,
   );
 }
 
-/** Hộp thoại "LÊN CẤP" (nền tím đậm, viền vàng) */
+/** Hộp thoại "LÊN CẤP" (canvas v2: khung kem vàng, viền mực, vòng vàng ghi cấp) */
 export function LevelUpDialog({ level, title, note, onClose, onSee }: { level: number; title: string; note: string; onClose: () => void; onSee?: () => void }) {
   useEffect(() => {
     play("levelup");
     buzz([30, 40, 30]);
   }, []);
   return (
-    <div className="fixed inset-0 z-[61] flex items-center justify-center bg-[rgba(20,14,48,0.6)] p-4">
-      <div role="dialog" aria-modal="true" aria-label="Lên cấp" data-testid="level-up" className="v2-pop flex w-full max-w-[420px] flex-col items-center gap-3 rounded-3xl bg-[#1E1745] p-7 text-center text-white shadow-[0_0_0_6px_rgba(253,230,138,0.25),0_30px_70px_rgba(0,0,0,0.4)]">
-        <span className="text-[13px] font-extrabold tracking-[0.12em] text-[#FDE68A]">LÊN CẤP</span>
-        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#FDE68A] text-[34px] font-extrabold text-[#2A1F5C]">{level}</div>
-        <h2 className="text-2xl font-extrabold">{title}</h2>
-        <p className="leading-relaxed text-[#D9D3F5]">{note}</p>
+    <div className={`${mali.variable} ${nunito.variable} fixed inset-0 z-[61] flex items-center justify-center bg-[rgba(36,30,26,0.6)] p-4`}>
+      <div role="dialog" aria-modal="true" aria-label="Lên cấp" data-testid="level-up" className="ah-dialog ah-panel v2-pop flex w-full max-w-[420px] flex-col items-center gap-3 bg-[#fff1c9] p-[26px] text-center">
+        <span className="rounded-full border-2 border-[#241e1a] bg-[#fbd048] px-3 py-0.5 text-xs font-black">LÊN CẤP</span>
+        <div className="ah-hand flex h-24 w-24 items-center justify-center rounded-full border-[3px] border-[#241e1a] bg-gradient-to-b from-[#ffe27a] to-[#f4b731] text-[30px] font-bold shadow-[0_4px_0_#241e1a]">Lv.{level}</div>
+        <h2 className="ah-hand text-2xl font-bold">{title}</h2>
+        <p className="font-bold leading-normal">{note}</p>
         <div className="flex w-full gap-2.5 pt-1.5">
-          <button type="button" onClick={onClose} className="h-[46px] flex-1 rounded-xl border border-white/30 font-bold">Để sau</button>
-          <button type="button" onClick={onSee ?? onClose} className="h-[46px] flex-1 rounded-xl bg-[#FDE68A] font-extrabold text-[#2A1F5C]">Xem món mới</button>
+          <button type="button" onClick={onClose} className="ah-btn ah-cream h-12 flex-1">Để sau</button>
+          <button type="button" onClick={onSee ?? onClose} className="ah-btn ah-gold h-12 flex-1">Xem món mới</button>
         </div>
       </div>
     </div>

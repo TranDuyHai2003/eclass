@@ -49,7 +49,7 @@ export async function getStudentPointsPage(userId: string) {
       where: { userId },
       orderBy: { createdAt: "desc" },
       take: 30,
-      select: { id: true, price: true, status: true, note: true, createdAt: true, handledAt: true, reward: { select: { title: true, emoji: true } } },
+      select: { id: true, price: true, status: true, note: true, createdAt: true, handledAt: true, reward: { select: { title: true, emoji: true, kind: true } } },
     }),
     prisma.pointLedger.findMany({
       where: { userId },

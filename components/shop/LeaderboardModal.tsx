@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ShopModal } from "./ShopModal";
+import type { AvatarConfig } from "@/lib/game/avatar";
 
 export interface BoardData {
   grade: number;
-  rows: { userId: string; name: string | null; levelName: string; xu: number; rank: number }[];
+  rows: { userId: string; name: string | null; levelName: string; xu: number; rank: number; avatar?: AvatarConfig }[];
   mine: { rank: number; total: number; xu: number } | null;
 }
 

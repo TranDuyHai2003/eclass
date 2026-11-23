@@ -397,3 +397,53 @@ Thầy yêu cầu "thêm đầy đủ tính năng, hiệu ứng, âm thanh của
 - Mục Giáo viên trong tiệm: thầy không vào /rewards; tạo mã đã có ở /teacher/rewards.
 - "Khôi phục dữ liệu demo".
 - Danh mục và giá của mockup: giữ thang ×150 và quà do thầy tạo.
+
+## 14. GĐ11 — Tiệm quà "Adorable Home" theo ShopV2.dc.html mới (23/11/2026)
+
+Thầy vẽ lại hẳn artboard ShopV2 (#artboard-94d7b752acdf) theo theme ấm áp kiểu "Adorable Home". Yêu cầu: "cập nhật giao diện tiệm quà, profile y hệt design artifact".
+
+### Phạm vi
+- Ảnh HD mới của canvas (items, backgrounds, shop, characters) đã thay ở commit 0474cef. Ảnh đại diện là khuôn mặt nhân vật mẫu. Hero hồ sơ cao 196px (Main.dc.html vẫn theme tím, không đổi gì thêm).
+- `/rewards` dựng lại theo ShopV2:
+  - **Khung trang:** bỏ sidebar, trải toàn bề rộng; nền sọc kem.
+  - **Chữ:** Mali cho tiêu đề và nút, Nunito cho chữ thường (`lib/fonts.ts`).
+  - **Thanh gỗ:** nút về trang chủ, nút túi đồ có số đỏ, ví xu và kim cương, lịch sử, menu, âm thanh.
+  - **Khối hồ sơ:** bảng tên làm nền; ảnh đại diện 104px gồm mặt nhân vật và khung viền; nút danh hiệu (Lv); "Đổi viền & bảng tên"; thanh xu tích luỹ; 5 nút điều hướng.
+  - **Dải mèo linh vật:** "Vuốt ve" thì tim bay lên và câu nhắc đổi.
+  - **Danh mục bên trái:** Tất cả, Quà hiện vật, Thẻ đặc quyền, Viền avatar, Bảng tên, Mèo cún, Trang trí khác, Hộp bí ẩn.
+  - **Lưới thẻ theo độ hiếm (`r-*`):**
+    - Dải tiêu đề, nhãn độ hiếm và nhãn kho.
+    - Khung ảnh nền chấm.
+    - Món Huyền thoại có tia nắng xoay và nhãn "CỰC PHẨM HUYỀN THOẠI".
+    - Nút giá: Đang đeo / Đã có / Cần Lv / Chỉ từ Hộp bí ẩn / Kim Cương / Xu.
+  - **Hộp chi tiết** (thay cột phải và sheet đáy):
+    - Xem trước khung trên mặt mình, xem trước bảng tên.
+    - Ghi chú "Số dư sau khi đổi" hoặc "còn thiếu".
+    - Nút đổi chạy ngay: hộp chi tiết chính là bước xác nhận, như trong canvas.
+  - **Các mục:**
+    - Nộp bài + thang cấp.
+    - Thẻ cào & Code: nhũ bạc sọc chéo, ô mã hình viên thuốc, rung khi sai.
+    - Hộp bí ẩn: nền đêm sao, cầu nguyện ngay tại mục, cảnh sao băng, thẻ kết quả có tia nắng.
+    - Bảng Vàng: mỗi dòng có bảng tên và khung viền thật của bạn đó.
+    - Túi đồ.
+  - **Hộp "Tùy chỉnh hồ sơ & bảng tên":** chọn khung và bảng tên đã có, khoá theo cấp.
+  - **Hiệu ứng:** xu bay khi tiêu, LÊN CẤP và cảnh sao băng theo style mới.
+- Tranh v2 (`public/studio/shop-v2.webp`, 8×5, nền trong) dùng cho:
+  - quà của thầy, chọn theo từ khoá (hiện vật 0–9, vé 10–16);
+  - các khung trùng hình (Tai Mèo, Lá, Xanh, Cầu Vồng, Anh Đào, Trăng, Hào Quang Vàng);
+  - các mèo cún trùng hình (Moka, Shiba, Peanut, Thỏ, Snow).
+
+  Món khác giữ ảnh cũ.
+
+### Không đổi
+- Logic xu, ngọc, rương, mã quà, đổi quà; thang giá ×150; quà do thầy tạo.
+- Không có mục Giáo viên trong tiệm và không có "Khôi phục dữ liệu demo". Thay nút "Giáo viên" bằng nút "Hồ sơ".
+- Không sửa tên và khối ở hộp tuỳ chỉnh: tên lấy từ tài khoản, khối lấy từ lớp.
+
+### Test
+- Cập nhật `tests/e2e/points.e2e.mjs` theo luồng mới:
+  - đổi quà trong hộp chi tiết;
+  - thẻ cào ở mục riêng;
+  - cầu nguyện ngay trong mục Hộp bí ẩn, bấm đúp chỉ mở 1 lượt, hết lượt thì khoá;
+  - tranh v2 cho khung;
+  - không sidebar.

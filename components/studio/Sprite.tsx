@@ -160,3 +160,57 @@ export function faceStyle(presetIdx: number, row = 0): React.CSSProperties {
     backgroundPosition: `${(((1.5 * presetIdx + 0.25) / 11) * 100).toFixed(3)}% ${(((row * 1.229 + 0.02) / 3.916) * 100).toFixed(3)}%`,
   };
 }
+
+/* ============================== Sprite "Tiệm quà v2" (canvas Adorable Home: 8 cột × 5 hàng, nền trong) ============================== */
+
+export const SPRITE_V2 = "/studio/shop-v2.webp";
+
+/** Ô ảnh v2 của món có tranh tương ứng trong canvas (khung viền tròn, thú cưng); món khác dùng ảnh cũ */
+const V2_ITEM: Record<string, number> = {
+  "frame-catear": 17, "frame-leaf": 18, "frame-blue": 19, "frame-rainbow": 20, "frame-sakura": 22, "frame-moon": 23, "frame-gold": 25,
+  "np-pond": 26, "np-sakura": 27, "np-starry": 28, "np-butterfly": 29, "np-catparty": 30, "np-crimson": 31, "np-celestial": 32,
+  "pet-moka": 33, "pet-shiba": 34, "pet-peanut": 35, "pet-bunny": 36, "pet-snow": 38,
+};
+export const V2_MASCOT = 38;
+export const v2Index = (id?: string | null): number | undefined => (id ? V2_ITEM[id] : undefined);
+
+/** Quà của thầy → tranh v2 theo từ khoá (quà hiện vật 0–9, vé đặc quyền 10–16) */
+const V2_REWARD: [RegExp, number][] = [
+  [/trà sữa|trà|boba/i, 0],
+  [/sổ|vở|notebook/i, 1],
+  [/hộp bút|túi bút/i, 4],
+  [/bút|gel/i, 2],
+  [/sticker|nhãn dán/i, 3],
+  [/bình|nước|giữ nhiệt/i, 5],
+  [/đèn/i, 6],
+  [/gấu|bông/i, 7],
+  [/túi|balo|ba lô|cặp/i, 8],
+  [/tai nghe/i, 9],
+  [/gia hạn|hạn nộp|trễ hạn|\+24h/i, 10],
+  [/nhạc|giải lao/i, 11],
+  [/hỏi riêng|1-1|kèm/i, 12],
+  [/miễn|trực nhật|phạt/i, 13],
+  [/gợi ý|đáp án/i, 14],
+  [/chỗ ngồi|chọn chỗ|vip/i, 15],
+  [/cộng|\+ ?\d|điểm|nhân đôi|x2|gấp đôi/i, 16],
+];
+export function rewardArtV2(title: string, kind: "PHYSICAL" | "VIRTUAL") {
+  // Bỏ tiền tố trong ngoặc vuông (vd mã thử nghiệm) trước khi dò từ khoá
+  const t = title.replace(/^\[[^\]]*\]\s*/, "");
+  for (const [re, i] of V2_REWARD) if (re.test(t) && (kind === "PHYSICAL" ? i < 10 : i >= 10)) return i;
+  return kind === "PHYSICAL" ? 4 : 13;
+}
+
+export function v2Style(index: number): React.CSSProperties {
+  return {
+    backgroundImage: `url(${SPRITE_V2})`,
+    backgroundSize: "800% 500%",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: `${(((index % 8) / 7) * 100).toFixed(4)}% ${((Math.floor(index / 8) / 4) * 100).toFixed(4)}%`,
+  };
+}
+
+/** Một ô tranh v2 (vuông, nền trong suốt) */
+export function V2Art({ index, className, style }: { index: number; className?: string; style?: React.CSSProperties }) {
+  return <span role="presentation" className={cn("block aspect-square", className)} style={{ ...v2Style(index), ...style }} />;
+}

@@ -1,7 +1,5 @@
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { HomeSidebar } from "@/components/home/HomeSidebar";
-import { beVietnam } from "@/lib/fonts";
 import { ShopPage } from "@/components/shop/ShopPage";
 import { isPointsEnabled } from "@/lib/points/config";
 import { getStudentPointsPage } from "@/lib/points/queries";
@@ -45,34 +43,23 @@ export default async function RewardsPage() {
       const masked = await maskUsersForDemo(boardRows[i].map((r) => ({ ...r, id: r.userId })), prismaBase);
       return {
         grade: g,
-        rows: masked.map((r) => ({ userId: r.userId, name: r.name, levelName: r.level.name, xu: r.xu, rank: r.rank })),
+        rows: masked.map((r) => ({ userId: r.userId, name: r.name, levelName: r.level.name, xu: r.xu, rank: r.rank, avatar: r.avatar })),
         mine: g === myGrade ? myRank : null,
       };
     }),
   );
 
+  // Canvas "Tiệm quà v2" (Adorable Home): tiệm trải toàn bề rộng dưới thanh gỗ, không có sidebar
   return (
-    // GĐ9 (artifact): Tiệm quà nằm trong khung chung (header + sidebar), nền tím nhạt, chữ Be Vietnam Pro
-    <div className={`min-h-screen bg-[#F6F5FB] ${beVietnam.variable}`}>
-      <div className="flex w-full min-h-[calc(100vh-4rem)]">
-        <aside className="hidden lg:block w-[250px] shrink-0 border-r border-slate-200/70 bg-white/70 backdrop-blur-xl p-3">
-          <div className="sticky top-24 h-[calc(100vh-7rem)]">
-            <HomeSidebar user={session.user} />
-          </div>
-        </aside>
-        <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px]">
-        <ShopPage
-          data={data}
-          user={{ id: uid, name: session.user.name ?? me?.name ?? null, className: me?.studyClass?.name ?? null, grade: myGrade }}
-          todo={extras.todo}
-          todoTotal={extras.todoTotal}
-          recent={extras.recent.map((r) => ({ attemptId: r.attemptId, lessonId: r.lessonId, title: r.title, score: r.score }))}
-          boards={boards}
-          event={weeklyChallenge(data.wallet)}
-          gacha={gachaOn ? { pullsToday: today } : null}
-        />
-        </main>
-      </div>
-    </div>
+    <ShopPage
+      data={data}
+      user={{ id: uid, name: session.user.name ?? me?.name ?? null, className: me?.studyClass?.name ?? null, grade: myGrade }}
+      todo={extras.todo}
+      todoTotal={extras.todoTotal}
+      recent={extras.recent.map((r) => ({ attemptId: r.attemptId, lessonId: r.lessonId, title: r.title, score: r.score }))}
+      boards={boards}
+      event={weeklyChallenge(data.wallet)}
+      gacha={gachaOn ? { pullsToday: today } : null}
+    />
   );
 }
