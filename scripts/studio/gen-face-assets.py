@@ -54,11 +54,7 @@ for i, area in enumerate(areas, 1):
         eyes |= m
         eye_at.setdefault(c, []).append((cx, cy))
 hair &= ~((cell_of == 7) & (xx % CELL > 222) & (yy < 80))  # hoa cài của cô gái kimono
-# vệt bóng sáng nằm lọt trong tóc (tóc kimono) cũng là tóc — không thì đổi màu còn dải xám
 _skin = (a > 0.5) & (mx > 0.8) & (sat > 0.05) & (sat < 0.4) & ((hue < 40) | (hue > 340))
-_enclosed = nd.binary_fill_holes(nd.binary_closing(hair, iterations=3)) & (a > 0.5) & ~_skin & ~nd.binary_dilation(eyes, iterations=6)
-_enclosed &= (sat < 0.25) | ((hue < 50) | (hue > 330))  # chỉ xám / nâu (không lấy hoa, mũ màu)
-hair |= _enclosed & ~((cell_of == 7) & (xx % CELL > 222) & (yy < 80))
 # Tóc kimono màu tím xám (lọc nâu chỉ bắt phần tối): mọi điểm trên đầu không phải da / mắt / hoa / trắng / cổ áo
 _c7 = cell_of == 7
 _dx7 = np.abs(xx % CELL - 155)
