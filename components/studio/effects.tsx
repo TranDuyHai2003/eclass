@@ -7,6 +7,7 @@ import type { Rarity } from "@/lib/points/rarity";
 import { ShopArt, SHOP_MASCOT } from "./Sprite";
 import { IconHeart } from "./icons";
 import { mali, nunito } from "@/lib/fonts";
+import "@/components/shop/ah/theme.css";
 
 /* Hiệu ứng theo canvas "Tiệm quà v2": sao băng mở rương, lên cấp, mèo linh vật, mất mạng, số xu nhảy */
 

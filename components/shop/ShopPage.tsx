@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { mali, nunito } from "@/lib/fonts";
+import "./ah/theme.css";
 import { cancelRedemption, redeemReward, setGoalReward } from "@/actions/points";
 import { buyItem, saveAvatar } from "@/actions/avatar";
 import type { StudentPointsPageData } from "@/lib/points/queries";
