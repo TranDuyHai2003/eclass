@@ -9,7 +9,7 @@ import { FACES, FACE_IDS, PRESETS, currentFaceId, faceIndexOf, paintedLook, pres
 import { sanitizeAvatar } from "@/lib/game/avatar";
 import { BODIES, HAIR_BACK, HAIR_HEADS, HEAD_ANCHOR, HEAD_CELLS_N } from "@/lib/game/painted-data";
 import { ITEMS } from "@/lib/game/items";
-import { FACE_PART_OPTIONS } from "@/lib/game/face-parts";
+import { FACE_PART_OPTIONS, SKIN_TONES, skinToneOf } from "@/lib/game/face-parts";
 
 const preset = (id: string) => PRESETS.find((p) => p.id === id)!;
 const student = preset("preset-student").items;
@@ -142,18 +142,34 @@ describe("Bộ phận mặt phối riêng (mắt / miệng / trang điểm)", ()
   });
 
   test("sanitizeAvatar giữ id bộ phận hợp lệ, bỏ id lạ", () => {
-    const out = sanitizeAvatar({ eyeShape: "preset-gamer", mouth: "tongue", faceDeco: "bandaid" }, "u", []);
-    assert.deepEqual([out.eyeShape, out.mouth, out.faceDeco], ["preset-gamer", "tongue", "bandaid"]);
+    const out = sanitizeAvatar({ eyeShape: "cat", mouth: "tongue", faceDeco: "bandaid" }, "u", []);
+    assert.deepEqual([out.eyeShape, out.mouth, out.faceDeco], ["cat", "tongue", "bandaid"]);
+    assert.equal(sanitizeAvatar({ eyeShape: "preset-gamer" }, "u", []).eyeShape, undefined, "mắt của mẫu không còn là lựa chọn tự chỉnh");
     const bad = sanitizeAvatar({ eyeShape: "preset-astro", mouth: "<b>", faceDeco: 3 }, "u", []);
     assert.deepEqual([bad.eyeShape, bad.mouth, bad.faceDeco], [undefined, undefined, undefined]);
   });
 
   test("mỗi lựa chọn có tên, id không trùng; mặt trơn có trong public/studio", () => {
+    assert.ok(Object.values(FACE_PART_OPTIONS).flat().every((o) => !o.id.startsWith("preset-")), "không lấy bộ phận của mẫu");
     for (const [k, opts] of Object.entries(FACE_PART_OPTIONS)) {
-      assert.ok(opts.length >= 7, k);
+      assert.ok(opts.length >= 6, k);
       assert.equal(new Set(opts.map((o) => o.id)).size, opts.length, k);
       assert.ok(opts.every((o) => o.name.length > 2), k);
     }
-    assert.ok(existsSync(path.join(process.cwd(), "public/studio/faces-blank.webp")));
+    for (const f of ["faces-blank.webp", "faces-skin.webp", "faces-blank-skin.webp", "char-skin.webp", "char-bodies-skin.webp", "characters-skin.webp"]) {
+      assert.ok(existsSync(path.join(process.cwd(), "public/studio", f)), f);
+    }
+    assert.ok(SKIN_TONES.every((t) => /^#[0-9a-f]{6}$/.test(t.v ?? "")), "màu da có mã màu");
+  });
+
+  test("màu da riêng + lông mày: lưu được, không còn là mẫu, giữ tranh (không dán mặt chỉ vì đổi da)", () => {
+    const out = sanitizeAvatar({ skinTone: "tan", brows: "angry" }, "u", []);
+    assert.deepEqual([out.skinTone, out.brows], ["tan", "angry"]);
+    assert.deepEqual([sanitizeAvatar({ skinTone: "#000" }, "u", []).skinTone, sanitizeAvatar({ brows: "x" }, "u", []).brows], [undefined, undefined]);
+    assert.equal(presetIndexOf({ ...student, skinTone: "brown" }), -1);
+    assert.equal(presetIndexOf({ ...student, brows: "thin" }), -1);
+    assert.equal(paintedLook({ ...student, skinTone: "brown", brows: "thin" })?.face, null, "đổi da / lông mày không cần dán mặt");
+    assert.equal(skinToneOf("deep"), "#6f432a");
+    assert.equal(skinToneOf(null), null);
   });
 });

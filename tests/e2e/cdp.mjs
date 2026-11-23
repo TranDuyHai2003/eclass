@@ -43,15 +43,24 @@ export async function openBrowser({ baseUrl, token, width = 1366, height = 900 }
     }
     if (m.method === "Runtime.exceptionThrown") errors.push(m.params.exceptionDetails.exception?.description?.split("\n")[0]);
     if (m.method === "Runtime.consoleAPICalled" && m.params.type === "error") {
-      consoleErrors.push(m.params.args.map((x) => x.value ?? x.description ?? "").join(" ").slice(0, 400));
+      const msg = m.params.args.map((x) => x.value ?? x.description ?? "").join(" ");
+      consoleErrors.push(msg.slice(0, /hydrat/i.test(msg) ? 3000 : 400)); // lỗi hydration: giữ phần so sánh HTML để gỡ lỗi
     }
     // Hộp thoại (vd "Rời trang khi chưa lưu?") chặn mọi lệnh khác → tự đồng ý để test không treo
     if (m.method === "Page.javascriptDialogOpening") ws.send(JSON.stringify({ id: ++id, method: "Page.handleJavaScriptDialog", params: { accept: true } }));
   };
+  // Trình duyệt không trả lời (trang treo) → báo lỗi sau 60s thay vì treo cả bộ test (và không kịp dọn dữ liệu)
   const send = (method, params = {}) =>
-    new Promise((r) => {
+    new Promise((r, reject) => {
       const i = ++id;
-      pending.set(i, r);
+      const timer = setTimeout(() => {
+        pending.delete(i);
+        reject(new Error(`CDP ${method} không phản hồi sau 60s (trang treo?) ${params.expression ? String(params.expression).slice(0, 120) : ""}`));
+      }, 60000);
+      pending.set(i, (m) => {
+        clearTimeout(timer);
+        r(m);
+      });
       ws.send(JSON.stringify({ id: i, method, params }));
     });
   const setSize = (w, h) => send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile: w < 600 });

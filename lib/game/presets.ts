@@ -28,8 +28,12 @@ export const FACE_PART_KEYS: FacePartKey[] = ["eyeShape", "mouth", "faceDeco"];
 /** Có phối bộ phận mặt riêng không */
 export const hasFaceParts = (c: Partial<Record<FacePartKey, string | null>>) => FACE_PART_KEYS.some((k) => !!c[k]);
 
+/** Màu da riêng (tô lại da của tranh) + lông mày (vẽ nổi trên tóc mái) — không đổi mặt nền */
+export type LookExtraKey = "skinTone" | "brows";
+export const LOOK_EXTRA_KEYS: LookExtraKey[] = ["skinTone", "brows"];
+
 /** Cấu hình nhân vật kèm khuôn mặt + bộ phận mặt chọn riêng (không phải món, miễn phí) */
-export type LookConfig = Partial<Record<Slot, string | null>> & { face?: string | null } & Partial<Record<FacePartKey, string | null>>;
+export type LookConfig = Partial<Record<Slot, string | null>> & { face?: string | null } & Partial<Record<FacePartKey | LookExtraKey, string | null>>;
 
 /**
  * "Khuôn mặt" chọn được ở mục Tùy chỉnh: mặt vẽ tay của các mẫu (bỏ hiệp sĩ, nhà du hành vì đội mũ kín).
@@ -45,7 +49,7 @@ export const FACES: { id: string; name: string; skin: string }[] = [
 ];
 export const FACE_IDS = FACES.map((f) => f.id);
 /** Mặt đã chọn không làm lệch mẫu: chưa chọn, chọn đúng mặt của mẫu, hoặc mẫu che kín mặt (nhà du hành) */
-const faceFits = (config: LookConfig, p: Preset) => !hasFaceParts(config) && (!config.face || config.face === p.id || p.id === "preset-astro");
+const faceFits = (config: LookConfig, p: Preset) => !hasFaceParts(config) && LOOK_EXTRA_KEYS.every((k) => !config[k]) && (!config.face || config.face === p.id || p.id === "preset-astro");
 const GIRL_HAIR = new Set(["hair-bob", "hair-ponytail", "hair-twin", "hair-long", "hair-bun"]);
 
 /** Khuôn mặt dùng khi vẽ nhân vật tự chỉnh: mặt đã chọn, chưa chọn thì theo kiểu tóc (tóc dài/búi → mặt cô gái kimono) */

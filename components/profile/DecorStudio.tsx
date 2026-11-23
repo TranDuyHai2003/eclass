@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 import { buyBundle, saveAvatar } from "@/actions/avatar";
 import { ITEM_BY_ID, itemsOfSlot, type Item, type Slot } from "@/lib/game/items";
 import { FACES, FACE_IDS, PRESETS, currentFaceId, faceIndexOf, paintedLook, presetIndexOf, type Preset } from "@/lib/game/presets";
-import { FACE_PART_KEYS, FACE_PART_OPTIONS, type FacePartKey } from "@/lib/game/face-parts";
-import { FaceArt } from "@/components/avatar/FaceArt";
+import { FACE_PART_KEYS, FACE_PART_OPTIONS, LOOK_EXTRA_KEYS, type FacePartKey, type LookExtraKey } from "@/lib/game/face-parts";
+import { Brows, FaceArt } from "@/components/avatar/FaceArt";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { play } from "@/lib/sound";
 import { Chibi, FxShape } from "@/components/avatar/Chibi";
@@ -51,12 +51,16 @@ const TABS: { key: Tab; label: string; slots: Slot[] }[] = [
 ];
 const TAB_OF: Partial<Record<Slot, Tab>> = Object.fromEntries(TABS.flatMap((t) => t.slots.map((s) => [s, t.key])));
 const SLOT_KEYS: Slot[] = ["skin", "hair", "hairColor", "eyes", "outfit", "accessory", "frame", "background", "effect", "nameplate", "title", "pet"];
-const LOOK_KEYS = ["face", ...FACE_PART_KEYS] as const; // khuôn mặt + bộ phận mặt (miễn phí, không phải món)
+const LOOK_KEYS = ["face", ...FACE_PART_KEYS, ...LOOK_EXTRA_KEYS] as const; // khuôn mặt + bộ phận mặt + màu da, lông mày (miễn phí, không phải món)
+type PartKey = FacePartKey | LookExtraKey;
+const PART_ROWS: PartKey[] = ["skinTone", "eyeShape", "brows", "mouth", "faceDeco"];
 const sameLook = (a: AvatarConfig, b: AvatarConfig) => LOOK_KEYS.every((k) => (a[k] ?? null) === (b[k] ?? null));
 const same = (a: AvatarConfig, b: AvatarConfig) => sameLook(a, b) && SLOT_KEYS.every((k) => (a[k] ?? null) === (b[k] ?? null));
-const PART_LABEL: Record<FacePartKey, { title: string; none: string }> = {
-  eyeShape: { title: "Mắt", none: "Mắt của khuôn mặt" },
-  mouth: { title: "Miệng", none: "Miệng của khuôn mặt" },
+const PART_LABEL: Record<PartKey, { title: string; none: string }> = {
+  skinTone: { title: "Màu da", none: "Giữ màu da đang có" },
+  brows: { title: "Lông mày", none: "Không vẽ thêm lông mày" },
+  eyeShape: { title: "Mắt", none: "Giữ mắt đang có" },
+  mouth: { title: "Miệng", none: "Giữ miệng đang có" },
   faceDeco: { title: "Trang điểm & sticker", none: "Không trang điểm" },
 };
 const fmt = (n: number) => n.toLocaleString("vi-VN");
@@ -122,12 +126,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
     // Đổi tóc / áo / phụ kiện mà chưa chọn mặt riêng → giữ mặt đang hiện (không bị đổi sang mặt của tranh khác)
     setConfig((c) => ({ ...c, ...(!c.face && KEEP_FACE.includes(slot) ? { face: currentFaceId(c) } : {}), [slot]: id }));
   };
-  const putFace = (id: string) => {
-    play("click");
-    setJustSaved(false);
-    setConfig((c) => ({ ...c, face: id }));
-  };
-  const putPart = (key: FacePartKey, id: string | null) => {
+  const putPart = (key: PartKey, id: string | null) => {
     play("click");
     setJustSaved(false);
     setConfig((c) => ({ ...c, [key]: id }));
@@ -140,7 +139,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
   const applyPreset = (p: Preset) => {
     play("click");
     setJustSaved(false);
-    setConfig((c) => ({ ...c, ...p.items, face: null, eyeShape: null, mouth: null, faceDeco: null }));
+    setConfig((c) => ({ ...c, ...p.items, face: null, eyeShape: null, mouth: null, faceDeco: null, skinTone: null, brows: null }));
   };
   const goTab = (t: Tab) => {
     play("tick");
@@ -439,29 +438,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
           </div>
         ) : (
           <div className="flex min-h-[420px] flex-col gap-[22px] px-4 pb-6 pt-4 sm:px-6" role="tabpanel">
-            <Section title="Khuôn mặt">
-              <div className="flex flex-wrap gap-3" role="radiogroup" aria-label="Khuôn mặt">
-                {FACES.map((f) => {
-                  const on = faceNow === f.id;
-                  return (
-                    <button
-                      key={f.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      aria-label={`Mặt ${f.name}`}
-                      title={`Mặt ${f.name} (miễn phí)`}
-                      data-testid={`face-${f.id}`}
-                      onClick={() => putFace(f.id)}
-                      className="h-16 w-16 rounded-full bg-[#F3F1FA]"
-                      style={{ ...faceStyle(PRESETS.findIndex((p) => p.id === f.id)), boxShadow: `0 0 0 3px #FFFFFF, 0 0 0 5px ${on ? ACCENT : "#E4E0F0"}` }}
-                    />
-                  );
-                })}
-              </div>
-              <p className="text-xs text-[#6B6680]">Miễn phí · giữ nét vẽ của các mẫu. Tóc và mắt đổi màu ngay trên nhân vật.</p>
-            </Section>
-            {FACE_PART_KEYS.map((key) => (
+            {PART_ROWS.map((key) => (
               <Section key={key} title={PART_LABEL[key].title}>
                 <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label={PART_LABEL[key].title}>
                   {[{ id: null, name: PART_LABEL[key].none }, ...FACE_PART_OPTIONS[key]].map((o) => (
@@ -470,6 +447,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
                 </div>
               </Section>
             ))}
+            <p className="-mt-3 text-xs text-[#6B6680]">Khuôn mặt riêng của nhân vật tự chỉnh · miễn phí. Muốn đúng mặt của mẫu thì chọn ở “Mẫu có sẵn”.</p>
             {partsHidden && <p className="-mt-3 text-xs text-[#B4540A]">Trang phục đang che kín mặt (mũ giáp / mũ phi hành gia) nên chưa thấy mắt, miệng đã phối.</p>}
             <Section title="Màu tóc">
               <Swatches slot="hairColor" config={config} has={has} put={put} color={(it) => (it.v?.startsWith("url(") ? "conic-gradient(#F87171,#FBBF24,#34D399,#60A5FA,#A78BFA,#F87171)" : it.v ?? "#000")} />
@@ -603,6 +581,7 @@ function FacePartButton({ name, on, face, config, onClick, testId }: { name: str
     >
       <svg viewBox="29 36 62 62" className="h-full w-full" aria-hidden>
         <FaceArt uid={`fp${uid}`} face={face} config={config} x={26} y={44} width={68} height={46} />
+        {config.brows && <Brows id={config.brows} hairColor={config.hairColor} />}
       </svg>
     </button>
   );

@@ -13,12 +13,17 @@ const CHAR_BODIES = "/studio/char-bodies.webp";
 const CHAR_FACEMASK = "/studio/char-facemask.webp"; // vùng da mặt của từng đầu (dán khuôn mặt đã chọn)
 const CHAR_BACK = "/studio/char-hairback.webp"; // tóc sau lưng (đuôi ngựa, tóc dài, búi, tóc dựng…), ô cao 272 + HAIR_BACK_TOP
 const CHAR_BACK_SHADE = "/studio/char-hairback-shade.webp";
+// Vùng da + độ sáng (tô màu da riêng): tranh nguyên mẫu / đầu rời / thân
+const CHAR_SKIN_WHOLE = "/studio/characters-skin.webp";
+const CHAR_SKIN = "/studio/char-skin.webp";
+const CHAR_BODY_SKIN = "/studio/char-bodies-skin.webp";
 // Khung tranh cao thêm HAIR_BACK_TOP px phía trên đầu (búi, ngọn tóc dựng); cùng tỉ lệ 144/332, đáy vẫn ở y=138
 const PAINT_SCALE = 144 / 332;
 const PAINT_H = (272 + HAIR_BACK_TOP) * PAINT_SCALE;
 const MASK_W = HEAD_CELLS_N * 332;
 import type { AvatarConfig } from "@/lib/game/avatar";
-import { FaceArt, Tint, tintOf } from "./FaceArt";
+import { Brows, FaceArt, Tint, tintOf } from "./FaceArt";
+import { skinToneOf } from "@/lib/game/face-parts";
 import { cn } from "@/lib/utils";
 
 /**
@@ -34,7 +39,8 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
   // Tự chỉnh khác mẫu → thân SVG + khuôn mặt vẽ tay của mẫu (màu da theo mặt đó cho liền)
   const faceIdx = painted && !look ? faceIndexOf(config) : -1;
   const faceOf = faceIdx >= 0 ? FACES[faceIdx] : null;
-  const skin = faceOf?.skin ?? get("skin")?.v ?? "#fde7d2";
+  const tone = skinToneOf(config.skinTone);
+  const skin = tone ?? faceOf?.skin ?? get("skin")?.v ?? "#fde7d2";
   const hair = get("hair")?.v ?? "short";
   const hairRaw = get("hairColor")?.v ?? "#1f2937";
   const eye = get("eyes")?.v ?? "#4b2e1e";
@@ -138,7 +144,10 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
           data-painted={PRESETS[look.base].id} data-head={look.index} data-hair={look.hairColor ?? undefined} data-eyes={look.eyes ?? undefined}
         >
           {look.body === null ? (
-            <image href={CHAR_STRIP} width="2656" height="272" />
+            <>
+              <image href={CHAR_STRIP} width="2656" height="272" />
+              {tone && <Tint id={`${uid}-sw`} href={CHAR_SKIN_WHOLE} x={look.index * 332} w={332} h={272} total={2656} fill={tone} />}
+            </>
           ) : (
             <>
               {HAIR_BACK.includes(look.index) && (
@@ -155,13 +164,21 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
                 data-body={BODIES[look.body].outfit}
               >
                 <image href={CHAR_BODIES} width={BODIES.length * 332} height={BODY_H} />
+                {tone && <Tint id={`${uid}-sb`} href={CHAR_BODY_SKIN} x={look.body * 332} w={332} h={BODY_H} total={BODIES.length * 332} fill={tone} />}
               </svg>
               <image href={CHAR_HEADS} width={MASK_W} height="272" />
+              {tone && <Tint id={`${uid}-sh`} href={CHAR_SKIN} x={look.index * 332} w={332} h={272} total={MASK_W} fill={tone} />}
             </>
           )}
           {look.face !== null && <PaintedFaceSwap uid={uid} cell={look.index} face={look.face} config={config} />}
           {look.hairColor && <Tint id={`${uid}-th`} href={CHAR_HAIR} x={look.index * 332} w={332} h={272} total={MASK_W} fill={tintOf(look.hairColor, uid)} />}
           {look.eyes && look.face === null && <Tint id={`${uid}-te`} href={CHAR_EYES} x={look.index * 332} w={332} h={272} total={MASK_W} fill={tintOf(look.eyes, uid)} />}
+          {config.brows && look.index in EYE_GEO && (look.face !== null || FACES.some((f) => f.id === PRESETS[look.base].id)) && (() => {
+            // lông mày nổi trên tóc mái: đơn vị mặt → px của đầu (căn theo mắt như mặt dán)
+            const [gx, gy, dist] = EYE_GEO[look.index];
+            const s = dist / 29;
+            return <Brows id={config.brows} hairColor={config.hairColor ?? PRESETS[look.base].items.hairColor} transform={`translate(${look.index * 332 + gx - 60 * s} ${gy - 61 * s}) scale(${s})`} />;
+          })()}
         </svg>
       ) : (
       <>
@@ -206,6 +223,7 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
 
       {/* Tóc trước */}
       <g {...hp}>{hairStyle.front}</g>
+      {faceOf && config.brows && <Brows id={config.brows} hairColor={config.hairColor} />}
       {hairStyle.shine !== false && (
         <path d={hairStyle.shine ?? "M33 30q27-14 54 0"} fill="none" stroke={hairShine} strokeWidth="2.6" strokeLinecap="round" strokeDasharray="8 3.5" opacity={rainbow ? 0.55 : 0.75} />
       )}

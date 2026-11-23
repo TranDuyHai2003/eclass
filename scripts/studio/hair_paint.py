@@ -127,3 +127,77 @@ def under(top, top_shade_a, layer):
     sh[..., :3] = (top_shade_a[..., :3] * sa[..., None] + layer.shade[..., :3] * ls[..., None]) / np.maximum(nsa, 1e-6)[..., None]
     sh[..., 3] = nsa
     return out, sh
+
+
+def _at(edge, t):
+    """Điểm trên mép (mảng điểm) tại tham số t ∈ [0, 1]"""
+    x = np.clip(t, 0, 1) * (len(edge) - 1)
+    i = np.minimum(x.astype(int), len(edge) - 2)
+    w = (x - i)[:, None]
+    return edge[i] * (1 - w) + edge[i + 1] * w
+
+
+def _smooth(v, m, s=1.2):
+    return nd.gaussian_filter(v * m, s) / np.maximum(nd.gaussian_filter(m.astype(float), s), 1e-6)
+
+
+def paint_lock(layer, left, right, pal, *, ring=(0.16, 0.3), strands=7, lights=2, dark=0.0, root=0.35, seed=0, outline=1.9, nf=18):
+    """
+    Lọn tóc kiểu anime: hai mép (gốc → ngọn), tô theo toạ độ lọn (t dọc lọn, f ngang lọn):
+    khối tròn (tối hai mép), gốc tối, vòng sáng lượn sóng ("angel ring"), sợi tóc thuôn dần + vệt sáng, viền tối.
+    """
+    left, right = np.asarray(left, float), np.asarray(right, float)
+    n = len(left)
+    hi = Image.new("I", (layer.w * SS, layer.h * SS), 0)
+    dr = ImageDraw.Draw(hi)
+    for i in range(n - 1):
+        for j in range(nf):
+            f0, f1 = j / nf, (j + 1) / nf
+            q = [left[i] * (1 - f0) + right[i] * f0, left[i] * (1 - f1) + right[i] * f1, left[i + 1] * (1 - f1) + right[i + 1] * f1, left[i + 1] * (1 - f0) + right[i + 1] * f0]
+            dr.polygon(layer._pts(q), fill=1 + i * nf + j)
+    idx = np.asarray(hi, np.int64)
+    hib = idx > 0
+    ti = np.where(hib, ((idx - 1) // nf + 0.5) / (n - 1), 0.0)
+    fj = np.where(hib, ((idx - 1) % nf + 0.5) / nf, 0.0)
+    down = lambda a: a.reshape(layer.h, SS, layer.w, SS).mean((1, 3))
+    cov = down(hib.astype(float))
+    m = cov > 0
+    t = _smooth(down(ti) / np.maximum(cov, 1e-6), m)
+    f = _smooth(down(fj) / np.maximum(cov, 1e-6), m)
+    dist = nd.distance_transform_edt(hib).reshape(layer.h, SS, layer.w, SS).mean((1, 3)) / SS
+    cyl = np.abs(2 * f - 1) ** 1.6
+    k = 0.55 * cyl + root * np.clip(1 - t / 0.22, 0, 1) + dark + 0.12 * np.clip((t - 0.7) / 0.3, 0, 1)
+    k = np.clip(k, 0, 0.92)[..., None]
+    col = pal["base"] * (1 - k) + pal["shadow"] * k
+    if ring:
+        ph = seed * 1.7
+        r0 = ring[0] + 0.03 * np.sin(f * np.pi * 6 + ph)
+        r1 = ring[1] + 0.045 * np.sin(f * np.pi * 5 + ph * 2) - 0.03 * cyl
+        band = np.clip((t - r0) / 0.025, 0, 1) * np.clip((r1 - t) / 0.04, 0, 1) * (1 - cyl) ** 1.5
+        col = col * (1 - 0.7 * band[..., None]) + pal["light"] * 0.7 * band[..., None]
+    rng = np.random.default_rng(seed)
+
+    def path(fv, t0, t1, k_=24):
+        tt = np.linspace(t0, t1, k_)
+        return _at(left, tt) * (1 - fv) + _at(right, tt) * fv
+
+    for _ in range(strands):
+        fv, t0, t1 = rng.uniform(0.12, 0.88), rng.uniform(0.02, 0.2), rng.uniform(0.55, 0.97)
+        tm = (t0 + t1) / 2
+        for (a, b, w, op) in ((t0, tm, 1.25, 0.55), (tm, t1, 0.75, 0.4)):
+            sm = layer.lines([path(fv, a, b)], w)
+            col = col * (1 - op * sm[..., None]) + pal["line"] * op * sm[..., None]
+    for _ in range(lights):
+        fv, t0 = rng.uniform(0.25, 0.6), rng.uniform(0.05, 0.25)
+        lm = nd.gaussian_filter(layer.lines([path(fv, t0, t0 + rng.uniform(0.18, 0.35))], 1.1), 0.5)
+        col = col * (1 - 0.6 * lm[..., None]) + pal["light"] * 0.6 * lm[..., None]
+    o = np.clip((outline - dist) / 1.0, 0, 1)[..., None]
+    col = col * (1 - o) + pal["line"] * o
+    layer._over(layer.img, col, cov)
+    l = (col @ np.array([0.299, 0.587, 0.114])) / pal["p80"]
+    layer._over(layer.shade, np.repeat(np.clip(l, 0, 1)[..., None], 3, -1), cov)
+
+
+def lock_edges(root_l, root_r, tip, cl, cr, n=30):
+    """Mép trái/phải của một lọn: gốc (hai điểm) → ngọn chung, mỗi mép 2 điểm điều khiển"""
+    return bez(root_l, cl[0], cl[1], tip, n=n), bez(root_r, cr[0], cr[1], tip, n=n)

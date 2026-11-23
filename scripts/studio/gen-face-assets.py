@@ -382,8 +382,12 @@ for arr in (heads, hair_ext):
 # hàng trên cùng của đầu tóc bob sáng hơn tóc bên dưới (mép cắt của tranh) → lộ vạch sáng trên đỉnh khi tô màu tóc
 for x in range(8 * CELL, 9 * CELL):
     ys = np.where(heads[:40, x, 3] > 0.5)[0]
-    if len(ys) and heads[ys[0], x, :3].mean() > heads[ys[0] + 1, x, :3].mean() + 0.04:
-        heads[ys[0], x], hair_ext[ys[0], x] = heads[ys[0] + 1, x], hair_ext[ys[0] + 1, x]
+    if not len(ys):
+        continue
+    ref = ys[0] + 5
+    for yy_ in range(ys[0], ref):
+        if heads[yy_, x, :3].mean() > heads[ref, x, :3].mean() + 0.03:
+            heads[yy_, x], hair_ext[yy_, x] = heads[ref, x], hair_ext[ref, x]
 
 # ======================= Kiểu tóc vẽ thêm (ô 9–14): đầu tóc bob / tóc ngắn + tóc vẽ theo nét tranh =======================
 # Lớp trước (bím, lọn dài) nằm dưới đầu trong char-heads; lớp sau (đuôi ngựa, tóc dài, búi, tóc dựng, mohawk) trong
@@ -391,7 +395,7 @@ for x in range(8 * CELL, 9 * CELL):
 import sys
 from types import SimpleNamespace
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from hair_paint import Layer, bez, chain, lock, palette, under  # noqa: E402
+from hair_paint import Layer, bez, chain, lock_edges, paint_lock, palette, under  # noqa: E402
 
 TOP = 40
 TIE = "#f472b6"
@@ -408,68 +412,82 @@ def ellipse(cx, cy, rx, ry, rot=0.0, n=40):
     return np.stack([cx + x * c - y * s, cy + x * s + y * c], 1)
 
 
+def L(layer, p, root_l, root_r, tip, cl, cr, n=30, **kw):
+    """Một lọn tóc vẽ kiểu anime (hair_paint.paint_lock)"""
+    le, ri = lock_edges(root_l, root_r, tip, cl, cr, n=n)
+    paint_lock(layer, le, ri, p, **kw)
+
+
+def M(pt):
+    """Lật điểm qua trục giữa đầu tóc bob (x = 155)"""
+    return (310 - pt[0], pt[1])
+
+
+def Lm(layer, p, root_l, root_r, tip, cl, cr, **kw):
+    """Lọn đối xứng của L qua giữa đầu (đổi mép trái ↔ phải)"""
+    L(layer, p, M(root_r), M(root_l), M(tip), [M(q) for q in cr], [M(q) for q in cl], **kw)
+
+
+def tie(layer, p, cx, cy, rx, ry, rot=0.0):
+    """Dây buộc tóc (chun vải): hai lớp elip + nếp"""
+    layer.paint(ellipse(cx, cy, rx, ry, rot), p, color=TIE, hair=False, outline=1.6,
+                strands=[bez((cx - rx * 0.5, cy - ry * 0.6), (cx, cy), (cx - rx * 0.3, cy + ry * 0.7), n=8)],
+                lights=[bez((cx + rx * 0.1, cy - ry * 0.6), (cx + rx * 0.45, cy - ry * 0.1), n=6)])
+
+
 def ponytail(front, back, p, over=None):
-    outer = chain(bez((212, 18), (266, 12), (300, 70), (288, 140)), bez((288, 140), (280, 188), (266, 208), (252, 230)))
-    inner = chain(bez((212, 64), (242, 76), (258, 112), (257, 150)), bez((257, 150), (256, 186), (254, 206), (252, 230)))
-    _paint(back, _lk(inner, outer), p, root=(214, 42), root_r=55)
-    o2 = chain(bez((250, 96), (276, 124), (280, 176), (266, 218)))
-    i2 = chain(bez((244, 110), (258, 140), (262, 182), (266, 218)))
-    _paint(back, _lk(i2, o2), p, edge=0.35)
-    back.paint(ellipse(225, 40, 9, 13, 0.35), p, color=TIE, hair=False)
+    """Đuôi ngựa buộc cao bên phải: 3 lọn xoắn nhẹ, ngọn cong vào trong"""
+    L(back, p, (202, 22), (214, 72), (250, 238), [(282, -2), (318, 118)], [(238, 100), (262, 178)], ring=(0.12, 0.24), strands=10, root=0.5, seed=1)
+    L(back, p, (220, 28), (226, 56), (282, 190), [(272, 24), (304, 120)], [(250, 70), (284, 140)], ring=(0.14, 0.27), strands=5, root=0.45, seed=2)
+    L(back, p, (226, 66), (236, 80), (238, 214), [(262, 110), (258, 180)], [(250, 120), (244, 180)], ring=None, strands=3, dark=0.15, seed=3)
+    tie(back, p, 224, 42, 9, 13, 0.35)
 
 
-def _lk(left, right):
-    poly, strands, lights = lock(left, right)
-    return poly, None, strands, lights
-
-
-def _paint(layer, item, p, **kw):
-    poly, _, strands, lights = item
-    layer.paint(poly, p, strands=strands, lights=lights, **kw)
-
-
-def braid(layer, p, top, bot, n=6):
+def braid(layer, p, top, bot, n=6, seed=0):
+    """Bím tết: các múi lệch trái/phải xen kẽ (múi dưới vẽ sau), dây buộc + chùm đuôi"""
     (x0, y0), (x1, y1) = top, bot
     step = (y1 - y0) / n
     for i in range(n):
-        f = (i + 0.5) / n
-        cx, cy = x0 + (x1 - x0) * f, y0 + (y1 - y0) * f
-        w, h, s = 27 - i * 1.3, step * 1.45, (1 if i % 2 else -1)
-        left = bez((cx + 4 * s, cy - h / 2), (cx - w / 2 - 3, cy - h * 0.25), (cx - w / 2, cy + h * 0.25), (cx - 3 * s, cy + h / 2), n=16)
-        right = bez((cx + 4 * s, cy - h / 2), (cx + w / 2 + 3, cy - h * 0.25), (cx + w / 2, cy + h * 0.25), (cx - 3 * s, cy + h / 2), n=16)
-        layer.paint(chain(left, right[::-1]), p, strands=[bez((cx - w * 0.3 * s, cy - h * 0.3), (cx, cy), (cx + w * 0.2 * s, cy + h * 0.4), n=10)],
-                    lights=[bez((cx - w * 0.15, cy - h * 0.32), (cx + w * 0.05, cy - h * 0.18), n=6)], edge=0.55)
-    tuft = chain(bez((x1 - 6, y1), (x1 - 12, y1 + 8), (x1 - 15, y1 + 20), n=10), [(x1 - 8, y1 + 15), (x1 - 2, y1 + 24), (x1 + 4, y1 + 15), (x1 + 11, y1 + 22)],
-                 bez((x1 + 11, y1 + 22), (x1 + 11, y1 + 8), (x1 + 6, y1), n=10))
-    layer.paint(tuft, p, strands=[bez((x1 - 2, y1 + 2), (x1 - 4, y1 + 12), (x1 - 6, y1 + 18), n=8), bez((x1 + 3, y1 + 2), (x1 + 4, y1 + 10), (x1 + 6, y1 + 17), n=8)])
-    band = chain(bez((x1 - 9, y1 - 3), (x1, y1 - 5), (x1 + 9, y1 - 3), n=8), bez((x1 + 9, y1 + 4), (x1, y1 + 6), (x1 - 9, y1 + 4), n=8))
-    layer.paint(band, p, color=TIE, hair=False, outline=1.6)
+        fr = (i + 0.5) / n
+        cx, cy = x0 + (x1 - x0) * fr, y0 + (y1 - y0) * fr
+        w, h, sg = 27 - i * 1.4, step * 1.5, (1 if i % 2 else -1)
+        tp, bt = (cx + 5 * sg, cy - h / 2), (cx - 4 * sg, cy + h / 2)
+        L(layer, p, (tp[0] - 0.5, tp[1]), (tp[0] + 0.5, tp[1]), bt, [(cx - w / 2 - 4, cy - h * 0.3), (cx - w / 2, cy + h * 0.25)], [(cx + w / 2 + 4, cy - h * 0.3), (cx + w / 2, cy + h * 0.25)],
+          n=18, ring=(0.2, 0.42), strands=3, lights=1, root=0.25, seed=seed + i, nf=12)
+    for k_, (dx, tipx) in enumerate(((-4, -13), (0, -1), (4, 12))):
+        L(layer, p, (x1 + dx - 4, y1 + 1), (x1 + dx + 4, y1 + 1), (x1 + tipx, y1 + 24 - abs(tipx) * 0.4), [(x1 + dx - 6, y1 + 8), (x1 + tipx - 2, y1 + 16)], [(x1 + dx + 5, y1 + 8), (x1 + tipx + 2, y1 + 16)],
+          n=12, ring=None, strands=2, lights=0, root=0.3, seed=seed + 20 + k_, nf=8)
+    band = chain(bez((x1 - 9, y1 - 4), (x1, y1 - 6), (x1 + 9, y1 - 4), n=8), bez((x1 + 9, y1 + 4), (x1, y1 + 6), (x1 - 9, y1 + 4), n=8))
+    layer.paint(band, p, color=TIE, hair=False, outline=1.5)
 
 
 def twin(front, back, p, over=None):
-    braid(front, p, (97, 128), (92, 222))
-    braid(front, p, (213, 128), (218, 222))
+    braid(front, p, (97, 126), (92, 222), seed=10)
+    braid(front, p, (213, 126), (218, 222), seed=30)
 
 
 def long_hair(front, back, p, over=None):
-    left = chain(bez((112, 8), (70, 28), (60, 90), (63, 150)), bez((63, 150), (66, 196), (60, 226), (58, 250)))
-    zig = [(70, 240), (82, 254), (96, 242), (110, 252), (126, 240), (155, 246), (184, 240), (200, 252), (214, 242), (228, 254), (240, 240)]
-    right = mir(left, 155)[::-1]
-    poly = chain(left, zig, right, bez((198, 8), (155, -12), (112, 8), n=12))
-    strands = [bez((78, 60), (70, 150), (72, 240)), bez((92, 74), (84, 160), (88, 246)), bez((232, 60), (240, 150), (238, 240)), bez((218, 74), (226, 160), (222, 246))]
-    lights = [bez((80, 70), (74, 100), (74, 126)), bez((230, 70), (236, 100), (236, 126))]
-    back.paint(poly, p, strands=strands, lights=lights, dark=0.18)
-    l_out = bez((80, 112), (74, 150), (78, 192), (92, 234))
-    l_in = bez((104, 112), (112, 150), (108, 196), (92, 234))
-    _paint(front, _lk(l_out, l_in), p, edge=0.45)
-    _paint(front, _lk(mir(l_in, 155), mir(l_out, 155)), p, edge=0.45)
+    """Tóc dài thẳng: lớp sau tối (khối), 3 lọn mỗi bên có ngọn nhọn + 2 lọn trước vai"""
+    panel = chain(bez((112, 10), (66, 30), (62, 120), (66, 230), n=20), [(155, 236)], bez((244, 230), (248, 120), (244, 30), (198, 10), n=20), bez((198, 10), (155, -12), (112, 10), n=12))
+    back.paint(panel, p, dark=0.45, edge=0.3)
+    for side in (L, Lm):
+        side(back, p, (108, 12), (140, 6), (60, 250), [(60, 34), (52, 150)], [(98, 60), (80, 180)], ring=(0.1, 0.2), strands=8, root=0.4, seed=40 if side is L else 50)
+        side(back, p, (90, 50), (120, 40), (84, 258), [(68, 110), (72, 200)], [(114, 110), (102, 210)], ring=(0.13, 0.24), strands=6, root=0.35, seed=41 if side is L else 51)
+        side(back, p, (116, 46), (150, 40), (112, 246), [(104, 120), (104, 200)], [(146, 120), (130, 200)], ring=None, strands=5, dark=0.2, seed=42 if side is L else 52)
+        side(front, p, (80, 110), (106, 112), (92, 238), [(72, 150), (78, 200)], [(114, 150), (108, 200)], ring=(0.2, 0.33), strands=6, root=0.45, seed=43 if side is L else 53)
 
 
 def bun(front, back, p, over=None):
-    poly = chain(bez((131, 16), (116, -2), (126, -26), (155, -37)), bez((155, -37), (184, -26), (194, -2), (179, 16)), bez((179, 16), (155, 24), (131, 16), n=12))
-    strands = [bez((140, 12), (132, -10), (150, -31)), bez((170, 12), (180, -10), (160, -31)), bez((155, 14), (151, -10), (156, -33))]
-    back.paint(poly, p, strands=strands, lights=[bez((134, -6), (138, -20), (150, -28))], edge=0.6)
-    band = chain(bez((128, 2), (155, 8), (182, 2), n=12), bez((184, 11), (155, 17), (126, 11), n=12))
+    """Búi củ tỏi trên đỉnh: củ tròn có ngọn xoắn, sợi quấn vòng, dây buộc ở chân búi"""
+    L(back, p, (130, 18), (180, 18), (155, -38), [(108, 0), (128, -32)], [(202, 0), (182, -32)], n=34, ring=(0.42, 0.58), strands=0, lights=1, root=0.0, seed=60, nf=22)
+    for k_, (a0, a1, r) in enumerate(((200, 330, 18), (190, 345, 10), (215, 320, 25))):
+        tt = np.radians(np.linspace(a0, a1, 24))
+        arc = np.stack([155 + r * 1.15 * np.cos(tt), 2 + r * 0.95 * np.sin(tt)], 1)
+        sm = back.lines([arc], 1.1) * (back.img[..., 3] > 0.5)  # sợi quấn vòng (cả lớp độ sáng để tô màu tóc)
+        back.img[..., :3] = back.img[..., :3] * (1 - 0.5 * sm[..., None]) + p["line"] * 0.5 * sm[..., None]
+        back.shade[..., :3] *= 1 - 0.5 * sm[..., None]
+    L(back, p, (149, -24), (161, -24), (158, -39), [(147, -30), (152, -37)], [(163, -30), (162, -36)], n=12, ring=None, strands=1, lights=0, root=0.2, seed=61, nf=6)
+    band = chain(bez((128, 3), (155, 9), (182, 3), n=12), bez((184, 12), (155, 18), (126, 12), n=12))
     back.paint(band, p, color=TIE, hair=False)
 
 
@@ -478,32 +496,31 @@ def _dir(a):
 
 
 def spiky(front, back, p, over=None):
-    """Tóc dựng: các mảng nhọn to quanh đỉnh và hai bên đầu (gốc khuất sau tóc, ngọn nhô ra ~40px)"""
+    """Tóc dựng: mảng nhọn to quanh đầu, mỗi mảng có vòng sáng + sợi tóc"""
     c = np.array([162.0, 100.0])
+    # khối tóc nền sau các mảng nhọn: lấp khe giữa các mảng thành một mái tóc liền
+    mass = np.stack([c[0] + 106 * np.cos(np.radians(np.linspace(-190, 10, 40))), c[1] + 104 * np.sin(np.radians(np.linspace(-190, 10, 40)))], 1)
+    back.paint(chain(mass, [(c[0] + 60, c[1] + 30), (c[0] - 60, c[1] + 30)]), p, dark=0.35, edge=0.35, strands=[bez(tuple(c + 80 * _dir(a_)), tuple(c + 102 * _dir(a_ + 4))) for a_ in range(-170, 0, 22)])
     spikes = [(-178, 128), (-150, 138), (-120, 140), (-92, 137), (-62, 140), (-32, 138), (-4, 128)]
-    for a, rt in sorted(spikes, key=lambda s: -abs(s[0] + 90)):
-        sw = 8 if a < -95 else -8 if a > -85 else 3  # ngọn hơi vuốt ra ngoài
+    for i, (a, rt) in enumerate(sorted(spikes, key=lambda s: -abs(s[0] + 90))):
+        sw = 8 if a < -95 else -8 if a > -85 else 3
         d = _dir(a + sw)
         if c[1] + rt * d[1] < -37:
             rt = (c[1] + 37) / -d[1]
         tip = c + rt * d
-        bl, br = c + 66 * _dir(a - 21), c + 66 * _dir(a + 21)
-        m = (66 + rt) / 2
-        left = bez(bl, c + m * _dir(a - 13 + sw / 2), tip, n=22)
-        right = bez(br, c + m * _dir(a + 13 + sw / 2), tip, n=22)
-        _paint(back, _lk(left, right), p, root=tuple(c), root_r=105, edge=0.45)
+        bl, br = c + 62 * _dir(a - 21), c + 62 * _dir(a + 21)
+        m1, m2 = 62 + (rt - 62) * 0.35, 62 + (rt - 62) * 0.75
+        L(back, p, tuple(bl), tuple(br), tuple(tip), [tuple(c + m1 * _dir(a - 17 + sw / 3)), tuple(c + m2 * _dir(a - 9 + sw / 2))], [tuple(c + m1 * _dir(a + 17 + sw / 3)), tuple(c + m2 * _dir(a + 9 + sw / 2))],
+          n=24, ring=(0.42, 0.56), strands=4, lights=1, root=0.55, seed=70 + i, nf=14)
 
 
 def mohawk(front, back, p, over=None):
-    """Mào liền giữa đầu (răng cưa nhỏ trên đỉnh) + lọn mào đổ ra trước đỉnh đầu"""
-    left = bez((134, 50), (124, 10), (134, -20), (149, -36))
-    right = bez((178, -37), (192, -20), (200, 10), (190, 50))
-    poly = chain(left, [(156, -27), (163, -39), (170, -28)], right)
-    strands = [bez((146, 40), (140, 0), (150, -28)), bez((162, 40), (161, 0), (163, -34)), bez((178, 40), (184, 0), (175, -30))]
-    back.paint(poly, p, strands=strands, lights=[bez((154, 16), (153, -4), (157, -24))], root=(162, 60), root_r=60, edge=0.4)
-    l_ = bez((142, -16), (136, 8), (148, 30), (166, 50))
-    r_ = bez((184, -16), (190, 8), (180, 30), (166, 50))
-    _paint(over, _lk(l_, r_), p, edge=0.35)
+    """Mohawk: mào hẹp giữa đầu gồm 5 ngọn ngả ra sau (giữa cao nhất), khác tóc dựng xoè quanh đầu"""
+    tips = [(128, -14), (196, -14), (142, -28), (182, -28), (162, -38)]
+    for i, (tx, ty) in enumerate(tips):
+        x0 = tx - 20 + (6 if tx < 162 else -6 if tx > 162 else 0)
+        L(back, p, (x0, 60), (x0 + 40, 60), (tx, ty), [(x0 - 6, 24), (tx - 10, ty + 22)], [(x0 + 46, 24), (tx + 10, ty + 22)],
+          n=26, ring=(0.45, 0.6), strands=4, lights=1, root=0.6, seed=80 + i, nf=14)
 
 
 def dome(back, p, cx=155):
@@ -554,6 +571,48 @@ Image.fromarray((fm * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "cha
 Image.fromarray((np.clip(heads, 0, 1) * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-heads.webp"), lossless=True)
 strip = np.concatenate(bodies, 1)
 Image.fromarray((np.clip(strip, 0, 1) * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, "char-bodies.webp"), lossless=True)
+
+# ======================= Màu da (skinTone): vùng da + độ sáng chuẩn hoá → Chibi tô lại da bằng phép nhân =======================
+def skin_shade(img, cw, exclude=None, min_sat=0.14, feather=True):
+    """min_sat: độ bão hoà trung bình tối thiểu của mảng da (tai rất nhạt ~0.1; giáp kim loại ánh ấm cũng ~0.1 nên tranh nguyên mẫu giữ 0.14);
+    feather=False: không nhân alpha của ảnh (mặt dán có viền mờ — tô cả viền để không lộ vòng sáng)"""
+    h_, s_, v_, l_, a_ = hsv(img)
+    hs_ = (h_ + 30) % 360  # quay sắc độ: tai, má hồng (~350°) liền với tông da (~20°)
+    m = (a_ > (0.3 if feather else 0.01)) & (v_ > 0.72) & (s_ > 0.05) & (s_ < 0.45) & (hs_ > 5) & (hs_ < 66)
+    if exclude is not None:
+        m &= ~exclude
+    # chỉ giữ mảng liền mang tông da (bỏ giáp kim loại ánh ấm, viền vàng áo choàng, đai kimono…)
+    lab_k, n_k = nd.label(m, structure=np.ones((3, 3)))
+    if n_k:
+        idx_k = np.arange(1, n_k + 1)
+        area = nd.sum(m, lab_k, idx_k)
+        ms, mh = nd.mean(s_, lab_k, idx_k), nd.mean(hs_, lab_k, idx_k) - 30
+        core = nd.sum(nd.binary_opening(m, iterations=2), lab_k, idx_k)  # nét mảnh (viền áo) không còn lõi
+        sl = nd.find_objects(lab_k)
+        hw = np.array([(q[0].stop - q[0].start, q[1].stop - q[1].start) for q in sl])
+        flat = (hw[:, 1] > 2.5 * hw[:, 0]) | (hw[:, 0] > 2.5 * hw[:, 1])  # dải ngang (đai) / vệt dọc (viền áo)
+        ok = (area >= 40) & (ms >= min_sat) & (mh >= 0) & (mh <= 32) & (core >= 12) & ~flat
+        m = ok[np.maximum(lab_k - 1, 0)] & (lab_k > 0)
+    out = np.zeros(img.shape[:2] + (4,))
+    for c0 in range(0, img.shape[1], cw):
+        cm = np.zeros_like(m); cm[:, c0:c0 + cw] = m[:, c0:c0 + cw]
+        if cm.sum() > 20:
+            out[cm, :3] = np.clip(l_[cm] / np.percentile(l_[cm], 75), 0, 1)[:, None]
+    soft = nd.gaussian_filter(m.astype(float), 0.6)
+    out[..., 3] = np.clip(np.maximum(m * 1.0, soft), 0, 1) * (a_ if feather else 1)
+    edge = (~m) & (out[..., 3] > 0)
+    out[edge, :3] = np.clip(l_[edge] / 0.75, 0, 1)[:, None]
+    return out
+
+
+for name, img_, cw_, ex_, kw_ in (
+    ("characters-skin.webp", im, CELL, None, {}),
+    ("char-skin.webp", heads, CELL, hair_ext[..., 3] > 0.5, {"min_sat": 0.07}),
+    ("char-bodies-skin.webp", strip, CELL, None, {"min_sat": 0.07}),
+    ("faces-skin.webp", faces, PW, None, {"min_sat": 0.07, "feather": False}),
+    ("faces-blank-skin.webp", blank, PW, None, {"min_sat": 0.07, "feather": False}),
+):
+    Image.fromarray((np.clip(skin_shade(img_, cw_, ex_, **kw_), 0, 1) * 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, name), lossless=True)
 ts = [
     "/** Sinh bởi scripts/studio/gen-face-assets.py — không sửa tay. Mốc ghép đầu/thân của tranh nhân vật (đơn vị px của ô 332×272). */",
     f"export const BODY_H = {H + EXT};",

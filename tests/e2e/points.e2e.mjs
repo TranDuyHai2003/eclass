@@ -432,7 +432,7 @@ try {
     expect([307, 308].includes(res.status) && /\/profile$/.test(res.headers.get("location") ?? ""), `/profile/avatar phải chuyển về /profile (${res.status} ${res.headers.get("location")})`);
   });
 
-  await step("Học sinh: đổi màu tóc / thay áo vẫn giữ nhân vật vẽ tay; chọn khuôn mặt vẽ tay → lưu được", async () => {
+  await step("Học sinh: đổi màu tóc / thay áo / đổi kiểu tóc vẫn giữ nhân vật vẽ tay; khuôn mặt riêng (mắt, miệng, sticker) → lưu được", async () => {
     await s.goto("/profile", /Tủ đồ & Cửa hàng/i);
     const click = (id) => s.ev(`const b=document.querySelector('[data-testid="${id}"]'); if(!b||b.disabled) return false; b.click(); return true;`);
     const hero = (sel) => s.ev(`return !!document.querySelector('[data-testid="profile-banner"] ${sel}')`);
@@ -449,27 +449,29 @@ try {
     expect(await click("item-outfit-tee"), "thiếu Áo phông");
     await sleep(200);
     expect(await hero(`[data-painted="preset-student"] [data-body="outfit-tee"]`), "thay áo phông phải giữ đầu Học sinh nam, chỉ đổi thân");
-    expect(await click("face-preset-kimono"), "thiếu khuôn mặt Cô gái kimono");
-    await sleep(200);
-    expect(await hero(`[data-painted="preset-student"] [data-face="preset-kimono"]`), "chọn mặt kimono phải dán lên tranh Học sinh nam (không đổi sang SVG)");
+    // Tùy chỉnh không còn hàng "mặt của mẫu" (muốn mặt mẫu thì chọn nguyên mẫu)
+    expect(!(await s.ev(`return !!document.querySelector('[data-testid="face-preset-kimono"]')`)), "Tùy chỉnh không được còn nút chọn mặt của mẫu");
     expect(await click("item-hair-ponytail"), "thiếu Tóc đuôi ngựa");
     await sleep(200);
     await s.screenshot(path.join(SHOTS, "profile-ponytail.png"));
-    expect(await hero(`[data-head="9"] [data-hairback="9"]`) && (await hero(`[data-head="9"] [data-face="preset-kimono"]`)) === false, "đuôi ngựa phải vẽ bằng đầu vẽ tay + tóc sau lưng (không ra nhân vật SVG)");
+    expect(await hero(`[data-head="9"] [data-hairback="9"]`), "đuôi ngựa phải vẽ bằng đầu vẽ tay + tóc sau lưng (không ra nhân vật SVG)");
+    expect(await hero(`[data-head="9"] [data-face="preset-student"]`), "đổi kiểu tóc vẫn giữ mặt đang có (Học sinh nam)");
     expect(await click("item-hair-bob"), "thiếu Tóc bob");
     await sleep(200);
-    // đầu tóc bob vẽ sẵn mang đúng mặt kimono → không cần dán mặt
-    expect(await hero(`[data-head="8"]`) && !(await hero("[data-head] [data-face]")), "tóc bob phải vẽ bằng đầu tóc bob trơn (mặt kimono có sẵn)");
-    // Phối bộ phận mặt: mắt trái tim + miệng mèo + sticker sao → vẫn đầu vẽ tay, mặt nền kimono dán lên tranh
-    expect(await click("eyeShape-heart") && (await click("mouth-cat")) && (await click("faceDeco-star")), "thiếu nút Mắt / Miệng / Trang điểm");
+    expect(await hero(`[data-head="8"]`), "tóc bob phải vẽ bằng đầu tóc bob vẽ tay");
+    // Khuôn mặt riêng: mắt to long lanh + miệng mèo + sticker sao → vẫn đầu vẽ tay
+    expect(await click("eyeShape-big") && (await click("mouth-cat")) && (await click("faceDeco-star")), "thiếu nút Mắt / Miệng / Trang điểm");
     await sleep(250);
-    expect(await hero(`[data-head="8"] [data-face="preset-kimono"][data-eyeshape="heart"][data-mouth="cat"][data-deco="star"]`), "phối mắt/miệng/sticker phải vẽ trên đầu tóc bob");
+    expect(await hero(`[data-head="8"] [data-eyeshape="big"][data-mouth="cat"][data-deco="star"]`), "phối mắt/miệng/sticker phải vẽ trên đầu tóc bob");
+    expect(await click("skinTone-tan") && (await click("brows-thick")), "thiếu nút Màu da / Lông mày");
+    await sleep(250);
+    expect(await hero(`[data-head="8"] [data-brows="thick"]`) && (await hero(`[data-head="8"] mask image[href*="char-skin"]`)), "màu da + lông mày phải vẽ trên tranh");
     await s.screenshot(path.join(SHOTS, "profile-face-parts.png"));
     expect(await click("decor-save"), "không bấm được Lưu trang trí");
     expect(await s.waitText(/Đã lưu trang trí/), "chưa lưu");
     const av = await prisma.userAvatar.findUnique({ where: { userId: data.student.id } });
     const cf = av?.config ?? {};
-    expect(cf.face === "preset-kimono" && cf.hairColor === "hc-black" && cf.hair === "hair-bob" && cf.eyeShape === "heart" && cf.mouth === "cat" && cf.faceDeco === "star", `cấu hình lưu sai: ${JSON.stringify(cf)}`);
+    expect(cf.hairColor === "hc-black" && cf.hair === "hair-bob" && cf.eyeShape === "big" && cf.mouth === "cat" && cf.faceDeco === "star" && cf.skinTone === "tan" && cf.brows === "thick", `cấu hình lưu sai: ${JSON.stringify(cf)}`);
   });
 
   await step("Học sinh: hồ sơ cá nhân hiện nhân vật, danh hiệu, xu tích luỹ; bạn khác xem không thấy kết quả gần đây; hồ sơ thầy → 404", async () => {
@@ -781,7 +783,8 @@ try {
 
   await step("Không có lỗi JavaScript trên trình duyệt", async () => {
     const all = [...t.errors, ...s.errors];
-    expect(all.length === 0, all.join("\n    "));
+    const hyd = [...t.consoleErrors, ...s.consoleErrors].filter((e) => /hydrat/i.test(e));
+    expect(all.length === 0, [...all, ...hyd].join("\n    "));
   });
 
   await t.close();
