@@ -77,6 +77,8 @@ export interface PaintedLook {
   /** itemId màu tóc / màu mắt cần tô lại trên tranh; null = giữ màu tranh */
   hairColor: string | null;
   eyes: string | null;
+  /** Phụ kiện vẽ chồng lên đầu vẽ tay (không có sẵn trong tranh của đầu đó); null = không / đã có trong tranh */
+  acc: string | null;
 }
 
 /**
@@ -99,7 +101,7 @@ const HEADS: { cell: number; base: number; hair: string | null; accessory: strin
  */
 export function paintedLook(config: LookConfig): PaintedLook | null {
   const outfit = config.outfit ?? null;
-  const make = (index: number, base: number, body: number | null): PaintedLook => {
+  const make = (index: number, base: number, body: number | null, acc: string | null = null): PaintedLook => {
     const p = PRESETS[base];
     // mặt đã chọn khác mặt tranh → dán mặt đó; có phối bộ phận mặt → dán mặt của chính tranh làm nền (hiệp sĩ / nhà du hành: bỏ qua)
     const own = hasFaceParts(config) && FACE_IDS.includes(p.id) ? p.id : null;
@@ -113,15 +115,26 @@ export function paintedLook(config: LookConfig): PaintedLook | null {
       face: fi >= 0 ? fi : null,
       hairColor: config.hairColor && config.hairColor !== p.items.hairColor ? config.hairColor : null,
       eyes: config.eyes && config.eyes !== eyeBase ? config.eyes : null,
+      acc,
     };
   };
   const whole = PRESETS.findIndex((p, i) => !(i in HEAD_ANCHOR) && p.items.outfit === outfit);
-  if (whole >= 0) return make(whole, whole, null);
-  const head = HEADS.find((h) => h.hair === (config.hair ?? null) && h.accessory === (config.accessory ?? null));
+  if (whole >= 0) return make(whole, whole, null); // đồ liền mũ (hoodie tai mèo, giáp, đồ phi hành gia): phụ kiện bị mũ che
+  // Đầu có sẵn đúng kiểu tóc + phụ kiện (vd mũ phù thuỷ của tranh) → dùng luôn; không thì đầu trơn của kiểu tóc đó
+  // + phụ kiện vẽ chồng lên (lỗi cũ: đeo phụ kiện ngoài tranh → cả nhân vật đổi sang SVG, mất kiểu tóc vẽ tay)
+  const accessory = config.accessory ?? null;
+  // đầu của mẫu (vd kính → Học giả nhỏ) có tóc + mặt riêng: chỉ dùng khi đang là đúng mẫu đó (hoặc đúng mặt mẫu đó), không thì đổi mất tóc/mặt
+  const plain = HEADS.find((h) => h.hair === (config.hair ?? null) && h.accessory === null);
+  // (đầu trơn cắt từ chính tranh đó — tóc bob ô 8 của cô gái kimono — thì cùng tóc + mặt → dùng đầu có phụ kiện vẽ tay)
+  const exact = HEADS.find(
+    (h) => h.hair === (config.hair ?? null) && h.accessory === accessory && (config.face === PRESETS[h.base].id || presetIndexOf(config) === h.base || plain?.base === h.base),
+  );
+  const head = exact ?? plain;
   if (!head) return null;
-  if (head.cell < PRESETS.length && PRESETS[head.cell].items.outfit === outfit) return make(head.cell, head.base, null);
+  const acc = exact ? null : accessory;
+  if (head.cell < PRESETS.length && PRESETS[head.cell].items.outfit === outfit) return make(head.cell, head.base, null, acc);
   const body = BODIES.findIndex((b) => b.outfit === outfit);
-  return body < 0 ? null : make(head.cell, head.base, body);
+  return body < 0 ? null : make(head.cell, head.base, body, acc);
 }
 
 /** Khuôn mặt đang hiện của cấu hình (id trong FACES) — để đổi tóc / áo vẫn giữ mặt; null nếu mặt bị che (nhà du hành, hiệp sĩ) */

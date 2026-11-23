@@ -410,6 +410,8 @@ try {
     expect(await click("item-hair-spiky"), "không có ô tóc dựng");
     expect(await click("item-acc-glasses"), "không có ô kính");
     expect(await s.waitText(/1 vật phẩm chưa sở hữu · 450 xu/), "thanh hành động không báo món đang thử");
+    // đeo kính vẫn giữ đầu tóc dựng vẽ tay, kính vẽ chồng lên (lỗi cũ: đeo phụ kiện → đổi sang nhân vật SVG, mất kiểu tóc)
+    expect(await s.ev(`return !!document.querySelector('[data-testid="profile-banner"] [data-head="13"] [data-acc="acc-glasses"]')`), "đeo kính phải giữ tóc dựng vẽ tay");
     expect(await s.ev(`return document.querySelector('[data-testid="profile-banner"] svg[role="img"]') !== null`), "banner thiếu nhân vật xem trước");
     const before = await balanceOf(data.student.id);
     expect(await click("decor-buy"), "không bấm được Mua & lưu");

@@ -16,13 +16,13 @@ const student = preset("preset-student").items;
 
 describe("paintedLook — tô màu trên tranh mẫu", () => {
   test("trùng mẫu hoàn toàn → tranh gốc, không tô", () => {
-    assert.deepEqual(paintedLook(student), { index: 0, base: 0, body: null, face: null, hairColor: null, eyes: null });
+    assert.deepEqual(paintedLook(student), { index: 0, base: 0, body: null, face: null, hairColor: null, eyes: null, acc: null });
     assert.equal(presetIndexOf(student), 0);
   });
 
   test("chỉ đổi màu tóc / màu mắt → vẫn là tranh Học sinh nam, tô lại màu (lỗi cũ: chuyển sang nhân vật SVG khác hẳn)", () => {
     const cfg = { ...student, hairColor: "hc-pink", eyes: "eye-blue" };
-    assert.deepEqual(paintedLook(cfg), { index: 0, base: 0, body: null, face: null, hairColor: "hc-pink", eyes: "eye-blue" });
+    assert.deepEqual(paintedLook(cfg), { index: 0, base: 0, body: null, face: null, hairColor: "hc-pink", eyes: "eye-blue", acc: null });
     assert.equal(presetIndexOf(cfg), -1, "không còn trùng mẫu hoàn toàn → ô mẫu không báo Đang dùng");
   });
 
@@ -45,9 +45,22 @@ describe("paintedLook — tô màu trên tranh mẫu", () => {
     assert.deepEqual([PRESETS[cat!.index].id, cat!.body], ["preset-catgirl", null], "hoodie tai mèo liền mũ → nguyên tranh");
   });
 
-  test("phụ kiện không có đầu vẽ sẵn → nhân vật SVG (mặt vẫn vẽ tay)", () => {
-    assert.equal(paintedLook({ ...student, accessory: "acc-crown" }), null);
-    assert.equal(paintedLook({ ...student, hair: "hair-ponytail", accessory: "acc-bow" }), null);
+  test("đeo phụ kiện giữ nguyên đầu vẽ tay (kiểu tóc, mặt), phụ kiện vẽ chồng lên (lỗi cũ: đổi sang nhân vật SVG, mất kiểu tóc)", () => {
+    const crown = paintedLook({ ...student, accessory: "acc-crown" });
+    assert.deepEqual([crown?.index, crown?.acc], [0, "acc-crown"]);
+    const bow = paintedLook({ ...student, hair: "hair-ponytail", accessory: "acc-bow" });
+    assert.deepEqual([bow?.index, bow?.acc], [9, "acc-bow"]);
+    for (const it of ITEMS.filter((i) => i.slot === "accessory")) {
+      for (const hair of ["hair-short", "hair-bob", "hair-spiky", "hair-wavy"]) {
+        assert.ok(paintedLook({ ...student, hair, accessory: it.id }), `${hair} + ${it.id} phải vẽ tay`);
+      }
+    }
+    // kính / tai nghe trên Học sinh nam: không lấy đầu của mẫu Học giả / Game thủ (tóc + mặt khác)
+    assert.equal(paintedLook({ ...student, accessory: "acc-glasses" })?.index, 0);
+    assert.equal(paintedLook({ ...student, accessory: "acc-headphones", face: "preset-student" })?.index, 0);
+    // đúng mẫu → tranh của mẫu (phụ kiện có sẵn trong tranh)
+    assert.deepEqual([paintedLook(preset("preset-scholar").items)?.index, paintedLook(preset("preset-scholar").items)?.acc], [4, null]);
+    assert.equal(paintedLook({ ...preset("preset-gamer").items, face: "preset-gamer", hairColor: "hc-pink" })?.index, 6);
   });
 
   test("mọi kiểu tóc đều có đầu vẽ tay (lỗi cũ: đuôi ngựa, hai bím, dài, búi, dựng, mohawk ra nhân vật SVG)", () => {

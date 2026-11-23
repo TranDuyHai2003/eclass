@@ -21,6 +21,8 @@ const CHAR_BODY_SKIN = "/studio/char-bodies-skin.webp";
 const PAINT_SCALE = 144 / 332;
 const PAINT_H = (272 + HAIR_BACK_TOP) * PAINT_SCALE;
 const MASK_W = HEAD_CELLS_N * 332;
+/** Phóng to phụ kiện SVG khi đặt lên đầu vẽ tay (đầu tranh to hơn đầu SVG); kính, khăn ở tầm mặt / cổ giữ nguyên */
+const ACC_SCALE: Record<string, number> = { glasses: 1, scarf: 1, headphones: 1.18, cap: 1.22, crown: 1.25, wizardhat: 1.22, catears: 1.25, bow: 1.2, sakura: 1.2 };
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { Brows, FaceArt, Tint, tintOf } from "./FaceArt";
 import { skinToneOf } from "@/lib/game/face-parts";
@@ -173,6 +175,18 @@ export function Chibi({ config, size = 120, className, title, painted = true }: 
           {look.face !== null && <PaintedFaceSwap uid={uid} cell={look.index} face={look.face} config={config} />}
           {look.hairColor && <Tint id={`${uid}-th`} href={CHAR_HAIR} x={look.index * 332} w={332} h={272} total={MASK_W} fill={tintOf(look.hairColor, uid)} />}
           {look.eyes && look.face === null && <Tint id={`${uid}-te`} href={CHAR_EYES} x={look.index * 332} w={332} h={272} total={MASK_W} fill={tintOf(look.eyes, uid)} />}
+          {look.acc && look.index in EYE_GEO && (() => {
+            // phụ kiện SVG (toạ độ theo mặt SVG: mắt 45.5/74.5, 61) đặt lên đầu vẽ tay: căn theo mắt; đồ đội đầu phóng to theo cỡ đầu tranh
+            const [gx, gy, dist] = EYE_GEO[look.index];
+            const v = ITEM_BY_ID[look.acc]?.v;
+            if (!v || v === "halo" || (v === "glasses" && (look.base === 4 || look.face === FACES.findIndex((f) => f.id === "preset-scholar")))) return null;
+            const k = ACC_SCALE[v] ?? 1.2;
+            return (
+              <g transform={`translate(${look.index * 332 + gx} ${gy}) scale(${(dist / 29) * k}) translate(-60 -61)`} data-acc={look.acc}>
+                <Accessory acc={v} uid={uid} hair={H} hairLine={hairLine} />
+              </g>
+            );
+          })()}
           {config.brows && look.index in EYE_GEO && (look.face !== null || FACES.some((f) => f.id === PRESETS[look.base].id)) && (() => {
             // lông mày nổi trên tóc mái: đơn vị mặt → px của đầu (căn theo mắt như mặt dán)
             const [gx, gy, dist] = EYE_GEO[look.index];
