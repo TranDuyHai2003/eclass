@@ -20,13 +20,16 @@ export const fmt = (n: number) => n.toLocaleString("vi-VN");
 export const RAR_LABEL: Record<Rarity, string> = { common: "Phổ thông", rare: "Hiếm", epic: "Sử thi", legendary: "Huyền thoại" };
 
 /** Đồng xu vàng (SVG vẽ tay: vành nổi, sao dập nổi, vệt bóng) — components/game/CurrencyIcons.tsx */
+// Bỏ class viền (border-*) còn sót từ đồng xu kiểu cũ: gắn lên SVG thành ô vuông viền xám (thầy báo 24/11)
+const noBorder = (c?: string) => c?.split(/\s+/).filter((x) => x && !/^border(-|$)/.test(x)).join(" ") || undefined;
+
 export function CoinDot({ size = 20, className }: { size?: number; className?: string }) {
-  return <CoinIcon size={Math.round(size * 1.12)} className={className} />;
+  return <CoinIcon size={Math.round(size * 1.12)} className={noBorder(className)} />;
 }
 
 /** Kim cương cắt giác (SVG) — cỡ cũ là ô vuông xoay 45° nên phóng ~1,5 lần cho cùng độ lớn nhìn thấy */
 export function GemDot({ size = 15, className }: { size?: number; className?: string }) {
-  return <GemIcon size={Math.round(size * 1.5)} className={className} />;
+  return <GemIcon size={Math.round(size * 1.5)} className={noBorder(className)} />;
 }
 
 /** Khung viền phủ lên ảnh đại diện: tranh v2 → tranh khung cũ trong sprite → vòng SVG */

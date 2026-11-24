@@ -810,8 +810,8 @@ function CardView({ e, st, avatar, name, onOpen }: CardProps) {
         </span>
       )}
       <span className={cn("ah-btn h-[46px] gap-2 px-4 text-base max-sm:h-[38px] max-sm:gap-1.5 max-sm:px-2 max-sm:text-[13px]", cls)}>
-        {icon === "coin" && <CoinDot size={19} className="border-2" />}
-        {icon === "gem" && <GemDot size={13} className="mx-[3px] border-2" />}
+        {icon === "coin" && <CoinDot size={19} />}
+        {icon === "gem" && <GemDot size={13} />}
         {text}
       </span>
     </button>
