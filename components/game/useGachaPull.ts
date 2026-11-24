@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { openChest } from "@/actions/gacha";
 import { CHESTS, type ChestId, type Outcome } from "@/lib/game/gacha-shared";
@@ -24,7 +23,6 @@ export function useGachaPull({
   /** Gọi sau khi lật thẻ (vd cập nhật số dư ở thanh gỗ) */
   onDone?: (r: { outcome: Outcome; wallet?: { balance: number; gems: number } }) => void;
 }) {
-  const router = useRouter();
   const [wallet, setWallet] = useState(w0);
   const [pity, setPity] = useState(pity0);
   const [today, setToday] = useState(today0);
@@ -101,7 +99,6 @@ export function useGachaPull({
         if (outcome.kind !== "item" || outcome.duplicate) setBurst((n) => n + 1);
         if (outcome.rarity === "epic" || outcome.rarity === "legendary") setConfetti((n) => n + 1);
         onDone?.({ outcome, wallet: res.wallet });
-        router.refresh();
       };
       // Cảnh sao băng ~2,4 giây (canvas thiết kế); "Bỏ qua" lật ngay
       const reveal = setTimeout(doReveal, 2400);

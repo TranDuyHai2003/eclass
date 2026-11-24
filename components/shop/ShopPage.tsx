@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { memo, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -113,7 +113,18 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   const firstSec = useRef(true);
   const { wallet, goal } = data;
   const level = getLevel(wallet.lifetimeEarned);
-  const xuShown = useTweenNumber(wallet.balance);
+  // Ví hiển thị: cộng / trừ NGAY khi server báo thành công (nhập mã, đổi quà, mua đồ), khớp lại khi dữ liệu mới về —
+  // trước 24/11 phải chờ cả trang tiệm dựng lại (rất lâu trên điện thoại) mới thấy xu đổi
+  const [opt, setOpt] = useState<{ base: number; gemBase: number; xu: number; gem: number } | null>(null);
+  const optLive = !!opt && opt.base === wallet.balance && opt.gemBase === wallet.gems;
+  const balanceNow = optLive ? wallet.balance + opt.xu : wallet.balance;
+  const gemsNow = optLive ? wallet.gems + opt.gem : wallet.gems;
+  const adjust = (xu: number, gem = 0) =>
+    setOpt((o) => {
+      const keep = !!o && o.base === wallet.balance && o.gemBase === wallet.gems;
+      return { base: wallet.balance, gemBase: wallet.gems, xu: (keep ? o.xu : 0) + xu, gem: (keep ? o.gem : 0) + gem };
+    });
+  const xuShown = useTweenNumber(balanceNow);
   const pet = avatar.pet ? ITEM_BY_ID[avatar.pet] : null;
   const bagCount = data.redemptions.filter((r) => r.status === "PENDING").length + owned.size;
   const plateDark = !!avatar.nameplate && ITEM_BY_ID[avatar.nameplate]?.v2 === "dark";
@@ -212,7 +223,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       if (res.success) {
         if (res.message) toast.success(res.message);
         after?.();
-        router.refresh();
       } else {
         play("error");
         toast.error(res.error || "Có lỗi xảy ra");
@@ -228,7 +238,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         setAvatar(res.config ?? next);
         setSelKey(null);
         toast.success(`Đã trang bị "${item.name}"`);
-        router.refresh();
       } else {
         play("error");
         toast.error(res.error);
@@ -244,6 +253,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         setBurst((n) => n + 1);
         flyCoins("out");
         setOwned((o) => new Set([...o, item.id]));
+        if (item.price) adjust("xu" in item.price ? -item.price.xu : 0, "gem" in item.price ? -item.price.gem : 0);
         setSelKey(null);
         toast.success(res.message);
         // Mua đồ mặc nhanh thì dùng luôn — phải LƯU lên server (buyItem chỉ thêm vào túi) (review Gemini GĐ6)
@@ -251,7 +261,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           const saved = await saveAvatar({ ...avatar, [item.slot]: item.id });
           if (saved.success && saved.config) setAvatar(saved.config);
         }
-        router.refresh();
       } else {
         play("error");
         toast.error(res.error);
@@ -262,6 +271,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
     run(
       () => redeemReward(r.id),
       () => {
+        adjust(-r.price);
         setSelKey(null);
         setCelebrated((n) => n + 1);
         flyCoins("out");
@@ -278,7 +288,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         setAvatar(res.config ?? { ...avatar, ...next });
         setCustom(false);
         toast.success("Đã lưu hồ sơ");
-        router.refresh();
       } else {
         play("error");
         toast.error(res.error);
@@ -319,13 +328,13 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       const r = e.r;
       const soldOut = r.stock !== null && r.stock <= 0;
       const limitHit = r.perStudentMonthlyLimit !== null && r.usedThisMonth >= r.perStudentMonthlyLimit;
-      return { own: false, on: false, locked: false, gachaOnly: false, soldOut, limitHit, ok: wallet.balance >= r.price, gem: false, need: r.price, have: wallet.balance };
+      return { own: false, on: false, locked: false, gachaOnly: false, soldOut, limitHit, ok: balanceNow >= r.price, gem: false, need: r.price, have: balanceNow };
     }
     const it = e.it;
     const own = !!it.free || owned.has(it.id);
     const gem = !!it.price && "gem" in it.price;
     const need = !it.price ? 0 : "xu" in it.price ? it.price.xu : it.price.gem;
-    const have = gem ? wallet.gems : wallet.balance;
+    const have = gem ? gemsNow : balanceNow;
     return { own, on: avatar[it.slot] === it.id, locked: !own && (it.minLevel ?? 0) > level.level, gachaOnly: !own && !it.price, soldOut: false, limitHit: false, ok: !!it.price && have >= need, gem, need, have };
   };
 
@@ -377,7 +386,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
               <span key={xuShown.bump} className={cn("tabular-nums", xuShown.bump > 0 && "v2-bump")}>{fmt(xuShown.shown)}</span>
             </span>
             <span className="ah-ink flex h-[42px] items-center gap-2 rounded-full bg-[#fffdf8] px-4 text-base font-black shadow-[0_3px_0_#241e1a]" data-testid="hud-gems" title="Kim cương">
-              <GemDot size={15} />{wallet.gems}
+              <GemDot size={15} />{gemsNow}
             </span>
             <button type="button" data-testid="history-open" onClick={() => { play("click"); setModal("history"); }} aria-label="Lịch sử xu" title="Lịch sử xu" className="ah-btn ah-cream h-11 w-11 p-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="9" fill="#fef3c7" /><path d="M12 7v5l3 2" /></svg>
@@ -562,10 +571,10 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
             </div>
             <div className="flex min-h-0 flex-col gap-[18px] overflow-y-auto p-4 sm:p-5">
                 {sec === "earn" && <EarnSection todo={todo} todoTotal={todoTotal} recent={recent} lifetimeEarned={wallet.lifetimeEarned} level={level.level} />}
-                {sec === "code" && <CodeSection canEarn={data.canEarn} onWon={() => flyCoins("in")} />}
+                {sec === "code" && <CodeSection canEarn={data.canEarn} onWon={(w) => { flyCoins("in"); adjust(w.currency === "GEM" ? 0 : w.amount, w.currency === "GEM" ? w.amount : 0); }} />}
                 {sec === "gacha" &&
                   (gacha ? (
-                    <GachaSection wallet={{ balance: wallet.balance, gems: wallet.gems }} pity={wallet.gachaPity} pullsToday={gacha.pullsToday} owned={[...owned]} avatar={avatar} canEarn={data.canEarn} onDone={onGachaDone} />
+                    <GachaSection wallet={{ balance: balanceNow, gems: gemsNow }} pity={wallet.gachaPity} pullsToday={gacha.pullsToday} owned={[...owned]} avatar={avatar} canEarn={data.canEarn} onDone={onGachaDone} />
                   ) : (
                     <div className="ah-panel ah-hand p-10 text-center text-base">Hộp bí ẩn đang tạm đóng. Quay lại sau nhé!</div>
                   ))}
@@ -627,7 +636,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       else if (!data.canEarn) note = "Tài khoản cần được thầy duyệt để đổi quà.";
       else if (!online) note = "Kết nối lại để đổi quà.";
       else if (!s.ok) note = `Bạn có ${fmt(s.have)} xu, còn thiếu ${fmt(s.need - s.have)} xu. Nộp bài để kiếm thêm.`;
-      else note = `Số dư sau khi đổi: ${fmt(wallet.balance - r.price)} xu`;
+      else note = `Số dư sau khi đổi: ${fmt(balanceNow - r.price)} xu`;
       const label = s.soldOut ? "Hết hàng" : s.limitHit ? "Hết lượt tháng này" : !data.canEarn ? "Chờ thầy duyệt" : !online ? "Đang mất mạng" : s.ok ? `Đổi · ${priceText}` : "Chưa đủ xu";
       action = (
         <button type="button" data-testid="redeem" disabled={!can || pending} onClick={() => redeem(r)} className={cn(btn, can ? "ah-gold" : "ah-cream")}>
@@ -660,7 +669,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         if (!data.canEarn) note = "Tài khoản cần được thầy duyệt để đổi quà.";
         else if (!online) note = "Kết nối lại để đổi quà.";
         else if (!s.ok) note = s.gem ? `Bạn có ${s.have} KC, còn thiếu ${s.need - s.have} KC. Cào thẻ hoặc nhập mã thầy phát để nhận thêm.` : `Bạn có ${fmt(s.have)} xu, còn thiếu ${fmt(s.need - s.have)} xu. Nộp bài để kiếm thêm.`;
-        else note = `Số dư sau khi đổi: ${s.gem ? `${wallet.gems - s.need} KC` : `${fmt(wallet.balance - s.need)} xu`}`;
+        else note = `Số dư sau khi đổi: ${s.gem ? `${gemsNow - s.need} KC` : `${fmt(balanceNow - s.need)} xu`}`;
         action = (
           <button type="button" data-testid={`shop-buy-${it.id}`} disabled={!can || pending} onClick={() => purchase(it)} className={cn(btn, !can ? "ah-cream" : s.gem ? "ah-sky" : "ah-gold")}>
             {!data.canEarn ? "Chờ thầy duyệt" : !online ? "Đang mất mạng" : s.ok ? `Đổi · ${priceText}` : `Chưa đủ ${s.gem ? "kim cương" : "xu"}`}
@@ -716,7 +725,14 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
 
 type St = { own: boolean; on: boolean; locked: boolean; gachaOnly: boolean; soldOut: boolean; limitHit: boolean; ok: boolean; gem: boolean; need: number; have: number };
 
-function Card({ e, st, avatar, name, onOpen }: { e: Entry; st: St; avatar: StudentPointsPageData["avatar"]; name: string | null; onOpen: () => void }) {
+type CardProps = { e: Entry; st: St; avatar: StudentPointsPageData["avatar"]; name: string | null; onOpen: () => void };
+const sameSt = (a: St, b: St) => (Object.keys(a) as (keyof St)[]).every((k) => a[k] === b[k]);
+const entrySig = (e: Entry) => (e.kind === "reward" ? `${e.key}|${e.r.title}|${e.r.price}|${e.r.stock}|${e.r.kind}` : `${e.key}|${e.it.id}`);
+/** Thẻ chỉ vẽ lại khi chính nó đổi (sau mỗi lần làm mới dữ liệu, lưới 30+ thẻ có nhân vật không phải vẽ lại hết — nặng trên điện thoại).
+ *  onOpen không so: nó chỉ mở hộp chi tiết theo khoá của thẻ. */
+const Card = memo(CardView, (a: CardProps, b: CardProps) => entrySig(a.e) === entrySig(b.e) && sameSt(a.st, b.st) && a.avatar === b.avatar && a.name === b.name);
+
+function CardView({ e, st, avatar, name, onOpen }: CardProps) {
   const leg = e.rarity === "legendary";
   const quick = e.kind === "item" && QUICK_EQUIP.includes(e.it.slot);
   const minLevel = e.kind === "item" ? e.it.minLevel : undefined;

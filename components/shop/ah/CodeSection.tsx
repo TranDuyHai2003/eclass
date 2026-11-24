@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { redeemGiftCode } from "@/actions/giftcode";
@@ -10,8 +9,7 @@ import { buzz, play } from "@/lib/sound";
 import { CoinDot, GemDot, fmt } from "./parts";
 
 /** Mục "Thẻ cào Điểm 10 & Code" (canvas v2): cào lớp nhũ bạc + ô nhập GiftCode thầy phát (logic actions/giftcode giữ nguyên) */
-export function CodeSection({ canEarn, onWon }: { canEarn: boolean; onWon?: () => void }) {
-  const router = useRouter();
+export function CodeSection({ canEarn, onWon }: { canEarn: boolean; onWon?: (won: { amount: number; currency: "XU" | "GEM" }) => void }) {
   const cv = useRef<HTMLCanvasElement | null>(null);
   const down = useRef(false);
   const [foil, setFoil] = useState(true);
@@ -92,8 +90,8 @@ export function CodeSection({ canEarn, onWon }: { canEarn: boolean; onWon?: () =
         buzz(20);
         toast.success(res.message || "Nhập mã thành công!");
         setCode("");
-        onWon?.();
-        router.refresh();
+        // Server action đã làm mới trang (revalidatePath) → không gọi router.refresh() thêm (dựng lại cả tiệm lần 2)
+        onWon?.({ amount: res.amount ?? 0, currency: res.currency ?? "GEM" });
       } else bad(res.error);
     });
   };
