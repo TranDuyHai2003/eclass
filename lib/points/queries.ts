@@ -41,8 +41,8 @@ export async function getStudentPointsPage(userId: string) {
   const [walletRow, rewards, redemptions, ledger, weekActivities, monthUsage, avatar] = await Promise.all([
     prisma.pointWallet.findUnique({ where: { userId } }),
     prisma.reward.findMany({
-      // Admin xem tiệm (chế độ xem): thấy mọi quà đang bật, không lọc lớp / offline
-      where: user.role === "ADMIN" ? { isActive: true, deletedAt: null } : visibleRewardWhere(user),
+      // Thầy / admin xem tiệm (chế độ xem): thấy mọi quà đang bật, không lọc lớp / offline
+      where: user.role === "ADMIN" || user.role === "TEACHER" ? { isActive: true, deletedAt: null } : visibleRewardWhere(user),
       orderBy: [{ price: "asc" }, { createdAt: "asc" }],
       select: { id: true, title: true, description: true, emoji: true, price: true, stock: true, perStudentMonthlyLimit: true, kind: true },
     }),

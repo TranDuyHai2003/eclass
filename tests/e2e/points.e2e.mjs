@@ -790,7 +790,7 @@ try {
     expect(all.length === 0, [...all, ...hyd].join("\n    "));
   });
 
-  await step("Admin: xem Tiệm quà như học sinh (chỉ xem, thấy mọi quà); thầy vẫn được đưa sang trang quản lý", async () => {
+  await step("Admin + giáo viên: xem Tiệm quà như học sinh (chỉ xem, thấy mọi quà), có nút Xem Tiệm quà ở trang quản lý", async () => {
     const admin = await prisma.user.create({ data: { email: `${tag}-ad@test.local`, name: `${tag} Admin`, role: "ADMIN", isApproved: true } });
     const a = await openBrowser({ baseUrl: BASE_URL, token: await token(admin) });
     try {
@@ -805,8 +805,10 @@ try {
     } finally {
       await a.close();
     }
-    await t.goto("/rewards", /Quà & Xu/i);
-    expect(await t.ev(`return location.pathname === "/teacher/rewards"`), "thầy (TEACHER) phải được đưa sang trang quản lý");
+    await t.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
+    expect(await t.ev(`return location.pathname === "/rewards" && !!document.querySelector('[data-testid="admin-view"]')`), "giáo viên chưa xem được tiệm");
+    await t.goto("/teacher/rewards", /Quà & Xu/i);
+    expect(await t.ev(`return !!document.querySelector('[data-testid="open-shop"]')`), "trang quản lý quà thiếu nút Xem Tiệm quà cho giáo viên");
   });
 
   await t.close();

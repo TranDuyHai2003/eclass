@@ -79,7 +79,7 @@ export interface ShopPageProps {
   event?: { title: string; text: string; badge: string } | null;
   /** null khi rương đang tắt (GACHA_ENABLED=off) */
   gacha?: { pullsToday: number } | null;
-  /** Tài khoản admin xem tiệm: chỉ xem, các thao tác đổi / mở hộp / nhập mã do server từ chối */
+  /** Tài khoản thầy / admin xem tiệm: chỉ xem, các thao tác đổi / mở hộp / nhập mã do server từ chối */
   adminView?: boolean;
 }
 
@@ -348,7 +348,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       <WeatherLayer weather={weather} />
       {adminView && (
         <div role="status" data-testid="admin-view" className="relative z-[5] flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-[#2A1F5C] px-4 py-2 text-center text-xs font-bold text-[#FDE68A]">
-          <span>Bạn đang xem Tiệm quà bằng tài khoản admin — giao diện giống học sinh, chỉ xem (đổi quà, mở hộp, nhập mã dành cho học sinh).</span>
+          <span>Bạn đang xem Tiệm quà bằng tài khoản giáo viên — giao diện giống học sinh, chỉ xem (đổi quà, mở hộp, nhập mã dành cho học sinh).</span>
           <Link href="/teacher/rewards" className="underline decoration-dotted">Quản lý quà →</Link>
         </div>
       )}

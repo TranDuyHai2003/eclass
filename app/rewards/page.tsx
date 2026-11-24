@@ -23,8 +23,7 @@ export default async function RewardsPage() {
   if (!isPointsEnabled()) notFound();
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-  // Thầy (TEACHER) dùng trang quản lý; admin xem được tiệm như học sinh (chỉ xem — đổi quà / mở hộp chỉ dành cho học sinh)
-  if (session.user.role === "TEACHER") redirect("/teacher/rewards");
+  // Thầy / admin xem được tiệm như học sinh (chỉ xem — đổi quà / mở hộp / nhập mã chỉ dành cho học sinh)
   const uid = session.user.id;
   if (!canUseShop(session.user)) return <ShopClosed balance={(await getHeaderPoints(uid).catch(() => null))?.balance ?? null} />;
 
@@ -65,7 +64,7 @@ export default async function RewardsPage() {
       boards={boards}
       event={weeklyChallenge(data.wallet)}
       gacha={gachaOn ? { pullsToday: today } : null}
-      adminView={session.user.role === "ADMIN"}
+      adminView={session.user.role === "ADMIN" || session.user.role === "TEACHER"}
     />
   );
 }

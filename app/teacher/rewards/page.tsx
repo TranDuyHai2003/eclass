@@ -27,7 +27,7 @@ export default async function TeacherRewardsPage() {
           <h1 className="text-xl sm:text-2xl font-black text-slate-800 uppercase tracking-tight">Quà & Xu</h1>
           <p className="text-xs sm:text-sm text-slate-500">Học sinh tích xu khi học, đổi quà; thẻ cào ngọc thầy phát trên lớp; thầy trao quà ở buổi học offline.</p>
         </div>
-        {session?.user?.role === "ADMIN" && (
+        {(session?.user?.role === "ADMIN" || session?.user?.role === "TEACHER") && (
           <Link href="/rewards" data-testid="open-shop" className="ml-auto shrink-0 rounded-xl bg-amber-500 px-3 py-2 text-sm font-black text-white hover:bg-amber-600">
             Xem Tiệm quà →
           </Link>
