@@ -24,6 +24,7 @@ import { AvatarFace } from "@/components/studio/AvatarFace";
 import { ProfileBanner } from "./ProfileBanner";
 import { ProfileScene } from "./ProfileScene";
 import { FrameRing } from "./FrameRing";
+import { FrameFx } from "@/components/avatar/FrameFx";
 
 export interface DecorStudioProps {
   user: { id: string; name: string | null; email: string | null; image: string | null };
@@ -277,6 +278,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
             <div className="relative h-28 w-28 shrink-0 rounded-full bg-[#EEF0FB] shadow-[0_0_0_4px_#fff]" style={frameStyle} data-testid="profile-avatar-ring" data-frame={config.frame ?? ""}>
               <AvatarFace config={config} bg="#EDE7FD" title={user.name ?? undefined} className="absolute inset-6" />
               {config.frame && !frameStyle && <FrameRing frameId={config.frame} className="absolute inset-0 h-full w-full" />}
+              {config.frame && frameStyle && <FrameFx frameId={config.frame} />}
             </div>
             {config.nameplate ? (
               <Nameplate id={config.nameplate} className="mb-1 min-w-0 flex-1 px-3 py-2" testId="profile-nameplate">

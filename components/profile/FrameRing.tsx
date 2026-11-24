@@ -1,5 +1,6 @@
 import { ITEM_BY_ID } from "@/lib/game/items";
 import { cn } from "@/lib/utils";
+import { FrameFx } from "@/components/avatar/FrameFx";
 
 /**
  * Vòng khung quanh ảnh đại diện tròn (ô "frame"). Vẽ đè lên ảnh: tâm (60,60), ảnh nằm trong bán kính ~40.
@@ -24,6 +25,7 @@ export function FrameRing({ frameId, className }: { frameId?: string | null; cla
     });
 
   return (
+    <>
     <svg viewBox="0 0 120 120" className={cn("pointer-events-none select-none", className)} aria-hidden data-frame={item.id}>
       <defs>
         <linearGradient id={`${id}-gold`} x1="0" y1="0" x2="1" y2="1">
@@ -165,5 +167,7 @@ export function FrameRing({ frameId, className }: { frameId?: string | null; cla
         </g>
       )}
     </svg>
+    <FrameFx frameId={item.id} className={className} />
+    </>
   );
 }

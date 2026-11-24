@@ -1,0 +1,38 @@
+/* Hiệu ứng động cho viền avatar (FrameFx). Để trong file do component import (dev server giữ globals.css cũ). */
+.ffx { pointer-events: none; overflow: visible; }
+.ffx * { transform-box: fill-box; transform-origin: center; }
+
+/* Lấp lánh: ngôi sao 4 cánh phóng to / mờ dần */
+.ffx-tw { animation: ffx-tw 2.2s ease-in-out infinite both; }
+@keyframes ffx-tw { 0%, 100% { opacity: 0; transform: scale(0.2) rotate(0deg); } 45% { opacity: 1; transform: scale(1) rotate(45deg); } 70% { opacity: 0.7; transform: scale(0.75) rotate(70deg); } }
+
+/* Dải sáng lướt quanh vòng (viền hiếm trở lên) */
+.ffx-spin { transform-origin: 60px 60px !important; transform-box: view-box !important; animation: ffx-spin 4.5s linear infinite; }
+.ffx-spin-slow { transform-origin: 60px 60px !important; transform-box: view-box !important; animation: ffx-spin 9s linear infinite; }
+@keyframes ffx-spin { to { transform: rotate(360deg); } }
+
+/* Quầng sáng thở (huyền thoại, thiên thần, neon) */
+.ffx-pulse { animation: ffx-pulse 2.4s ease-in-out infinite; }
+@keyframes ffx-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.95; } }
+/* Quầng sáng mờ quanh vòng: nhạt để không che tranh viền */
+.ffx-glow { animation: ffx-glow 2.6s ease-in-out infinite; }
+@keyframes ffx-glow { 0%, 100% { opacity: 0.12; } 50% { opacity: 0.5; } }
+.ffx-flicker { animation: ffx-flicker 1.8s steps(1, end) infinite; }
+@keyframes ffx-flicker { 0%, 100% { opacity: 0.55; } 12% { opacity: 0.2; } 16% { opacity: 0.55; } 58% { opacity: 0.3; } 62% { opacity: 0.6; } }
+
+/* Rơi (cánh hoa, tuyết) và bay lên (tàn lửa, tim) — chạy trong hệ toạ độ viewBox */
+.ffx-fall { animation: ffx-fall 3.6s linear infinite; }
+@keyframes ffx-fall { 0% { opacity: 0; transform: translate(0, -8px) rotate(0deg); } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(10px, 42px) rotate(220deg); } }
+.ffx-rise { animation: ffx-rise 2.4s ease-out infinite; }
+@keyframes ffx-rise { 0% { opacity: 0; transform: translate(0, 6px) scale(0.6); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-4px, -26px) scale(1.1); } }
+
+/* Bướm vỗ cánh + bay lượn */
+.ffx-wing { animation: ffx-wing 0.45s ease-in-out infinite alternate; }
+@keyframes ffx-wing { from { transform: scaleX(1); } to { transform: scaleX(0.35); } }
+.ffx-hover { animation: ffx-hover 3.2s ease-in-out infinite; }
+@keyframes ffx-hover { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(4px, -5px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ffx * { animation: none !important; }
+  .ffx-tw, .ffx-fall, .ffx-rise { opacity: 0.8; }
+}

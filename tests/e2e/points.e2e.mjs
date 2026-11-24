@@ -714,15 +714,16 @@ try {
     await s.ev(`document.querySelector('[data-testid="cat-pet"]').click()`);
     await sleep(300);
     // Mèo đầu tiên còn mua được bằng xu (rương có thể đã cho sẵn Moka)
-    const petId = await s.ev(`for (const c of document.querySelectorAll('[data-testid="item-card"]')) { c.click(); await new Promise(r=>setTimeout(r,150)); const b=document.querySelector('[data-testid="shop-detail"] [data-testid^="shop-buy-pet-"]'); if (b && !b.disabled && / xu$/.test(b.innerText.trim())) { b.click(); return b.dataset.testid.replace("shop-buy-", ""); } } return null;`);
-    expect(petId, "không còn mèo nào mua được bằng xu");
+    const bought = await s.ev(`for (const c of document.querySelectorAll('[data-testid="item-card"]')) { c.click(); await new Promise(r=>setTimeout(r,150)); const b=document.querySelector('[data-testid="shop-detail"] [data-testid^="shop-buy-pet-"]'); if (b && !b.disabled && / xu$/.test(b.innerText.trim())) { const name = document.querySelector('[data-testid="shop-detail"] [data-testid="detail-name"]')?.innerText || ""; b.click(); return b.dataset.testid.replace("shop-buy-", "") + "|" + name; } } return null;`);
+    expect(bought, "không còn mèo nào mua được bằng xu");
+    const [petId, petName] = bought.split("|");
     expect(await s.waitText(/Đã mua/), "không thấy thông báo đã mua");
     await sleep(1500);
     const row = await prisma.userAvatar.findUnique({ where: { userId: data.student.id } });
     expect(row?.config?.pet === petId, `chưa lưu mèo mới ${petId}: ${JSON.stringify(row?.config)}`);
-    const petName = { "pet-moka": "Moka", "pet-peanut": "Peanut" }[petId] ?? petId;
     await s.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
-    expect(new RegExp(petName).test(await s.ev(`return document.querySelector('[data-testid="mascot"]')?.innerText || ""`)), `tải lại không còn mèo ${petName}`);
+    // Tên lấy từ hộp chi tiết (mèo mua được đầu tiên tuỳ rương đã cho món nào — trước đây chỉ biết Moka / Peanut nên chập chờn)
+    expect((await s.ev(`return document.querySelector('[data-testid="mascot"]')?.innerText || ""`)).includes(petName), `tải lại không còn mèo ${petName}`);
   });
 
   await step("[review GĐ6] 320px: tablist chỉ chứa tab; hộp chi tiết vừa màn hình; thanh gỗ có nút loa", async () => {

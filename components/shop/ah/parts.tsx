@@ -7,6 +7,7 @@ import type { Rarity } from "@/lib/points/rarity";
 import { AvatarFace } from "@/components/studio/AvatarFace";
 import { Nameplate } from "@/components/studio/Nameplate";
 import { FrameRing } from "@/components/profile/FrameRing";
+import { FrameFx } from "@/components/avatar/FrameFx";
 import { Chibi } from "@/components/avatar/Chibi";
 import { PetSvg } from "@/components/avatar/PetSvg";
 import { ShopArt, Sprite, V2Art, frameSpriteStyle, hasSprite, shopItemIndex, v2Index } from "@/components/studio/Sprite";
@@ -38,9 +39,21 @@ export function GemDot({ size = 15, className }: { size?: number; className?: st
 export function FrameOverlay({ frameId, size }: { frameId?: string | null; size: number }) {
   if (!frameId) return null;
   const i = v2Index(frameId);
-  if (i !== undefined) return <V2Art index={i} className="absolute inset-0 h-full w-full" />;
+  if (i !== undefined)
+    return (
+      <>
+        <V2Art index={i} className="absolute inset-0 h-full w-full" />
+        <FrameFx frameId={frameId} />
+      </>
+    );
   const st = frameSpriteStyle(frameId, size);
-  if (st) return <span aria-hidden className="absolute inset-0 rounded-full" style={st} />;
+  if (st)
+    return (
+      <>
+        <span aria-hidden className="absolute inset-0 rounded-full" style={st} />
+        <FrameFx frameId={frameId} />
+      </>
+    );
   return <FrameRing frameId={frameId} className="absolute inset-0 h-full w-full" />;
 }
 
