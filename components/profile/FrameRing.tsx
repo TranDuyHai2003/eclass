@@ -122,6 +122,82 @@ export function FrameRing({ frameId, className }: { frameId?: string | null; cla
           ))}
         </g>
       )}
+      {kind === "rank-diamond" && (
+        <g strokeLinejoin="round">
+          <defs>
+            <linearGradient id={`${id}-ice`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#ecfeff" /><stop offset="50%" stopColor="#22d3ee" /><stop offset="100%" stopColor="#0e7490" /></linearGradient>
+            <linearGradient id={`${id}-shard`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f0fdff" /><stop offset="60%" stopColor="#67e8f9" /><stop offset="100%" stopColor="#0891b2" /></linearGradient>
+          </defs>
+          {/* mảnh pha lê toả quanh vòng */}
+          {around(8, 47, (i) => <path d={i % 2 ? "M0-7 3 0 0 5-3 0z" : "M0-10 4 0 0 6-4 0z"} fill={`url(#${id}-shard)`} stroke="#155e75" strokeWidth="1" />, 22.5)}
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#155e75" strokeWidth="8" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke={`url(#${id}-ice)`} strokeWidth="5.5" />
+          <circle cx="60" cy="60" r="39" fill="none" stroke="#cffafe" strokeWidth="1.2" strokeDasharray="1.5 4" />
+          {/* viên kim cương trên đỉnh */}
+          <path d="M48 12 54 4h12l6 8-12 16z" fill={`url(#${id}-shard)`} stroke="#155e75" strokeWidth="1.6" />
+          <path d="M48 12h24M54 4l6 8 6-8M60 12v16" fill="none" stroke="#ecfeff" strokeWidth="0.9" opacity="0.9" />
+          <path d="M53 108l7-9 7 9-7 7z" fill={`url(#${id}-shard)`} stroke="#155e75" strokeWidth="1.4" />
+        </g>
+      )}
+      {kind === "rank-master" && (
+        <g strokeLinejoin="round">
+          <defs>
+            <linearGradient id={`${id}-mag`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#fae8ff" /><stop offset="45%" stopColor="#c026d3" /><stop offset="100%" stopColor="#4a044e" /></linearGradient>
+            <linearGradient id={`${id}-blade`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#f5d0fe" /><stop offset="100%" stopColor="#7e22ce" /></linearGradient>
+          </defs>
+          {/* cánh lưỡi kiếm hai bên */}
+          {[1, -1].map((d) => (
+            <g key={d} transform={d === 1 ? undefined : "translate(120 0) scale(-1 1)"} stroke="#3b0764" strokeWidth="1.4">
+              <path d="M22 44 4 30l8 16-10 2 12 8-10 6 14 2z" fill={`url(#${id}-blade)`} />
+              <path d="M22 70 6 80l14-2-4 10 10-12z" fill={`url(#${id}-blade)`} />
+            </g>
+          ))}
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#3b0764" strokeWidth="9" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke={`url(#${id}-mag)`} strokeWidth="6" />
+          <circle cx="60" cy="60" r="38.5" fill="none" stroke="#f0abfc" strokeWidth="1.3" />
+          {/* huy hiệu đỉnh: khiên ngũ giác + sao */}
+          <path d="M60 1 72 9 68 25H52L48 9z" fill={`url(#${id}-mag)`} stroke="#3b0764" strokeWidth="1.8" />
+          <path d="M60 7l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.5 5-.7z" fill="#fef08a" stroke="#a16207" strokeWidth="0.8" />
+          {/* ba viên đá đáy */}
+          {[[46, 101, 3.2], [60, 106, 4.2], [74, 101, 3.2]].map(([x, y, r]) => (
+            <path key={x} d={`M${x} ${y - r * 1.4}l${r} ${r * 1.4}-${r} ${r * 1.4}-${r}-${r * 1.4}z`} fill="#e879f9" stroke="#3b0764" strokeWidth="1.2" />
+          ))}
+        </g>
+      )}
+      {kind === "rank-challenger" && (
+        <g strokeLinejoin="round">
+          <defs>
+            <linearGradient id={`${id}-au`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#fffbeb" /><stop offset="40%" stopColor="#fbbf24" /><stop offset="75%" stopColor="#b45309" /><stop offset="100%" stopColor="#fde68a" /></linearGradient>
+            <linearGradient id={`${id}-sky`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#e0f2fe" /><stop offset="55%" stopColor="#38bdf8" /><stop offset="100%" stopColor="#1d4ed8" /></linearGradient>
+            <linearGradient id={`${id}-wing`} x1="1" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fffbeb" /><stop offset="100%" stopColor="#f59e0b" /></linearGradient>
+          </defs>
+          {/* cánh lông vũ nhiều lớp */}
+          {[1, -1].map((d) => (
+            <g key={d} transform={d === 1 ? undefined : "translate(120 0) scale(-1 1)"} stroke="#78350f" strokeWidth="1.2">
+              <path d="M20 40C10 34 4 24 6 12c6 10 12 16 18 20z" fill={`url(#${id}-wing)`} />
+              <path d="M18 52C8 50 1 42 1 30c6 9 12 13 19 15z" fill={`url(#${id}-wing)`} />
+              <path d="M18 64C9 66 2 60 0 50c7 6 12 8 19 8z" fill={`url(#${id}-wing)`} />
+              <path d="M20 76c-8 4-14 1-18-6 7 3 11 3 17 0z" fill={`url(#${id}-wing)`} />
+            </g>
+          ))}
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#78350f" strokeWidth="9.5" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke={`url(#${id}-au)`} strokeWidth="6.5" />
+          <circle cx="60" cy="60" r="38.5" fill="none" stroke={`url(#${id}-sky)`} strokeWidth="2.6" />
+          {/* nguyệt quế đáy */}
+          {[1, -1].map((d) => (
+            <g key={d} transform={d === 1 ? undefined : "translate(120 0) scale(-1 1)"}>
+              {[0, 1, 2, 3].map((i) => (
+                <ellipse key={i} cx={40 + i * 4.5} cy={104 - i * 1.2} rx="2.4" ry="5" fill={i % 2 ? "#facc15" : "#eab308"} stroke="#78350f" strokeWidth="0.8" transform={`rotate(${-60 + i * 12} ${40 + i * 4.5} ${104 - i * 1.2})`} />
+              ))}
+            </g>
+          ))}
+          <path d="M54 108l6-8 6 8-6 6z" fill={`url(#${id}-sky)`} stroke="#78350f" strokeWidth="1.3" />
+          {/* vương miện + viên đá xanh trên đỉnh */}
+          <path d="M44 22 46 6l7 7 7-12 7 12 7-7 2 16z" fill={`url(#${id}-au)`} stroke="#78350f" strokeWidth="1.6" />
+          {[[46, 6], [60, 1], [74, 6]].map(([x, y]) => <circle key={x} cx={x} cy={y + 1} r="2" fill="#fef3c7" stroke="#78350f" strokeWidth="0.8" />)}
+          <path d="M60 11l5 6-5 7-5-7z" fill={`url(#${id}-sky)`} stroke="#1e3a8a" strokeWidth="1" />
+        </g>
+      )}
       {kind === "angel" && (
         <g strokeLinejoin="round">
           <circle cx="60" cy="60" r="44" fill="none" stroke="#bae6fd" strokeWidth="6" />

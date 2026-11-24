@@ -12,7 +12,7 @@ const PETAL = "M0-3.6c2.6 0 3.4 2.6 0 6.2-3.4-3.6-2.6-6.2 0-6.2z";
 const HEART = "M0 3.2-3.4-.2a2.1 2.1 0 0 1 3.4-2.4 2.1 2.1 0 0 1 3.4 2.4z";
 const FLAKE = "M0-4v8M-3.5-2l7 4M-3.5 2l7-4";
 
-type Kind = "angel" | "clover" | "rainbow" | "gold" | "catear" | "laurel" | "sakura" | "ice" | "royal" | "neon" | "fire" | "moon" | "butterfly" | "rose" | "plain";
+type Kind = "angel" | "clover" | "rainbow" | "gold" | "catear" | "laurel" | "sakura" | "ice" | "royal" | "neon" | "fire" | "moon" | "butterfly" | "rose" | "rank-diamond" | "rank-master" | "rank-challenger" | "plain";
 
 const at = (deg: number, r = 47): [number, number] => {
   const a = (deg * Math.PI) / 180;
@@ -174,6 +174,40 @@ function Theme({ kind }: { kind: Kind }) {
           <circle cx="60" cy="60" r="47" fill="none" stroke="#c7d2fe" strokeWidth="8" className="ffx-glow" style={{ filter: "blur(3px)" }} />
           <Sheen color="#ffffff" width={4} />
           <Twinkles n={5} color="#c7d2fe" />
+        </>
+      );
+    case "rank-diamond":
+      return (
+        <>
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#67e8f9" strokeWidth="9" className="ffx-glow" style={{ filter: "blur(3px)" }} />
+          <Sheen color="#ffffff" width={3.5} />
+          <Twinkles n={6} color="#22d3ee" />
+        </>
+      );
+    case "rank-master":
+      return (
+        <>
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#e879f9" strokeWidth="11" className="ffx-glow" style={{ filter: "blur(4px)" }} />
+          <Sheen color="#fdf4ff" width={4} />
+          <g className="ffx-spin" style={{ animationDelay: "-2.2s" }}><path d="M60 13a47 47 0 0 1 33 13.7" fill="none" stroke="#f0abfc" strokeWidth="3" strokeLinecap="round" opacity="0.8" /></g>
+          <Twinkles n={7} color="#e879f9" />
+          <Rising points={[[44, 104], [76, 104], [60, 110]]} dur={2.2} render={() => <circle r="1.6" fill="#f5d0fe" />} />
+        </>
+      );
+    case "rank-challenger":
+      return (
+        <>
+          {/* tia sáng xoay chậm sau vương miện */}
+          <g className="ffx-spin-slow" opacity="0.55">
+            {Array.from({ length: 12 }, (_, i) => (
+              <path key={i} d="M57 13 60 1l3 12z" fill={i % 2 ? "#fde68a" : "#bae6fd"} transform={`rotate(${i * 30} 60 60)`} style={{ filter: "blur(1.5px)" }} />
+            ))}
+          </g>
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#fcd34d" strokeWidth="12" className="ffx-glow" style={{ filter: "blur(4px)" }} />
+          <Sheen color="#ffffff" width={4} />
+          <g className="ffx-spin" style={{ animationDelay: "-2.2s" }}><path d="M60 13a47 47 0 0 1 33 13.7" fill="none" stroke="#7dd3fc" strokeWidth="3.5" strokeLinecap="round" opacity="0.85" /></g>
+          <Twinkles n={8} color="#facc15" size={1.1} />
+          <Rising points={[[30, 100], [90, 100], [20, 80], [100, 80]]} dur={2} render={(i) => <circle r={i % 2 ? 1.4 : 2} fill={i % 2 ? "#e0f2fe" : "#fef08a"} />} />
         </>
       );
     default:

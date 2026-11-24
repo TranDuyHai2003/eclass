@@ -61,12 +61,22 @@ describe("Đủ món của canvas Tiệm quà v2", () => {
   });
 
   test("món mới chỉ bán ở tiệm (có giá, không vào rương)", () => {
-    for (const id of ["frame-butterfly", "frame-rose", "pet-redpanda"]) {
+    for (const id of ["frame-butterfly", "frame-rose", "pet-redpanda", "frame-diamond", "frame-master", "frame-challenger"]) {
       const it = ITEM_BY_ID[id];
       assert.ok(it?.studio && it.price, id);
       const inPool = (["xu", "gem"] as const).some((c) => RARITY_ORDER.some((r) => poolFor(c, r).some((p) => p.kind === "item" && p.item.id === id)));
       assert.ok(!inPool, `${id} không vào rương`);
     }
+  });
+});
+
+describe("Bộ khung rank (Kim Cương / Cao Thủ / Thách Đấu)", () => {
+  test("mở theo cấp tăng dần, giá tăng dần, có kiểu vẽ riêng", () => {
+    const [d, m, c] = ["frame-diamond", "frame-master", "frame-challenger"].map((id) => ITEM_BY_ID[id]);
+    assert.ok(d && m && c);
+    assert.ok((d.minLevel ?? 0) < (m.minLevel ?? 0) && (m.minLevel ?? 0) < (c.minLevel ?? 0));
+    assert.deepEqual([d.v2, m.v2, c.v2], ["rank-diamond", "rank-master", "rank-challenger"]);
+    assert.ok(c.price && "gem" in c.price && m.price && "gem" in m.price && c.price.gem > m.price.gem);
   });
 });
 

@@ -733,6 +733,15 @@ try {
     // Hồi quy 24/11: danh mục bị giãn theo cả hàng nút → thân tiệm tràn khỏi màn hình, không kéo tới mục cuối
     const fit = await s.ev(`const a=document.querySelector('aside[aria-label="Danh mục tiệm quà"]').getBoundingClientRect(); const c=document.querySelector('[data-testid="reward-card"],[data-testid="item-card"]').getBoundingClientRect(); const t=document.querySelector('[role="tablist"][aria-label="Danh mục quà"]'); return { aside: Math.round(a.right), card: Math.round(c.right), vw: innerWidth, scroll: t.scrollWidth > t.clientWidth && t.clientWidth <= innerWidth }`);
     expect(fit.aside <= fit.vw && fit.card <= fit.vw && fit.scroll, `danh mục / thẻ tràn màn hình 320px: ${JSON.stringify(fit)}`);
+    // Hồi quy 24/11: trên điện thoại bấm "Nộp bài" / "Thẻ cào & Code" phải cuộn tới mục (trước đây mục đổi ở dưới, nhìn như không bấm được)
+    for (const [btn, title] of [["code-open", /Thẻ cào/], ["tasks-open", /Nộp bài/]]) {
+      await s.ev(`window.scrollTo(0, 0); document.querySelector('[data-testid="${btn}"]').click()`);
+      await sleep(1200);
+      const pos = await s.ev(`const h=document.querySelector('[data-testid="sec-title"]'); const r=h?.getBoundingClientRect(); return { text: h?.innerText || "", top: r ? Math.round(r.top) : -1, vh: innerHeight }`);
+      expect(title.test(pos.text) && pos.top >= 0 && pos.top < pos.vh, `bấm ${btn} không thấy mục: ${JSON.stringify(pos)}`);
+      await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
+      await sleep(300);
+    }
     await s.ev(`document.querySelector('[data-testid="reward-card"],[data-testid="item-card"]').click()`);
     await sleep(500);
     const geo = await s.ev(`const d=document.querySelector('[data-testid="shop-detail"]').getBoundingClientRect(); return { left: d.left, right: d.right, vw: innerWidth }`);

@@ -159,14 +159,17 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       /* bỏ qua */
     }
   }, [level.level, user.id]);
-  // Chuyển mục: nếu đầu mục đã trôi khỏi màn hình thì cuộn lên (canvas: nội dung mục thay ngay tại chỗ)
+  // Chuyển mục: nếu đầu mục nằm ngoài tầm nhìn (trôi lên trên, hoặc còn khuất bên dưới — điện thoại / màn thấp) thì cuộn tới.
+  // Trước 24/11 chỉ cuộn khi trôi lên trên → bấm "Nộp bài" / "Thẻ cào" trên điện thoại như không có tác dụng.
   useEffect(() => {
     if (firstSec.current) {
       firstSec.current = false;
       return;
     }
     const el = mainRef.current;
-    if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start", behavior: "smooth" });
+    if (!el) return;
+    const top = el.getBoundingClientRect().top;
+    if (top < 0 || top > window.innerHeight * 0.6) el.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [sec, cat]);
   // Đóng hộp chi tiết bằng phím Esc
   useEffect(() => {

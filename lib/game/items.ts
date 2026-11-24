@@ -137,6 +137,10 @@ export const ITEMS: Item[] = [
   // Khung còn lại của canvas "Tiệm quà v2" (23/11): chỉ bán ở tiệm, không vào rương
   { id: "frame-butterfly", slot: "frame", name: "Điệu Van Bướm Lượn", rarity: "epic", studio: true, price: { xu: 2400 }, v: "#c084fc", v2: "butterfly" },
   { id: "frame-rose", slot: "frame", name: "Hoa Hồng Tinh Xảo", rarity: "legendary", studio: true, price: { gem: 8 }, v: "#312e81", v2: "rose" },
+  // Bộ khung "rank" (24/11, thầy thích kiểu khung xếp hạng / trang trí avatar): vẽ mới hoàn toàn, chỉ bán ở tiệm, mở theo cấp
+  { id: "frame-diamond", slot: "frame", name: "Khung Kim Cương Học Bá", rarity: "epic", studio: true, price: { xu: 6000 }, minLevel: 4, v: "#22d3ee", v2: "rank-diamond" },
+  { id: "frame-master", slot: "frame", name: "Khung Cao Thủ", rarity: "legendary", studio: true, price: { gem: 12 }, minLevel: 5, v: "#a21caf", v2: "rank-master" },
+  { id: "frame-challenger", slot: "frame", name: "Khung Thách Đấu", rarity: "legendary", studio: true, price: { gem: 20 }, minLevel: 7, v: "#f59e0b", v2: "rank-challenger" },
   // ---- Nền
   { id: "bg-sky", slot: "background", name: "Trời xanh", rarity: "common", price: { xu: 300 }, v: "#dbeafe", v2: "#bfdbfe" },
   { id: "bg-mint", slot: "background", name: "Bạc hà", rarity: "common", price: { xu: 300 }, v: "#d1fae5", v2: "#a7f3d0" },
