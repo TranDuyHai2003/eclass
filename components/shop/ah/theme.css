@@ -50,20 +50,54 @@
 }
 /* Quà hiện vật = hộp quà (ruy băng chữ thập + nơ), thẻ đặc quyền = tấm vé (khuyết hai bên, đường xé, cuống "VÉ") — 24/11 */
 @layer components {
-  .ah-gift::before { content: ""; position: absolute; inset: 0; pointer-events: none;
-    background:
-      linear-gradient(90deg, transparent calc(50% - 10px), rgba(244, 114, 182, 0.28) calc(50% - 10px), rgba(244, 114, 182, 0.28) calc(50% + 10px), transparent calc(50% + 10px)),
-      linear-gradient(0deg, transparent calc(50% - 10px), rgba(244, 114, 182, 0.28) calc(50% - 10px), rgba(244, 114, 182, 0.28) calc(50% + 10px), transparent calc(50% + 10px)); }
-  .ah-gift-bow { position: absolute; z-index: 1; top: 3px; left: 50%; transform: translateX(-50%); font-size: 20px; line-height: 1; filter: drop-shadow(0 1px 0 #241e1a); pointer-events: none; }
+  /* giấy gói: sọc chéo nhạt theo màu độ hiếm */
+  .ah-gift { border-style: solid; background-image: repeating-linear-gradient(135deg, transparent 0 14px, color-mix(in srgb, var(--dot) 45%, transparent) 14px 22px); background-size: auto; }
+  .ah-rib { position: absolute; background: var(--h1); border: 2px solid #241e1a; opacity: 0.9; pointer-events: none; }
+  .ah-rib.v { top: -3px; bottom: -3px; left: calc(50% - 9px); width: 18px; border-top: 0; border-bottom: 0; }
+  .ah-rib.h { left: -3px; right: -3px; top: calc(50% - 9px); height: 18px; border-left: 0; border-right: 0; }
+  .ah-rib::after { content: ""; position: absolute; inset: 3px; border: 1.5px dashed rgba(255, 253, 248, 0.6); border-radius: 2px; }
+  .ah-spot { position: absolute; left: 50%; top: 50%; width: 62%; aspect-ratio: 1; transform: translate(-50%, -46%); border-radius: 999px; background: radial-gradient(circle, rgba(255, 253, 248, 0.95) 0 45%, rgba(255, 253, 248, 0) 70%); pointer-events: none; }
+  .ah-gift-item { filter: drop-shadow(0 6px 0 rgba(36, 30, 26, 0.18)); animation: ah-bob 3s ease-in-out infinite; }
+  @keyframes ah-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  .ah-bow { position: absolute; z-index: 2; top: -2px; left: 50%; width: 56px; transform: translateX(-50%); pointer-events: none; }
+  .ah-tag { position: absolute; z-index: 2; left: 8px; bottom: 8px; padding: 1px 8px 1px 14px; font-size: 10px; font-weight: 900; line-height: 16px; color: #6e4722; background: #fffdf8; border: 2px solid #241e1a; border-radius: 4px 999px 999px 4px; transform: rotate(-4deg); box-shadow: 0 2px 0 #241e1a; pointer-events: none; }
+  .ah-tag::before { content: ""; position: absolute; left: 4px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 999px; border: 1.5px solid #241e1a; background: var(--bg); }
+  .ah-shine { position: absolute; z-index: 3; top: -20%; left: -60%; width: 40%; height: 140%; transform: rotate(20deg); background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent); transition: left 0.6s ease; pointer-events: none; }
+  .ah-pcard:hover .ah-shine { left: 130%; }
   .ah-chip-in { position: absolute; z-index: 1; border: 2px solid #241e1a; border-radius: 999px; padding: 0 7px; font-size: 10px; font-weight: 900; line-height: 16px; white-space: nowrap; pointer-events: none; }
   .ah-chip-in.bl { left: 6px; bottom: 6px; background: #fffdf8; color: #6e4722; }
-  .ah-chip-in.tr { right: 6px; top: 6px; background: #ea6a51; color: #fffdf8; animation: ah-low 1.6s ease-in-out infinite; }
+  .ah-chip-in.low { background: #ea6a51; color: #fffdf8; animation: ah-low 1.6s ease-in-out infinite; z-index: 3; }
+  .ah-chip-in.tr { right: 6px; top: 6px; }
+  .ah-chip-in.br { right: 6px; bottom: 8px; }
   @keyframes ah-low { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
   .ah-ticket { border-style: solid; padding-right: 22%; }
   .ah-notch { position: absolute; top: 50%; width: 26px; height: 26px; margin-top: -13px; border-radius: 999px; background: var(--bg); border: 2.5px solid var(--ab); pointer-events: none; }
   .ah-notch.l { left: -15px; } .ah-notch.r { right: -15px; }
   .ah-tear { position: absolute; top: 10px; bottom: 10px; right: 22%; border-left: 2.5px dashed var(--ab); pointer-events: none; }
   .ah-stub { position: absolute; top: 0; bottom: 0; right: 0; width: 22%; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; text-orientation: upright; font-family: var(--font-mali), cursive, sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.05em; color: var(--pt); opacity: 0.75; pointer-events: none; }
+}
+
+/* Thẻ rương (24/11 lần 2): nền riêng từng rương, băng rôn tên, cột sáng, quỹ đạo sao, hạt sáng bay lên, nút phát sáng */
+@keyframes ah-orbit { to { transform: rotateX(68deg) rotate(360deg); } }
+@keyframes ah-mote { 0% { opacity: 0; transform: translateY(0) scale(0.6); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-120px) scale(1); } }
+@keyframes ah-cta { 0%, 100% { box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), 0 4px 0 #241e1a, 0 0 0 0 rgba(253, 224, 71, 0); } 50% { box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), 0 4px 0 #241e1a, 0 0 22px 4px rgba(253, 224, 71, 0.45); } }
+@keyframes ah-beam { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.9; } }
+@layer components {
+  .ah-chest-card { position: relative; overflow: hidden; border-radius: 22px; border: 2.5px solid rgba(255, 253, 248, 0.4); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 0 rgba(0, 0, 0, 0.35); }
+  .ah-chest-amber { background: radial-gradient(120% 70% at 50% 25%, #5b3a1a 0%, #2a1d3d 60%, #1c1a42 100%); }
+  .ah-chest-violet { background: radial-gradient(120% 70% at 50% 25%, #4c2a8a 0%, #241a52 60%, #15123a 100%); }
+  .ah-chest-card::before { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: radial-gradient(circle, rgba(255, 255, 255, 0.5) 0.8px, transparent 1.2px), radial-gradient(circle, rgba(255, 255, 255, 0.3) 0.6px, transparent 1px); background-size: 46px 46px, 29px 29px; background-position: 0 0, 13px 17px; opacity: 0.6; }
+  .ah-banner { position: relative; z-index: 1; padding: 5px 26px; font-size: 17px; font-weight: 700; color: #241e1a; background: linear-gradient(180deg, #ffe27a, #f4b731); border: 2.5px solid #241e1a; box-shadow: 0 3px 0 #241e1a; clip-path: polygon(0 0, 100% 0, 94% 50%, 100% 100%, 0 100%, 6% 50%); }
+  .ah-chest-violet .ah-banner { background: linear-gradient(180deg, #e9d5ff, #a78bfa); }
+  .ah-beam { position: absolute; bottom: 18px; width: 120px; height: 190px; background: linear-gradient(0deg, rgba(255, 248, 200, 0.55), rgba(255, 248, 200, 0) 85%); clip-path: polygon(30% 100%, 70% 100%, 100% 0, 0 0); animation: ah-beam 2.8s ease-in-out infinite; pointer-events: none; }
+  .ah-chest-violet .ah-beam { background: linear-gradient(0deg, rgba(221, 214, 254, 0.6), rgba(221, 214, 254, 0) 85%); }
+  .ah-orbit { position: absolute; width: 200px; height: 200px; border-radius: 999px; border: 2px dashed rgba(255, 253, 248, 0.35); transform: rotateX(68deg); animation: ah-orbit 9s linear infinite; pointer-events: none; }
+  .ah-orbit i { position: absolute; width: 10px; height: 10px; border-radius: 999px; background: #fef08a; box-shadow: 0 0 10px 3px rgba(254, 240, 138, 0.8); }
+  .ah-orbit i:first-child { top: -5px; left: calc(50% - 5px); }
+  .ah-orbit i:last-child { bottom: -5px; left: calc(50% - 5px); background: #a5f3fc; box-shadow: 0 0 10px 3px rgba(165, 243, 252, 0.8); }
+  .ah-mote { position: absolute; bottom: 30px; width: 5px; height: 5px; border-radius: 999px; animation: ah-mote 2.6s ease-out infinite both; pointer-events: none; }
+  .ah-cta { animation: ah-cta 2.2s ease-in-out infinite; }
+  .ah-cta:disabled { animation: none; }
 }
 
 /* Sân khấu rương (Hộp bí ẩn) */
@@ -90,7 +124,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ah-sun, .ah-shake, .ah-sk, .ah-rays, .ah-spark, .ah-chest-wob, .ah-chest-open, .ah-chip-in { animation: none !important; }
+  .ah-sun, .ah-shake, .ah-sk, .ah-rays, .ah-spark, .ah-chest-wob, .ah-chest-open, .ah-chip-in, .ah-orbit, .ah-mote, .ah-cta, .ah-beam, .ah-gift-item { animation: none !important; }
   .ah-fly { display: none; }
   .ah-pcard, .ah-btn { transition: none; }
 }

@@ -19,8 +19,19 @@ export function RewardArt({ title, kind, stock, limit, className, children }: {
       {children}
       {kind === "PHYSICAL" ? (
         <>
-          <span className="ah-gift-bow" aria-hidden>🎀</span>
-          <span className="ah-chip-in bl">Nhận tại lớp</span>
+          {/* ruy băng chữ thập theo màu độ hiếm (dưới món quà) */}
+          <span className="ah-rib v" aria-hidden />
+          <span className="ah-rib h" aria-hidden />
+          <span className="ah-spot" aria-hidden />
+          <svg className="ah-bow" viewBox="0 0 64 40" aria-hidden>
+            <path d="M30 20C20 4 6 4 6 14s12 12 24 6z" fill="var(--h1)" stroke="#241e1a" strokeWidth="2.4" strokeLinejoin="round" />
+            <path d="M34 20C44 4 58 4 58 14s-12 12-24 6z" fill="var(--h1)" stroke="#241e1a" strokeWidth="2.4" strokeLinejoin="round" />
+            <path d="M12 12c4-3 9-2 13 3M52 12c-4-3-9-2-13 3" fill="none" stroke="#fffdf8" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+            <path d="M28 22 20 38l7-3 3 5 2-17zM36 22l8 16-7-3-3 5-2-17z" fill="var(--h2)" stroke="#241e1a" strokeWidth="2" strokeLinejoin="round" />
+            <rect x="26" y="14" width="12" height="11" rx="4" fill="var(--h2)" stroke="#241e1a" strokeWidth="2.4" />
+          </svg>
+          <span className="ah-tag" aria-hidden>Nhận tại lớp</span>
+          <span className="ah-shine" aria-hidden />
         </>
       ) : (
         <>
@@ -31,8 +42,8 @@ export function RewardArt({ title, kind, stock, limit, className, children }: {
           {limit ? <span className="ah-chip-in bl">{limit} lần / tháng</span> : null}
         </>
       )}
-      <V2Art index={rewardArtV2(title, kind)} className="relative h-[78%]" />
-      {low && <span className="ah-chip-in tr">Sắp hết!</span>}
+      <V2Art index={rewardArtV2(title, kind)} className={cn("relative h-[74%]", kind === "PHYSICAL" && "ah-gift-item")} />
+      {low && <span className={cn("ah-chip-in low", kind === "PHYSICAL" ? "br" : "tr")}>Sắp hết!</span>}
     </span>
   );
 }
