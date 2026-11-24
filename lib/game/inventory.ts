@@ -6,8 +6,11 @@ import { getLevel } from "@/lib/points/levels";
 import { sanitizeAvatar, type AvatarConfig } from "./avatar";
 
 /** Đồ đã sở hữu (itemId) */
+/** Món còn hạn (biệt danh 24 giờ của nhiệm vụ ẩn hết hạn thì coi như không còn) */
+export const NOT_EXPIRED = () => ({ OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] });
+
 export async function getOwnedItemIds(userId: string, tx?: Tx) {
-  const rows: { itemId: string }[] = await (tx ?? prisma).userItem.findMany({ where: { userId }, select: { itemId: true } });
+  const rows: { itemId: string }[] = await (tx ?? prisma).userItem.findMany({ where: { userId, ...NOT_EXPIRED() }, select: { itemId: true } });
   return rows.map((r) => r.itemId);
 }
 
@@ -46,7 +49,7 @@ export async function getAvatars(userIds: string[], client: AvatarDb = prisma) {
   if (userIds.length === 0) return new Map<string, AvatarConfig>();
   const [rows, items] = await Promise.all([
     client.userAvatar.findMany({ where: { userId: { in: userIds } }, select: { userId: true, config: true } }),
-    client.userItem.findMany({ where: { userId: { in: userIds } }, select: { userId: true, itemId: true } }),
+    client.userItem.findMany({ where: { userId: { in: userIds }, ...NOT_EXPIRED() }, select: { userId: true, itemId: true } }),
   ]);
   const ownedBy = new Map<string, string[]>();
   for (const it of items) ownedBy.set(it.userId, [...(ownedBy.get(it.userId) ?? []), it.itemId]);

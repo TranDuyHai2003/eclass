@@ -59,7 +59,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside,
                 href={shopOpen ? "/rewards" : "/profile"}
                 className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-black ring-1 ring-white/25 hover:bg-white/25"
               >
-                <span aria-hidden>{level.icon}</span> {level.name}
+                <span aria-hidden>{level.icon}</span> {level.short}
               </Link>
             )}
           </div>

@@ -173,9 +173,9 @@ describe("Bảng tên & món mở theo cấp (canvas Tiệm quà v2)", () => {
     assert.match((r1 as { error: string }).error, /Lv\.2/);
     assert.equal(await fx.balance(s.id), 1000);
     assert.equal((await bundle(s.id, ["np-sakura"])).success, false, "mua cả bộ cũng bị chặn");
-    await fx.give(s.id, 600); // tích luỹ 1 600 → Lv.2
+    await fx.give(s.id, 1000); // tích luỹ 2 000 → Lv.2 (bảng cấp 24/11)
     assert.equal((await buy("np-sakura")).success, true);
-    assert.equal(await fx.balance(s.id), 1000);
+    assert.equal(await fx.balance(s.id), 1400);
     assert.equal((await buy("np-pond")).success, true, "Lv.1 mua được bảng tên Lv.1 dù số dư đã giảm");
     assert.equal(sanitizeAvatar({ nameplate: "np-sakura" }, s.id, ["np-sakura"]).nameplate, "np-sakura");
   });

@@ -29,7 +29,7 @@ describe("getPublicProfile", () => {
     assert.deepEqual(p.recent, []);
     assert.equal(p.completedTests, 1);
     assert.equal(p.tens, 1);
-    assert.equal(p.level.name, "Nghèo rớt mồng tơi");
+    assert.equal(p.level.name, "Trứng bắc thảo nghèo khó");
   });
 
   test("chính chủ thấy xu và kết quả gần đây", async () => {

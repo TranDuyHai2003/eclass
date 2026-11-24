@@ -67,7 +67,7 @@ export type Prize = { kind: "item"; item: Item } | CurrencyPrize;
 
 /** Bể quà của một rương ở một bậc: đồ trang trí không miễn phí của bậc đó (trừ đồ `studio` GĐ8) + gói tiền dành cho rương */
 export function poolFor(chest: ChestId, rarity: Rarity): Prize[] {
-  const items: Prize[] = ITEMS.filter((i) => !i.free && !i.studio && i.rarity === rarity).map((item) => ({ kind: "item", item }));
+  const items: Prize[] = ITEMS.filter((i) => !i.free && !i.studio && !i.quest && i.rarity === rarity).map((item) => ({ kind: "item", item }));
   const money: Prize[] = CURRENCY_PRIZES.filter((p) => p.rarity === rarity && p.chests.includes(chest));
   return [...items, ...money];
 }

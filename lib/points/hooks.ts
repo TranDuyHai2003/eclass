@@ -2,6 +2,7 @@ import { POINTS } from "./config";
 import { dueStatus, effectiveDueDate } from "@/lib/deadline";
 import { awardOnce, isEligibleStudent, lockWallet, revokeKey, runPointsSafely, updateWeekStreak } from "./engine";
 import type { Tx } from "./engine";
+import { checkSubmitQuests, runQuestsSafely } from "@/lib/game/quests";
 
 /**
  * Các điểm gắn vào luồng nộp/chấm bài. Đều chạy SAU khi dữ liệu chính đã lưu, trong giao dịch riêng
@@ -65,7 +66,7 @@ async function awardScoreBonus(
  * (review Gemini: mọi truy vấn phụ nằm trong runPointsSafely → lỗi không làm hỏng việc nộp bài). Xem lib/deadline.ts.
  * Có hạn và nộp kịp → +nộp bài +đúng hạn; sau hạn → nộp bài giảm; không hạn → chỉ nộp bài.
  */
-export function onTestSubmitted(p: {
+export async function onTestSubmitted(p: {
   userId: string;
   attemptId: string;
   test: { id: string; dueDate: Date | null; courseId: string | null };
@@ -74,7 +75,9 @@ export function onTestSubmitted(p: {
   questionCount: number;
   hasPendingEssay: boolean;
 }) {
-  return runPointsSafely("onTestSubmitted", async (tx) => {
+  // Nhiệm vụ ẩn chạy SAU (giao dịch riêng) với hạn / giờ nộp đã tính ở đây; không chạy khi bài không được tính điểm
+  let ctx: { due: Date | null; now: Date } | null = null;
+  await runPointsSafely("onTestSubmitted", async (tx) => {
     if (!(await isEligibleStudent(tx, p.userId))) return;
     // Nộp trắng / làm quá ít câu → không có điểm thưởng
     if (p.questionCount > 0 && p.answeredCount / p.questionCount < POINTS.minAnsweredRatio) return;
@@ -92,6 +95,7 @@ export function onTestSubmitted(p: {
     }
     const status = isFinal ? "none" : dueStatus(due, now);
     const late = status === "late";
+    ctx = { due: isFinal ? null : due, now };
 
     await awardOnce(tx, {
       userId: p.userId,
@@ -123,6 +127,12 @@ export function onTestSubmitted(p: {
 
     await updateWeekStreak(tx, wallet, now);
   });
+  const c = ctx as { due: Date | null; now: Date } | null;
+  if (c) {
+    await runQuestsSafely("onTestSubmitted", p.userId, (tx) =>
+      checkSubmitQuests(tx, { userId: p.userId, kind: "test", now: c.now, due: c.due, testId: p.test.id, attemptId: p.attemptId, score: p.hasPendingEssay ? null : p.score }),
+    );
+  }
 }
 
 /** Giáo viên chấm một câu tự luận → nếu đã chấm hết thì thưởng điểm cao theo điểm cuối */
@@ -163,11 +173,11 @@ export function onAttemptDeleted(p: { userId: string; testId: string; teacherId:
 }
 
 /** Học sinh nộp bài tập về nhà (ảnh) — chỉ tính lần nộp đầu của mỗi bài */
-export function onHomeworkSubmitted(p: { userId: string; lessonId: string; submissionId: string }) {
-  return runPointsSafely("onHomeworkSubmitted", async (tx) => {
+export async function onHomeworkSubmitted(p: { userId: string; lessonId: string; submissionId: string }) {
+  const now = new Date();
+  await runPointsSafely("onHomeworkSubmitted", async (tx) => {
     if (!(await isEligibleStudent(tx, p.userId))) return;
     const wallet = await lockWallet(tx, p.userId);
-    const now = new Date();
     await awardOnce(tx, {
       userId: p.userId,
       amount: POINTS.homeworkSubmit,
@@ -180,6 +190,7 @@ export function onHomeworkSubmitted(p: { userId: string; lessonId: string; submi
     });
     await updateWeekStreak(tx, wallet, now);
   });
+  await runQuestsSafely("onHomeworkSubmitted", p.userId, (tx) => checkSubmitQuests(tx, { userId: p.userId, kind: "homework", now }));
 }
 
 /** Giáo viên chấm bài tập về nhà: Đạt → cộng; đổi sang Chưa đạt → thu hồi */

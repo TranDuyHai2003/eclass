@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { prismaBase as db } from "@/lib/prisma";
 import { getVietnamMonthStart } from "@/lib/ranking/history-engine";
 import { EARNING_SOURCES } from "@/lib/points/config";
+import { genderOf } from "@/lib/game/presets";
 import { getLevel } from "@/lib/points/levels";
 import { getAvatars } from "./inventory";
 import { ITEM_BY_ID } from "./items";
@@ -65,7 +66,8 @@ async function loadLeaderboard(scope: Scope, period: Period, limit: number): Pro
   const avatars = await getAvatars(sorted.map((s) => s.u.id), db);
   return sorted.map(({ u, xu }, i) => {
     const lifetime = u.pointWallet?.lifetimeEarned ?? 0;
-    const lv = getLevel(lifetime);
+    const avatarCfg = avatars.get(u.id)!;
+    const lv = getLevel(lifetime, genderOf(avatarCfg));
     const avatar = avatars.get(u.id)!;
     return {
       userId: u.id,
@@ -74,7 +76,7 @@ async function loadLeaderboard(scope: Scope, period: Period, limit: number): Pro
       className: u.studyClass?.name ?? null,
       xu,
       lifetimeEarned: lifetime,
-      level: { icon: lv.icon, name: lv.name },
+      level: { icon: lv.icon, name: lv.short },
       avatar,
       equippedTitle: avatar.title ? (ITEM_BY_ID[avatar.title]?.name ?? null) : null,
       rank: i + 1,

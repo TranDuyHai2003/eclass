@@ -16,6 +16,7 @@ import {
 import { normalizeRewardInput, type RewardInput } from "@/lib/points/reward-input";
 import { addShopTemplatesInTx } from "@/lib/points/shop-templates";
 import { canUseShop } from "@/lib/points/shop-access";
+import { checkRedeemQuests, runQuestsSafely } from "@/lib/game/quests";
 
 /**
  * Server actions của Điểm thưởng: chỉ kiểm tra quyền rồi gọi phần lõi trong lib/points (đã có test ở tests/points).
@@ -50,7 +51,12 @@ export async function redeemReward(rewardId: string): Promise<PointsResult> {
   if (!userId) return LOGIN;
   if (!canUseShop(me)) return { success: false, error: "Tiệm quà đang mở thử cho lớp offline." };
   try {
-    return await prisma.$transaction((tx) => redeemInTx(tx, userId, rewardId));
+    const res = await prisma.$transaction((tx) => redeemInTx(tx, userId, rewardId));
+    if (res.success) {
+      const last = await prisma.redemption.findFirst({ where: { userId, rewardId }, orderBy: { createdAt: "desc" }, select: { id: true } });
+      if (last) await runQuestsSafely("redeemReward", userId, (tx) => checkRedeemQuests(tx, { userId, redemptionId: last.id }));
+    }
+    return res;
   } catch (err) {
     console.error("[points] redeemReward", err);
     return { success: false, error: "Không đổi được quà, vui lòng thử lại." };

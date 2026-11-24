@@ -4,6 +4,7 @@ import { ShopPage } from "@/components/shop/ShopPage";
 import { ShopClosed } from "@/components/shop/ShopClosed";
 import { canUseShop } from "@/lib/points/shop-access";
 import { getHeaderPoints, getShopAdminData } from "@/lib/points/queries";
+import { getQuestProgress } from "@/lib/game/quests";
 import { isPointsEnabled } from "@/lib/points/config";
 import { getStudentPointsPage } from "@/lib/points/queries";
 import { expireStaleRedemptions } from "@/lib/points/redemption";
@@ -38,6 +39,7 @@ export default async function RewardsPage() {
     // Quản lý quà ngay trong tiệm: chỉ admin
     isAdmin ? getShopAdminData() : Promise.resolve(null),
   ]);
+  const quests = await getQuestProgress(uid).catch(() => []);
   const myGrade = me?.studyClass?.grade ?? null;
   const [extras, myRank, ...boardRows] = await Promise.all([
     getVisibleCourseIds(uid).then((ids) => getStudentHomeExtras(uid, ids, 6)).catch(() => ({ todo: [], todoTotal: 0, recent: [] })),
@@ -69,6 +71,7 @@ export default async function RewardsPage() {
       gacha={gachaOn ? { pullsToday: today } : null}
       adminView={session.user.role === "ADMIN" || session.user.role === "TEACHER"}
       manageData={manageData}
+      quests={quests}
     />
   );
 }

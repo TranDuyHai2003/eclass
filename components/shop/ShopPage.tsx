@@ -14,6 +14,7 @@ import type { HomeTodoItem } from "@/lib/home/student-home";
 import { LEVELS, getLevel } from "@/lib/points/levels";
 import { rarityOf, type Rarity } from "@/lib/points/rarity";
 import { ITEMS, ITEM_BY_ID, SLOTS, type Item } from "@/lib/game/items";
+import { genderOf } from "@/lib/game/presets";
 import type { Outcome } from "@/lib/game/gacha-shared";
 import { buildNpcLines } from "@/lib/game/npc";
 import { buzz, isSoundOn, onSoundChange, play, setSoundOn } from "@/lib/sound";
@@ -36,6 +37,9 @@ import { GoldModal } from "./ah/GoldSection";
 import { BagSection } from "./ah/BagSection";
 import { CustomizeModal } from "./ah/CustomizeModal";
 import { RewardArt } from "./ah/RewardArt";
+import { QuestBoard, QuestUnlocked, type QuestRow } from "./ah/QuestBoard";
+import { QUESTS, CAT_PETS_PER_DAY } from "@/lib/game/quests-shared";
+import { claimCatQuest } from "@/actions/quests";
 import { RewardManager } from "./ah/RewardManager";
 
 type Reward = StudentPointsPageData["rewards"][number];
@@ -86,10 +90,12 @@ export interface ShopPageProps {
   adminView?: boolean;
   /** Chỉ admin: dữ liệu quản lý quà ngay trong tiệm */
   manageData?: ShopAdminData | null;
+  /** Biệt danh nhiệm vụ ẩn đã mở (còn hạn) */
+  quests?: QuestRow[];
 }
 
 /** Tiệm quà — giao diện "Adorable Home" của canvas ShopV2 (thanh gỗ, khối hồ sơ, mèo linh vật, danh mục trái, thẻ theo độ hiếm); logic xu/ngọc/quà/đồ/rương giữ nguyên */
-export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, event = null, gacha = null, adminView = false, manageData = null }: ShopPageProps) {
+export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, event = null, gacha = null, adminView = false, manageData = null, quests = [] }: ShopPageProps) {
   const router = useRouter();
   const online = useOnline();
   const [sec, setSec] = useState<Sec>("shop");
@@ -103,6 +109,8 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   const [gold, setGold] = useState(false);
   const canManage = adminView && !!manageData;
   const [manage, setManage] = useState(false);
+  const [questOpen, setQuestOpen] = useState(false);
+  const [questNew, setQuestNew] = useState<string[]>([]);
   const [lvUp, setLvUp] = useState<number | null>(null);
   const [soundOn, setSoundState] = useState(true);
   // Menu tiệm (chọn thời tiết) đã bỏ theo yêu cầu thầy 24/11 → luôn trời nắng
@@ -119,7 +127,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   const mainRef = useRef<HTMLElement>(null);
   const firstSec = useRef(true);
   const { wallet, goal } = data;
-  const level = getLevel(wallet.lifetimeEarned);
+  const level = getLevel(wallet.lifetimeEarned, genderOf(avatar));
   // Ví hiển thị: cộng / trừ NGAY khi server báo thành công (nhập mã, đổi quà, mua đồ), khớp lại khi dữ liệu mới về —
   // trước 24/11 phải chờ cả trang tiệm dựng lại (rất lâu trên điện thoại) mới thấy xu đổi
   const [opt, setOpt] = useState<{ base: number; gemBase: number; xu: number; gem: number } | null>(null);
@@ -154,12 +162,39 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
     [user.name, data.canEarn, todoTotal, wallet, level, goal],
   );
 
-  // Đi từ /leaderboard (hoặc link "#bang-vang") → mở sẵn hộp Bảng Vàng trong tiệm
+  // Đi từ /leaderboard (hoặc link "#bang-vang") → mở sẵn hộp Bảng Vàng; thông báo nhiệm vụ ẩn ("#nhiem-vu") → mở bảng nhiệm vụ
   useEffect(() => {
-    if (window.location.hash !== "#bang-vang") return;
-    setGold(true);
+    const h = window.location.hash;
+    if (h !== "#bang-vang" && h !== "#nhiem-vu") return;
+    if (h === "#bang-vang") setGold(true);
+    else setQuestOpen(true);
     history.replaceState(null, "", window.location.pathname);
   }, []);
+  // Biệt danh mới (máy này chưa thấy) → hộp chúc mừng; nhớ danh sách đã thấy theo tài khoản
+  const questKey = `quests-seen:${user.id}`;
+  const questSig = quests.map((q) => `${q.itemId}@${q.at}`).join(",");
+  useEffect(() => {
+    if (!questSig) return;
+    let seen: string[] = [];
+    try {
+      seen = JSON.parse(localStorage.getItem(questKey) || "[]");
+    } catch {
+      /* bộ nhớ bị chặn */
+    }
+    const fresh = questSig.split(",").filter((sig) => !seen.includes(sig));
+    if (fresh.length === 0) return;
+    setQuestNew(fresh.map((sig) => sig.split("@")[0]));
+    play("levelup");
+    setCelebrated((n) => n + 1);
+  }, [questSig, questKey]);
+  const closeQuestNew = () => {
+    try {
+      localStorage.setItem(questKey, JSON.stringify(questSig.split(",")));
+    } catch {
+      /* bỏ qua */
+    }
+    setQuestNew([]);
+  };
 
   // Âm thanh: đọc/ghi localStorage trong effect (HTML server/client khớp)
   useEffect(() => {
@@ -312,6 +347,16 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
     setHearts([k, k + 1, k + 2]);
     setTimeout(() => setHearts((h) => h.filter((x) => x < k || x > k + 2)), 1300);
     setTipI((n) => n + 1);
+    // Nhiệm vụ ẩn "Con Sen Nghiện Mèo": đếm số lần vuốt trong ngày (giờ VN) trên máy này, đủ 20 thì báo server (cấp 24 giờ)
+    try {
+      const day = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+      const key = `cat-pets:${user.id}:${day}`;
+      const n = Number(localStorage.getItem(key) || 0) + 1;
+      localStorage.setItem(key, String(n));
+      if (n === CAT_PETS_PER_DAY) void claimCatQuest(n);
+    } catch {
+      /* bộ nhớ bị chặn → bỏ qua nhiệm vụ */
+    }
   };
 
   // ---------- Danh sách theo danh mục
@@ -443,9 +488,12 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                     <span className="ah-hand text-[22px] font-bold">{user.name || "Học sinh"}</span>
                     {user.grade && <span className="rounded-full border-2 border-[#241e1a] bg-[#fef3c7] px-2.5 py-0.5 text-xs font-black text-[#241e1a]">Khối {user.grade}</span>}
                     <button type="button" data-testid="titles-open" onClick={() => { play("click"); setModal("titles"); }} title="Xem hệ thống danh hiệu" className="ah-btn ah-gold h-[30px] px-3 text-[13px]">
-                      <span>{level.name} (<b>Lv.{level.level}</b>)</span>
+                      <span>{level.short} (<b>Lv.{level.level}</b>)</span>
                     </button>
                   </div>
+                  {avatar.title && ITEM_BY_ID[avatar.title] && (
+                    <span data-testid="hud-nickname" className="self-start rounded-full border-2 border-[#241e1a] bg-[#2A1F5C] px-3 py-0.5 text-[12px] font-black text-[#FDE68A] shadow-[0_2px_0_#241e1a]">« {ITEM_BY_ID[avatar.title].name} »</span>
+                  )}
 
                   <div className="flex justify-between gap-2 text-xs font-extrabold"><span>Cấp độ {level.level}</span><span>{fmt(wallet.lifetimeEarned)}{level.next ? ` / ${fmt(level.next.min)}` : ""} xu tích lũy</span></div>
                   <div className="h-3.5 overflow-hidden rounded-full border-[2.5px] border-[#241e1a] bg-[#fffdf8]" role="progressbar" aria-label="Xu tích luỹ đến cấp sau" aria-valuenow={level.progress} aria-valuemin={0} aria-valuemax={100}>
@@ -456,6 +504,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                     <button type="button" data-testid="customize-open" onClick={() => { play("click"); setCustom(true); }} className="ah-btn ah-cream h-[34px] px-3 text-[13px]">✨ Đổi viền &amp; bảng tên</button>
                     <button type="button" data-testid="board-open" onClick={() => { play("click"); setGold(true); }} className="ah-btn ah-gold h-[34px] px-3 text-[13px]">🏆 Bảng Vàng Khối</button>
                     <button type="button" onClick={() => { play("click"); setModal("titles"); }} className="ah-btn ah-cream h-[34px] px-3 text-[13px]">🎖️ Danh hiệu</button>
+                    <button type="button" data-testid="quest-open" onClick={() => { play("click"); setQuestOpen(true); }} className="ah-btn ah-grape h-[34px] px-3 text-[13px]">🕵️ Nhiệm vụ ẩn {quests.length}/{QUESTS.length}</button>
                     <Link href="/profile" className="ah-btn ah-cream h-[34px] px-3 text-[13px]">👤 Hồ sơ</Link>
                     {canManage && (
                       <button type="button" data-testid="manage-toggle" aria-pressed={manage} onClick={() => { play("click"); setManage((v) => !v); }} className={cn("ah-btn h-[34px] px-3 text-[13px]", manage ? "ah-grape" : "ah-sky")}>
@@ -611,6 +660,8 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       {/* ===== Hộp chi tiết món (canvas: thẻ theo độ hiếm) ===== */}
       {sel && renderModal(sel)}
 
+      {questOpen && <QuestBoard quests={quests} equipped={avatar.title} pending={pending} onEquip={(id) => ITEM_BY_ID[id] && equip(ITEM_BY_ID[id])} onClose={() => setQuestOpen(false)} />}
+      {questNew.length > 0 && <QuestUnlocked itemIds={questNew} onClose={closeQuestNew} onOpenBoard={() => { closeQuestNew(); setQuestOpen(true); }} />}
       {gold && <GoldModal boards={boards} myGrade={user.grade} me={{ id: user.id, avatar, name: user.name }} event={event} onClose={() => setGold(false)} />}
       {custom && (
         <CustomizeModal avatar={avatar} owned={owned} level={level.level} name={user.name} grade={user.grade} pending={pending} onCancel={() => setCustom(false)} onSave={saveCustom} />

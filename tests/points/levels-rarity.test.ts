@@ -45,11 +45,16 @@ describe("Cấp độ", () => {
     assert.equal(getLevel(LEVELS[1].min - 0.1).level, 1);
   });
 
-  test("học chăm (~12 000 xu/tháng): 'Phú nông' sau 2 tháng, chưa thể 'Đại gia' trước 4 tháng, 8 danh hiệu", () => {
+  test("bảng cấp theo tài liệu thầy (24/11): 8 cấp, học chăm (~12 000 xu/tháng) lên Lv.4 sau 1 tháng, Lv.8 sau ~2,5 tháng", () => {
     assert.equal(LEVELS.length, 8);
-    assert.equal(getLevel(12000 * 2).name, "Phú nông");
-    assert.ok(getLevel(12000 * 4).level < LEVELS.findIndex((l) => l.name === "Đại gia") + 1);
-    assert.equal(getLevel(0).name, "Chó rách");
+    assert.deepEqual(LEVELS.map((l) => l.min), [0, 2000, 5000, 9000, 13000, 20000, 25000, 30000]);
+    assert.equal(getLevel(1999).name, "Chó rách hết tiền");
+    assert.equal(getLevel(12000).level, 4);
+    assert.equal(getLevel(30000).level, 8);
+    assert.match(getLevel(30000).name, /^Thiếu Gia/);
+    assert.match(getLevel(30000, "female").name, /^Tiểu Thư/);
+    assert.match(getLevel(29000, "female").next!.short, /^Tiểu Thư/);
+    assert.equal(getLevel(30000, "male").short, "Thiếu Gia 999 Tỷ Xu");
   });
 });
 

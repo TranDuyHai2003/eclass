@@ -535,6 +535,8 @@ enum ItemSource {
   SHOP
   GACHA
   GIFT
+  /// Biệt danh từ nhiệm vụ ẩn (lib/game/quests.ts)
+  QUEST
 }
 
 enum RewardKind {
@@ -635,6 +637,8 @@ model UserItem {
   userId    String
   itemId    String
   source    ItemSource @default(SHOP)
+  /// Hết hạn (vd biệt danh 24 giờ); null = vĩnh viễn
+  expiresAt DateTime?
   createdAt DateTime   @default(now())
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -39,6 +39,8 @@ export interface Item {
   isNew?: boolean;
   /** Kiểu tóc theo giới (ô Giới tính ở Tùy chỉnh lọc danh sách kiểu tóc) */
   gender?: "male" | "female";
+  /** Biệt danh từ nhiệm vụ ẩn (lib/game/quests.ts): không bán, không vào rương, chỉ hiện khi đã có */
+  quest?: boolean;
   /** Tham số vẽ (màu, biến thể) — Chibi.tsx đọc */
   v?: string;
   v2?: string;
@@ -172,6 +174,17 @@ export const ITEMS: Item[] = [
   { id: "title-pi", slot: "title", name: "Fan của số π", rarity: "rare", gachaOnly: true },
   { id: "title-boss", slot: "title", name: "Trùm cuối", rarity: "epic", gachaOnly: true },
   { id: "title-legend", slot: "title", name: "Huyền thoại lớp", rarity: "legendary", gachaOnly: true },
+  // Biệt danh nhiệm vụ ẩn (24/11, tài liệu "Biệt danh" của thầy) — chỉ cấp qua lib/game/quests.ts
+  { id: "q-deadline89", slot: "title", name: "⏰ Chuyên Gia Nộp Bài Phút 89", rarity: "rare", quest: true },
+  { id: "q-lucky", slot: "title", name: "🍀 Con Cưng Của Thần May Mắn", rarity: "epic", quest: true },
+  { id: "q-owl", slot: "title", name: "🦉 Cú Đêm Tu Tiên Không Ngủ", rarity: "rare", quest: true },
+  { id: "q-early", slot: "title", name: "🌅 Người Dậy Sớm Để Thành Công", rarity: "rare", quest: true },
+  { id: "q-turtle", slot: "title", name: "🐢 Chú Rùa Lạc Đường (Lần Đầu Vấp Ngã)", rarity: "common", quest: true },
+  { id: "q-dragon", slot: "title", name: "🐉 Con Rồng Ngồi Trên Đống Vàng", rarity: "epic", quest: true },
+  { id: "q-tissue", slot: "title", name: "🧻 Người Mở Đường Khăn Giấy Hoạt Hình", rarity: "rare", quest: true },
+  { id: "q-comeback", slot: "title", name: "🚀 Trùng Sinh Lội Ngược Dòng", rarity: "epic", quest: true },
+  { id: "q-perfect", slot: "title", name: "👹 Quái Vật Điểm 10 Không Cảm Xúc", rarity: "legendary", quest: true },
+  { id: "q-catlover", slot: "title", name: "😺 Con Sen Nghiện Mèo Hết Thuốc Chữa", rarity: "common", quest: true },
   { id: "title-owl", slot: "title", name: "Cú đêm chăm chỉ", rarity: "common", studio: true, price: { xu: 600 } },
   { id: "title-hunter10", slot: "title", name: "Thợ săn điểm 10", rarity: "rare", studio: true, price: { xu: 1200 } },
   { id: "title-mathking", slot: "title", name: "Học bá Toán học", rarity: "epic", studio: true, price: { xu: 2400 } },
@@ -208,8 +221,9 @@ export const RARITY_LABEL: Record<Rarity, string> = { common: "Phổ thông", ra
 /** Xu trả lại khi trúng đồ đã có (theo bậc) */
 export const DUPLICATE_REFUND: Record<Rarity, number> = { common: 150, rare: 450, epic: 1500, legendary: 4500 };
 
-export function itemsOfSlot(slot: Slot) {
-  return ITEMS.filter((i) => i.slot === slot);
+/** Món của một ô; biệt danh nhiệm vụ ẩn chỉ có mặt khi đã sở hữu (truyền `owned`), để không lộ nhiệm vụ chưa mở */
+export function itemsOfSlot(slot: Slot, owned?: { has(id: string): boolean }) {
+  return ITEMS.filter((i) => i.slot === slot && (!i.quest || !!owned?.has(i.id)));
 }
 
 export function isFree(item: Item) {

@@ -224,8 +224,8 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
         : { kind: "ok" as const, title: `${changedTabs.length} thay đổi chưa lưu`, sub: changedTabs.map((t) => t.label).join(", "), icon: "bg-[#F3F0FF] text-[#5B2BD6]" };
 
   const tabMeta = TABS.map((t) => {
-    const total = t.key === "char" ? PRESETS.length : itemsOfSlot(t.slots[0]).length;
-    const ownedN = t.key === "char" ? PRESETS.filter((p) => Object.values(p.items).every((id) => !id || has(ITEM_BY_ID[id]))).length : itemsOfSlot(t.slots[0]).filter(has).length;
+    const total = t.key === "char" ? PRESETS.length : itemsOfSlot(t.slots[0], owned).length;
+    const ownedN = t.key === "char" ? PRESETS.filter((p) => Object.values(p.items).every((id) => !id || has(ITEM_BY_ID[id]))).length : itemsOfSlot(t.slots[0], owned).filter(has).length;
     return { ...t, count: `${ownedN}/${total}` };
   });
 
@@ -560,7 +560,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
   );
 
   function renderSlot(slot: Slot) {
-    const items = itemsOfSlot(slot).filter((it) => (filter === "owned" ? has(it) : filter === "shop" ? !has(it) : true));
+    const items = itemsOfSlot(slot, owned).filter((it) => (filter === "owned" ? has(it) : filter === "shop" ? !has(it) : true));
     const wide = slot === "background" || slot === "nameplate";
     const cards = items.map((it) => {
       const own = has(it);
@@ -739,7 +739,7 @@ function Chips({ slot, config, has, put, optional, only }: { slot: Slot; config:
       {optional && (
         <button type="button" aria-pressed={!config[slot]} onClick={() => put(slot, null)} data-testid={`none-${slot}`} className={cn("h-11 rounded-xl border-2 px-4 text-[13px] font-semibold", chip(!config[slot]))}>Không có</button>
       )}
-      {itemsOfSlot(slot).filter((it) => !only || only(it)).map((it) => {
+      {itemsOfSlot(slot, { has: (id) => has(ITEM_BY_ID[id]) }).filter((it) => !only || only(it)).map((it) => {
         const own = has(it);
         const on = config[slot] === it.id;
         const price = it.price ? ("xu" in it.price ? `${fmt(it.price.xu)} xu` : `${it.price.gem} ngọc`) : "Hộp bí ẩn";
@@ -757,7 +757,7 @@ function Chips({ slot, config, has, put, optional, only }: { slot: Slot; config:
 function Swatches({ slot, config, has, put, color }: { slot: Slot; config: AvatarConfig; has: (it: Item) => boolean; put: (slot: Slot, id: string | null) => void; color: (it: Item) => string }) {
   return (
     <div className="flex flex-wrap gap-3.5">
-      {itemsOfSlot(slot).map((it) => {
+      {itemsOfSlot(slot, { has: (id) => has(ITEM_BY_ID[id]) }).map((it) => {
         const own = has(it);
         const on = config[slot] === it.id;
         const price = it.price ? ("xu" in it.price ? `${fmt(it.price.xu)} xu` : `${it.price.gem} ngọc`) : "Hộp bí ẩn";

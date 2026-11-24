@@ -231,7 +231,7 @@ try {
     expect(chip && chip.includes("17.100"), `chip header sai: ${chip}`);
     const hero = await s.ev(`return document.querySelector('[data-testid="student-hero"]')?.innerText || ""`);
     expect(/Chào /.test(hero), "thiếu lời chào ở thẻ chào trang chủ");
-    expect(/Chó rách|Nghèo rớt|Người nghèo|Tiểu thương|Phú nông|Phú ông|Đại gia|Tỷ phú/.test(hero), "thẻ chào thiếu danh hiệu");
+    expect(/Chó rách|Trứng bắc thảo|đẳng cấp|thần hào|999 Tỷ Xu/.test(hero), "thẻ chào thiếu danh hiệu");
     expect(/Bắt đầu học|Bài gần nhất/i.test(hero), "thẻ chào thiếu khối học tiếp");
     expect(/17\.100/.test(hero), "thẻ chào thiếu số xu");
   });
@@ -265,7 +265,7 @@ try {
     expect(/còn thiếu 32\.900 xu/i.test(note), `quà đắt phải báo còn thiếu 32.900 xu: ${note}`);
     const rarity = await s.ev(`return [...document.querySelectorAll('[data-testid="reward-card"]')].map(c => c.dataset.title.replace(/^.*Quà đắt$/, "Quà đắt") + ":" + c.dataset.rarity).join(",")`);
     expect(rarity.includes("Kẹo / bánh nhỏ:common") && rarity.includes("Quà đắt:legendary"), `độ hiếm sai: ${rarity}`);
-    expect(/Chó rách|Nghèo rớt|Người nghèo|Tiểu thương|Phú nông|Phú ông|Đại gia|Tỷ phú/.test(txt), "thanh trạng thái thiếu danh hiệu");
+    expect(/Chó rách|Trứng bắc thảo|đẳng cấp|thần hào|999 Tỷ Xu/.test(txt), "thanh trạng thái thiếu danh hiệu");
   });
 
   await step("Học sinh: danh mục bên trái lọc đúng (Thẻ đặc quyền / Quà hiện vật / Mèo Cún / Hộp bí ẩn)", async () => {
@@ -499,7 +499,7 @@ try {
     await s.goto(`/profile/${data.student.id}`, /Thang danh hiệu/i);
     const txt = await s.text();
     expect(/Tuỳ chỉnh nhân vật/.test(txt) && /Kết quả gần đây/.test(txt), "chính chủ thiếu nút tuỳ chỉnh / kết quả gần đây");
-    expect(/Tiểu thương|Phú nông|Người nghèo/.test(txt), "thiếu danh hiệu");
+    expect(/Trứng bắc thảo|đẳng cấp|thần hào|999 Tỷ Xu/.test(txt), "thiếu danh hiệu");
     expect(await s.ev(`return !!document.querySelector('[data-testid="public-profile"] svg[role="img"]')`), "thiếu nhân vật SVG");
     expect(await s.ev(`return !!document.querySelector('[data-testid="public-profile"] [data-testid="profile-banner"] [data-scene]')`), "hồ sơ công khai thiếu cảnh banner");
     expect(!/@test\.local/.test(txt), "hồ sơ công khai không được lộ email");
@@ -724,6 +724,33 @@ try {
     await s.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
     // Tên lấy từ hộp chi tiết (mèo mua được đầu tiên tuỳ rương đã cho món nào — trước đây chỉ biết Moka / Peanut nên chập chờn)
     expect((await s.ev(`return document.querySelector('[data-testid="mascot"]')?.innerText || ""`)).includes(petName), `tải lại không còn mèo ${petName}`);
+  });
+
+  await step("Nhiệm vụ ẩn: bảng 10 ô (??? chưa mở); được cấp biệt danh → hộp chúc mừng, chip biệt danh, ô đã mở", async () => {
+    await s.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
+    await s.ev(`document.querySelector('[data-testid="quest-unlocked-ok"]')?.click()`);
+    await sleep(300);
+    await s.ev(`document.querySelector('[data-testid="quest-open"]').click()`);
+    await sleep(400);
+    const cards = await s.ev(`return [...document.querySelectorAll('[data-testid="quest-card"]')].map(c => c.dataset.quest + ":" + c.dataset.open).join(",")`);
+    expect(cards.split(",").length === 10 && cards.includes(":false"), `bảng nhiệm vụ sai: ${cards}`);
+    expect(!/Cú Đêm Tu Tiên/.test(await s.ev(`return document.querySelector('[data-testid="quest-board"]').innerText`)) || cards.includes("owl:true"), "ô chưa mở lộ tên biệt danh");
+    await s.ev(`document.querySelector('[data-testid="quest-close"]').click()`);
+    // Cấp biệt danh như hệ thống (thêm món QUEST + tự đeo)
+    await prisma.userItem.upsert({ where: { userId_itemId: { userId: data.student.id, itemId: "q-owl" } }, create: { userId: data.student.id, itemId: "q-owl", source: "QUEST" }, update: {} });
+    const av = await prisma.userAvatar.findUnique({ where: { userId: data.student.id } });
+    await prisma.userAvatar.upsert({ where: { userId: data.student.id }, create: { userId: data.student.id, config: { title: "q-owl" } }, update: { config: { ...(av?.config ?? {}), title: "q-owl" } } });
+    await s.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
+    expect(await s.waitText(/Hoàn thành nhiệm vụ ẩn!/), "không hiện hộp chúc mừng nhiệm vụ ẩn");
+    await s.ev(`document.querySelector('[data-testid="quest-unlocked-ok"]').click()`);
+    await sleep(300);
+    expect(/Cú Đêm Tu Tiên/.test(await s.ev(`return document.querySelector('[data-testid="hud-nickname"]')?.innerText || ""`)), "thiếu chip biệt danh dưới tên");
+    await s.ev(`document.querySelector('[data-testid="quest-open"]').click()`);
+    await sleep(400);
+    expect(await s.ev(`return document.querySelector('[data-testid="quest-card"][data-quest="owl"]')?.dataset.open === "true"`), "ô Cú Đêm chưa mở");
+    await s.ev(`document.querySelector('[data-testid="quest-close"]').click()`);
+    await s.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
+    expect(await s.ev(`return !document.querySelector('[data-testid="quest-unlocked"]')`), "hộp chúc mừng hiện lại lần 2");
   });
 
   await step("[review GĐ6] 320px: tablist chỉ chứa tab; hộp chi tiết vừa màn hình; thanh gỗ có nút loa", async () => {

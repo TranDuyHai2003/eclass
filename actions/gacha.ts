@@ -7,6 +7,7 @@ import { demoGuard } from "@/lib/demo";
 import { isPointsEnabled } from "@/lib/points/config";
 import { canUseShop } from "@/lib/points/shop-access";
 import { isGachaEnabled, pullInTx, type ChestId, type PullResult } from "@/lib/game/gacha";
+import { checkGachaQuests, runQuestsSafely } from "@/lib/game/quests";
 
 /** Học sinh mở một rương. Kết quả tính ở server; client chỉ diễn hoạt ảnh. */
 export async function openChest(chestId: ChestId): Promise<PullResult> {
@@ -20,6 +21,10 @@ export async function openChest(chestId: ChestId): Promise<PullResult> {
   if (chestId !== "xu" && chestId !== "gem") return { success: false, error: "Rương không tồn tại." };
   try {
     const res = await prisma.$transaction((tx) => pullInTx(tx, userId, chestId), { timeout: 15000 });
+    if (res.success && res.outcome) {
+      const rarity = res.outcome.rarity;
+      await runQuestsSafely("openChest", userId, async () => checkGachaQuests(rarity));
+    }
     if (res.success) {
       revalidatePath("/rewards/gacha");
       revalidatePath("/rewards");
