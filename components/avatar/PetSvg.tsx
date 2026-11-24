@@ -1,12 +1,12 @@
 import { ITEM_BY_ID } from "@/lib/game/items";
 import { cn } from "@/lib/utils";
 
-const COAT: Record<string, { body: string; dark: string; belly: string; crown?: boolean; patches?: boolean; stripes?: boolean }> = {
-  tabby: { body: "#b9a58a", dark: "#6b5a44", belly: "#f5ebdc", stripes: true },
-  orange: { body: "#f4a94a", dark: "#b86d12", belly: "#fde7c4", stripes: true },
-  calico: { body: "#fff7ea", dark: "#5b3d1e", belly: "#fff7ea", patches: true },
-  black: { body: "#3b3540", dark: "#1f1b24", belly: "#5b5464" },
-  snow: { body: "#ffffff", dark: "#8d7b6a", belly: "#fff", crown: true },
+const COAT: Record<string, { body: string; dark: string; belly: string; iris: string; crown?: boolean; patches?: boolean; stripes?: boolean }> = {
+  tabby: { body: "#b9a58a", dark: "#6b5a44", belly: "#f5ebdc", iris: "#4d7c0f", stripes: true },
+  orange: { body: "#f4a94a", dark: "#b86d12", belly: "#fde7c4", iris: "#92400e", stripes: true },
+  calico: { body: "#fff7ea", dark: "#5b3d1e", belly: "#fff7ea", iris: "#a16207", patches: true },
+  black: { body: "#3b3540", dark: "#1f1b24", belly: "#5b5464", iris: "#ca8a04" },
+  snow: { body: "#ffffff", dark: "#8d7b6a", belly: "#fff", iris: "#0284c7", crown: true },
 };
 
 /** Thú cưng (ô "pet") — SVG thuần: mèo 5 bộ lông + các loài khác (SPECIES); vẽ theo itemId */
@@ -24,11 +24,18 @@ export function PetSvg({ itemId, size = 96, className }: { itemId: string; size?
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} className={cn("select-none", className)} role="img" aria-label={item?.name ?? "Mèo cưng"}>
       <ellipse cx="50" cy="92" rx="26" ry="4" fill="#0f172a" opacity="0.1" />
+      {/* áo choàng hoàng gia (Snow) sau lưng */}
+      {c.crown && (
+        <path d="M28 56c-10 10-12 24-8 34l14-4c8 2 24 2 32 0l14 4c4-10 2-24-8-34z" fill="#dc2626" stroke="#7f1d1d" strokeWidth="2" strokeLinejoin="round" />
+      )}
       {/* đuôi */}
       <path d="M74 70c12-2 16-12 10-20" fill="none" stroke={c.dark} strokeWidth="6" strokeLinecap="round" />
       {/* thân */}
       <ellipse cx="50" cy="70" rx="24" ry="20" fill={c.body} stroke={c.dark} strokeWidth="2.5" />
       <ellipse cx="50" cy="75" rx="13" ry="11" fill={c.belly} opacity="0.9" />
+      {/* khối sáng / tối cho thân tròn đầy */}
+      <ellipse cx="40" cy="60" rx="9" ry="5" fill="#fff" opacity="0.28" transform="rotate(-25 40 60)" />
+      <path d="M30 80c8 8 32 8 40 0" fill="none" stroke={c.dark} strokeWidth="3" strokeLinecap="round" opacity="0.18" />
       {c.stripes && (
         <g stroke={c.dark} strokeWidth="2.5" strokeLinecap="round" opacity="0.7">
           <path d="M34 62l6 2M66 62l-6 2M36 72l5 1M64 72l-5 1" />
@@ -43,16 +50,22 @@ export function PetSvg({ itemId, size = 96, className }: { itemId: string; size?
       {/* chân */}
       <ellipse cx="38" cy="88" rx="7" ry="4" fill={c.body} stroke={c.dark} strokeWidth="2" />
       <ellipse cx="62" cy="88" rx="7" ry="4" fill={c.body} stroke={c.dark} strokeWidth="2" />
+      <path d="M36 86v3M40 86v3M60 86v3M64 86v3" stroke={c.dark} strokeWidth="1.1" strokeLinecap="round" opacity="0.6" />
       {/* đầu */}
       <path d="M26 30l6-14 10 10zM74 30l-6-14-10 10z" fill={c.body} stroke={c.dark} strokeWidth="2.5" strokeLinejoin="round" />
       <path d="M31 28l3-7 5 5zM69 28l-3-7-5 5z" fill="#fda4af" />
       <ellipse cx="50" cy="40" rx="25" ry="21" fill={c.body} stroke={c.dark} strokeWidth="2.5" />
+      <ellipse cx="38" cy="29" rx="8" ry="4.5" fill="#fff" opacity="0.32" transform="rotate(-25 38 29)" />
       {c.patches && <path d="M28 36c6-10 16-8 18 2-6 4-12 3-18-2z" fill="#4b3a2a" />}
       {c.stripes && <path d="M44 22l2 6M50 21v6M56 22l-2 6" stroke={c.dark} strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />}
       {/* mắt */}
-      <ellipse cx="41" cy="40" rx="3.2" ry="4.2" fill="#1e293b" />
-      <ellipse cx="59" cy="40" rx="3.2" ry="4.2" fill="#1e293b" />
-      <circle cx="42.3" cy="38.3" r="1.1" fill="#fff" /><circle cx="60.3" cy="38.3" r="1.1" fill="#fff" />
+      {[41, 59].map((x) => (
+        <g key={x}>
+          <ellipse cx={x} cy="40" rx="4.4" ry="5.4" fill="#1e293b" />
+          <ellipse cx={x} cy="41.6" rx="3.2" ry="3.2" fill={c.iris} opacity="0.85" />
+          <circle cx={x + 1.5} cy="37.8" r="1.6" fill="#fff" /><circle cx={x - 1.4} cy="42.6" r="0.8" fill="#fff" />
+        </g>
+      ))}
       {/* má, mũi, miệng, ria */}
       <ellipse cx="34" cy="47" rx="4" ry="2.4" fill="#fb7185" opacity="0.5" /><ellipse cx="66" cy="47" rx="4" ry="2.4" fill="#fb7185" opacity="0.5" />
       <path d="M48 47l2 2 2-2z" fill="#f472b6" />
@@ -62,7 +75,11 @@ export function PetSvg({ itemId, size = 96, className }: { itemId: string; size?
       <path d="M32 57c8 6 28 6 36 0" fill="none" stroke="#e11d48" strokeWidth="3" />
       <circle cx="50" cy="60" r="3" fill="#fbbf24" stroke="#b45309" strokeWidth="1" />
       {c.crown && (
-        <path d="M36 20l6 8 8-12 8 12 6-8-3 14H39z" fill="#fbbf24" stroke="#b45309" strokeWidth="2" strokeLinejoin="round" />
+        <g>
+          <path d="M36 20l6 8 8-12 8 12 6-8-3 14H39z" fill="#fbbf24" stroke="#b45309" strokeWidth="2" strokeLinejoin="round" />
+          <circle cx="50" cy="27" r="2.2" fill="#ef4444" stroke="#7f1d1d" strokeWidth="0.8" />
+          {[36, 50, 64].map((x, i) => <circle key={x} cx={x} cy={i === 1 ? 16 : 20} r="1.6" fill="#fef3c7" stroke="#b45309" strokeWidth="0.6" />)}
+        </g>
       )}
     </svg>
   );
@@ -117,16 +134,33 @@ const SPECIES: Record<string, () => React.ReactElement> = {
     </g>
   ),
   redpanda: () => (
-    <g stroke="#241e1a" strokeWidth="2.6" strokeLinejoin="round">
-      <path d="M70 70c12-6 18 0 16 8-2 6-8 8-14 6" fill="#c2410c" />
-      <path d="M30 88c-4-14 0-30 20-30s24 16 20 30z" fill="#c2410c" />
-      <ellipse cx="50" cy="76" rx="11" ry="9" fill="#4a2512" stroke="none" />
-      <circle cx="29" cy="24" r="8" fill="#fffdf8" /><circle cx="71" cy="24" r="8" fill="#fffdf8" />
-      <ellipse cx="50" cy="42" rx="24" ry="19" fill="#c2410c" />
-      <ellipse cx="38" cy="47" rx="6.5" ry="4" fill="#fffdf8" stroke="none" />
-      <ellipse cx="62" cy="47" rx="6.5" ry="4" fill="#fffdf8" stroke="none" />
-      <circle cx="40" cy="38" r="2.6" fill="#241e1a" stroke="none" /><circle cx="60" cy="38" r="2.6" fill="#241e1a" stroke="none" />
-      <circle cx="50" cy="46" r="2.6" fill="#241e1a" stroke="none" />
+    <g stroke="#3b1708" strokeWidth="2.2" strokeLinejoin="round">
+      <defs>
+        <radialGradient id="rp-fur" cx="40%" cy="30%" r="80%"><stop offset="0%" stopColor="#fb923c" /><stop offset="60%" stopColor="#ea580c" /><stop offset="100%" stopColor="#9a3412" /></radialGradient>
+      </defs>
+      {/* đuôi bông xù có khoang */}
+      <path d="M66 74c10-4 22-6 26-16 2-6-2-10-6-8-2 8-12 10-22 14z" fill="url(#rp-fur)" />
+      <path d="M78 66c2 2 3 4 3 6M86 60c2 2 2 4 2 6" fill="none" stroke="#fde68a" strokeWidth="3" strokeLinecap="round" />
+      {/* thân + chân đen */}
+      <path d="M28 90c-4-16 2-32 22-32s26 16 22 32z" fill="url(#rp-fur)" />
+      <path d="M30 90c0-8 4-14 10-14s8 6 8 14zM52 90c0-8 2-14 8-14s10 6 10 14z" fill="#3b1708" stroke="none" />
+      <ellipse cx="50" cy="72" rx="8" ry="6" fill="#fdba74" stroke="none" opacity="0.6" />
+      {/* tai */}
+      <path d="M24 32c-4-12 2-20 12-16l4 10zM76 32c4-12-2-20-12-16l-4 10z" fill="url(#rp-fur)" />
+      <path d="M27 28c-1-6 2-9 6-8l2 6zM73 28c1-6-2-9-6-8l-2 6z" fill="#fffdf8" stroke="none" />
+      {/* đầu */}
+      <ellipse cx="50" cy="42" rx="26" ry="20" fill="url(#rp-fur)" />
+      <ellipse cx="38" cy="30" rx="7" ry="3.5" fill="#fff" opacity="0.3" stroke="none" transform="rotate(-20 38 30)" />
+      {/* mặt nạ trắng đặc trưng */}
+      <path d="M30 38c2-6 8-6 10-2-2 2-2 6-6 8-3 0-5-2-4-6zM70 38c-2-6-8-6-10-2 2 2 2 6 6 8 3 0 5-2 4-6z" fill="#fffdf8" stroke="none" />
+      <path d="M36 50c4 8 24 8 28 0-4-4-10-6-14-6s-10 2-14 6z" fill="#fffdf8" stroke="none" />
+      <path d="M42 28c2-3 6-4 8-4s6 1 8 4" fill="none" stroke="#fffdf8" strokeWidth="2.4" strokeLinecap="round" />
+      {/* vệt nước mắt nâu */}
+      <path d="M38 46c-1 4-2 7-4 9M62 46c1 4 2 7 4 9" fill="none" stroke="#7c2d12" strokeWidth="2" strokeLinecap="round" />
+      <Eyes y={41} dx={11} r={3.6} />
+      <ellipse cx="50" cy="49" rx="3.2" ry="2.2" fill="#3b1708" stroke="none" />
+      <path d="M50 51c0 2.5-2.5 3.5-4.5 2.5M50 51c0 2.5 2.5 3.5 4.5 2.5" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+      <Blush y={52} dx={19} />
     </g>
   ),
   shiba: () => (

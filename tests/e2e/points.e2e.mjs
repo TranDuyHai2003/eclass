@@ -98,6 +98,8 @@ async function setup() {
     ],
   });
   await prisma.pointWallet.create({ data: { userId: student.id, balance: 15600, lifetimeEarned: 15600 } });
+  // Quà túi giấy ăn (mở nhiệm vụ ẩn "Người Mở Đường Khăn Giấy") — có tranh riêng, không lấy nhầm tranh túi đeo chéo
+  await prisma.reward.create({ data: { title: `${tag} Túi Giấy Ăn Nhỏ Hoạt Hình`, price: 10000, kind: "PHYSICAL", stock: 5 } });
   return { cls, student, teacher, attempt, test };
 }
 
@@ -588,10 +590,15 @@ try {
     expect(await s.ev(`return document.querySelector('[data-testid="try-acc-crown"]')?.getAttribute('href') === "/profile?try=acc-crown"`), "thiếu Thử trên hồ sơ");
     await s.click(/^Đóng$/, '[data-testid="shop-detail"] button');
     await sleep(200);
-    // Viền avatar dùng tranh v2 của canvas
+    await s.ev(`document.querySelector('[data-testid="cat-physical"]').click()`);
+    await sleep(300);
+    expect(await s.ev(`const c=[...document.querySelectorAll('[data-testid="reward-card"]')].find(c=>/Túi Giấy Ăn/.test(c.dataset.title||"")); return !!c && !!c.querySelector('[data-art-tissue]')`), "quà túi giấy ăn chưa có tranh gói khăn giấy");
+    // Viền avatar (24/11): Tai Mèo dùng tranh vẽ tay (sprite đồ vật), Thiên Thần là SVG nhiều lớp; mọi thẻ viền lồng sẵn mặt học sinh
     await s.ev(`document.querySelector('[data-testid="cat-frame"]').click()`);
     await sleep(300);
-    expect(await s.ev(`const a=document.querySelector('[data-testid="item-card"][data-item="frame-catear"] [role="presentation"]'); return !!a && /studio\\/shop-v2\\.webp/.test(getComputedStyle(a).backgroundImage)`), "khung Tai Mèo chưa dùng tranh v2");
+    expect(await s.ev(`const c=document.querySelector('[data-testid="item-card"][data-item="frame-catear"]'); return !!c && [...c.querySelectorAll('span')].some(x=>/studio\\/items\\.webp/.test(getComputedStyle(x).backgroundImage))`), "khung Tai Mèo chưa dùng tranh vẽ tay");
+    expect(await s.ev(`return !!document.querySelector('[data-testid="item-card"][data-item="frame-blue"] svg[data-frame="frame-blue"]')`), "khung Thiên Thần chưa vẽ SVG");
+    expect(await s.ev(`const cs=[...document.querySelectorAll('[data-testid="item-card"][data-item^="frame-"]')]; return cs.length>0 && cs.every(c=>!/studio\\/shop-v2\\.webp/.test(c.innerHTML))`), "còn thẻ viền dùng vòng mảnh v2");
     const frames = await s.ev(`return [...document.querySelectorAll('[data-testid="item-card"]')].map(c => c.dataset.item).join("|")`);
     expect(["frame-blue", "frame-butterfly", "frame-rose"].every((id) => frames.includes(id)), `thiếu viền của canvas: ${frames}`);
     await s.ev(`document.querySelector('[data-testid="cat-deco"]').click()`);

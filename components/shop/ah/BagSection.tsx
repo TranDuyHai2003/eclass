@@ -5,7 +5,7 @@ import { ITEM_BY_ID, SLOTS, type Item } from "@/lib/game/items";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import type { StudentPointsPageData } from "@/lib/points/queries";
 import { rarityOf } from "@/lib/points/rarity";
-import { V2Art, rewardArtV2 } from "@/components/studio/Sprite";
+import { RewardPic } from "./RewardArt";
 import { ItemArt, QUICK_EQUIP, RAR_LABEL, fmt } from "./parts";
 
 type Redemption = StudentPointsPageData["redemptions"][number];
@@ -33,7 +33,7 @@ export function BagSection({ redemptions, owned, avatar, pending, name, onEquip,
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-3.5">
         {redemptions.map((r) => (
           <div key={r.id} data-testid="redemption" className={`${card} r-${rarityOf(r.price).key}`}>
-            <div className={thumb}><V2Art index={rewardArtV2(r.reward.title, r.reward.kind)} className="relative w-[86%]" /></div>
+            <div className={thumb}><RewardPic title={r.reward.title} kind={r.reward.kind} className="relative w-[86%]" /></div>
             <div className="min-w-0 flex-1">
               <div className="ah-hand line-clamp-2 text-[15px] font-bold">{r.reward.title}</div>
               <div className="text-xs font-bold text-[#6e4722]">{STATUS[r.status] ?? r.status} · {fmtDate(r.createdAt)} · {fmt(r.price)} xu{r.note ? ` · ${r.note}` : ""}</div>

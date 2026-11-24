@@ -15,6 +15,7 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   { shop: true, emoji: "🧋", title: "Trà Sữa Tai Mèo 700ml", description: "Một ly trà sữa size lớn, nhận tại lớp.", price: 60000, kind: "PHYSICAL", costVnd: 30000, stock: 5, perStudentMonthlyLimit: 1 },
   { shop: true, emoji: "📒", title: "Sổ Tay Lò Xo Mèo Xinh", description: "Sổ tay lò xo bìa mèo để ghi công thức.", price: 22500, kind: "PHYSICAL", costVnd: 12000, stock: 10 },
   { shop: true, emoji: "🖊️", title: "Set Bút Gel Pastel 6 Màu", description: "6 bút gel màu pastel để tô điểm vở ghi.", price: 30000, kind: "PHYSICAL", costVnd: 15000, stock: 12 },
+  { shop: true, emoji: "🧻", title: "Túi Giấy Ăn Nhỏ Hoạt Hình", description: "Gói khăn giấy bỏ túi in hình mèo. Bạn đầu tiên trong lớp đổi sẽ mở một nhiệm vụ ẩn!", price: 10000, kind: "PHYSICAL", costVnd: 5000, stock: 10 },
   { shop: true, emoji: "🐱", title: "Bộ 50 Sticker Mèo Béo", description: "50 sticker mèo béo dán vở, dán laptop.", price: 15000, kind: "PHYSICAL", costVnd: 8000, stock: 20 },
   { shop: true, emoji: "✏️", title: "Hộp Bút Mèo Béo", description: "Hộp bút hình mèo béo, đựng vừa thước và bút.", price: 45000, kind: "PHYSICAL", costVnd: 25000, stock: 3 },
   { shop: true, emoji: "🍼", title: "Bình Nước Tai Thỏ Pastel", description: "Bình nước nắp tai thỏ màu pastel.", price: 75000, kind: "PHYSICAL", costVnd: 40000, stock: 6 },

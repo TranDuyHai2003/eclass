@@ -47,7 +47,7 @@ describe("Danh mục đồ", () => {
 });
 
 describe("Đủ món của canvas Tiệm quà v2", () => {
-  test("9 viền, 7 bảng tên, 6 thú cưng có tranh v2 riêng (ô 17–38, trừ mèo Snow 38 đã có)", () => {
+  test("7 bảng tên có tranh v2 riêng (ô 26–32); viền và thú cưng không dùng tranh v2 phẳng nữa (24/11)", () => {
     const byCell = new Map<number, string>();
     for (const it of ITEMS) {
       const i = v2Index(it.id);
@@ -55,9 +55,8 @@ describe("Đủ món của canvas Tiệm quà v2", () => {
       assert.ok(!byCell.has(i), `ô ${i} dùng cho cả ${byCell.get(i)} và ${it.id}`);
       byCell.set(i, it.id);
     }
-    for (let i = 17; i <= 38; i++) assert.ok(byCell.has(i), `ô tranh ${i} chưa có món`);
-    assert.equal([...byCell].filter(([i]) => i >= 17 && i <= 25).every(([, id]) => ITEM_BY_ID[id].slot === "frame"), true);
-    assert.equal([...byCell].filter(([i]) => i >= 33).every(([, id]) => ITEM_BY_ID[id].slot === "pet"), true);
+    for (let i = 26; i <= 32; i++) assert.ok(byCell.has(i), `ô tranh ${i} chưa có món`);
+    assert.ok([...byCell.values()].every((id) => ITEM_BY_ID[id].slot === "nameplate"));
   });
 
   test("món mới chỉ bán ở tiệm (có giá, không vào rương)", () => {

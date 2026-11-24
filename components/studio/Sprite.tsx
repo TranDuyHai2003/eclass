@@ -167,11 +167,14 @@ export function faceStyle(presetIdx: number, row = 0): React.CSSProperties {
 
 export const SPRITE_V2 = "/studio/shop-v2.webp";
 
-/** Ô ảnh v2 của món có tranh tương ứng trong canvas (khung viền tròn, thú cưng); món khác dùng ảnh cũ */
+/**
+ * Ô ảnh v2 của món có tranh tương ứng trong canvas (bảng tên); món khác dùng ảnh cũ.
+ * Thú cưng (ô 33–38) cũng bỏ từ 24/11: tranh phẳng kém tranh vẽ tay trong sprite tiệm (Moka, Shiba, Thỏ) và SVG có khối (PetSvg).
+ * Khung viền (ô 17–25 của canvas) KHÔNG dùng nữa từ 24/11: chỉ là vòng mảnh → Anh Đào / Tai Mèo / Dạ Nguyệt dùng tranh vẽ
+ * trong sprite đồ vật (frameSpriteStyle), các khung còn lại vẽ SVG nhiều lớp trong FrameRing.
+ */
 const V2_ITEM: Record<string, number> = {
-  "frame-catear": 17, "frame-leaf": 18, "frame-blue": 19, "frame-rainbow": 20, "frame-butterfly": 21, "frame-sakura": 22, "frame-moon": 23, "frame-rose": 24, "frame-gold": 25,
   "np-pond": 26, "np-sakura": 27, "np-starry": 28, "np-butterfly": 29, "np-catparty": 30, "np-crimson": 31, "np-celestial": 32,
-  "pet-moka": 33, "pet-shiba": 34, "pet-peanut": 35, "pet-bunny": 36, "pet-redpanda": 37, "pet-snow": 38,
 };
 export const V2_MASCOT = 38;
 export const v2Index = (id?: string | null): number | undefined => (id ? V2_ITEM[id] : undefined);

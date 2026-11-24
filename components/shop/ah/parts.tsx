@@ -32,18 +32,10 @@ export function GemDot({ size = 15, className }: { size?: number; className?: st
   return <GemIcon size={Math.round(size * 1.5)} className={noBorder(className)} />;
 }
 
-/** Khung viền phủ lên ảnh đại diện: tranh v2 → tranh khung cũ trong sprite → vòng SVG */
-export function FrameOverlay({ frameId, size }: { frameId?: string | null; size: number }) {
+/** Khung viền phủ lên ảnh đại diện: tranh khung vẽ tay trong sprite đồ vật → vòng SVG nhiều lớp (FrameRing) */
+export function FrameOverlay({ frameId }: { frameId?: string | null; size?: number }) {
   if (!frameId) return null;
-  const i = v2Index(frameId);
-  if (i !== undefined)
-    return (
-      <>
-        <V2Art index={i} className="absolute inset-0 h-full w-full" />
-        <FrameFx frameId={frameId} />
-      </>
-    );
-  const st = frameSpriteStyle(frameId, size);
+  const st = frameSpriteStyle(frameId);
   if (st)
     return (
       <>
@@ -57,7 +49,7 @@ export function FrameOverlay({ frameId, size }: { frameId?: string | null; size:
 /** Ảnh đại diện tròn: khuôn mặt nhân vật (nền kem) + khung viền đang đeo */
 export function AvatarRing({ config, size, inset, title, className }: { config: AvatarConfig; size: number; inset: number; title?: string; className?: string }) {
   // Khung lấy từ ảnh ghép có nền sáng ở giữa → vẽ DƯỚI khuôn mặt (không phủ mờ mặt), hiệu ứng vẫn ở trên
-  const under = config.frame && v2Index(config.frame) === undefined ? frameSpriteStyle(config.frame) : undefined;
+  const under = config.frame ? frameSpriteStyle(config.frame) : undefined;
   return (
     <span className={cn("relative block shrink-0", className)} style={{ width: size, height: size }} data-testid="avatar-ring">
       {under && <span aria-hidden className="absolute inset-0 rounded-full" style={under} />}
@@ -89,25 +81,46 @@ export function ItemArt({ it, avatar, name, withFace }: { it: Item; avatar: Avat
         <span className="ah-hand text-sm font-bold">{shortName(name)}</span>
       </Nameplate>
     );
-  if (it.slot === "frame")
+  if (it.slot === "frame") {
+    // Tranh khung vẽ tay có nền sáng ở giữa → vẽ DƯỚI khuôn mặt (như AvatarRing), hiệu ứng vẫn ở trên
+    const under = withFace ? frameSpriteStyle(it.id) : undefined;
     return (
       <span className="relative block aspect-square h-[86%]">
+        {under && <span aria-hidden className="absolute inset-0 rounded-full" style={under} />}
         {withFace && (
           <span className="absolute inset-[21%]">
             <AvatarFace config={avatar} className="h-full w-full" bg="#fffdf8" />
           </span>
         )}
-        <FrameOverlay frameId={it.id} size={120} />
+        {under ? <FrameFx frameId={it.id} /> : <FrameOverlay frameId={it.id} />}
       </span>
     );
+  }
+  if (it.slot === "pet") return <PetPic id={it.id} className="relative h-[84%] w-auto" />;
   const v2 = v2Index(it.id);
   if (v2 !== undefined) return <V2Art index={v2} className="relative h-[82%]" />;
   const idx = shopItemIndex(it.id);
   if (idx !== undefined) return <ShopArt index={idx} className="relative h-[86%]" />;
   if (hasSprite(it.id)) return <Sprite id={it.id} className="relative w-[78%] rounded-lg" />;
-  if (it.slot === "pet") return <PetSvg itemId={it.id} size={120} className="relative h-[82%] w-auto" />;
   if (it.slot === "title") return <span className="ah-ink relative rounded-full bg-[#2A1F5C] px-3 py-1.5 text-center text-xs font-extrabold text-[#FDE68A]">{it.name}</span>;
-  return <Chibi config={{ ...avatar, background: null, effect: null, [it.slot]: it.id }} size={120} className="relative h-[86%] w-auto" />;
+  const chibi = <Chibi config={{ ...avatar, background: null, effect: null, [it.slot]: it.id }} size={120} className="relative h-full w-auto" />;
+  // Món ở đầu (tóc, mắt, phụ kiện): phóng to phần đầu — trước đây cả người nhỏ xíu, khó thấy món đang bán
+  if (it.slot === "hair" || it.slot === "hairColor" || it.slot === "eyes" || it.slot === "accessory")
+    return <span className="relative flex h-[118%] translate-y-[14%] items-start justify-center">{chibi}</span>;
+  return (
+    <span className="relative flex h-[90%] flex-col items-center justify-end">
+      {chibi}
+      <span aria-hidden className="-mt-[6%] h-[7%] w-[46%] rounded-[50%] bg-[#241e1a] opacity-[0.12]" />
+    </span>
+  );
+}
+
+/** Ảnh thú cưng: tranh vẽ tay của tiệm → ô sprite đồ vật (bo góc) → SVG có khối */
+export function PetPic({ id, className }: { id: string; className?: string }) {
+  const idx = shopItemIndex(id);
+  if (idx !== undefined) return <ShopArt index={idx} className={cn("aspect-square", className)} />;
+  if (hasSprite(id)) return <Sprite id={id} className={cn(className, "h-auto w-[80%] rounded-lg")} />;
+  return <PetSvg itemId={id} size={120} className={className} />;
 }
 
 export const itemById = (id?: string | null) => (id ? ITEM_BY_ID[id] : undefined);

@@ -1,5 +1,43 @@
 import { cn } from "@/lib/utils";
 import { V2Art, rewardArtV2 } from "@/components/studio/Sprite";
+import { isTissueReward } from "@/lib/game/quests-shared";
+
+/** Gói khăn giấy hoạt hình (quà "Túi giấy ăn" — mở nhiệm vụ ẩn "Người Mở Đường Khăn Giấy"): canvas không có tranh này */
+export function TissueArt({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 100 100" className={cn("block aspect-square", className)} role="presentation" data-art-tissue>
+      <defs>
+        <linearGradient id="tis-pack" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fbcfe8" /><stop offset="100%" stopColor="#f472b6" /></linearGradient>
+      </defs>
+      <ellipse cx="50" cy="90" rx="32" ry="4" fill="#241e1a" opacity="0.12" />
+      {/* tờ giấy nhô lên */}
+      <path d="M38 40c-4-10 2-20 8-22 2 6 6 6 8 0 6 2 12 12 8 22z" fill="#fff" stroke="#241e1a" strokeWidth="2.2" strokeLinejoin="round" />
+      <path d="M46 24c1 4 0 8-2 12M56 24c0 4 1 8 3 12" fill="none" stroke="#e2e8f0" strokeWidth="1.6" strokeLinecap="round" />
+      {/* gói giấy */}
+      <rect x="14" y="38" width="72" height="48" rx="14" fill="url(#tis-pack)" stroke="#241e1a" strokeWidth="2.6" />
+      <path d="M36 42h28" stroke="#241e1a" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M20 46c2-3 6-4 10-4" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" opacity="0.7" />
+      {/* mặt mèo in trên gói */}
+      <g transform="translate(50 66)" stroke="#241e1a" strokeWidth="1.8" strokeLinejoin="round">
+        <path d="M-14-6l2-10 7 5zM14-6l-2-10-7 5z" fill="#fffdf8" />
+        <ellipse rx="15" ry="12" fill="#fffdf8" />
+        <circle cx="-6" cy="-1" r="2" fill="#241e1a" stroke="none" /><circle cx="6" cy="-1" r="2" fill="#241e1a" stroke="none" />
+        <circle cx="-5.3" cy="-1.7" r="0.7" fill="#fff" stroke="none" /><circle cx="6.7" cy="-1.7" r="0.7" fill="#fff" stroke="none" />
+        <path d="M-2 3.5c1 1.4 3 1.4 4 0" fill="none" strokeWidth="1.4" strokeLinecap="round" />
+        <ellipse cx="-10" cy="4" rx="2.6" ry="1.6" fill="#fb7185" stroke="none" opacity="0.6" /><ellipse cx="10" cy="4" rx="2.6" ry="1.6" fill="#fb7185" stroke="none" opacity="0.6" />
+      </g>
+      {/* tim nhỏ */}
+      <path d="M77 52c-3-2-5-3.5-5-5.3 0-1.3 1-2.2 2.2-2.2.9 0 1.8.5 2.8 1.4 1-.9 1.9-1.4 2.8-1.4 1.2 0 2.2.9 2.2 2.2 0 1.8-2 3.3-5 5.3z" fill="#fff" stroke="#241e1a" strokeWidth="1.2" />
+      <path d="M22 80l1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z" fill="#fde68a" stroke="#241e1a" strokeWidth="0.8" />
+    </svg>
+  );
+}
+
+/** Tranh của một quà thầy tạo: tranh riêng (khăn giấy) hoặc ô tranh v2 theo từ khoá */
+export function RewardPic({ title, kind, className }: { title: string; kind: "PHYSICAL" | "VIRTUAL"; className?: string }) {
+  if (kind === "PHYSICAL" && isTissueReward(title)) return <TissueArt className={className} />;
+  return <V2Art index={rewardArtV2(title, kind)} className={className} />;
+}
 
 /**
  * Khung ảnh của một quà thầy tạo: quà hiện vật = hộp quà (ruy băng + nơ, "Nhận tại lớp", "Sắp hết" khi còn ≤ 3),
@@ -42,7 +80,7 @@ export function RewardArt({ title, kind, stock, limit, className, children }: {
           {limit ? <span className="ah-chip-in bl">{limit} lần / tháng</span> : null}
         </>
       )}
-      <V2Art index={rewardArtV2(title, kind)} className={cn("relative h-[74%]", kind === "PHYSICAL" && "ah-gift-item")} />
+      <RewardPic title={title} kind={kind} className={cn("relative h-[74%]", kind === "PHYSICAL" && "ah-gift-item")} />
       {low && <span className={cn("ah-chip-in low", kind === "PHYSICAL" ? "br" : "tr")}>Sắp hết!</span>}
     </span>
   );

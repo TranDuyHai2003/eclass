@@ -41,15 +41,46 @@ export function FrameRing({ frameId, className }: { frameId?: string | null; cla
 
       {kind === "plain" && <circle cx="60" cy="60" r="44" fill="none" stroke={color} strokeWidth="6" />}
       {kind === "gold" && (
-        <g>
-          <circle cx="60" cy="60" r="44" fill="none" stroke={`url(#${id}-gold)`} strokeWidth="7" />
-          <path d="M60 6l3 6 6.6.9-4.8 4.6 1.2 6.5L60 21l-6 3 1.2-6.5-4.8-4.6 6.6-.9z" fill="#fbbf24" stroke="#b45309" strokeWidth="1" />
+        <g strokeLinejoin="round">
+          <defs>
+            <linearGradient id={`${id}-sun`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fffbeb" /><stop offset="100%" stopColor="#f59e0b" /></linearGradient>
+            <linearGradient id={`${id}-rb2`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#fee2e2" /><stop offset="50%" stopColor="#ef4444" /><stop offset="100%" stopColor="#7f1d1d" /></linearGradient>
+          </defs>
+          {/* tia hào quang toả quanh */}
+          {around(16, 48, (i) => <path d={i % 2 ? "M-3 2 0-6 3 2z" : "M-4 3 0-9 4 3z"} fill={`url(#${id}-sun)`} stroke="#92400e" strokeWidth="0.9" />)}
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#78350f" strokeWidth="10" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke={`url(#${id}-gold)`} strokeWidth="7" />
+          <circle cx="60" cy="60" r="38" fill="none" stroke="#fef3c7" strokeWidth="1.4" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#fffbeb" strokeWidth="1" strokeDasharray="2 7" opacity="0.9" />
+          {/* đá quý hai bên + đáy */}
+          {[[17, 60], [103, 60]].map(([x, y]) => (
+            <path key={x} d={`M${x} ${y - 6}l5 6-5 6-5-6z`} fill="#38bdf8" stroke="#1e3a8a" strokeWidth="1.3" />
+          ))}
+          <path d="M60 97l6 7-6 8-6-8z" fill={`url(#${id}-rb2)`} stroke="#7f1d1d" strokeWidth="1.4" />
+          {/* mặt trời huy hiệu trên đỉnh */}
+          <g transform="translate(60 14)">
+            <circle r="10" fill={`url(#${id}-gold)`} stroke="#78350f" strokeWidth="1.8" />
+            <path d="M0-6l1.8 3.8 4.2.6-3 2.9.7 4.2L0 3.5l-3.7 2 .7-4.2-3-2.9 4.2-.6z" fill="#fffbeb" stroke="#b45309" strokeWidth="0.8" />
+          </g>
+          <path d="M44 16l-8-4 2 7zM76 16l8-4-2 7z" fill={`url(#${id}-gold)`} stroke="#78350f" strokeWidth="1.2" />
         </g>
       )}
       {kind === "rainbow" && (
-        <g>
-          <circle cx="60" cy="60" r="44" fill="none" stroke={`url(#${id}-rainbow)`} strokeWidth="7" />
-          <g fill="#fff" stroke="#e2e8f0"><ellipse cx="22" cy="28" rx="11" ry="6" /><ellipse cx="98" cy="94" rx="11" ry="6" /></g>
+        <g strokeLinejoin="round">
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#241e1a" strokeWidth="11" />
+          {(["#f87171", "#fbbf24", "#4ade80", "#60a5fa", "#c084fc"] as const).map((c, i) => (
+            <circle key={c} cx="60" cy="60" r={47 - i * 2} fill="none" stroke={c} strokeWidth="2.1" />
+          ))}
+          {/* mây bông */}
+          {([[24, 96, 1.1], [98, 26, 0.95]] as const).map(([x, y, k]) => (
+            <g key={x} transform={`translate(${x} ${y}) scale(${k})`} stroke="#475569" strokeWidth="1.4">
+              <path d="M-16 6c-5 0-6-7-1-8 0-6 7-8 10-4 2-6 11-6 13 0 5-1 8 4 5 8 3 3 0 6-3 6z" fill="#fff" />
+              <path d="M-10 0c1-2 3-3 5-3" fill="none" stroke="#cbd5e1" strokeWidth="1.2" strokeLinecap="round" />
+            </g>
+          ))}
+          {[[18, 30], [102, 92], [60, 112]].map(([x, y]) => (
+            <path key={x} transform={`translate(${x} ${y})`} d="M0-5l1.4 3.6L5 0 1.4 1.4 0 5-1.4 1.4-5 0l3.6-1.4z" fill="#fde68a" stroke="#92400e" strokeWidth="0.7" />
+          ))}
         </g>
       )}
       {kind === "royal" && (
@@ -269,46 +300,122 @@ export function FrameRing({ frameId, className }: { frameId?: string | null; cla
       )}
       {kind === "angel" && (
         <g strokeLinejoin="round">
-          <circle cx="60" cy="60" r="44" fill="none" stroke="#bae6fd" strokeWidth="6" />
-          <ellipse cx="60" cy="10" rx="17" ry="5" fill="none" stroke="#fbbf24" strokeWidth="5" />
-          <ellipse cx="60" cy="10" rx="17" ry="5" fill="none" stroke="#241e1a" strokeWidth="1.6" />
+          <defs>
+            <linearGradient id={`${id}-sk`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#f0f9ff" /><stop offset="50%" stopColor="#7dd3fc" /><stop offset="100%" stopColor="#2563eb" /></linearGradient>
+            <linearGradient id={`${id}-fe`} x1="1" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#ffffff" /><stop offset="100%" stopColor="#dbeafe" /></linearGradient>
+            <linearGradient id={`${id}-ha`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#fde68a" /><stop offset="50%" stopColor="#fffbeb" /><stop offset="100%" stopColor="#f59e0b" /></linearGradient>
+          </defs>
+          {/* đôi cánh lông vũ 3 lớp */}
           {[1, -1].map((d) => (
-            <path key={d} transform={`translate(60 0) scale(${d} 1)`} d="M-44 38c-8-6-10 4-4 8-6 2-6 10 2 10 4 0 6-4 6-8z" fill="#fffdf8" stroke="#241e1a" strokeWidth="2" />
+            <g key={d} transform={d === 1 ? undefined : "translate(120 0) scale(-1 1)"} stroke="#1e3a8a" strokeWidth="1.3">
+              <path d="M22 40C12 36 4 28 2 16c8 4 14 8 20 14 0-6 2-10 6-14 0 8 0 14-2 20z" fill={`url(#${id}-fe)`} />
+              <path d="M18 54C8 54 1 48 0 38c6 4 12 6 20 6z" fill={`url(#${id}-fe)`} />
+              <path d="M19 66C10 70 3 66 1 58c6 3 11 3 18 0z" fill={`url(#${id}-fe)`} />
+              <path d="M8 22c4 4 8 8 12 14M6 42c4 1 9 2 13 2" fill="none" stroke="#93c5fd" strokeWidth="1" />
+            </g>
           ))}
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#1e3a8a" strokeWidth="9" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke={`url(#${id}-sk)`} strokeWidth="6" />
+          <circle cx="60" cy="60" r="38.5" fill="none" stroke="#e0f2fe" strokeWidth="1.2" strokeDasharray="2 4" />
+          {/* vầng hào quang */}
+          <ellipse cx="60" cy="9" rx="19" ry="5.5" fill="none" stroke="#78350f" strokeWidth="6.5" />
+          <ellipse cx="60" cy="9" rx="19" ry="5.5" fill="none" stroke={`url(#${id}-ha)`} strokeWidth="4" />
+          {/* trái tim đáy */}
+          <path d="M60 112c-7-5-11-8-11-12 0-3 2-5 5-5 2 0 4 1 6 3 2-2 4-3 6-3 3 0 5 2 5 5 0 4-4 7-11 12z" fill="#f9a8d4" stroke="#1e3a8a" strokeWidth="1.5" />
+          <path d="M54 99c-1 1-1 3 0 4" fill="none" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" />
         </g>
       )}
       {kind === "clover" && (
-        <g>
-          <circle cx="60" cy="60" r="44" fill="none" stroke="#86efac" strokeWidth="6" />
-          {around(5, 44, () => (
-            <g fill="#22c55e" stroke="#14532d" strokeWidth="0.9">
-              {[0, 90, 180, 270].map((r) => <circle key={r} cx="0" cy="-3.4" r="3.3" transform={`rotate(${r + 45})`} />)}
-              <circle r="1.3" fill="#bbf7d0" stroke="none" />
+        <g strokeLinejoin="round">
+          <defs>
+            <linearGradient id={`${id}-gr`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#dcfce7" /><stop offset="50%" stopColor="#4ade80" /><stop offset="100%" stopColor="#15803d" /></linearGradient>
+            <radialGradient id={`${id}-lf`} cx="0.35" cy="0.35" r="0.8"><stop offset="0%" stopColor="#bbf7d0" /><stop offset="100%" stopColor="#16a34a" /></radialGradient>
+          </defs>
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#14532d" strokeWidth="9" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke={`url(#${id}-gr)`} strokeWidth="6" />
+          {/* lá nhỏ mọc dọc vòng */}
+          {around(14, 47, (i) => <path d="M0 0c-3-3-3-8 0-10 3 2 3 7 0 10z" fill={i % 2 ? "#4ade80" : "#22c55e"} stroke="#14532d" strokeWidth="0.8" transform={`rotate(${i % 2 ? 30 : -30})`} />, 8)}
+          {/* cỏ 4 lá lớn góc trên phải */}
+          <g transform="translate(96 22) rotate(15)" stroke="#14532d" strokeWidth="1.4">
+            <path d="M0 0c2 6 4 12 10 16" fill="none" stroke="#14532d" strokeWidth="2.4" strokeLinecap="round" />
+            {[0, 90, 180, 270].map((r) => (
+              <path key={r} transform={`rotate(${r + 45})`} d="M0 0C-6-4-9-11-5-14c2-1 4 0 5 2 1-2 3-3 5-2 4 3 1 10-5 14z" fill={`url(#${id}-lf)`} />
+            ))}
+            <circle r="1.8" fill="#fde047" />
+          </g>
+          {/* bọ rùa đáy trái */}
+          <g transform="translate(24 98) rotate(-25)" stroke="#241e1a" strokeWidth="1.2">
+            <circle cx="0" cy="-6" r="3" fill="#241e1a" />
+            <ellipse rx="6.5" ry="7" fill="#ef4444" />
+            <path d="M0-7v14" fill="none" />
+            <circle cx="-3" cy="-1" r="1.3" fill="#241e1a" stroke="none" /><circle cx="3" cy="2" r="1.3" fill="#241e1a" stroke="none" /><circle cx="-2.5" cy="4" r="1" fill="#241e1a" stroke="none" />
+          </g>
+          {/* hoa cúc nhỏ */}
+          {[[16, 40], [104, 78], [60, 113]].map(([x, y]) => (
+            <g key={x} transform={`translate(${x} ${y})`} stroke="#a16207" strokeWidth="0.6">
+              {[0, 60, 120, 180, 240, 300].map((r) => <ellipse key={r} cy="-3" rx="1.6" ry="3" fill="#fff" transform={`rotate(${r})`} />)}
+              <circle r="1.6" fill="#facc15" />
             </g>
-          ), -90)}
+          ))}
         </g>
       )}
       {kind === "butterfly" && (
         <g strokeLinejoin="round">
-          <circle cx="60" cy="60" r="44" fill="none" stroke="#c084fc" strokeWidth="5" strokeDasharray="9 7" />
-          {[[24, 24, 1], [96, 98, 0.65]].map(([x, y, k]) => (
-            <g key={x} transform={`translate(${x} ${y}) scale(${k}) rotate(-20)`} stroke="#4c1d95" strokeWidth="1.6">
-              <ellipse cx="-7" cy="-5" rx="8" ry="6" fill="#e9d5ff" /><ellipse cx="7" cy="-5" rx="8" ry="6" fill="#c4b5fd" />
-              <ellipse cx="-5" cy="6" rx="5" ry="4" fill="#d8b4fe" /><ellipse cx="5" cy="6" rx="5" ry="4" fill="#a78bfa" />
+          <defs>
+            <linearGradient id={`${id}-bf`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#fce7f3" /><stop offset="50%" stopColor="#c084fc" /><stop offset="100%" stopColor="#6d28d9" /></linearGradient>
+            <linearGradient id={`${id}-w1`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#fdf4ff" /><stop offset="55%" stopColor="#e879f9" /><stop offset="100%" stopColor="#7c3aed" /></linearGradient>
+            <linearGradient id={`${id}-w2`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#ecfeff" /><stop offset="55%" stopColor="#67e8f9" /><stop offset="100%" stopColor="#6366f1" /></linearGradient>
+          </defs>
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#3b0764" strokeWidth="9" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke={`url(#${id}-bf)`} strokeWidth="6" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#fdf4ff" strokeWidth="1.2" strokeDasharray="1 6" />
+          {/* dây leo + hoa */}
+          <path d="M30 100c-8-6-14-16-16-28M90 100c8-6 14-16 16-28" fill="none" stroke="#86198f" strokeWidth="1.6" strokeLinecap="round" />
+          {[[14, 74], [106, 74], [22, 92], [98, 92]].map(([x, y]) => (
+            <g key={`${x}${y}`} transform={`translate(${x} ${y})`} stroke="#86198f" strokeWidth="0.6">
+              {[0, 72, 144, 216, 288].map((r) => <ellipse key={r} cy="-2.6" rx="1.8" ry="2.6" fill="#fbcfe8" transform={`rotate(${r})`} />)}
+              <circle r="1.3" fill="#fde047" />
+            </g>
+          ))}
+          {/* ba con bướm */}
+          {([[22, 22, 1.25, -20, "w1"], [98, 100, 0.95, 25, "w2"], [100, 20, 0.7, 15, "w2"]] as const).map(([x, y, k, r, g]) => (
+            <g key={x * y} transform={`translate(${x} ${y}) scale(${k}) rotate(${r})`} stroke="#3b0764" strokeWidth="1.3">
+              <path d="M0 0C-4-10-14-12-14-4c0 5 6 6 14 4z" fill={`url(#${id}-${g})`} />
+              <path d="M0 0C4-10 14-12 14-4 14 1 8 2 0 0z" fill={`url(#${id}-${g})`} />
+              <path d="M0 0c-3 4-10 8-11 3 0-3 5-4 11-3zM0 0c3 4 10 8 11 3 0-3-5-4-11-3z" fill="#f0abfc" />
+              <circle cx="-8" cy="-5" r="1.6" fill="#fff" stroke="none" /><circle cx="8" cy="-5" r="1.6" fill="#fff" stroke="none" />
+              <ellipse rx="1.4" ry="5" fill="#3b0764" stroke="none" />
+              <path d="M0-4c-1-3-3-5-5-6M0-4c1-3 3-5 5-6" fill="none" strokeWidth="0.8" />
             </g>
           ))}
         </g>
       )}
       {kind === "rose" && (
-        <g>
-          <circle cx="60" cy="60" r="45" fill="none" stroke="#312e81" strokeWidth="7" />
-          <circle cx="60" cy="60" r="41" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-          {[[60, 15], [33, 91], [87, 91]].map(([x, y], i) => (
-            <g key={x} transform={`translate(${x} ${y})`}>
-              <circle r={i ? 9 : 8} fill="#eef2ff" stroke="#312e81" strokeWidth="2.4" />
-              {i > 0 && <path d="M-4 1c0-4 7-5 8-1 1 3-3 5-5 3" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" />}
+        <g strokeLinejoin="round">
+          <defs>
+            <linearGradient id={`${id}-rb`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#f8fafc" /><stop offset="45%" stopColor="#94a3b8" /><stop offset="100%" stopColor="#334155" /></linearGradient>
+            <radialGradient id={`${id}-rs`} cx="0.4" cy="0.35" r="0.75"><stop offset="0%" stopColor="#fda4af" /><stop offset="55%" stopColor="#e11d48" /><stop offset="100%" stopColor="#881337" /></radialGradient>
+          </defs>
+          {/* dây gai quấn vòng */}
+          <circle cx="60" cy="60" r="47.5" fill="none" stroke="#14532d" strokeWidth="1.6" strokeDasharray="5 3" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#1e1b4b" strokeWidth="9" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke={`url(#${id}-rb)`} strokeWidth="6" />
+          <circle cx="60" cy="60" r="38.5" fill="none" stroke="#fecdd3" strokeWidth="1.2" />
+          {/* lá */}
+          {([[48, 14, -150], [72, 14, -30], [22, 88, 160], [36, 104, 100], [98, 88, 20], [84, 104, 80]] as const).map(([x, y, r]) => (
+            <path key={`${x}${y}`} transform={`translate(${x} ${y}) rotate(${r})`} d="M0 0c4-5 11-5 14 0-3 5-10 5-14 0z" fill="#22c55e" stroke="#14532d" strokeWidth="1.1" />
+          ))}
+          {/* ba bông hồng */}
+          {([[60, 12, 1.15], [27, 96, 1], [93, 96, 1]] as const).map(([x, y, k]) => (
+            <g key={x} transform={`translate(${x} ${y}) scale(${k})`} stroke="#4c0519" strokeWidth="1.2">
+              <circle r="9" fill={`url(#${id}-rs)`} />
+              <path d="M-7 2c0-6 5-9 9-7 4 2 3 7-1 8-3 1-5-1-4-3 1-2 3-2 4-1" fill="none" stroke="#4c0519" strokeWidth="1.3" strokeLinecap="round" />
+              <path d="M-9 1c2 5 6 8 9 8s7-3 9-8" fill="none" stroke="#9f1239" strokeWidth="1.1" />
+              <path d="M-5-6c1-1 3-2 4-2" fill="none" stroke="#ffe4e6" strokeWidth="1.2" strokeLinecap="round" />
             </g>
           ))}
+          {/* viên đá đáy */}
+          <path d="M60 104l5 6-5 6-5-6z" fill="#fda4af" stroke="#4c0519" strokeWidth="1.2" />
         </g>
       )}
     </svg>

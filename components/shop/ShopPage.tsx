@@ -18,10 +18,9 @@ import { genderOf } from "@/lib/game/presets";
 import type { Outcome } from "@/lib/game/gacha-shared";
 import { buildNpcLines } from "@/lib/game/npc";
 import { buzz, isSoundOn, onSoundChange, play, setSoundOn } from "@/lib/sound";
-import { V2Art, V2_MASCOT, rewardArtV2, v2Index } from "@/components/studio/Sprite";
+import { SHOP_MASCOT, ShopArt } from "@/components/studio/Sprite";
 import { pauseOffscreen } from "@/lib/offscreen";
 import { LevelUpDialog, useOnline, useTweenNumber } from "@/components/studio/effects";
-import { PetSvg } from "@/components/avatar/PetSvg";
 import { Confetti } from "@/components/points/Confetti";
 import { CoinBurst } from "@/components/game/CoinBurst";
 import { type RecentDone } from "./TasksModal";
@@ -29,14 +28,14 @@ import { type BoardData } from "./LeaderboardModal";
 import { HistoryModal } from "./HistoryModal";
 import { TitlesModal } from "./TitlesModal";
 import { WeatherLayer } from "./Weather";
-import { AvatarRing, CoinDot, GemDot, ItemArt, PlateBox, QUICK_EQUIP, RAR_LABEL, fmt, shortName } from "./ah/parts";
+import { AvatarRing, CoinDot, GemDot, ItemArt, PetPic, PlateBox, QUICK_EQUIP, RAR_LABEL, fmt, shortName } from "./ah/parts";
 import { EarnSection } from "./ah/EarnSection";
 import { CodeSection } from "./ah/CodeSection";
 import { GachaSection } from "./ah/GachaSection";
 import { GoldModal } from "./ah/GoldSection";
 import { BagSection } from "./ah/BagSection";
 import { CustomizeModal } from "./ah/CustomizeModal";
-import { RewardArt } from "./ah/RewardArt";
+import { RewardArt, RewardPic } from "./ah/RewardArt";
 import { QuestBoard, QuestUnlocked, type QuestRow } from "./ah/QuestBoard";
 import { QUESTS, CAT_PETS_PER_DAY } from "@/lib/game/quests-shared";
 import { claimCatQuest } from "@/actions/quests";
@@ -763,7 +762,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           <div className="ah-part aspect-video" data-testid="detail-art">
             {e.rarity === "legendary" && <span className="ah-sun" aria-hidden />}
             {e.kind === "reward" ? (
-              <V2Art index={rewardArtV2(e.r.title, e.r.kind)} className="relative h-[88%]" />
+              <RewardPic title={e.r.title} kind={e.r.kind} className="relative h-[88%]" />
             ) : plate ? (
               <PlateBox id={e.it.id} className="w-[92%] rounded-[14px] border-[2.5px] shadow-none">
                 <div className={cn("flex min-h-[72px] items-center gap-3 px-3.5 py-2", plateIsDark ? "text-white" : "text-[#1E1B2E]")}>
@@ -857,7 +856,8 @@ function CardView({ e, st, avatar, name, onOpen }: CardProps) {
       ) : (
         <span className="ah-part">
           {leg && <span className="ah-sun" aria-hidden />}
-          <ItemArt it={e.it} avatar={avatar} name={name} />
+          {/* viền: lồng sẵn khuôn mặt của chính học sinh để thấy trước khi đeo */}
+          <ItemArt it={e.it} avatar={avatar} name={name} withFace={e.it.slot === "frame"} />
         </span>
       )}
       <span className={cn("ah-btn h-[46px] gap-2 px-4 text-base max-sm:h-[38px] max-sm:gap-1.5 max-sm:px-2 max-sm:text-[13px]", cls)}>
@@ -874,10 +874,8 @@ function Badge({ n }: { n: number }) {
   return <span className="pointer-events-none absolute -right-2 -top-2 z-[1] flex h-[22px] min-w-[22px] items-center justify-center rounded-full border-2 border-[#241e1a] bg-[#ea6a51] px-1 text-[11px] font-black text-[#fffdf8]">{n}</span>;
 }
 
-/** Ảnh thú cưng ở dải mèo linh vật: tranh v2 nếu có, mặc định mèo Snow của canvas */
+/** Ảnh thú cưng ở dải mèo linh vật: tranh vẽ tay (sprite tiệm) / SVG; chưa có thú cưng → mèo linh vật của tiệm */
 function PetArt({ pet }: { pet: Item | null }) {
-  const i = v2Index(pet?.id);
-  if (i !== undefined) return <V2Art index={i} className="absolute inset-1" />;
-  if (!pet) return <V2Art index={V2_MASCOT} className="absolute inset-1" />;
-  return <PetSvg itemId={pet.id} size={70} className="h-[70px] w-[70px]" />;
+  if (!pet) return <ShopArt index={SHOP_MASCOT} className="absolute inset-1" />;
+  return <PetPic id={pet.id} className="absolute inset-1 m-auto h-[86%] w-[86%]" />;
 }

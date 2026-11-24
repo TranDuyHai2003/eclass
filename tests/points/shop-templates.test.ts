@@ -1,5 +1,5 @@
 /**
- * Bộ quà của tiệm theo canvas ShopV2: đủ 10 quà hiện vật + 7 thẻ đặc quyền, mỗi món ra đúng tranh và đúng tab,
+ * Bộ quà của tiệm theo canvas ShopV2: đủ 10 quà hiện vật + 7 thẻ đặc quyền (+ Túi giấy ăn cho nhiệm vụ ẩn), mỗi món ra đúng tranh và đúng tab,
  * nút "Thêm cả bộ" thêm một lần, không thêm trùng (DB local, chạy trong giao dịch rồi huỷ → không để lại dữ liệu).
  */
 import { test, describe, after } from "node:test";
@@ -9,6 +9,7 @@ import { SHOP_TEMPLATES, missingShopTemplates } from "@/lib/points/templates";
 import { addShopTemplatesInTx } from "@/lib/points/shop-templates";
 import { normalizeRewardInput } from "@/lib/points/reward-input";
 import { rewardArtV2 } from "@/components/studio/Sprite";
+import { isTissueReward } from "@/lib/game/quests-shared";
 import { createFixture, disconnect } from "../helpers/fixtures";
 
 const fx = createFixture();
@@ -18,8 +19,11 @@ after(async () => {
 });
 
 describe("Bộ quà của tiệm (canvas)", () => {
-  test("10 quà hiện vật + 7 thẻ đặc quyền, mỗi món một tranh riêng đúng thứ tự canvas", () => {
-    const physical = SHOP_TEMPLATES.filter((t) => t.kind === "PHYSICAL");
+  test("10 quà hiện vật + 7 thẻ đặc quyền, mỗi món một tranh riêng đúng thứ tự canvas; thêm Túi giấy ăn (tranh riêng)", () => {
+    const tissue = SHOP_TEMPLATES.filter((t) => isTissueReward(t.title));
+    assert.equal(tissue.length, 1, "có đúng một quà túi giấy ăn để mở nhiệm vụ ẩn");
+    assert.equal(tissue[0].kind, "PHYSICAL");
+    const physical = SHOP_TEMPLATES.filter((t) => t.kind === "PHYSICAL" && !isTissueReward(t.title));
     const virtual = SHOP_TEMPLATES.filter((t) => t.kind === "VIRTUAL");
     assert.equal(physical.length, 10);
     assert.equal(virtual.length, 7);
@@ -46,9 +50,9 @@ describe("Bộ quà của tiệm (canvas)", () => {
   });
 
   test("thiếu món nào thì chỉ thêm món đó (so tên không phân biệt hoa thường)", () => {
-    assert.equal(missingShopTemplates([]).length, 17);
+    assert.equal(missingShopTemplates([]).length, 18);
     const rest = missingShopTemplates(["trà sữa tai mèo 700ml ", "VÉ MIỄN TRỰC NHẬT 1 TUẦN"]);
-    assert.equal(rest.length, 15);
+    assert.equal(rest.length, 16);
     assert.ok(!rest.some((t) => t.title === "Trà Sữa Tai Mèo 700ml"));
   });
 
@@ -62,7 +66,7 @@ describe("Bộ quà của tiệm (canvas)", () => {
         assert.equal(await addShopTemplatesInTx(tx, staff.id), expect);
         assert.equal(await addShopTemplatesInTx(tx, staff.id), 0, "lần hai không thêm");
         const rows = await tx.reward.findMany({ where: { title: { in: SHOP_TEMPLATES.map((t) => t.title) }, deletedAt: null } });
-        assert.equal(new Set(rows.map((r) => r.title)).size, 17);
+        assert.equal(new Set(rows.map((r) => r.title)).size, 18);
         const tea = rows.find((r) => r.title === "Trà Sữa Tai Mèo 700ml" && r.createdById === staff.id);
         if (tea) {
           assert.equal(tea.kind, "PHYSICAL");
