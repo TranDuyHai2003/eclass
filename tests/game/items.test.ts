@@ -9,7 +9,7 @@ import { canEquip, defaultAvatar, sanitizeAvatar } from "@/lib/game/avatar";
 import { PRESETS } from "@/lib/game/presets";
 import { buyItemInTx, getAvatar, getAvatars, saveAvatarConfig } from "@/lib/game/inventory";
 import { createFixture, disconnect } from "../helpers/fixtures";
-import { v2Index } from "@/components/studio/Sprite";
+import { frameSpriteStyle, v2Index } from "@/components/studio/Sprite";
 import { RARITY_ORDER, poolFor } from "@/lib/game/gacha-shared";
 
 const fx = createFixture();
@@ -61,12 +61,26 @@ describe("Đủ món của canvas Tiệm quà v2", () => {
   });
 
   test("món mới chỉ bán ở tiệm (có giá, không vào rương)", () => {
-    for (const id of ["frame-butterfly", "frame-rose", "pet-redpanda", "frame-diamond", "frame-master", "frame-challenger"]) {
+    for (const id of ["frame-butterfly", "frame-rose", "pet-redpanda", "frame-diamond", "frame-master", "frame-challenger", "frame-galaxy", "frame-fairy", "frame-phoenix"]) {
       const it = ITEM_BY_ID[id];
       assert.ok(it?.studio && it.price, id);
       const inPool = (["xu", "gem"] as const).some((c) => RARITY_ORDER.some((r) => poolFor(c, r).some((p) => p.kind === "item" && p.item.id === id)));
       assert.ok(!inPool, `${id} không vào rương`);
     }
+  });
+});
+
+describe("Khung lấy từ ảnh ghép (hồi quy 24/11: khung lệch trên điện thoại)", () => {
+  test("vị trí / cỡ nền tính theo %, không phụ thuộc cỡ px của ô", () => {
+    const a = frameSpriteStyle("frame-ice", 120)!;
+    const b = frameSpriteStyle("frame-ice", 220)!;
+    assert.deepEqual(a, b);
+    assert.match(String(a.backgroundSize), /^[\d.]+% [\d.]+%$/);
+    assert.match(String(a.backgroundPosition), /^[\d.]+% [\d.]+%$/);
+    // Ở đúng 112px phải trùng vị trí px cũ: cột 4 → x = -(4·137 + 12.5) = -560.5px, y = -224px
+    const [px, py] = String(a.backgroundPosition).split(" ").map((v) => parseFloat(v) / 100);
+    const [sw, sh] = String(a.backgroundSize).split(" ").map((v) => (parseFloat(v) / 100) * 112);
+    assert.ok(Math.abs((112 - sw) * px - -560.5) < 0.01 && Math.abs((112 - sh) * py - -224) < 0.01);
   });
 });
 

@@ -40,6 +40,15 @@ export function onSoundChange(l: (on: boolean) => void) {
   };
 }
 
+/** Máy cảm ứng (điện thoại / máy tính bảng): loa nhỏ → to hơn một chút */
+const touchBoost = () => {
+  try {
+    return window.matchMedia("(pointer: coarse)").matches ? 2.2 : 1;
+  } catch {
+    return 1;
+  }
+};
+
 function getCtx(): AudioContext | null {
   if (typeof window === "undefined") return null;
   const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -47,11 +56,38 @@ function getCtx(): AudioContext | null {
   if (!ctx) {
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = MASTER;
+    master.gain.value = MASTER * touchBoost();
     master.connect(ctx.destination);
   }
-  if (ctx.state === "suspended") void ctx.resume();
+  if (ctx.state !== "running") void ctx.resume().catch(() => {});
   return ctx;
+}
+
+/**
+ * Điện thoại (Chrome Android, Safari iOS) chỉ cho phát tiếng khi AudioContext được tạo / mở lại NGAY trong một lần chạm.
+ * Một số tiếng phát sau khi chờ server (đổi quà, mở hộp…) nên ngoài lần chạm → im lặng. Mở khoá ở mọi lần chạm đầu
+ * (và sau khi trang bị ẩn rồi hiện lại) bằng một đoạn im lặng rất ngắn.
+ */
+function unlock() {
+  if (!isSoundOn()) return;
+  const c = getCtx();
+  if (!c || !master) return;
+  try {
+    const b = c.createBuffer(1, 1, 22050);
+    const src = c.createBufferSource();
+    src.buffer = b;
+    src.connect(c.destination);
+    src.start(0);
+  } catch {
+    /* bỏ qua */
+  }
+}
+if (typeof window !== "undefined") {
+  const opts = { capture: true, passive: true } as const;
+  for (const ev of ["pointerdown", "touchend", "keydown"]) window.addEventListener(ev, unlock, opts);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && ctx && ctx.state !== "running") void ctx.resume().catch(() => {});
+  });
 }
 
 interface Note {

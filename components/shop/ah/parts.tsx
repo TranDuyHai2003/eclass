@@ -59,12 +59,15 @@ export function FrameOverlay({ frameId, size }: { frameId?: string | null; size:
 
 /** Ảnh đại diện tròn: khuôn mặt nhân vật (nền kem) + khung viền đang đeo */
 export function AvatarRing({ config, size, inset, title, className }: { config: AvatarConfig; size: number; inset: number; title?: string; className?: string }) {
+  // Khung lấy từ ảnh ghép có nền sáng ở giữa → vẽ DƯỚI khuôn mặt (không phủ mờ mặt), hiệu ứng vẫn ở trên
+  const under = config.frame && v2Index(config.frame) === undefined ? frameSpriteStyle(config.frame) : undefined;
   return (
     <span className={cn("relative block shrink-0", className)} style={{ width: size, height: size }} data-testid="avatar-ring">
+      {under && <span aria-hidden className="absolute inset-0 rounded-full" style={under} />}
       <span className="absolute" style={{ inset }}>
         <AvatarFace config={config} title={title} className="h-full w-full" bg="#fffdf8" />
       </span>
-      <FrameOverlay frameId={config.frame} size={size} />
+      {under ? <FrameFx frameId={config.frame} /> : <FrameOverlay frameId={config.frame} size={size} />}
     </span>
   );
 }

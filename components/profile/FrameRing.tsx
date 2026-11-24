@@ -198,6 +198,75 @@ export function FrameRing({ frameId, className }: { frameId?: string | null; cla
           <path d="M60 11l5 6-5 7-5-7z" fill={`url(#${id}-sky)`} stroke="#1e3a8a" strokeWidth="1" />
         </g>
       )}
+      {kind === "galaxy" && (
+        <g strokeLinejoin="round">
+          <defs>
+            <linearGradient id={`${id}-gx`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#c4b5fd" /><stop offset="40%" stopColor="#4338ca" /><stop offset="75%" stopColor="#1e1b4b" /><stop offset="100%" stopColor="#db2777" /></linearGradient>
+          </defs>
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#1e1b4b" strokeWidth="9" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke={`url(#${id}-gx)`} strokeWidth="6.5" />
+          {around(18, 43, (i) => <circle r={i % 3 ? 0.7 : 1.2} fill="#fff" opacity={i % 2 ? 0.9 : 0.6} />)}
+          {/* hành tinh có vành ở góc trên phải */}
+          <g transform="translate(95 22)">
+            <circle r="9" fill="#f9a8d4" stroke="#1e1b4b" strokeWidth="1.6" />
+            <path d="M-6-3a7 7 0 0 1 10 0" fill="none" stroke="#fdf2f8" strokeWidth="1.4" strokeLinecap="round" />
+            <ellipse rx="15" ry="4" fill="none" stroke="#fde68a" strokeWidth="2" transform="rotate(-20)" />
+          </g>
+          <path d="M18 96l1.6 4.4L24 102l-4.4 1.6L18 108l-1.6-4.4L12 102l4.4-1.6z" fill="#fde68a" stroke="#1e1b4b" strokeWidth="0.8" />
+        </g>
+      )}
+      {kind === "fairy" && (
+        <g strokeLinejoin="round">
+          <defs>
+            <linearGradient id={`${id}-fw`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#fdf4ff" stopOpacity="0.95" /><stop offset="60%" stopColor="#e9d5ff" stopOpacity="0.8" /><stop offset="100%" stopColor="#a5f3fc" stopOpacity="0.75" /></linearGradient>
+            <linearGradient id={`${id}-fr`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#fbcfe8" /><stop offset="100%" stopColor="#c084fc" /></linearGradient>
+          </defs>
+          {/* cánh tiên trong suốt hai bên */}
+          {[1, -1].map((d) => (
+            <g key={d} transform={d === 1 ? undefined : "translate(120 0) scale(-1 1)"} stroke="#a855f7" strokeWidth="1.2">
+              <path d="M20 52C6 46 0 30 6 18c10 4 16 18 18 30z" fill={`url(#${id}-fw)`} />
+              <path d="M20 66C8 72 4 86 12 94c8-6 12-16 12-26z" fill={`url(#${id}-fw)`} />
+              <path d="M10 26c4 6 8 12 10 20M12 86c3-5 6-10 8-16" fill="none" stroke="#f0abfc" strokeWidth="0.9" />
+            </g>
+          ))}
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#86198f" strokeWidth="7.5" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke={`url(#${id}-fr)`} strokeWidth="5" />
+          {/* chùm hoa nhỏ trên đỉnh */}
+          {[[50, 15, "#fbcfe8"], [60, 11, "#f9a8d4"], [70, 15, "#e9d5ff"]].map(([x, y, c]) => (
+            <g key={String(x)} transform={`translate(${x} ${y})`} stroke="#9d174d" strokeWidth="0.7">
+              {[0, 72, 144, 216, 288].map((r) => <ellipse key={r} cx="0" cy="-3.4" rx="2.4" ry="3.4" fill={String(c)} transform={`rotate(${r})`} />)}
+              <circle r="1.6" fill="#fde047" />
+            </g>
+          ))}
+        </g>
+      )}
+      {kind === "phoenix" && (
+        <g strokeLinejoin="round">
+          <defs>
+            <linearGradient id={`${id}-pf`} x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stopColor="#991b1b" /><stop offset="45%" stopColor="#f97316" /><stop offset="100%" stopColor="#fde047" /></linearGradient>
+            <linearGradient id={`${id}-pr`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#fef3c7" /><stop offset="40%" stopColor="#f59e0b" /><stop offset="100%" stopColor="#b91c1c" /></linearGradient>
+          </defs>
+          {/* cánh lửa */}
+          {[1, -1].map((d) => (
+            <g key={d} transform={d === 1 ? undefined : "translate(120 0) scale(-1 1)"} stroke="#7f1d1d" strokeWidth="1.2">
+              <path d="M22 42C12 30 10 18 14 6c4 10 8 16 14 22-2-8 0-14 4-18 0 10 2 18 6 24z" fill={`url(#${id}-pf)`} />
+              <path d="M18 58C6 54 0 44 0 32c6 8 12 12 20 14z" fill={`url(#${id}-pf)`} />
+              <path d="M19 72C8 74 2 68 0 58c7 5 13 6 20 4z" fill={`url(#${id}-pf)`} />
+            </g>
+          ))}
+          <circle cx="60" cy="60" r="43" fill="none" stroke="#7f1d1d" strokeWidth="9" />
+          <circle cx="60" cy="60" r="43" fill="none" stroke={`url(#${id}-pr)`} strokeWidth="6" />
+          {/* lông đuôi ở đáy */}
+          {[-18, 0, 18].map((r) => (
+            <g key={r} transform={`rotate(${r} 60 102)`}>
+              <path d="M60 102c-4 6-4 12 0 17 4-5 4-11 0-17z" fill={`url(#${id}-pf)`} stroke="#7f1d1d" strokeWidth="1" />
+              <circle cx="60" cy="112" r="1.6" fill="#22d3ee" />
+            </g>
+          ))}
+          {/* mào lửa trên đỉnh */}
+          <path d="M60 2c-6 6-7 12-3 18 0-5 2-8 3-10 1 2 3 5 3 10 4-6 3-12-3-18z" fill={`url(#${id}-pf)`} stroke="#7f1d1d" strokeWidth="1.2" />
+        </g>
+      )}
       {kind === "angel" && (
         <g strokeLinejoin="round">
           <circle cx="60" cy="60" r="44" fill="none" stroke="#bae6fd" strokeWidth="6" />

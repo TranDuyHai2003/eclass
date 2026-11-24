@@ -141,6 +141,9 @@ export const ITEMS: Item[] = [
   { id: "frame-diamond", slot: "frame", name: "Khung Kim Cương Học Bá", rarity: "epic", studio: true, price: { xu: 6000 }, minLevel: 4, v: "#22d3ee", v2: "rank-diamond" },
   { id: "frame-master", slot: "frame", name: "Khung Cao Thủ", rarity: "legendary", studio: true, price: { gem: 12 }, minLevel: 5, v: "#a21caf", v2: "rank-master" },
   { id: "frame-challenger", slot: "frame", name: "Khung Thách Đấu", rarity: "legendary", studio: true, price: { gem: 20 }, minLevel: 7, v: "#f59e0b", v2: "rank-challenger" },
+  { id: "frame-galaxy", slot: "frame", name: "Khung Ngân Hà", rarity: "epic", studio: true, price: { xu: 4500 }, v: "#4338ca", v2: "galaxy" },
+  { id: "frame-fairy", slot: "frame", name: "Khung Tiên Tử", rarity: "epic", studio: true, price: { xu: 4500 }, v: "#f0abfc", v2: "fairy" },
+  { id: "frame-phoenix", slot: "frame", name: "Khung Phượng Hoàng", rarity: "legendary", studio: true, price: { gem: 15 }, minLevel: 6, v: "#dc2626", v2: "phoenix" },
   // ---- Nền
   { id: "bg-sky", slot: "background", name: "Trời xanh", rarity: "common", price: { xu: 300 }, v: "#dbeafe", v2: "#bfdbfe" },
   { id: "bg-mint", slot: "background", name: "Bạc hà", rarity: "common", price: { xu: 300 }, v: "#d1fae5", v2: "#a7f3d0" },

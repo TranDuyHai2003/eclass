@@ -733,6 +733,13 @@ try {
     // Hồi quy 24/11: danh mục bị giãn theo cả hàng nút → thân tiệm tràn khỏi màn hình, không kéo tới mục cuối
     const fit = await s.ev(`const a=document.querySelector('aside[aria-label="Danh mục tiệm quà"]').getBoundingClientRect(); const c=document.querySelector('[data-testid="reward-card"],[data-testid="item-card"]').getBoundingClientRect(); const t=document.querySelector('[role="tablist"][aria-label="Danh mục quà"]'); return { aside: Math.round(a.right), card: Math.round(c.right), vw: innerWidth, scroll: t.scrollWidth > t.clientWidth && t.clientWidth <= innerWidth }`);
     expect(fit.aside <= fit.vw && fit.card <= fit.vw && fit.scroll, `danh mục / thẻ tràn màn hình 320px: ${JSON.stringify(fit)}`);
+    // Hồi quy 24/11: khung lấy từ ảnh ghép (Băng Tinh…) trên thẻ điện thoại phải tính nền theo %, không lệch sang ô bên cạnh
+    await s.ev(`document.querySelector('[data-testid="cat-frame"]').click()`);
+    await sleep(300);
+    const ice = await s.ev(`const sp=[...document.querySelectorAll('[data-testid="item-card"][data-item="frame-ice"] span')].find(x => /items\\.webp/.test(x.style.backgroundImage)); return sp ? sp.style.backgroundSize : "none"`);
+    expect(/%/.test(ice), `khung Băng Tinh chưa tính nền theo %: ${ice}`);
+    await s.ev(`document.querySelector('[data-testid="cat-all"]').click()`);
+    await sleep(200);
     // Hồi quy 24/11: trên điện thoại bấm "Nộp bài" / "Thẻ cào & Code" phải cuộn tới mục (trước đây mục đổi ở dưới, nhìn như không bấm được)
     for (const [btn, title] of [["code-open", /Thẻ cào/], ["tasks-open", /Nộp bài/]]) {
       await s.ev(`window.scrollTo(0, 0); document.querySelector('[data-testid="${btn}"]').click()`);

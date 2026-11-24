@@ -79,14 +79,16 @@ export function Sprite({ id, className, style }: { id: string; className?: strin
 }
 
 /** Khung viền tròn từ sprite cho ảnh đại diện (như canvas: ô 137×112 trên bản 1096×448, cắt giữa 112×112) */
-export function frameSpriteStyle(id: string, size: number): React.CSSProperties | undefined {
+export function frameSpriteStyle(id: string, _size?: number): React.CSSProperties | undefined {
   const p = ITEM_POS[id];
   if (!p || p.sheet !== "items" || p.row !== 2) return undefined;
-  const k = size / 112;
+  // Tính theo % của chính phần tử (không theo cỡ px truyền vào): trước 24/11 dùng px theo `size` = 120 nên trên thẻ
+  // điện thoại (~200px) hiện lẫn ô bên cạnh — khung "lệch", có góc trắng / nền tối / tai mèo của khung khác
+  const W = 1096, H = 448, C = 112;
   return {
     backgroundImage: `url(${SPRITE_ITEMS})`,
-    backgroundSize: `${1096 * k}px ${448 * k}px`,
-    backgroundPosition: `${-(p.col * 137 + 12.5) * k}px ${-224 * k}px`,
+    backgroundSize: `${((W / C) * 100).toFixed(4)}% ${((H / C) * 100).toFixed(4)}%`,
+    backgroundPosition: `${(((p.col * 137 + 12.5) / (W - C)) * 100).toFixed(4)}% ${((224 / (H - C)) * 100).toFixed(4)}%`,
     backgroundRepeat: "no-repeat",
   };
 }

@@ -12,7 +12,7 @@ const PETAL = "M0-3.6c2.6 0 3.4 2.6 0 6.2-3.4-3.6-2.6-6.2 0-6.2z";
 const HEART = "M0 3.2-3.4-.2a2.1 2.1 0 0 1 3.4-2.4 2.1 2.1 0 0 1 3.4 2.4z";
 const FLAKE = "M0-4v8M-3.5-2l7 4M-3.5 2l7-4";
 
-type Kind = "angel" | "clover" | "rainbow" | "gold" | "catear" | "laurel" | "sakura" | "ice" | "royal" | "neon" | "fire" | "moon" | "butterfly" | "rose" | "rank-diamond" | "rank-master" | "rank-challenger" | "plain";
+type Kind = "angel" | "clover" | "rainbow" | "gold" | "catear" | "laurel" | "sakura" | "ice" | "royal" | "neon" | "fire" | "moon" | "butterfly" | "rose" | "rank-diamond" | "rank-master" | "rank-challenger" | "galaxy" | "fairy" | "phoenix" | "plain";
 
 const at = (deg: number, r = 47): [number, number] => {
   const a = (deg * Math.PI) / 180;
@@ -208,6 +208,32 @@ function Theme({ kind }: { kind: Kind }) {
           <g className="ffx-spin" style={{ animationDelay: "-2.2s" }}><path d="M60 13a47 47 0 0 1 33 13.7" fill="none" stroke="#7dd3fc" strokeWidth="3.5" strokeLinecap="round" opacity="0.85" /></g>
           <Twinkles n={8} color="#facc15" size={1.1} />
           <Rising points={[[30, 100], [90, 100], [20, 80], [100, 80]]} dur={2} render={(i) => <circle r={i % 2 ? 1.4 : 2} fill={i % 2 ? "#e0f2fe" : "#fef08a"} />} />
+        </>
+      );
+    case "galaxy":
+      return (
+        <>
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#818cf8" strokeWidth="10" className="ffx-glow" style={{ filter: "blur(4px)" }} />
+          {/* tiểu hành tinh bay quanh vòng */}
+          <g className="ffx-spin-slow"><circle cx="60" cy="16" r="3" fill="#fde68a" stroke="#1e1b4b" strokeWidth="1" /></g>
+          <g className="ffx-spin" style={{ animationDuration: "6s", animationDelay: "-3s" }}><circle cx="60" cy="16" r="2" fill="#a5f3fc" /></g>
+          <Twinkles n={7} color="#c4b5fd" />
+        </>
+      );
+    case "fairy":
+      return (
+        <>
+          <Falling n={6} delayStep={0.6} render={(i) => <path d={STAR} fill={i % 2 ? "#f0abfc" : "#a5f3fc"} transform="scale(0.7)" style={{ filter: "drop-shadow(0 0 1.5px #f0abfc)" }} />} />
+          <Twinkles n={5} color="#e879f9" size={0.9} />
+        </>
+      );
+    case "phoenix":
+      return (
+        <>
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#f97316" strokeWidth="11" className="ffx-glow" style={{ filter: "blur(4px)" }} />
+          <Sheen color="#fef08a" width={4} />
+          <Rising points={[[22, 40], [98, 40], [16, 64], [104, 64], [60, 4], [48, 108], [72, 108]]} dur={1.7} render={(i) => <circle r={i % 2 ? 1.5 : 2.2} fill={i % 3 ? "#fde047" : "#fb923c"} />} />
+          <Twinkles n={4} color="#fbbf24" />
         </>
       );
     default:
