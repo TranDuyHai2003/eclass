@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { ShopPage } from "@/components/shop/ShopPage";
 import { ShopClosed } from "@/components/shop/ShopClosed";
 import { canUseShop } from "@/lib/points/shop-access";
-import { getHeaderPoints } from "@/lib/points/queries";
+import { getHeaderPoints, getShopAdminData } from "@/lib/points/queries";
 import { isPointsEnabled } from "@/lib/points/config";
 import { getStudentPointsPage } from "@/lib/points/queries";
 import { expireStaleRedemptions } from "@/lib/points/redemption";
@@ -29,11 +29,14 @@ export default async function RewardsPage() {
 
   await expireStaleRedemptions().catch(() => {});
   const gachaOn = isGachaEnabled();
-  const [data, me, grades, today] = await Promise.all([
+  const isAdmin = session.user.role === "ADMIN";
+  const [data, me, grades, today, manageData] = await Promise.all([
     getStudentPointsPage(uid),
     prisma.user.findUnique({ where: { id: uid }, select: { name: true, studyClass: { select: { name: true, grade: true } } } }),
     getGrades(),
     gachaOn ? pullsToday(uid).catch(() => 0) : Promise.resolve(0),
+    // Quản lý quà ngay trong tiệm: chỉ admin
+    isAdmin ? getShopAdminData() : Promise.resolve(null),
   ]);
   const myGrade = me?.studyClass?.grade ?? null;
   const [extras, myRank, ...boardRows] = await Promise.all([
@@ -65,6 +68,7 @@ export default async function RewardsPage() {
       event={weeklyChallenge(data.wallet)}
       gacha={gachaOn ? { pullsToday: today } : null}
       adminView={session.user.role === "ADMIN" || session.user.role === "TEACHER"}
+      manageData={manageData}
     />
   );
 }

@@ -9,7 +9,7 @@ import { mali, nunito } from "@/lib/fonts";
 import "./ah/theme.css";
 import { cancelRedemption, redeemReward, setGoalReward } from "@/actions/points";
 import { buyItem, saveAvatar } from "@/actions/avatar";
-import type { StudentPointsPageData } from "@/lib/points/queries";
+import type { ShopAdminData, StudentPointsPageData } from "@/lib/points/queries";
 import type { HomeTodoItem } from "@/lib/home/student-home";
 import { LEVELS, getLevel } from "@/lib/points/levels";
 import { rarityOf, type Rarity } from "@/lib/points/rarity";
@@ -35,6 +35,8 @@ import { GachaSection } from "./ah/GachaSection";
 import { GoldModal } from "./ah/GoldSection";
 import { BagSection } from "./ah/BagSection";
 import { CustomizeModal } from "./ah/CustomizeModal";
+import { RewardArt } from "./ah/RewardArt";
+import { RewardManager } from "./ah/RewardManager";
 
 type Reward = StudentPointsPageData["rewards"][number];
 type Sec = "shop" | "earn" | "code" | "gacha" | "gold" | "bag";
@@ -42,15 +44,15 @@ type Cat = "all" | "physical" | "voucher" | "frame" | "nameplate" | "pet" | "dec
 type RarFilter = "all" | Rarity;
 type DecoSlot = "all" | Item["slot"];
 
-const CATS: { key: Cat | "box"; label: string }[] = [
-  { key: "all", label: "Tất cả" },
-  { key: "physical", label: "Quà hiện vật" },
-  { key: "voucher", label: "Thẻ đặc quyền" },
-  { key: "frame", label: "Viền avatar" },
-  { key: "nameplate", label: "Bảng tên" },
-  { key: "pet", label: "Mèo cún" },
-  { key: "deco", label: "Trang trí khác" },
-  { key: "box", label: "Hộp bí ẩn (Gacha)" },
+const CATS: { key: Cat | "box"; label: string; icon: string }[] = [
+  { key: "all", label: "Tất cả", icon: "✨" },
+  { key: "physical", label: "Quà hiện vật", icon: "🎁" },
+  { key: "voucher", label: "Thẻ đặc quyền", icon: "🎫" },
+  { key: "frame", label: "Viền avatar", icon: "🖼️" },
+  { key: "nameplate", label: "Bảng tên VIP", icon: "🪪" },
+  { key: "pet", label: "Mèo cún", icon: "🐾" },
+  { key: "deco", label: "Trang trí khác", icon: "🎀" },
+  { key: "box", label: "Hộp bí ẩn", icon: "📦" },
 ];
 const CAT_TITLE: Record<Cat, string> = { all: "Tất cả sản phẩm", physical: "Quà hiện vật", voucher: "Thẻ đặc quyền", frame: "Viền avatar", nameplate: "Bảng tên", pet: "Mèo cún", deco: "Trang trí khác" };
 const SEC_TITLE: Record<Exclude<Sec, "shop">, string> = { earn: "Nộp bài tập nhận xu", code: "Thẻ cào Điểm 10 & Code", gold: "Bảng Vàng server khối", gacha: "Hộp bí ẩn", bag: "Túi đồ của bé" };
@@ -82,10 +84,12 @@ export interface ShopPageProps {
   gacha?: { pullsToday: number } | null;
   /** Tài khoản thầy / admin xem tiệm: chỉ xem, các thao tác đổi / mở hộp / nhập mã do server từ chối */
   adminView?: boolean;
+  /** Chỉ admin: dữ liệu quản lý quà ngay trong tiệm */
+  manageData?: ShopAdminData | null;
 }
 
 /** Tiệm quà — giao diện "Adorable Home" của canvas ShopV2 (thanh gỗ, khối hồ sơ, mèo linh vật, danh mục trái, thẻ theo độ hiếm); logic xu/ngọc/quà/đồ/rương giữ nguyên */
-export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, event = null, gacha = null, adminView = false }: ShopPageProps) {
+export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, event = null, gacha = null, adminView = false, manageData = null }: ShopPageProps) {
   const router = useRouter();
   const online = useOnline();
   const [sec, setSec] = useState<Sec>("shop");
@@ -97,6 +101,8 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   const [modal, setModal] = useState<null | "history" | "titles">(null);
   const [custom, setCustom] = useState(false);
   const [gold, setGold] = useState(false);
+  const canManage = adminView && !!manageData;
+  const [manage, setManage] = useState(false);
   const [lvUp, setLvUp] = useState<number | null>(null);
   const [soundOn, setSoundState] = useState(true);
   // Menu tiệm (chọn thời tiết) đã bỏ theo yêu cầu thầy 24/11 → luôn trời nắng
@@ -351,7 +357,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
     setSelKey(e.key);
   };
 
-  const navBtn = "ah-btn h-12 px-5 text-base";
 
   return (
     <div className={cn("ah min-h-screen pb-12", mali.variable, nunito.variable)} data-testid="shop-frame" data-celebrated={celebrated} data-weather={weather}>
@@ -361,7 +366,11 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       {adminView && (
         <div role="status" data-testid="admin-view" className="relative z-[5] flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-[#2A1F5C] px-4 py-2 text-center text-xs font-bold text-[#FDE68A]">
           <span>Bạn đang xem Tiệm quà bằng tài khoản giáo viên — giao diện giống học sinh, chỉ xem (đổi quà, mở hộp, nhập mã dành cho học sinh).</span>
-          <Link href="/teacher/rewards" className="underline decoration-dotted">Quản lý quà →</Link>
+          {canManage ? (
+            <button type="button" onClick={() => { play("click"); setManage((v) => !v); }} className="cursor-pointer underline decoration-dotted">{manage ? "Tắt quản lý quà" : "🛠️ Quản lý quà ngay tại đây"}</button>
+          ) : (
+            <Link href="/teacher/rewards" className="underline decoration-dotted">Quản lý quà →</Link>
+          )}
         </div>
       )}
 
@@ -372,8 +381,9 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="#ea6a51" /></svg>
           </Link>
           <span className="relative inline-flex">
-            <button type="button" data-testid="bag-open" onClick={() => goSec("bag")} aria-label={`Túi đồ (${bagCount} món)`} className="ah-btn ah-cream h-[46px] w-[46px] rounded-[14px] p-0">
+            <button type="button" data-testid="bag-open" onClick={() => goSec("bag")} aria-label={`Túi đồ (${bagCount} món)`} className="ah-btn ah-cream h-[46px] gap-1.5 rounded-[14px] px-3 text-sm max-sm:w-[46px] max-sm:px-0">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.2" strokeLinejoin="round" aria-hidden><path d="M3 8l9-4 9 4v9l-9 4-9-4z" fill="#e7d0a3" /><path d="M3 8l9 4 9-4M12 12v9" /></svg>
+              <span className="max-sm:hidden">Túi Đồ</span>
             </button>
             {bagCount > 0 && <Badge n={bagCount} />}
           </span>
@@ -389,6 +399,11 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
             <span className="ah-ink flex h-[42px] items-center gap-2 rounded-full bg-[#fffdf8] px-4 text-base font-black shadow-[0_3px_0_#241e1a]" data-testid="hud-gems" title="Kim cương">
               <GemDot size={15} />{gemsNow}
             </span>
+            <span className="relative inline-flex">
+              <button type="button" data-testid="tasks-open" onClick={() => goSec("earn")} className="ah-btn ah-gold h-11 px-4 text-[15px] max-sm:h-10 max-sm:px-3 max-sm:text-sm">Nộp Bài +</button>
+              {todoTotal > 0 && <Badge n={todoTotal} />}
+            </span>
+            <button type="button" data-testid="code-open" onClick={() => goSec("code")} className="ah-btn ah-coral h-11 px-4 text-[15px] max-sm:h-10 max-sm:px-3 max-sm:text-sm">Thẻ Cào</button>
             <button type="button" data-testid="history-open" onClick={() => { play("click"); setModal("history"); }} aria-label="Lịch sử xu" title="Lịch sử xu" className="ah-btn ah-cream h-11 w-11 p-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#241e1a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="9" fill="#fef3c7" /><path d="M12 7v5l3 2" /></svg>
             </button>
@@ -415,64 +430,65 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           <div className="ah-panel bg-[#fff1c9] px-[18px] py-3 font-bold text-[#6e4722]">Tài khoản cần được thầy duyệt để bắt đầu nhận xu và đổi quà.</div>
         )}
 
-        {/* ===== Khối hồ sơ ===== */}
-        <section className="ah-panel flex flex-wrap items-center gap-[18px] p-[18px]" data-testid="shop-hud">
-          <PlateBox id={avatar.nameplate} className="min-w-0 flex-[999_1_560px]" testId="hud-nameplate">
-            <div className="flex flex-wrap items-center gap-4 px-[18px] py-3.5">
-              <Link href="/profile" title="Hồ sơ của bạn" className="shrink-0 rounded-full">
-                <AvatarRing config={avatar} size={104} inset={22} title={user.name ?? undefined} />
-              </Link>
-              <div className={cn("flex min-w-0 flex-[1_1_300px] flex-col gap-2", plateDark ? "text-white" : "text-[#1E1B2E]")}>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="ah-hand text-[22px] font-bold">{user.name || "Học sinh"}</span>
-                  {user.grade && <span className="rounded-full border-2 border-[#241e1a] bg-[#fef3c7] px-2.5 py-0.5 text-xs font-black text-[#241e1a]">Khối {user.grade}</span>}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" data-testid="titles-open" onClick={() => { play("click"); setModal("titles"); }} title="Xem hệ thống danh hiệu" className="ah-btn ah-gold h-[34px] px-3.5 text-sm">
-                    <span>{level.name} (<b>Lv.{level.level}</b>)</span>
-                  </button>
-                  <button type="button" data-testid="customize-open" onClick={() => { play("click"); setCustom(true); }} className="ah-btn ah-cream h-[34px] px-3.5 text-[13px]">Đổi viền &amp; bảng tên</button>
-                </div>
-                <div className="flex justify-between gap-2 text-xs font-extrabold"><span>Cấp độ {level.level}</span><span>{fmt(wallet.lifetimeEarned)}{level.next ? ` / ${fmt(level.next.min)}` : ""} xu tích lũy</span></div>
-                <div className="h-3.5 overflow-hidden rounded-full border-[2.5px] border-[#241e1a] bg-[#fffdf8]" role="progressbar" aria-label="Xu tích luỹ đến cấp sau" aria-valuenow={level.progress} aria-valuemin={0} aria-valuemax={100}>
-                  <div className="h-full bg-gradient-to-r from-[#fbd048] to-[#ea6a51]" style={{ width: `${Math.max(2, level.progress)}%` }} />
-                </div>
-                <div className="text-xs font-bold opacity-90">{level.next ? `Còn ${fmt(level.toNext)} xu tích lũy để lên Lv.${level.level + 1} · ${level.next.name}` : "Bạn đã đạt cấp cao nhất"}</div>
-              </div>
-            </div>
-          </PlateBox>
-          <nav aria-label="Menu tiệm quà" className="flex flex-[1_1_360px] flex-wrap justify-end gap-3">
-            <span className="relative inline-flex">
-              <button type="button" data-testid="tasks-open" onClick={() => goSec("earn")} className={cn(navBtn, "ah-gold")}>Nộp bài +</button>
-              {todoTotal > 0 && <Badge n={todoTotal} />}
-            </span>
-            <button type="button" data-testid="code-open" onClick={() => goSec("code")} className={cn(navBtn, "ah-coral")}>Thẻ cào &amp; Code</button>
-            <button type="button" data-testid="board-open" onClick={() => { play("click"); setGold(true); }} className={cn(navBtn, "ah-sky")}>Bảng Vàng</button>
-            <button type="button" data-testid="sec-gacha" onClick={() => goSec("gacha")} className={cn(navBtn, "ah-mint")}>Hộp bí ẩn</button>
-            <Link href="/profile" className={cn(navBtn, "ah-cream")}>Hồ sơ</Link>
-          </nav>
-        </section>
+        {/* ===== Hàng hồ sơ + mèo linh vật (bố cục mẫu 24/11) ===== */}
+        <div className="flex flex-wrap items-stretch gap-[18px]">
+          <section className="ah-panel flex min-w-0 flex-[999_1_560px] p-[14px]" data-testid="shop-hud">
+            <PlateBox id={avatar.nameplate} className="min-w-0 flex-[999_1_560px]" testId="hud-nameplate">
+              <div className="flex flex-wrap items-center gap-4 px-[18px] py-3.5">
+                <Link href="/profile" title="Hồ sơ của bạn" className="shrink-0 rounded-full">
+                  <AvatarRing config={avatar} size={104} inset={22} title={user.name ?? undefined} />
+                </Link>
+                <div className={cn("flex min-w-0 flex-[1_1_300px] flex-col gap-2", plateDark ? "text-white" : "text-[#1E1B2E]")}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="ah-hand text-[22px] font-bold">{user.name || "Học sinh"}</span>
+                    {user.grade && <span className="rounded-full border-2 border-[#241e1a] bg-[#fef3c7] px-2.5 py-0.5 text-xs font-black text-[#241e1a]">Khối {user.grade}</span>}
+                    <button type="button" data-testid="titles-open" onClick={() => { play("click"); setModal("titles"); }} title="Xem hệ thống danh hiệu" className="ah-btn ah-gold h-[30px] px-3 text-[13px]">
+                      <span>{level.name} (<b>Lv.{level.level}</b>)</span>
+                    </button>
+                  </div>
 
-        {/* ===== Mèo linh vật ===== */}
-        <section className="ah-panel flex items-center gap-4 px-[18px] py-3.5" data-testid="mascot">
-          <div className="relative shrink-0">
-            <button type="button" onClick={petIt} aria-label={`Vuốt ve ${pet?.name ?? "mèo Snow"}`} data-testid="pet-card" className="v2-float relative flex h-[78px] w-[78px] cursor-pointer items-center justify-center overflow-hidden rounded-[18px] border-[2.5px] border-[#241e1a] bg-[#fef3c7] p-0 shadow-[0_4px_0_#241e1a]">
-              <PetArt pet={pet} />
-            </button>
-            {hearts.map((k, n) => (
-              <span key={k} className="v2-heart" style={{ left: 14 + n * 18, top: -6, animationDelay: `${n * 0.12}s` }} aria-hidden>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#f472b6" stroke="#241e1a" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z" /></svg>
-              </span>
-            ))}
-          </div>
-          <div role="status" className="flex min-w-0 flex-1 flex-col gap-1 rounded-[18px] border-[2.5px] border-[#241e1a] bg-[#fffdf8] px-4 py-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <b className="ah-hand text-sm text-[#9e6b3f]">{pet ? pet.name : "Mèo Hoàng Thượng Snow"}</b>
-              <button type="button" onClick={petIt} className="h-7 shrink-0 cursor-pointer rounded-full border-2 border-[#ea6a51] bg-[#fff5f2] px-3 text-xs font-extrabold text-[#b83d27]">Vuốt ve</button>
+                  <div className="flex justify-between gap-2 text-xs font-extrabold"><span>Cấp độ {level.level}</span><span>{fmt(wallet.lifetimeEarned)}{level.next ? ` / ${fmt(level.next.min)}` : ""} xu tích lũy</span></div>
+                  <div className="h-3.5 overflow-hidden rounded-full border-[2.5px] border-[#241e1a] bg-[#fffdf8]" role="progressbar" aria-label="Xu tích luỹ đến cấp sau" aria-valuenow={level.progress} aria-valuemin={0} aria-valuemax={100}>
+                    <div className="h-full bg-gradient-to-r from-[#fbd048] to-[#ea6a51]" style={{ width: `${Math.max(2, level.progress)}%` }} />
+                  </div>
+                  <div className="text-xs font-bold opacity-90">{level.next ? `Còn ${fmt(level.toNext)} xu tích lũy để lên Lv.${level.level + 1} · ${level.next.name}` : "Bạn đã đạt cấp cao nhất"}</div>
+                  <div className="mt-0.5 flex flex-wrap gap-2" data-testid="hud-chips">
+                    <button type="button" data-testid="customize-open" onClick={() => { play("click"); setCustom(true); }} className="ah-btn ah-cream h-[34px] px-3 text-[13px]">✨ Đổi viền &amp; bảng tên</button>
+                    <button type="button" data-testid="board-open" onClick={() => { play("click"); setGold(true); }} className="ah-btn ah-gold h-[34px] px-3 text-[13px]">🏆 Bảng Vàng Khối</button>
+                    <button type="button" onClick={() => { play("click"); setModal("titles"); }} className="ah-btn ah-cream h-[34px] px-3 text-[13px]">🎖️ Danh hiệu</button>
+                    <Link href="/profile" className="ah-btn ah-cream h-[34px] px-3 text-[13px]">👤 Hồ sơ</Link>
+                    {canManage && (
+                      <button type="button" data-testid="manage-toggle" aria-pressed={manage} onClick={() => { play("click"); setManage((v) => !v); }} className={cn("ah-btn h-[34px] px-3 text-[13px]", manage ? "ah-grape" : "ah-sky")}>
+                        🛠️ {manage ? "Đang quản lý quà" : "Quản lý quà"}
+                      </button>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+            </PlateBox>
+          </section>
+          <section className="ah-panel flex min-w-0 flex-[1_1_380px] items-center gap-4 self-stretch px-[18px] py-3.5" data-testid="mascot">
+            <div className="relative shrink-0">
+              <button type="button" onClick={petIt} aria-label={`Vuốt ve ${pet?.name ?? "mèo Snow"}`} data-testid="pet-card" className="v2-float relative flex h-[78px] w-[78px] cursor-pointer items-center justify-center overflow-hidden rounded-[18px] border-[2.5px] border-[#241e1a] bg-[#fef3c7] p-0 shadow-[0_4px_0_#241e1a]">
+                <PetArt pet={pet} />
+              </button>
+              {hearts.map((k, n) => (
+                <span key={k} className="v2-heart" style={{ left: 14 + n * 18, top: -6, animationDelay: `${n * 0.12}s` }} aria-hidden>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#f472b6" stroke="#241e1a" strokeWidth="1.5"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z" /></svg>
+                </span>
+              ))}
             </div>
-            <div className="text-[15px] font-extrabold leading-normal" data-testid="pet-line">{lines[tipI % Math.max(1, lines.length)]}</div>
-          </div>
-        </section>
+            <div role="status" className="flex min-w-0 flex-1 flex-col gap-1 rounded-[18px] border-[2.5px] border-[#241e1a] bg-[#fffdf8] px-4 py-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <b className="ah-hand min-w-0 truncate text-sm text-[#9e6b3f]">{pet ? pet.name : "Mèo Hoàng Thượng Snow"}</b>
+                <button type="button" onClick={petIt} className="h-7 shrink-0 cursor-pointer rounded-full border-2 border-[#ea6a51] bg-[#fff5f2] px-3 text-xs font-extrabold text-[#b83d27]">Vuốt ve</button>
+              </div>
+              <div className="text-[15px] font-extrabold leading-normal" data-testid="pet-line">{lines[tipI % Math.max(1, lines.length)]}</div>
+            </div>
+          </section>
+
+        </div>
 
         {/* ===== Thân trang ===== */}
         <div className="flex flex-wrap items-start gap-[22px]">
@@ -491,18 +507,25 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                     onClick={() => (c.key === "box" ? goSec("gacha") : goCat(c.key))}
                     className={cn("ah-btn ah-catbtn shrink-0 max-md:w-auto", on ? "ah-coral" : "ah-cream")}
                   >
+                    <span aria-hidden className="text-base leading-none">{c.icon}</span>
                     {c.label}
                     <span className="ml-auto pl-2 font-[family-name:var(--font-nunito)] text-xs font-black opacity-80">{c.key === "box" ? 2 : counts[c.key]}</span>
                   </button>
                 );
               })}
             </div>
+            {gacha && (
+              <div className="mt-1 border-t-2 border-dashed border-[#e7d4b5] pt-3 max-md:hidden">
+                <button type="button" data-testid="sec-gacha" onClick={() => goSec("gacha")} className="ah-btn ah-sky h-11 w-full text-[15px]">🌠 Mở Đài Cầu Nguyện</button>
+              </div>
+            )}
           </aside>
 
           <main ref={mainRef} className="flex min-w-0 flex-[999_1_600px] scroll-mt-4 flex-col gap-[18px]">
+            {canManage && manage && manageData && <RewardManager data={manageData} />}
               <div className="flex flex-col gap-[18px]">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <h2 className="ah-hand text-[26px] font-bold">
+                <div className="ah-panel flex flex-wrap items-center gap-2.5 px-4 py-3 shadow-[0_4px_0_rgba(36,30,26,0.92)]" data-testid="grid-head">
+                  <h2 className="ah-hand text-[24px] font-bold max-sm:text-xl">
                     {CAT_TITLE[cat]} <span className="font-[family-name:var(--font-nunito)] text-sm font-extrabold text-[#9e6b3f]">({list.length} món)</span>
                   </h2>
                   <div className="ml-auto flex flex-wrap gap-1.5">
@@ -728,7 +751,7 @@ type St = { own: boolean; on: boolean; locked: boolean; gachaOnly: boolean; sold
 
 type CardProps = { e: Entry; st: St; avatar: StudentPointsPageData["avatar"]; name: string | null; onOpen: () => void };
 const sameSt = (a: St, b: St) => (Object.keys(a) as (keyof St)[]).every((k) => a[k] === b[k]);
-const entrySig = (e: Entry) => (e.kind === "reward" ? `${e.key}|${e.r.title}|${e.r.price}|${e.r.stock}|${e.r.kind}` : `${e.key}|${e.it.id}`);
+const entrySig = (e: Entry) => (e.kind === "reward" ? `${e.key}|${e.r.title}|${e.r.price}|${e.r.stock}|${e.r.kind}|${e.r.perStudentMonthlyLimit}` : `${e.key}|${e.it.id}`);
 /** Thẻ chỉ vẽ lại khi chính nó đổi (sau mỗi lần làm mới dữ liệu, lưới 30+ thẻ có nhân vật không phải vẽ lại hết — nặng trên điện thoại).
  *  onOpen không so: nó chỉ mở hộp chi tiết theo khoá của thẻ. */
 const Card = memo(CardView, (a: CardProps, b: CardProps) => entrySig(a.e) === entrySig(b.e) && sameSt(a.st, b.st) && a.avatar === b.avatar && a.name === b.name);
@@ -776,10 +799,16 @@ function CardView({ e, st, avatar, name, onOpen }: CardProps) {
         <span className="ah-ppill">{RAR_LABEL[e.rarity]}</span>
         <span className="ah-pstock">{stock}</span>
       </span>
-      <span className="ah-part">
-        {leg && <span className="ah-sun" aria-hidden />}
-        {e.kind === "reward" ? <V2Art index={rewardArtV2(e.r.title, e.r.kind)} className="relative h-[82%]" /> : <ItemArt it={e.it} avatar={avatar} name={name} />}
-      </span>
+      {e.kind === "reward" ? (
+        <RewardArt title={e.r.title} kind={e.r.kind} stock={e.r.stock} limit={e.r.perStudentMonthlyLimit}>
+          {leg && <span className="ah-sun" aria-hidden />}
+        </RewardArt>
+      ) : (
+        <span className="ah-part">
+          {leg && <span className="ah-sun" aria-hidden />}
+          <ItemArt it={e.it} avatar={avatar} name={name} />
+        </span>
+      )}
       <span className={cn("ah-btn h-[46px] gap-2 px-4 text-base max-sm:h-[38px] max-sm:gap-1.5 max-sm:px-2 max-sm:text-[13px]", cls)}>
         {icon === "coin" && <CoinDot size={19} className="border-2" />}
         {icon === "gem" && <GemDot size={13} className="mx-[3px] border-2" />}

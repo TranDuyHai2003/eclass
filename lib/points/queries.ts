@@ -173,6 +173,25 @@ export async function getPointsForAttempt(userId: string, attemptId: string) {
   return rows;
 }
 
+/** Quản lý quà ngay trong Tiệm quà (chỉ admin): mọi quà chưa xoá (cả quà đang ẩn) + danh sách lớp */
+export async function getShopAdminData() {
+  const [rewards, classes] = await Promise.all([
+    prisma.reward.findMany({
+      where: { deletedAt: null },
+      orderBy: [{ isActive: "desc" }, { kind: "asc" }, { price: "asc" }],
+      select: {
+        id: true, title: true, description: true, emoji: true, price: true, stock: true, perStudentMonthlyLimit: true,
+        kind: true, offlineOnly: true, costVnd: true, isActive: true,
+        classes: { select: { id: true, name: true } },
+        _count: { select: { redemptions: { where: { status: "PENDING" } } } },
+      },
+    }),
+    prisma.studyClass.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  ]);
+  return { rewards: rewards.map(({ _count, ...r }) => ({ ...r, pending: _count.redemptions })), classes };
+}
+export type ShopAdminData = Awaited<ReturnType<typeof getShopAdminData>>;
+
 export async function getTeacherRewardsPage() {
   const monthStart = getVietnamMonthStart();
   const [rewards, pending, recent, classes, monthEntries, deliveredThisMonth] = await Promise.all([

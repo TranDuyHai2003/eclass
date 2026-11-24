@@ -48,6 +48,36 @@
   .ah-fly { position: fixed; z-index: 40; pointer-events: none; animation: ah-fly 0.85s cubic-bezier(0.5, 0, 0.75, 0.4) forwards; }
   .ah-sk { background: linear-gradient(90deg, #f2e8dc 0, #fbf6ee 45%, #f2e8dc 90%); background-size: 600px 100%; animation: ah-sk 1.3s linear infinite; }
 }
+/* Quà hiện vật = hộp quà (ruy băng chữ thập + nơ), thẻ đặc quyền = tấm vé (khuyết hai bên, đường xé, cuống "VÉ") — 24/11 */
+@layer components {
+  .ah-gift::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background:
+      linear-gradient(90deg, transparent calc(50% - 10px), rgba(244, 114, 182, 0.28) calc(50% - 10px), rgba(244, 114, 182, 0.28) calc(50% + 10px), transparent calc(50% + 10px)),
+      linear-gradient(0deg, transparent calc(50% - 10px), rgba(244, 114, 182, 0.28) calc(50% - 10px), rgba(244, 114, 182, 0.28) calc(50% + 10px), transparent calc(50% + 10px)); }
+  .ah-gift-bow { position: absolute; z-index: 1; top: 3px; left: 50%; transform: translateX(-50%); font-size: 20px; line-height: 1; filter: drop-shadow(0 1px 0 #241e1a); pointer-events: none; }
+  .ah-chip-in { position: absolute; z-index: 1; border: 2px solid #241e1a; border-radius: 999px; padding: 0 7px; font-size: 10px; font-weight: 900; line-height: 16px; white-space: nowrap; pointer-events: none; }
+  .ah-chip-in.bl { left: 6px; bottom: 6px; background: #fffdf8; color: #6e4722; }
+  .ah-chip-in.tr { right: 6px; top: 6px; background: #ea6a51; color: #fffdf8; animation: ah-low 1.6s ease-in-out infinite; }
+  @keyframes ah-low { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  .ah-ticket { border-style: solid; padding-right: 22%; }
+  .ah-notch { position: absolute; top: 50%; width: 26px; height: 26px; margin-top: -13px; border-radius: 999px; background: var(--bg); border: 2.5px solid var(--ab); pointer-events: none; }
+  .ah-notch.l { left: -15px; } .ah-notch.r { right: -15px; }
+  .ah-tear { position: absolute; top: 10px; bottom: 10px; right: 22%; border-left: 2.5px dashed var(--ab); pointer-events: none; }
+  .ah-stub { position: absolute; top: 0; bottom: 0; right: 0; width: 22%; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; text-orientation: upright; font-family: var(--font-mali), cursive, sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.05em; color: var(--pt); opacity: 0.75; pointer-events: none; }
+}
+
+/* Sân khấu rương (Hộp bí ẩn) */
+@keyframes ah-wobble { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-7deg) scale(1.03); } 50% { transform: rotate(6deg) scale(1.03); } 75% { transform: rotate(-3deg); } }
+@keyframes ah-twk { 0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); } 50% { opacity: 1; transform: scale(1.15) rotate(40deg); } }
+@layer components {
+  .ah-rays { position: absolute; width: 240px; height: 240px; border-radius: 999px; background: repeating-conic-gradient(from 0deg, var(--ray) 0 10deg, transparent 10deg 24deg); -webkit-mask: radial-gradient(circle, #000 28%, transparent 70%); mask: radial-gradient(circle, #000 28%, transparent 70%); animation: ah-spin 16s linear infinite; will-change: transform; }
+  .ah-pedestal { position: absolute; bottom: 4px; width: 160px; height: 28px; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(255, 253, 248, 0.26), rgba(255, 253, 248, 0.05) 70%); border: 2px solid rgba(255, 253, 248, 0.28); }
+  .ah-spark { position: absolute; font-size: 15px; line-height: 1; animation: ah-twk 2.4s ease-in-out infinite both; pointer-events: none; }
+  .ah-chest-wob { display: inline-flex; transform-origin: 50% 85%; }
+  .group:hover .ah-chest-wob, .group:active .ah-chest-wob { animation: ah-wobble 0.6s ease-in-out; }
+  .ah-chest-open { animation: ah-wobble 0.45s ease-in-out infinite !important; }
+}
+
 /* Điện thoại: lưới 2 cột (dễ lướt 50+ món như tiệm trong game) → thẻ thu gọn */
 @layer components {
   @media (max-width: 639px) {
@@ -60,7 +90,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ah-sun, .ah-shake, .ah-sk { animation: none !important; }
+  .ah-sun, .ah-shake, .ah-sk, .ah-rays, .ah-spark, .ah-chest-wob, .ah-chest-open, .ah-chip-in { animation: none !important; }
   .ah-fly { display: none; }
   .ah-pcard, .ah-btn { transition: none; }
 }

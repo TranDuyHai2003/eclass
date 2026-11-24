@@ -46,9 +46,17 @@ export function GachaSection({ wallet, pity, pullsToday, owned, avatar, canEarn,
           const outOfDay = id === "xu" && g.limit > 0 && g.left === 0;
           return (
             <div key={id} className="flex flex-col gap-3 rounded-[20px] border-[2.5px] border-[rgba(255,253,248,0.35)] bg-white/[0.06] p-[18px]" data-testid="chest-card" data-chest={id} aria-label={`${NAME[id]}, ${id === "xu" ? "Sử thi" : "Huyền thoại"}`}>
-              <div className="relative flex h-40 items-center justify-center">
+              {/* Sân khấu rương (24/11): tia sáng xoay, quầng, bệ đỡ, sao lấp lánh; rương bồng bềnh, lắc khi rê / bấm */}
+              <div className="group relative flex h-44 items-center justify-center" data-testid="chest-stage">
+                <span aria-hidden className="ah-rays" style={{ "--ray": id === "xu" ? "rgba(253,224,71,0.34)" : "rgba(196,181,253,0.4)" } as React.CSSProperties} />
                 <span aria-hidden className="absolute h-[180px] w-[180px] rounded-full" style={{ background: id === "xu" ? "radial-gradient(circle, rgba(245,184,46,0.28), transparent 70%)" : "radial-gradient(circle, rgba(196,181,253,0.45), transparent 70%)" }} />
-                <ShopArt index={SHOP_CHEST[id]} className="v2-float relative h-[150px] w-[150px]" />
+                <span aria-hidden className="ah-pedestal" />
+                {[[14, 22, 0], [82, 18, 0.7], [20, 74, 1.3], [86, 68, 0.4], [50, 6, 1.0]].map(([l, t, d]) => (
+                  <span key={`${l}-${t}`} aria-hidden className="ah-spark" style={{ left: `${l}%`, top: `${t}%`, animationDelay: `${d}s`, color: id === "xu" ? "#fef08a" : "#e9d5ff" }}>✦</span>
+                ))}
+                <span className={`ah-chest-wob relative ${busy && g.chest === id ? "ah-chest-open" : ""}`}>
+                  <ShopArt index={SHOP_CHEST[id]} className="v2-float relative h-[150px] w-[150px]" />
+                </span>
               </div>
               <h3 className="ah-hand text-center text-lg font-bold">{NAME[id]}</h3>
               {(["common", "rare", "epic", "legendary"] as Rarity[]).filter((r) => (c.rates[r] ?? 0) > 0).map((r) => (
