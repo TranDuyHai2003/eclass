@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { CoinIcon, GemIcon } from "@/components/game/CurrencyIcons";
 import { ITEM_BY_ID, type Item } from "@/lib/game/items";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import type { Rarity } from "@/lib/points/rarity";
@@ -18,21 +19,14 @@ export const fmt = (n: number) => n.toLocaleString("vi-VN");
 
 export const RAR_LABEL: Record<Rarity, string> = { common: "Phổ thông", rare: "Hiếm", epic: "Sử thi", legendary: "Huyền thoại" };
 
-/** Đồng xu vàng viền mực (đúng hình tròn trong canvas) */
+/** Đồng xu vàng (SVG vẽ tay: vành nổi, sao dập nổi, vệt bóng) — components/game/CurrencyIcons.tsx */
 export function CoinDot({ size = 20, className }: { size?: number; className?: string }) {
-  // Đồng xu có điểm sáng + viền trong → vẫn nổi trên nút vàng (trước đây cùng màu nút nên trông như vòng rỗng)
-  return (
-    <span
-      aria-hidden
-      className={cn("relative inline-block shrink-0 rounded-full border-[2.2px] border-[#241e1a]", className)}
-      style={{ width: size, height: size, background: "radial-gradient(circle at 34% 30%, #fff7cf 0 16%, #ffd84d 17% 58%, #e9a21c 100%)", boxShadow: "inset 0 0 0 1.5px rgba(255,247,207,0.55)" }}
-    />
-  );
+  return <CoinIcon size={Math.round(size * 1.12)} className={className} />;
 }
 
-/** Kim cương: ô vuông xoay 45° màu xanh trời */
+/** Kim cương cắt giác (SVG) — cỡ cũ là ô vuông xoay 45° nên phóng ~1,5 lần cho cùng độ lớn nhìn thấy */
 export function GemDot({ size = 15, className }: { size?: number; className?: string }) {
-  return <span aria-hidden className={cn("inline-block shrink-0 rotate-45 rounded-[3px] border-[2.2px] border-[#241e1a] bg-[#6acbf7]", className)} style={{ width: size, height: size }} />;
+  return <GemIcon size={Math.round(size * 1.5)} className={className} />;
 }
 
 /** Khung viền phủ lên ảnh đại diện: tranh v2 → tranh khung cũ trong sprite → vòng SVG */

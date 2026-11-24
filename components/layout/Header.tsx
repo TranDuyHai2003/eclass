@@ -23,6 +23,7 @@ import { isPointsEnabled } from "@/lib/points/config";
 import { getHeaderPoints } from "@/lib/points/queries";
 import { getLevel } from "@/lib/points/levels";
 import { canUseShop } from "@/lib/points/shop-access";
+import { CoinIcon, GemIcon } from "@/components/game/CurrencyIcons";
 import { SoundToggle } from "@/components/game/SoundToggle";
 
 export default async function Header() {
@@ -105,12 +106,12 @@ export default async function Header() {
                     >
                       {/* Biểu tượng danh hiệu chỉ hiện từ 400px để header điện thoại nhỏ không chật */}
                       <span aria-hidden className="hidden min-[400px]:inline text-base leading-none">{pointsLevel?.icon}</span>
-                      <span aria-hidden className="text-base leading-none">🪙</span>
+                      <CoinIcon size={20} />
                       <span className="text-sm font-black tabular-nums" data-testid="header-xu">{headerPoints.balance.toLocaleString("vi-VN")}</span>
                       <span className="sr-only">xu</span>
                       {headerPoints.gems > 0 && (
                         <span className="ml-0.5 inline-flex items-center gap-0.5 rounded-full bg-pink-100 px-1.5 text-xs font-black text-pink-700" data-testid="header-gems">
-                          <span aria-hidden>💎</span>
+                          <GemIcon size={15} />
                           {headerPoints.gems}
                           <span className="sr-only">ngọc</span>
                         </span>
