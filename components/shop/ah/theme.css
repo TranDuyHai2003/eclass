@@ -3,6 +3,8 @@
 @layer theme, base, components, utilities;
 /* ===================== Tiệm quà v2 "Adorable Home" (canvas ShopV2.dc.html): gỗ ấm, viền mực, nút bóng ===================== */
 @keyframes ah-spin { to { transform: rotate(360deg); } }
+/* Thẻ ngoài màn hình (lib/offscreen.ts đặt data-off): dừng mọi hoạt ảnh bên trong */
+.ah-pcard[data-off] *, .ah-pcard[data-off] *::before, .ah-pcard[data-off] *::after { animation-play-state: paused !important; }
 @keyframes ah-shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 @keyframes ah-fly { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(0.5); opacity: 0.2; } }
 @keyframes ah-sk { 0% { background-position: -300px 0; } 100% { background-position: 300px 0; } }
@@ -39,12 +41,23 @@
   .ah-ppill { background: var(--pl); color: var(--pt); border: 2px solid #241e1a; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 800; box-shadow: 0 2px 0 #241e1a; }
   .ah-pstock { background: #fffdf8; color: var(--pt); border: 1.5px solid var(--ab); border-radius: 999px; padding: 1px 9px; font-size: 12px; font-weight: 800; }
   .ah-part { position: relative; border: 2.5px dashed var(--ab); border-radius: 14px; background-color: var(--art); background-image: radial-gradient(circle, var(--dot) 1.4px, transparent 1.8px); background-size: 16px 16px; aspect-ratio: 16 / 10; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-  .ah-sun { position: absolute; inset: -40%; background: repeating-conic-gradient(from 0deg, rgba(251, 208, 72, 0.55) 0 12deg, transparent 12deg 30deg); animation: ah-spin 18s linear infinite; }
+  .ah-sun { position: absolute; inset: -40%; background: repeating-conic-gradient(from 0deg, rgba(251, 208, 72, 0.55) 0 12deg, transparent 12deg 30deg); animation: ah-spin 18s linear infinite; will-change: transform; }
   .ah-tabtop { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: linear-gradient(180deg, #fde68a, #fbbf24); border: 2px solid #241e1a; border-radius: 999px; padding: 2px 12px; font-size: 10px; font-weight: 900; letter-spacing: 0.04em; color: #5b3405; white-space: nowrap; box-shadow: 0 2px 0 #241e1a; z-index: 1; }
   .ah-catbtn { width: 100%; justify-content: flex-start; padding: 0 16px; height: 46px; font-size: 15px; }
   .ah-shake { animation: ah-shake 0.4s ease; }
   .ah-fly { position: fixed; z-index: 40; pointer-events: none; animation: ah-fly 0.85s cubic-bezier(0.5, 0, 0.75, 0.4) forwards; }
   .ah-sk { background: linear-gradient(90deg, #f2e8dc 0, #fbf6ee 45%, #f2e8dc 90%); background-size: 600px 100%; animation: ah-sk 1.3s linear infinite; }
+}
+/* Điện thoại: lưới 2 cột (dễ lướt 50+ món như tiệm trong game) → thẻ thu gọn */
+@layer components {
+  @media (max-width: 639px) {
+    .ah-pcard { padding: 8px; gap: 7px; border-radius: 18px; border-width: 2.5px; box-shadow: 0 4px 0 #241e1a; }
+    .ah-phead { font-size: 12.5px; line-height: 1.25; padding: 5px 6px; border-radius: 10px; border-width: 2px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: calc(2.5em + 14px); }
+    .ah-ppill { font-size: 10px; padding: 1px 7px; }
+    .ah-pstock { font-size: 10px; padding: 0 6px; }
+    .ah-part { aspect-ratio: 1 / 1; border-radius: 12px; }
+    .ah-tabtop { font-size: 8px; padding: 1px 8px; top: -11px; }
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .ah-sun, .ah-shake, .ah-sk { animation: none !important; }

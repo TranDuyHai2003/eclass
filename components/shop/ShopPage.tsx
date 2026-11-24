@@ -18,6 +18,7 @@ import type { Outcome } from "@/lib/game/gacha-shared";
 import { buildNpcLines } from "@/lib/game/npc";
 import { buzz, isSoundOn, onSoundChange, play, setSoundOn } from "@/lib/sound";
 import { V2Art, V2_MASCOT, rewardArtV2, v2Index } from "@/components/studio/Sprite";
+import { pauseOffscreen } from "@/lib/offscreen";
 import { LevelUpDialog, useOnline, useTweenNumber } from "@/components/studio/effects";
 import { PetSvg } from "@/components/avatar/PetSvg";
 import { Confetti } from "@/components/points/Confetti";
@@ -542,7 +543,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                 {!data.isOffline && (cat === "all" || cat === "physical") && !data.rewards.some((r) => r.kind === "PHYSICAL") && (
                   <p className="text-xs font-bold text-[#6e4722]">Quà hiện vật được trao tại lớp học offline, vì vậy bạn chỉ thấy các quà dành cho mọi học sinh.</p>
                 )}
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(min(240px,100%),1fr))] gap-x-[22px] gap-y-[26px] pt-1.5">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(min(240px,100%),1fr))] gap-x-[22px] gap-y-[26px] pt-1.5 max-sm:grid-cols-2 max-sm:gap-x-3 max-sm:gap-y-5" data-testid="shop-grid">
                   {list.map((e) => (
                     <Card key={e.key} e={e} st={stateOf(e)} avatar={avatar} name={user.name} onOpen={() => open(e)} />
                   ))}
@@ -733,6 +734,9 @@ const entrySig = (e: Entry) => (e.kind === "reward" ? `${e.key}|${e.r.title}|${e
 const Card = memo(CardView, (a: CardProps, b: CardProps) => entrySig(a.e) === entrySig(b.e) && sameSt(a.st, b.st) && a.avatar === b.avatar && a.name === b.name);
 
 function CardView({ e, st, avatar, name, onOpen }: CardProps) {
+  // Tia nắng xoay (huyền thoại), hiệu ứng bảng tên… của thẻ ngoài màn hình thì dừng — trước đây chạy hết cả lưới
+  const cardRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => pauseOffscreen(cardRef.current), []);
   const leg = e.rarity === "legendary";
   const quick = e.kind === "item" && QUICK_EQUIP.includes(e.it.slot);
   const minLevel = e.kind === "item" ? e.it.minLevel : undefined;
@@ -763,11 +767,12 @@ function CardView({ e, st, avatar, name, onOpen }: CardProps) {
       title={!st.own && !st.gachaOnly && !st.ok ? `Còn thiếu ${st.gem ? st.need - st.have : fmt(st.need - st.have)} ${st.gem ? "kim cương" : "xu"}` : undefined}
       data-testid={e.kind === "reward" ? "reward-card" : "item-card"}
       {...extra}
+      ref={cardRef}
       className={cn("ah-pcard", `r-${e.rarity}`)}
     >
       {leg && <span className="ah-tabtop">CỰC PHẨM HUYỀN THOẠI</span>}
       <span className="ah-phead ah-hand">{e.name}</span>
-      <span className="flex items-center justify-between gap-1.5">
+      <span className="flex flex-wrap items-center justify-between gap-1">
         <span className="ah-ppill">{RAR_LABEL[e.rarity]}</span>
         <span className="ah-pstock">{stock}</span>
       </span>
@@ -775,7 +780,7 @@ function CardView({ e, st, avatar, name, onOpen }: CardProps) {
         {leg && <span className="ah-sun" aria-hidden />}
         {e.kind === "reward" ? <V2Art index={rewardArtV2(e.r.title, e.r.kind)} className="relative h-[82%]" /> : <ItemArt it={e.it} avatar={avatar} name={name} />}
       </span>
-      <span className={cn("ah-btn h-[46px] gap-2 px-4 text-base", cls)}>
+      <span className={cn("ah-btn h-[46px] gap-2 px-4 text-base max-sm:h-[38px] max-sm:gap-1.5 max-sm:px-2 max-sm:text-[13px]", cls)}>
         {icon === "coin" && <CoinDot size={19} className="border-2" />}
         {icon === "gem" && <GemDot size={13} className="mx-[3px] border-2" />}
         {text}

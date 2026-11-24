@@ -51,8 +51,10 @@ async function rankedUsers(scope: Scope, period: Period) {
     xuBy = new Map(users.map((u) => [u.id, u.pointWallet?.lifetimeEarned ?? 0]));
   }
 
+  // Bạn chưa có xu (0) không lên bảng — bảng đầy "0 xu · Chó rách" trông như lỗi (thầy 24/11)
   return users
     .map((u) => ({ u, xu: xuBy.get(u.id) ?? 0 }))
+    .filter((r) => r.xu > 0)
     .sort((a, b) => b.xu - a.xu || (b.u.pointWallet?.lifetimeEarned ?? 0) - (a.u.pointWallet?.lifetimeEarned ?? 0) || (a.u.name ?? "").localeCompare(b.u.name ?? ""));
 }
 

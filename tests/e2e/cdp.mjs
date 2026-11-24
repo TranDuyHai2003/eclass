@@ -89,6 +89,8 @@ export async function openBrowser({ baseUrl, token, width = 1366, height = 900 }
   return {
     errors,
     consoleErrors,
+    /** Lệnh CDP thô (vd đo hiệu năng: Emulation.setCPUThrottlingRate, Performance.getMetrics) */
+    send,
     ev,
     waitText,
     setSize,

@@ -15,7 +15,7 @@ after(async () => {
 
 // Khối 7 và 8 để không đụng dữ liệu thật của DB local (khối 10–12)
 let c7a: string, c7b: string, c8: string;
-let a: string, b: string, c: string, d: string;
+let a: string, b: string, c: string, d: string, z: string;
 before(async () => {
   c7a = (await prisma.studyClass.create({ data: { name: `${fx.tag} 7A`, grade: 7 } })).id;
   c7b = (await prisma.studyClass.create({ data: { name: `${fx.tag} 7B`, grade: 7 } })).id;
@@ -24,6 +24,7 @@ before(async () => {
   b = (await fx.user({ classId: c7b })).id;
   c = (await fx.user({ classId: c8 })).id;
   d = (await fx.user({ classId: c7a, isDemo: true })).id;
+  z = (await fx.user({ classId: c7b })).id; // chưa có xu
   const unapproved = (await fx.user({ classId: c7a, isApproved: false })).id;
   await fx.give(a, 1000);
   await fx.give(b, 3000);
@@ -68,5 +69,12 @@ describe("Bảng Vàng", () => {
     assert.deepEqual(mine, { rank: 2, total: 2, xu: 1000 });
     assert.equal(await getMyRank(c, { grade: 7 }, "all"), null, "khác khối → null");
     assert.equal((await getLeaderboardUncached({ grade: 99 }, "all", 10)).length, 0);
+  });
+
+  test("bạn chưa có xu không lên bảng, không tính vào tổng", async () => {
+    const rows = await getLeaderboardUncached({ grade: 7 }, "all", 30);
+    assert.ok(!rows.some((r) => r.userId === z));
+    assert.equal(await getMyRank(z, { grade: 7 }, "all"), null);
+    assert.deepEqual(await getMyRank(a, { grade: 7 }, "all"), { rank: 2, total: 2, xu: 1000 });
   });
 });

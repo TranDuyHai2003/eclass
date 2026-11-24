@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { ITEM_BY_ID } from "@/lib/game/items";
 import { cn } from "@/lib/utils";
+import { pauseOffscreen } from "@/lib/offscreen";
 import "./frame-fx.css";
 
 /**
@@ -251,20 +252,10 @@ export function frameFxKind(frameId?: string | null): Kind | null {
   return (it.v2 ?? (it.v === "gold" || it.v === "rainbow" ? it.v : "plain")) as Kind;
 }
 
-/** Một IntersectionObserver dùng chung: hiệu ứng ngoài màn hình tạm dừng (lưới 30+ thẻ trên điện thoại không chạy hết cùng lúc) */
-let io: IntersectionObserver | null = null;
-function watch(el: Element) {
-  if (typeof IntersectionObserver === "undefined") return () => {};
-  io ??= new IntersectionObserver((entries) => entries.forEach((e) => e.target.toggleAttribute("data-off", !e.isIntersecting)), { rootMargin: "80px" });
-  el.setAttribute("data-off", "");
-  io.observe(el);
-  return () => io?.unobserve(el);
-}
-
 export function FrameFx({ frameId, className }: { frameId?: string | null; className?: string }) {
   const kind = frameFxKind(frameId);
   const ref = useRef<SVGSVGElement>(null);
-  useEffect(() => (ref.current ? watch(ref.current) : undefined), [kind]);
+  useEffect(() => pauseOffscreen(ref.current), [kind]);
   if (!kind) return null;
   return (
     <svg ref={ref} viewBox="0 0 120 120" aria-hidden className={cn("ffx pointer-events-none absolute inset-0 h-full w-full select-none", className)} data-frame-fx={kind}>

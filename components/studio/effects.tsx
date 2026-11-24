@@ -151,7 +151,8 @@ export function useTweenNumber(value: number) {
     const t0 = performance.now();
     let raf = 0;
     const step = (t: number) => {
-      const k = Math.min(1, (t - t0) / 600);
+      // Mốc khung hình đầu (t) có thể SỚM hơn t0 → k âm → số tụt dưới giá trị cũ một khung (12.500 → 12.373 → 12.800)
+      const k = Math.min(1, Math.max(0, (t - t0) / 600));
       setShown(Math.round(start + (value - start) * (1 - Math.pow(1 - k, 3))));
       if (k < 1) raf = requestAnimationFrame(step);
       else {
