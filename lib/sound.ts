@@ -30,6 +30,7 @@ export function setSoundOn(on: boolean) {
     /* bộ nhớ bị chặn → chỉ áp dụng trong phiên */
   }
   listeners.forEach((l) => l(on));
+  if (typeof window !== "undefined") setMediaChannel(on);
   if (on) play("click");
 }
 
@@ -68,8 +69,57 @@ function getCtx(): AudioContext | null {
  * Một số tiếng phát sau khi chờ server (đổi quà, mở hộp…) nên ngoài lần chạm → im lặng. Mở khoá ở mọi lần chạm đầu
  * (và sau khi trang bị ẩn rồi hiện lại) bằng một đoạn im lặng rất ngắn.
  */
+/**
+ * iPhone / iPad: Web Audio mặc định đi kênh "âm thanh nền" (ambient) → TẮT theo nút gạt im lặng / chế độ tắt chuông,
+ * dù âm lượng media đang bật (video, nhạc vẫn kêu). Chuyển sang kênh phát media:
+ *  - iOS 16.4+: navigator.audioSession.type = "playback";
+ *  - iOS cũ: phát lặp một đoạn <audio> im lặng (phần tử media kéo cả trang sang kênh media).
+ */
+type AudioSessionNav = Navigator & { audioSession?: { type: string } };
+let silentEl: HTMLAudioElement | null = null;
+const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+function silentWavUrl() {
+  // 0,25 giây im lặng, 8 kHz, 8-bit mono
+  const n = 2000;
+  const buf = new ArrayBuffer(44 + n);
+  const v = new DataView(buf);
+  const w = (o: number, t: string) => [...t].forEach((ch, i) => v.setUint8(o + i, ch.charCodeAt(0)));
+  w(0, "RIFF"); v.setUint32(4, 36 + n, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+  w(36, "data"); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
+
+function setMediaChannel(on: boolean) {
+  try {
+    const nav = navigator as AudioSessionNav;
+    if (nav.audioSession) {
+      const want = on ? "playback" : "auto";
+      if (nav.audioSession.type !== want) nav.audioSession.type = want;
+      return;
+    }
+    if (!isIOS()) return;
+    if (!on) {
+      silentEl?.pause();
+      return;
+    }
+    if (!silentEl) {
+      silentEl = new Audio(silentWavUrl());
+      silentEl.loop = true;
+      silentEl.setAttribute("playsinline", "");
+      silentEl.setAttribute("x-webkit-airplay", "deny");
+    }
+    if (silentEl.paused) void silentEl.play().catch(() => {});
+  } catch {
+    /* trình duyệt không hỗ trợ → giữ mặc định */
+  }
+}
+
 function unlock() {
   if (!isSoundOn()) return;
+  setMediaChannel(true);
   const c = getCtx();
   if (!c || !master) return;
   try {
@@ -168,6 +218,14 @@ const SOUNDS: Record<SoundName, Note[]> = {
 export function play(name: SoundName) {
   if (!isSoundOn()) return;
   try {
+    const c = getCtx();
+    if (!c) return;
+    // Âm thanh vừa mở lại (sau khoá màn hình, chuyển app, lần chạm đầu): chờ chạy hẳn rồi mới hẹn giờ phát —
+    // hẹn ngay thì mốc thời gian có thể đã trôi qua và tiếng bị nuốt
+    if (c.state !== "running") {
+      void c.resume().then(() => c.state === "running" && tone(SOUNDS[name])).catch(() => {});
+      return;
+    }
     tone(SOUNDS[name]);
   } catch {
     /* bỏ qua lỗi audio */
