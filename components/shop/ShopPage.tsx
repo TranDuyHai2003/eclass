@@ -159,30 +159,29 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       /* bỏ qua */
     }
   }, [level.level, user.id]);
-  // Chuyển mục: nếu đầu mục nằm ngoài tầm nhìn (trôi lên trên, hoặc còn khuất bên dưới — điện thoại / màn thấp) thì cuộn tới.
-  // Trước 24/11 chỉ cuộn khi trôi lên trên → bấm "Nộp bài" / "Thẻ cào" trên điện thoại như không có tác dụng.
+  // Đổi danh mục: nếu đầu lưới đã trôi lên khỏi màn hình thì cuộn lên. Các mục Nộp bài / Thẻ cào / Hộp bí ẩn / Túi đồ
+  // mở bằng hộp nổi ngay tại chỗ (thầy 24/11: không nhảy xuống nội dung) nên không cần cuộn.
   useEffect(() => {
     if (firstSec.current) {
       firstSec.current = false;
       return;
     }
     const el = mainRef.current;
-    if (!el) return;
-    const top = el.getBoundingClientRect().top;
-    if (top < 0 || top > window.innerHeight * 0.6) el.scrollIntoView({ block: "start", behavior: "smooth" });
-  }, [sec, cat]);
+    if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [cat]);
   // Đóng hộp chi tiết bằng phím Esc
   useEffect(() => {
-    if (!selKey && !custom && !gold) return;
+    if (!selKey && !custom && !gold && sec === "shop") return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       setSelKey(null);
       setCustom(false);
       setGold(false);
+      setSec("shop");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selKey, custom, gold]);
+  }, [selKey, custom, gold, sec]);
 
   const goSec = (k: Sec) => {
     play("click");
@@ -491,7 +490,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           </aside>
 
           <main ref={mainRef} className="flex min-w-0 flex-[999_1_600px] scroll-mt-4 flex-col gap-[18px]">
-            {sec === "shop" ? (
               <div className="flex flex-col gap-[18px]">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <h2 className="ah-hand text-[26px] font-bold">
@@ -550,12 +548,19 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                   )}
                 </div>
               </div>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-center gap-3">
-                  <button type="button" data-testid="shop-modal-close" onClick={() => goSec("shop")} className="ah-btn ah-cream h-10 px-3.5 text-sm">← Về cửa hàng</button>
-                  <h2 className="ah-hand text-[26px] font-bold" data-testid="sec-title">{SEC_TITLE[sec]}</h2>
-                </div>
+          </main>
+        </div>
+      </div>
+
+      {/* ===== Các mục Nộp bài / Thẻ cào / Hộp bí ẩn / Túi đồ: hộp nổi ngay tại chỗ (như mẫu Gemini), không nhảy trang ===== */}
+      {sec !== "shop" && (
+        <div className="fixed inset-0 z-[58] flex items-end justify-center overscroll-contain bg-[rgba(36,30,26,0.55)] sm:items-center sm:p-4" onClick={(e) => e.target === e.currentTarget && goSec("shop")}>
+          <div role="dialog" aria-modal="true" aria-labelledby="sec-title" data-testid="sec-modal" className={cn("ah-dialog ah-panel v2-pop relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-b-none sm:max-h-[88vh] sm:rounded-b-[26px]", sec === "code" ? "sm:max-w-[560px]" : "sm:max-w-[860px]")}>
+            <div className="flex shrink-0 items-center gap-3 border-b-2 border-[#efe3cc] px-4 py-3 sm:px-5">
+              <h2 id="sec-title" className="ah-hand min-w-0 flex-1 truncate text-[22px] font-bold" data-testid="sec-title">{SEC_TITLE[sec]}</h2>
+              <button type="button" aria-label="Đóng" data-testid="shop-modal-close" onClick={() => goSec("shop")} className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-[2.5px] border-[#241e1a] bg-[#ef5b4c] text-lg font-black leading-none text-white shadow-[0_3px_0_#241e1a]">×</button>
+            </div>
+            <div className="flex min-h-0 flex-col gap-[18px] overflow-y-auto p-4 sm:p-5">
                 {sec === "earn" && <EarnSection todo={todo} todoTotal={todoTotal} recent={recent} lifetimeEarned={wallet.lifetimeEarned} level={level.level} />}
                 {sec === "code" && <CodeSection canEarn={data.canEarn} onWon={() => flyCoins("in")} />}
                 {sec === "gacha" &&
@@ -565,11 +570,10 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                     <div className="ah-panel ah-hand p-10 text-center text-base">Hộp bí ẩn đang tạm đóng. Quay lại sau nhé!</div>
                   ))}
                 {sec === "bag" && <BagSection redemptions={data.redemptions} owned={[...owned]} avatar={avatar} pending={pending} name={user.name} onEquip={equip} onCancel={(id) => run(() => cancelRedemption(id))} />}
-              </>
-            )}
-          </main>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ===== Hộp chi tiết món (canvas: thẻ theo độ hiếm) ===== */}
       {sel && renderModal(sel)}

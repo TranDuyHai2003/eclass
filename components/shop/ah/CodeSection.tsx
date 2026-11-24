@@ -152,11 +152,11 @@ export function CodeSection({ canEarn, onWon }: { canEarn: boolean; onWon?: () =
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === "Enter" && !pending && canEarn && submit()}
-                placeholder="VD: DIEM10, CHAMCHI…"
+                placeholder="Nhập mã"
                 maxLength={MAX_CODE_LENGTH + 4}
                 spellCheck={false}
                 autoComplete="off"
-                className={cn("h-12 min-w-0 flex-1 rounded-full border-[2.5px] border-[#241e1a] bg-[#fffdf8] px-[18px] font-extrabold uppercase tracking-[0.12em] outline-none placeholder:tracking-normal placeholder:text-[#b9a58a]", err && "ah-shake")}
+                className={cn("h-12 min-w-0 flex-1 rounded-full border-[2.5px] border-[#241e1a] bg-[#fffdf8] px-[18px] font-extrabold uppercase tracking-[0.12em] outline-none placeholder:normal-case placeholder:tracking-normal placeholder:font-bold placeholder:text-[#b9a58a]", err && "ah-shake")}
               />
               <button type="button" data-testid="giftcode-submit" disabled={pending || !canEarn || clean.length === 0} onClick={submit} className="ah-btn ah-coral h-12 px-[22px] text-base">
                 {pending && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />}Nhận quà

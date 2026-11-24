@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import { ITEM_BY_ID } from "@/lib/game/items";
 import { cn } from "@/lib/utils";
 import "./frame-fx.css";
@@ -26,7 +29,7 @@ function Twinkles({ n, color, size = 1, r = 49, offset = -60 }: { n: number; col
         const [x, y] = at(offset + (360 / n) * i + (i % 2 ? 11 : 0), r + (i % 3) * 3);
         return (
           <g key={i} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${(1.6 * size * (i % 2 ? 0.72 : 1)).toFixed(2)})`}>
-            <path d={STAR} fill={color} stroke="#fff" strokeWidth="0.7" className="ffx-tw" style={{ animationDelay: `${((i * 0.53) % 2.2).toFixed(2)}s`, filter: `drop-shadow(0 0 1.6px ${color})` }} />
+            <path d={STAR} fill={color} stroke="#fff" strokeWidth="0.7" className="ffx-tw" style={{ animationDelay: `${((i * 0.53) % 2.2).toFixed(2)}s` }} />
           </g>
         );
       })}
@@ -92,7 +95,7 @@ function Theme({ kind }: { kind: Kind }) {
     case "angel":
       return (
         <>
-          <ellipse cx="60" cy="10" rx="20" ry="7" fill="#fde68a" className="ffx-pulse" style={{ filter: "blur(2.5px)" }} />
+          <ellipse cx="60" cy="10" rx="20" ry="7" fill="#fde68a" className="ffx-pulse" />
           <Twinkles n={4} color="#7dd3fc" size={0.9} />
         </>
       );
@@ -112,7 +115,7 @@ function Theme({ kind }: { kind: Kind }) {
     case "laurel":
       return (
         <>
-          <circle cx="60" cy="60" r="47" fill="none" stroke="#fde68a" strokeWidth="9" className="ffx-glow" style={{ filter: "blur(3px)" }} />
+          <circle cx="60" cy="60" r="47" fill="none" stroke="#fde68a" strokeWidth="9" className="ffx-glow" />
           <Sheen color="#fffbeb" width={4} />
           <Twinkles n={kind === "laurel" ? 4 : 6} color="#fde047" size={kind === "gold" ? 1.15 : 1} />
         </>
@@ -141,21 +144,21 @@ function Theme({ kind }: { kind: Kind }) {
     case "fire":
       return (
         <>
-          <circle cx="60" cy="60" r="47" fill="none" stroke="#fb923c" strokeWidth="8" className="ffx-glow" style={{ filter: "blur(3px)" }} />
+          <circle cx="60" cy="60" r="47" fill="none" stroke="#fb923c" strokeWidth="8" className="ffx-glow" />
           <Rising points={[[26, 70], [40, 96], [60, 104], [82, 96], [96, 68], [60, 14]]} dur={1.8} render={(i) => <circle r={i % 2 ? 1.6 : 2.2} fill={i % 3 ? "#fde047" : "#f97316"} />} />
         </>
       );
     case "neon":
       return (
         <>
-          <circle cx="60" cy="60" r="45" fill="none" stroke="#22d3ee" strokeWidth="10" className="ffx-flicker" style={{ filter: "blur(4px)" }} />
+          <circle cx="60" cy="60" r="45" fill="none" stroke="#22d3ee" strokeWidth="10" className="ffx-flicker" />
           <Sheen color="#f0abfc" width={4} />
         </>
       );
     case "moon":
       return (
         <>
-          <circle cx="60" cy="60" r="47" fill="none" stroke="#a5b4fc" strokeWidth="8" className="ffx-glow" style={{ filter: "blur(3px)" }} />
+          <circle cx="60" cy="60" r="47" fill="none" stroke="#a5b4fc" strokeWidth="8" className="ffx-glow" />
           <Twinkles n={7} color="#a5b4fc" size={0.9} />
           <Sheen color="#fde68a" slow width={3} />
         </>
@@ -171,7 +174,7 @@ function Theme({ kind }: { kind: Kind }) {
     case "rose":
       return (
         <>
-          <circle cx="60" cy="60" r="47" fill="none" stroke="#c7d2fe" strokeWidth="8" className="ffx-glow" style={{ filter: "blur(3px)" }} />
+          <circle cx="60" cy="60" r="47" fill="none" stroke="#c7d2fe" strokeWidth="8" className="ffx-glow" />
           <Sheen color="#ffffff" width={4} />
           <Twinkles n={5} color="#c7d2fe" />
         </>
@@ -179,7 +182,7 @@ function Theme({ kind }: { kind: Kind }) {
     case "rank-diamond":
       return (
         <>
-          <circle cx="60" cy="60" r="44" fill="none" stroke="#67e8f9" strokeWidth="9" className="ffx-glow" style={{ filter: "blur(3px)" }} />
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#67e8f9" strokeWidth="9" className="ffx-glow" />
           <Sheen color="#ffffff" width={3.5} />
           <Twinkles n={6} color="#22d3ee" />
         </>
@@ -187,7 +190,7 @@ function Theme({ kind }: { kind: Kind }) {
     case "rank-master":
       return (
         <>
-          <circle cx="60" cy="60" r="44" fill="none" stroke="#e879f9" strokeWidth="11" className="ffx-glow" style={{ filter: "blur(4px)" }} />
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#e879f9" strokeWidth="11" className="ffx-glow" />
           <Sheen color="#fdf4ff" width={4} />
           <g className="ffx-spin" style={{ animationDelay: "-2.2s" }}><path d="M60 13a47 47 0 0 1 33 13.7" fill="none" stroke="#f0abfc" strokeWidth="3" strokeLinecap="round" opacity="0.8" /></g>
           <Twinkles n={7} color="#e879f9" />
@@ -200,10 +203,10 @@ function Theme({ kind }: { kind: Kind }) {
           {/* tia sáng xoay chậm sau vương miện */}
           <g className="ffx-spin-slow" opacity="0.55">
             {Array.from({ length: 12 }, (_, i) => (
-              <path key={i} d="M57 13 60 1l3 12z" fill={i % 2 ? "#fde68a" : "#bae6fd"} transform={`rotate(${i * 30} 60 60)`} style={{ filter: "blur(1.5px)" }} />
+              <path key={i} d="M57 13 60 1l3 12z" fill={i % 2 ? "#fde68a" : "#bae6fd"} transform={`rotate(${i * 30} 60 60)`} />
             ))}
           </g>
-          <circle cx="60" cy="60" r="44" fill="none" stroke="#fcd34d" strokeWidth="12" className="ffx-glow" style={{ filter: "blur(4px)" }} />
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#fcd34d" strokeWidth="12" className="ffx-glow" />
           <Sheen color="#ffffff" width={4} />
           <g className="ffx-spin" style={{ animationDelay: "-2.2s" }}><path d="M60 13a47 47 0 0 1 33 13.7" fill="none" stroke="#7dd3fc" strokeWidth="3.5" strokeLinecap="round" opacity="0.85" /></g>
           <Twinkles n={8} color="#facc15" size={1.1} />
@@ -213,7 +216,7 @@ function Theme({ kind }: { kind: Kind }) {
     case "galaxy":
       return (
         <>
-          <circle cx="60" cy="60" r="44" fill="none" stroke="#818cf8" strokeWidth="10" className="ffx-glow" style={{ filter: "blur(4px)" }} />
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#818cf8" strokeWidth="10" className="ffx-glow" />
           {/* tiểu hành tinh bay quanh vòng */}
           <g className="ffx-spin-slow"><circle cx="60" cy="16" r="3" fill="#fde68a" stroke="#1e1b4b" strokeWidth="1" /></g>
           <g className="ffx-spin" style={{ animationDuration: "6s", animationDelay: "-3s" }}><circle cx="60" cy="16" r="2" fill="#a5f3fc" /></g>
@@ -223,14 +226,14 @@ function Theme({ kind }: { kind: Kind }) {
     case "fairy":
       return (
         <>
-          <Falling n={6} delayStep={0.6} render={(i) => <path d={STAR} fill={i % 2 ? "#f0abfc" : "#a5f3fc"} transform="scale(0.7)" style={{ filter: "drop-shadow(0 0 1.5px #f0abfc)" }} />} />
+          <Falling n={6} delayStep={0.6} render={(i) => <path d={STAR} fill={i % 2 ? "#f0abfc" : "#a5f3fc"} transform="scale(0.7)" />} />
           <Twinkles n={5} color="#e879f9" size={0.9} />
         </>
       );
     case "phoenix":
       return (
         <>
-          <circle cx="60" cy="60" r="44" fill="none" stroke="#f97316" strokeWidth="11" className="ffx-glow" style={{ filter: "blur(4px)" }} />
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#f97316" strokeWidth="11" className="ffx-glow" />
           <Sheen color="#fef08a" width={4} />
           <Rising points={[[22, 40], [98, 40], [16, 64], [104, 64], [60, 4], [48, 108], [72, 108]]} dur={1.7} render={(i) => <circle r={i % 2 ? 1.5 : 2.2} fill={i % 3 ? "#fde047" : "#fb923c"} />} />
           <Twinkles n={4} color="#fbbf24" />
@@ -248,11 +251,23 @@ export function frameFxKind(frameId?: string | null): Kind | null {
   return (it.v2 ?? (it.v === "gold" || it.v === "rainbow" ? it.v : "plain")) as Kind;
 }
 
+/** Một IntersectionObserver dùng chung: hiệu ứng ngoài màn hình tạm dừng (lưới 30+ thẻ trên điện thoại không chạy hết cùng lúc) */
+let io: IntersectionObserver | null = null;
+function watch(el: Element) {
+  if (typeof IntersectionObserver === "undefined") return () => {};
+  io ??= new IntersectionObserver((entries) => entries.forEach((e) => e.target.toggleAttribute("data-off", !e.isIntersecting)), { rootMargin: "80px" });
+  el.setAttribute("data-off", "");
+  io.observe(el);
+  return () => io?.unobserve(el);
+}
+
 export function FrameFx({ frameId, className }: { frameId?: string | null; className?: string }) {
   const kind = frameFxKind(frameId);
+  const ref = useRef<SVGSVGElement>(null);
+  useEffect(() => (ref.current ? watch(ref.current) : undefined), [kind]);
   if (!kind) return null;
   return (
-    <svg viewBox="0 0 120 120" aria-hidden className={cn("ffx pointer-events-none absolute inset-0 h-full w-full select-none", className)} data-frame-fx={kind}>
+    <svg ref={ref} viewBox="0 0 120 120" aria-hidden className={cn("ffx pointer-events-none absolute inset-0 h-full w-full select-none", className)} data-frame-fx={kind}>
       <Theme kind={kind} />
     </svg>
   );

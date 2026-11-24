@@ -740,12 +740,13 @@ try {
     expect(/%/.test(ice), `khung Băng Tinh chưa tính nền theo %: ${ice}`);
     await s.ev(`document.querySelector('[data-testid="cat-all"]').click()`);
     await sleep(200);
-    // Hồi quy 24/11: trên điện thoại bấm "Nộp bài" / "Thẻ cào & Code" phải cuộn tới mục (trước đây mục đổi ở dưới, nhìn như không bấm được)
+    // Hồi quy 24/11: trên điện thoại bấm "Nộp bài" / "Thẻ cào & Code" mở hộp nổi ngay tại chỗ — thấy ngay, trang KHÔNG nhảy xuống nội dung
     for (const [btn, title] of [["code-open", /Thẻ cào/], ["tasks-open", /Nộp bài/]]) {
       await s.ev(`window.scrollTo(0, 0); document.querySelector('[data-testid="${btn}"]').click()`);
-      await sleep(1200);
-      const pos = await s.ev(`const h=document.querySelector('[data-testid="sec-title"]'); const r=h?.getBoundingClientRect(); return { text: h?.innerText || "", top: r ? Math.round(r.top) : -1, vh: innerHeight }`);
-      expect(title.test(pos.text) && pos.top >= 0 && pos.top < pos.vh, `bấm ${btn} không thấy mục: ${JSON.stringify(pos)}`);
+      await sleep(700);
+      const pos = await s.ev(`const h=document.querySelector('[data-testid="sec-modal"] [data-testid="sec-title"]'); const r=h?.getBoundingClientRect(); return { text: h?.innerText || "", top: r ? Math.round(r.top) : -1, vh: innerHeight, y: Math.round(scrollY), ph: document.querySelector('[data-testid="sec-modal"] input')?.placeholder ?? null }`);
+      expect(title.test(pos.text) && pos.top >= 0 && pos.top < pos.vh && pos.y === 0, `bấm ${btn} không mở hộp tại chỗ: ${JSON.stringify(pos)}`);
+      if (btn === "code-open") expect(pos.ph !== null && !/DIEM|CHAMCHI|PHUONG/i.test(pos.ph), `ô nhập mã còn lộ mã mẫu: ${pos.ph}`);
       await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
       await sleep(300);
     }
