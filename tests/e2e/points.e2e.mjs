@@ -729,6 +729,9 @@ try {
     await s.setSize(320, 640);
     await s.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
     expect(await s.ev(`const t=document.querySelector('[role="tablist"][aria-label="Danh mục quà"]'); return !!t && [...t.children].every(c => c.getAttribute("role") === "tab")`), "tablist chứa phần tử không phải tab");
+    // Hồi quy 24/11: danh mục bị giãn theo cả hàng nút → thân tiệm tràn khỏi màn hình, không kéo tới mục cuối
+    const fit = await s.ev(`const a=document.querySelector('aside[aria-label="Danh mục tiệm quà"]').getBoundingClientRect(); const c=document.querySelector('[data-testid="reward-card"],[data-testid="item-card"]').getBoundingClientRect(); const t=document.querySelector('[role="tablist"][aria-label="Danh mục quà"]'); return { aside: Math.round(a.right), card: Math.round(c.right), vw: innerWidth, scroll: t.scrollWidth > t.clientWidth && t.clientWidth <= innerWidth }`);
+    expect(fit.aside <= fit.vw && fit.card <= fit.vw && fit.scroll, `danh mục / thẻ tràn màn hình 320px: ${JSON.stringify(fit)}`);
     await s.ev(`document.querySelector('[data-testid="reward-card"],[data-testid="item-card"]').click()`);
     await sleep(500);
     const geo = await s.ev(`const d=document.querySelector('[data-testid="shop-detail"]').getBoundingClientRect(); return { left: d.left, right: d.right, vw: innerWidth }`);

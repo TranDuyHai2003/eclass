@@ -371,7 +371,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2.5">
             <span className="ah-ink flex h-[42px] items-center gap-2 rounded-full bg-[#fffdf8] px-4 text-base font-black shadow-[0_3px_0_#241e1a]" data-testid="hud-balance" title="Xu tiêu được">
-              <span ref={coinRef}><CoinDot size={20} /></span>
+              <span ref={coinRef} className="flex"><CoinDot size={20} /></span>
               <span key={xuShown.bump} className={cn("tabular-nums", xuShown.bump > 0 && "v2-bump")}>{fmt(xuShown.shown)}</span>
             </span>
             <span className="ah-ink flex h-[42px] items-center gap-2 rounded-full bg-[#fffdf8] px-4 text-base font-black shadow-[0_3px_0_#241e1a]" data-testid="hud-gems" title="Kim cương">
@@ -464,9 +464,9 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
 
         {/* ===== Thân trang ===== */}
         <div className="flex flex-wrap items-start gap-[22px]">
-          <aside className="ah-panel flex max-w-[290px] flex-[1_1_250px] flex-col gap-2.5 p-4 max-md:max-w-none" aria-label="Danh mục tiệm quà">
+          <aside className="ah-panel flex min-w-0 max-w-[290px] flex-[1_1_250px] flex-col gap-2.5 p-4 max-md:max-w-none" aria-label="Danh mục tiệm quà">
             <div className="ah-hand px-1 pb-1 pt-0.5 font-bold text-[#6e4722]">Danh mục tiệm quà</div>
-            <div role="tablist" aria-label="Danh mục quà" aria-orientation="vertical" className="flex flex-col gap-2.5 max-md:flex-row max-md:overflow-x-auto max-md:pb-2 max-md:[scrollbar-width:none]">
+            <div role="tablist" aria-label="Danh mục quà" aria-orientation="vertical" className="flex min-w-0 flex-col gap-2.5 max-md:-mx-1 max-md:flex-row max-md:overflow-x-auto max-md:px-1 max-md:pb-2 max-md:pt-0.5 max-md:[scrollbar-width:none]">
               {CATS.filter((c) => c.key !== "box" || gacha).map((c) => {
                 const on = c.key === "box" ? sec === "gacha" : sec === "shop" && cat === c.key;
                 return (
@@ -752,8 +752,8 @@ function Card({ e, st, avatar, name, onOpen }: { e: Entry; st: St; avatar: Stude
         {leg && <span className="ah-sun" aria-hidden />}
         {e.kind === "reward" ? <V2Art index={rewardArtV2(e.r.title, e.r.kind)} className="relative h-[82%]" /> : <ItemArt it={e.it} avatar={avatar} name={name} />}
       </span>
-      <span className={cn("ah-btn h-[46px] text-base", cls)}>
-        {icon === "coin" && <CoinDot size={18} className="border-2" />}
+      <span className={cn("ah-btn h-[46px] gap-2 px-4 text-base", cls)}>
+        {icon === "coin" && <CoinDot size={19} className="border-2" />}
         {icon === "gem" && <GemDot size={13} className="mx-[3px] border-2" />}
         {text}
       </span>

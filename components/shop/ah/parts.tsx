@@ -19,7 +19,14 @@ export const RAR_LABEL: Record<Rarity, string> = { common: "Phổ thông", rare:
 
 /** Đồng xu vàng viền mực (đúng hình tròn trong canvas) */
 export function CoinDot({ size = 20, className }: { size?: number; className?: string }) {
-  return <span aria-hidden className={cn("inline-block shrink-0 rounded-full border-[2.2px] border-[#241e1a] bg-[#fbd048]", className)} style={{ width: size, height: size }} />;
+  // Đồng xu có điểm sáng + viền trong → vẫn nổi trên nút vàng (trước đây cùng màu nút nên trông như vòng rỗng)
+  return (
+    <span
+      aria-hidden
+      className={cn("relative inline-block shrink-0 rounded-full border-[2.2px] border-[#241e1a]", className)}
+      style={{ width: size, height: size, background: "radial-gradient(circle at 34% 30%, #fff7cf 0 16%, #ffd84d 17% 58%, #e9a21c 100%)", boxShadow: "inset 0 0 0 1.5px rgba(255,247,207,0.55)" }}
+    />
+  );
 }
 
 /** Kim cương: ô vuông xoay 45° màu xanh trời */
