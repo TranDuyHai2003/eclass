@@ -17,7 +17,7 @@ export default async function GachaRoute({ searchParams }: { searchParams: Promi
   if (!isPointsEnabled() || !isGachaEnabled()) notFound();
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-  if (session.user.role !== "STUDENT") redirect("/teacher/rewards");
+  if (session.user.role !== "STUDENT" && session.user.role !== "ADMIN") redirect("/teacher/rewards");
   if (!canUseShop(session.user)) redirect("/rewards");
   const uid = session.user.id;
 
