@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { EMPTY_GAME_CONFIG, applyGameConfig, type EarningConfig, type GameConfigData, type ItemPrices } from "./game-config-shared";
 
@@ -51,6 +52,8 @@ export async function loadGameConfig(force = false): Promise<GameConfigData> {
       applyGameConfig(data);
       return data;
     } catch (err) {
+      // Lỗi nội bộ của Next (vd đánh dấu trang phải dựng động khi build) phải ném lại, không được nuốt
+      unstable_rethrow(err);
       console.error("[game-config] load failed:", err);
       return cache?.data ?? EMPTY_GAME_CONFIG;
     } finally {
