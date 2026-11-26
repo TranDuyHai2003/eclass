@@ -529,6 +529,8 @@ enum PointSource {
   GIFTCODE
   GACHA
   ITEM
+  /// Thầy cho reset xu toàn bộ học sinh (26/11/2026): dòng âm đưa số dư về 0, không tính vào xu tích luỹ
+  RESET
 }
 
 /// Loại tiền: Xu (học mà có) và Ngọc (mã quà tặng thầy phát)

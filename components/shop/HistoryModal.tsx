@@ -9,7 +9,7 @@ import type { StudentPointsPageData } from "@/lib/points/queries";
 
 const SOURCE_ICON: Record<string, string> = {
   TEST_SUBMIT: "📝", ON_TIME: "⏰", TEST_SCORE: "🎯", BREAKTHROUGH: "🚀", FINAL_TEST: "🏁", HOMEWORK_SUBMIT: "📒", HOMEWORK_PASS: "✅",
-  STREAK: "🔥", MANUAL: "👨‍🏫", REDEEM: "🎁", REFUND: "↩️", REVOKE: "⛔", GIFTCODE: "🎟️", GACHA: "🎁", ITEM: "🎨",
+  STREAK: "🔥", MANUAL: "👨‍🏫", REDEEM: "🎁", REFUND: "↩️", REVOKE: "⛔", GIFTCODE: "🎟️", GACHA: "🎁", ITEM: "🎨", HOMEWORK_REVIEW: "✍️", RESET: "🔄",
 };
 const RULE_ICONS = ["📝", "⏰", "🎯", "🚀", "🏁", "📒", "🔥", "👨‍🏫", "🎟️"];
 const fmtDate = (iso: string) => new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));

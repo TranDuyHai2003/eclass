@@ -70,7 +70,7 @@ export function TasksModal({ open, onOpenChange, inline, todo, todoTotal, recent
       )}
       <div className="mt-3 rounded-2xl border-2 border-[#5b3d1e]/40 bg-[#fff1c2] p-3 text-center">
         <p className="text-sm font-black text-[#5b3d1e]">📸 Chụp / Đăng ảnh bài làm</p>
-        <p className="mt-0.5 text-[11px] font-semibold text-[#7a5a35]">Bài tập về nhà nộp ảnh trong trang bài học trước hạn (+{POINTS.homeworkSubmit} Xu). Thầy duyệt chữa bài trên lớp: +{POINTS.homeworkReview.partial} / +{POINTS.homeworkReview.full} Xu.</p>
+        <p className="mt-0.5 text-[11px] font-semibold text-[#7a5a35]">Bài tập về nhà nộp ảnh trong trang bài học trước hạn (+{POINTS.homeworkSubmit} Xu, lần nộp đầu). Thầy duyệt chữa bài trên lớp: +{POINTS.homeworkReview.partial} / +{POINTS.homeworkReview.full} Xu.</p>
         <Link href="/#lo-trinh" className="btn-pill btn-pill-brown mt-2 px-4 py-1.5 text-xs">Mở lộ trình học</Link>
       </div>
     </ShopModal>

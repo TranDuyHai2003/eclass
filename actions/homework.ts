@@ -162,7 +162,8 @@ export async function submitHomework(
     },
   });
 
-  await onHomeworkSubmitted({ userId: session.user.id, lessonId, submissionId: submission.id });
+  // Nộp lại bài đã có (kể cả bài cũ nộp trước khi reset xu) → không cộng xu
+  await onHomeworkSubmitted({ userId: session.user.id, lessonId, submissionId: submission.id, resubmit: !!existing });
 
   revalidatePath(`/watch/${lessonId}`);
   return { success: true as const, submission };

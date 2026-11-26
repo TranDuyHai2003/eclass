@@ -173,15 +173,18 @@ export function onAttemptDeleted(p: { userId: string; testId: string; teacherId:
   });
 }
 
-/** Học sinh nộp bài tập về nhà (ảnh) — chỉ tính lần nộp đầu của mỗi bài */
-export async function onHomeworkSubmitted(p: { userId: string; lessonId: string; submissionId: string }) {
+/**
+ * Học sinh nộp bài tập về nhà (ảnh) — chỉ LẦN NỘP ĐẦU của mỗi bài được xu.
+ * `resubmit`: đã có bài nộp từ trước (kể cả nộp trước khi reset xu 26/11/2026) → nộp lại / sửa bài không cộng xu (thầy yêu cầu).
+ */
+export async function onHomeworkSubmitted(p: { userId: string; lessonId: string; submissionId: string; resubmit?: boolean }) {
   const now = new Date();
   await runPointsSafely("onHomeworkSubmitted", async (tx) => {
     if (!(await isEligibleStudent(tx, p.userId))) return;
     const wallet = await lockWallet(tx, p.userId);
     // Cơ chế 26/11: chỉ cộng khi nộp TRƯỚC hạn của lớp (chưa đặt hạn → cộng); trễ hạn vẫn tính hoạt động chuỗi tuần
     const due = await homeworkDueFor(tx, p.lessonId, p.userId);
-    if (!due || now <= due) {
+    if (!p.resubmit && (!due || now <= due)) {
       await awardOnce(tx, {
         userId: p.userId,
         amount: POINTS.homeworkSubmit,

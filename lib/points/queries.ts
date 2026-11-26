@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getVietnamMonthStart, getVietnamWeekStart, getWeekCode } from "@/lib/ranking/history-engine";
 import { EARNING_SOURCES, POINTS, STREAK_ACTIVITY_SOURCES } from "./config";
 import { visibleRewardWhere } from "./redemption";
+import { earningPeriodStart } from "./epoch";
 import { getAvatar } from "@/lib/game/inventory";
 
 const EMPTY_WALLET = {
@@ -194,6 +195,8 @@ export type ShopAdminData = Awaited<ReturnType<typeof getShopAdminData>>;
 
 export async function getTeacherRewardsPage() {
   const monthStart = getVietnamMonthStart();
+  // Xu tháng này tính từ mốc reset xu nếu muộn hơn đầu tháng (thầy reset 26/11/2026)
+  const periodStart = await earningPeriodStart();
   const [pending, recent, classes, monthEntries, deliveredThisMonth] = await Promise.all([
     prisma.redemption.findMany({
       where: { status: "PENDING" },
@@ -229,7 +232,7 @@ export async function getTeacherRewardsPage() {
     prisma.pointLedger.groupBy({
       by: ["source"],
       // chỉ xu (ngọc từ mã quà không phải xu)
-      where: { createdAt: { gte: monthStart }, currency: "XU" },
+      where: { createdAt: { gte: periodStart }, currency: "XU" },
       _sum: { amount: true },
     }),
     prisma.redemption.findMany({
@@ -252,7 +255,7 @@ export async function getTeacherRewardsPage() {
   // Top học sinh chăm chỉ tháng này (điểm kiếm được, không tính đổi/hoàn)
   const topRaw = await prisma.pointLedger.groupBy({
     by: ["userId"],
-    where: { createdAt: { gte: monthStart }, currency: "XU", source: { in: [...EARNING_SOURCES] } },
+    where: { createdAt: { gte: periodStart }, currency: "XU", source: { in: [...EARNING_SOURCES] } },
     _sum: { amount: true },
     orderBy: { _sum: { amount: "desc" } },
     take: 10,

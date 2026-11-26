@@ -211,6 +211,15 @@ describe("Xoá lượt làm bài", () => {
 });
 
 describe("Bài tập về nhà", () => {
+  test("nộp lại bài đã có từ trước (resubmit — kể cả bài cũ nộp trước khi reset xu) không cộng xu; lần nộp đầu mới cộng", async () => {
+    const s = await fx.user();
+    const old = fx.tag + "-old-hw";
+    await onHomeworkSubmitted({ userId: s.id, lessonId: old, submissionId: "x", resubmit: true });
+    assert.equal(await fx.balance(s.id), 0, "bài cũ nộp lại không được xu");
+    const fresh = fx.tag + "-new-hw";
+    await onHomeworkSubmitted({ userId: s.id, lessonId: fresh, submissionId: "y" });
+    assert.equal(await fx.balance(s.id), P.homeworkSubmit, "lần nộp đầu được xu");
+  });
   test("nộp (nộp lại không cộng), Đạt cộng, Chưa đạt thu hồi, Đạt lại cộng", async () => {
     const s = await fx.user();
     const lessonId = fx.tag + "-lesson";

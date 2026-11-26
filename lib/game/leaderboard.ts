@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { prismaBase as db } from "@/lib/prisma";
-import { getVietnamMonthStart } from "@/lib/ranking/history-engine";
+import { earningPeriodStart } from "@/lib/points/epoch";
 import { EARNING_SOURCES } from "@/lib/points/config";
 import { genderOf } from "@/lib/game/presets";
 import { getLevel } from "@/lib/points/levels";
@@ -44,7 +44,7 @@ async function rankedUsers(scope: Scope, period: Period) {
   if (period === "month") {
     const rows = await db.pointLedger.groupBy({
       by: ["userId"],
-      where: { userId: { in: ids }, currency: "XU", source: { in: [...EARNING_SOURCES] }, createdAt: { gte: getVietnamMonthStart() } },
+      where: { userId: { in: ids }, currency: "XU", source: { in: [...EARNING_SOURCES] }, createdAt: { gte: await earningPeriodStart(db) } },
       _sum: { amount: true },
     });
     xuBy = new Map(rows.map((r) => [r.userId, Math.max(0, r._sum.amount ?? 0)]));

@@ -98,6 +98,7 @@ export const SOURCE_LABEL: Record<string, string> = {
   GIFTCODE: "Mã quà tặng",
   GACHA: "Rương bí ẩn",
   ITEM: "Mua đồ trang trí",
+  RESET: "Reset xu (bắt đầu tính lại)",
 };
 
 const fmt = (n: number) => n.toLocaleString("vi-VN");
@@ -105,7 +106,7 @@ const fmt = (n: number) => n.toLocaleString("vi-VN");
 /** Quy tắc hiển thị cho học sinh (trang Xu) — lấy từ cấu hình để luôn khớp (hàm: admin sửa mức xu → tính lại) */
 export const earningRules = (): { label: string; points: string; note?: string }[] => {
   const rules: { label: string; points: string; note?: string; on: boolean }[] = [
-    { on: POINTS.homeworkSubmit > 0, label: "Nộp bài tập về nhà đúng hạn", points: `+${fmt(POINTS.homeworkSubmit)}`, note: "Nộp ảnh bài làm trong trang bài học trước hạn thầy giao" },
+    { on: POINTS.homeworkSubmit > 0, label: "Nộp bài tập về nhà đúng hạn", points: `+${fmt(POINTS.homeworkSubmit)}`, note: "Nộp ảnh bài làm trong trang bài học trước hạn thầy giao — chỉ lần nộp đầu, nộp lại không cộng thêm" },
     {
       on: POINTS.homeworkReview.full > 0 || POINTS.homeworkReview.partial > 0,
       label: "Thầy duyệt chữa bài",
