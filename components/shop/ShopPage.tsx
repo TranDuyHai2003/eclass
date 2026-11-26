@@ -762,7 +762,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           <div className="ah-part aspect-video" data-testid="detail-art">
             {e.rarity === "legendary" && <span className="ah-sun" aria-hidden />}
             {e.kind === "reward" ? (
-              <RewardPic title={e.r.title} kind={e.r.kind} className="relative h-[88%]" />
+              <RewardPic title={e.r.title} kind={e.r.kind} imageUrl={e.r.imageUrl} className="relative h-[88%]" />
             ) : plate ? (
               <PlateBox id={e.it.id} className="w-[92%] rounded-[14px] border-[2.5px] shadow-none">
                 <div className={cn("flex min-h-[72px] items-center gap-3 px-3.5 py-2", plateIsDark ? "text-white" : "text-[#1E1B2E]")}>
@@ -801,7 +801,7 @@ type St = { own: boolean; on: boolean; locked: boolean; gachaOnly: boolean; sold
 
 type CardProps = { e: Entry; st: St; avatar: StudentPointsPageData["avatar"]; name: string | null; onOpen: () => void };
 const sameSt = (a: St, b: St) => (Object.keys(a) as (keyof St)[]).every((k) => a[k] === b[k]);
-const entrySig = (e: Entry) => (e.kind === "reward" ? `${e.key}|${e.r.title}|${e.r.price}|${e.r.stock}|${e.r.kind}|${e.r.perStudentMonthlyLimit}` : `${e.key}|${e.it.id}`);
+const entrySig = (e: Entry) => (e.kind === "reward" ? `${e.key}|${e.r.title}|${e.r.price}|${e.r.stock}|${e.r.kind}|${e.r.perStudentMonthlyLimit}|${e.r.imageUrl ?? ""}` : `${e.key}|${e.it.id}`);
 /** Thẻ chỉ vẽ lại khi chính nó đổi (sau mỗi lần làm mới dữ liệu, lưới 30+ thẻ có nhân vật không phải vẽ lại hết — nặng trên điện thoại).
  *  onOpen không so: nó chỉ mở hộp chi tiết theo khoá của thẻ. */
 const Card = memo(CardView, (a: CardProps, b: CardProps) => entrySig(a.e) === entrySig(b.e) && sameSt(a.st, b.st) && a.avatar === b.avatar && a.name === b.name);
@@ -850,7 +850,7 @@ function CardView({ e, st, avatar, name, onOpen }: CardProps) {
         <span className="ah-pstock">{stock}</span>
       </span>
       {e.kind === "reward" ? (
-        <RewardArt title={e.r.title} kind={e.r.kind} stock={e.r.stock} limit={e.r.perStudentMonthlyLimit}>
+        <RewardArt title={e.r.title} kind={e.r.kind} imageUrl={e.r.imageUrl} stock={e.r.stock} limit={e.r.perStudentMonthlyLimit}>
           {leg && <span className="ah-sun" aria-hidden />}
         </RewardArt>
       ) : (

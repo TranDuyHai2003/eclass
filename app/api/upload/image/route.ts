@@ -20,13 +20,20 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Missing file", { status: 400 });
     }
 
+    // Chỉ nhận ảnh (trước đây nhận mọi loại file rồi gắn ContentType theo trình duyệt gửi lên)
+    const IMAGE_TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
+    if (!(file.type in IMAGE_TYPES)) {
+      return new NextResponse("Only JPG, PNG, WEBP or GIF images", { status: 400 });
+    }
+
     // Limit image size to 2MB as per plan
     if (file.size > 2 * 1024 * 1024) {
       return new NextResponse("File too large (> 2MB)", { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const sanitizedFileName = sanitizeFileName(file.name);
+    // Đuôi file theo loại ảnh thật, không theo tên gửi lên
+    const sanitizedFileName = `${sanitizeFileName(file.name).replace(/\.[a-z0-9]+$/, "")}.${IMAGE_TYPES[file.type]}`;
     const uniqueFileName = `${nanoid()}-${sanitizedFileName}`;
     const key = `images/${uniqueFileName}`;
 
@@ -34,7 +41,7 @@ export async function POST(req: NextRequest) {
       Bucket: B2_BUCKET_NAME,
       Key: key,
       Body: buffer,
-      ContentType: file.type || "image/jpeg",
+      ContentType: file.type,
       CacheControl: "public, max-age=31536000",
     });
 

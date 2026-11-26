@@ -59,6 +59,8 @@
   .ah-spot { position: absolute; left: 50%; top: 50%; width: 62%; aspect-ratio: 1; transform: translate(-50%, -46%); border-radius: 999px; background: radial-gradient(circle, rgba(255, 253, 248, 0.95) 0 45%, rgba(255, 253, 248, 0) 70%); pointer-events: none; }
   .ah-gift-item { filter: drop-shadow(0 6px 0 rgba(36, 30, 26, 0.18)); animation: ah-bob 3s ease-in-out infinite; }
   @keyframes ah-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  /* Ảnh quà admin đăng: ô vuông viền mực như tranh của tiệm */
+  .ah-rimg { display: block; aspect-ratio: 1 / 1; width: auto; max-width: 100%; object-fit: cover; border-radius: 16px; border: 2.5px solid #241e1a; background: #fffdf8; box-shadow: 0 3px 0 #241e1a; }
   .ah-bow { position: absolute; z-index: 2; top: -2px; left: 50%; width: 56px; transform: translateX(-50%); pointer-events: none; }
   .ah-tag { position: absolute; z-index: 2; left: 8px; bottom: 8px; padding: 1px 8px 1px 14px; font-size: 10px; font-weight: 900; line-height: 16px; color: #6e4722; background: #fffdf8; border: 2px solid #241e1a; border-radius: 4px 999px 999px 4px; transform: rotate(-4deg); box-shadow: 0 2px 0 #241e1a; pointer-events: none; }
   .ah-tag::before { content: ""; position: absolute; left: 4px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 999px; border: 1.5px solid #241e1a; background: var(--bg); }

@@ -33,8 +33,11 @@ export function TissueArt({ className }: { className?: string }) {
   );
 }
 
-/** Tranh của một quà thầy tạo: tranh riêng (khăn giấy) hoặc ô tranh v2 theo từ khoá */
-export function RewardPic({ title, kind, className }: { title: string; kind: "PHYSICAL" | "VIRTUAL"; className?: string }) {
+/** Tranh của một quà thầy tạo: ảnh admin đăng → tranh riêng (khăn giấy) → ô tranh v2 theo từ khoá */
+export function RewardPic({ title, kind, imageUrl, className }: { title: string; kind: "PHYSICAL" | "VIRTUAL"; imageUrl?: string | null; className?: string }) {
+  if (imageUrl)
+    // eslint-disable-next-line @next/next/no-img-element -- ảnh trên CDN của web (đã cắt vuông, ≤ 800px), không qua tối ưu ảnh của Next
+    return <img src={imageUrl} alt="" loading="lazy" decoding="async" draggable={false} data-reward-img className={cn("ah-rimg", className)} />;
   if (kind === "PHYSICAL" && isTissueReward(title)) return <TissueArt className={className} />;
   return <V2Art index={rewardArtV2(title, kind)} className={className} />;
 }
@@ -43,9 +46,10 @@ export function RewardPic({ title, kind, className }: { title: string; kind: "PH
  * Khung ảnh của một quà thầy tạo: quà hiện vật = hộp quà (ruy băng + nơ, "Nhận tại lớp", "Sắp hết" khi còn ≤ 3),
  * thẻ đặc quyền = tấm vé (khuyết hai bên, đường xé, cuống "VÉ", giới hạn mỗi tháng). Dùng ở lưới tiệm và khu quản lý quà.
  */
-export function RewardArt({ title, kind, stock, limit, className, children }: {
+export function RewardArt({ title, kind, imageUrl, stock, limit, className, children }: {
   title: string;
   kind: "PHYSICAL" | "VIRTUAL";
+  imageUrl?: string | null;
   stock: number | null;
   limit: number | null;
   className?: string;
@@ -80,7 +84,7 @@ export function RewardArt({ title, kind, stock, limit, className, children }: {
           {limit ? <span className="ah-chip-in bl">{limit} lần / tháng</span> : null}
         </>
       )}
-      <RewardPic title={title} kind={kind} className={cn("relative h-[74%]", kind === "PHYSICAL" && "ah-gift-item")} />
+      <RewardPic title={title} kind={kind} imageUrl={imageUrl} className={cn("relative h-[74%]", kind === "PHYSICAL" && "ah-gift-item")} />
       {low && <span className={cn("ah-chip-in low", kind === "PHYSICAL" ? "br" : "tr")}>Sắp hết!</span>}
     </span>
   );

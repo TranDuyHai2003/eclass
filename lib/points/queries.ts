@@ -44,13 +44,13 @@ export async function getStudentPointsPage(userId: string) {
       // Thầy / admin xem tiệm (chế độ xem): thấy mọi quà đang bật, không lọc lớp / offline
       where: user.role === "ADMIN" || user.role === "TEACHER" ? { isActive: true, deletedAt: null } : visibleRewardWhere(user),
       orderBy: [{ price: "asc" }, { createdAt: "asc" }],
-      select: { id: true, title: true, description: true, emoji: true, price: true, stock: true, perStudentMonthlyLimit: true, kind: true },
+      select: { id: true, title: true, description: true, emoji: true, imageUrl: true, price: true, stock: true, perStudentMonthlyLimit: true, kind: true },
     }),
     prisma.redemption.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       take: 30,
-      select: { id: true, price: true, status: true, note: true, createdAt: true, handledAt: true, reward: { select: { title: true, emoji: true, kind: true } } },
+      select: { id: true, price: true, status: true, note: true, createdAt: true, handledAt: true, reward: { select: { title: true, emoji: true, kind: true, imageUrl: true } } },
     }),
     prisma.pointLedger.findMany({
       where: { userId },
@@ -180,7 +180,7 @@ export async function getShopAdminData() {
       where: { deletedAt: null },
       orderBy: [{ isActive: "desc" }, { kind: "asc" }, { price: "asc" }],
       select: {
-        id: true, title: true, description: true, emoji: true, price: true, stock: true, perStudentMonthlyLimit: true,
+        id: true, title: true, description: true, emoji: true, imageUrl: true, price: true, stock: true, perStudentMonthlyLimit: true,
         kind: true, offlineOnly: true, costVnd: true, isActive: true,
         classes: { select: { id: true, name: true } },
         _count: { select: { redemptions: { where: { status: "PENDING" } } } },

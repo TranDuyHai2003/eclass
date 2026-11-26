@@ -11,6 +11,7 @@ import { missingShopTemplates } from "@/lib/points/templates";
 import { play } from "@/lib/sound";
 import { CoinDot, fmt } from "./parts";
 import { RewardArt } from "./RewardArt";
+import { RewardImageField } from "./RewardImageField";
 
 type AdminReward = ShopAdminData["rewards"][number];
 type Filter = "all" | "PHYSICAL" | "VIRTUAL" | "hidden";
@@ -25,6 +26,7 @@ const emptyForm = (kind: "PHYSICAL" | "VIRTUAL" = "PHYSICAL"): RewardInput => ({
   kind,
   offlineOnly: kind === "PHYSICAL",
   costVnd: null,
+  imageUrl: null,
   classIds: [],
   isActive: true,
 });
@@ -40,6 +42,7 @@ const toForm = (r: AdminReward): RewardInput => ({
   kind: r.kind,
   offlineOnly: r.offlineOnly,
   costVnd: r.costVnd,
+  imageUrl: r.imageUrl,
   classIds: r.classes.map((c) => c.id),
   isActive: r.isActive,
 });
@@ -105,7 +108,7 @@ export function RewardManager({ data }: { data: ShopAdminData }) {
           return (
             <div key={r.id} data-testid="mgr-card" data-title={r.title} data-active={r.isActive} className={cn("ah-pcard cursor-default", `r-${rar}`, !r.isActive && "opacity-60 grayscale-[0.5]")}>
               <span className="ah-phead ah-hand">{r.emoji ? `${r.emoji} ` : ""}{r.title}</span>
-              <RewardArt title={r.title} kind={r.kind} stock={r.stock} limit={r.perStudentMonthlyLimit} />
+              <RewardArt title={r.title} kind={r.kind} imageUrl={r.imageUrl} stock={r.stock} limit={r.perStudentMonthlyLimit} />
               <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-extrabold text-[#6e4722]">
                 <span className="inline-flex items-center gap-1 rounded-full border-2 border-[#241e1a] bg-[#fffdf8] px-2 py-0.5 text-[12px] text-[#241e1a]"><CoinDot size={12} /> {fmt(r.price)}</span>
                 <span>{r.stock === null ? "Không giới hạn" : `Còn ${r.stock}`}</span>
@@ -148,6 +151,8 @@ function RewardEditor({ form, setForm, classes, pending, onSave }: {
   onSave: () => void;
 }) {
   const set = (patch: Partial<RewardInput>) => setForm({ ...form, ...patch });
+  // Đang sửa / tải ảnh → chưa cho lưu (tránh lưu quà khi ảnh chưa lên xong)
+  const [imgBusy, setImgBusy] = useState(false);
   const num = (v: string) => (v.trim() === "" ? null : Math.max(0, Math.floor(Number(v)) || 0));
   const rar = rarityOf(Number(form.price) || 0);
   const field = "mt-1 h-11 w-full rounded-[14px] border-[2.5px] border-[#241e1a] bg-[#fffdf8] px-3 text-[15px] font-bold outline-none focus:ring-2 focus:ring-[#fbd048]";
@@ -206,7 +211,9 @@ function RewardEditor({ form, setForm, classes, pending, onSave }: {
           </div>
 
           <div className="flex min-w-0 flex-[1_1_230px] flex-col gap-2">
-            <span className={label}>Xem trước trên tiệm</span>
+            <span className={label}>Ảnh quà</span>
+            <RewardImageField value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} disabled={pending} onBusy={setImgBusy} />
+            <span className={cn(label, "mt-2")}>Xem trước trên tiệm</span>
             <div className={cn("ah-pcard cursor-default", `r-${rar.key}`)}>
               {rar.key === "legendary" && <span className="ah-tabtop">CỰC PHẨM HUYỀN THOẠI</span>}
               <span className="ah-phead ah-hand">{form.title || "Tên quà"}</span>
@@ -214,17 +221,17 @@ function RewardEditor({ form, setForm, classes, pending, onSave }: {
                 <span className="ah-ppill">{rar.label}</span>
                 <span className="ah-pstock">{form.stock === null || form.stock === undefined ? "Không giới hạn" : `Còn ${form.stock}`}</span>
               </span>
-              <RewardArt title={form.title || "quà"} kind={form.kind} stock={form.stock ?? null} limit={form.perStudentMonthlyLimit ?? null}>
+              <RewardArt title={form.title || "quà"} kind={form.kind} imageUrl={form.imageUrl} stock={form.stock ?? null} limit={form.perStudentMonthlyLimit ?? null}>
                 {rar.key === "legendary" && <span className="ah-sun" aria-hidden />}
               </RewardArt>
               <span className="ah-btn ah-gold h-[42px] gap-2 text-[15px]"><CoinDot size={17} />{fmt(Number(form.price) || 0)} Xu</span>
             </div>
-            <p className="text-[11px] font-bold text-[#6e4722]">Tranh tự chọn theo tên quà (trà sữa, sổ, bút, sticker, bình nước, đèn, gấu bông, túi, tai nghe, vé…).</p>
+            {!form.imageUrl && <p className="text-[11px] font-bold text-[#6e4722]">Không đăng ảnh thì tranh tự chọn theo tên quà (trà sữa, sổ, bút, sticker, bình nước, đèn, gấu bông, túi, tai nghe, vé…).</p>}
           </div>
         </div>
         <div className="flex shrink-0 justify-end gap-2 border-t-2 border-[#efe3cc] px-4 py-3 sm:px-5">
           <button type="button" onClick={() => setForm(null)} className="ah-btn ah-cream h-11 px-5">Huỷ</button>
-          <button type="button" data-testid="ed-save" disabled={pending || !form.title.trim() || !(Number(form.price) >= 1)} onClick={onSave} className="ah-btn ah-gold h-11 px-6">{pending ? "Đang lưu…" : form.id ? "Lưu thay đổi" : "Thêm quà"}</button>
+          <button type="button" data-testid="ed-save" disabled={pending || imgBusy || !form.title.trim() || !(Number(form.price) >= 1)} onClick={onSave} className="ah-btn ah-gold h-11 px-6">{pending ? "Đang lưu…" : form.id ? "Lưu thay đổi" : "Thêm quà"}</button>
         </div>
       </div>
     </div>

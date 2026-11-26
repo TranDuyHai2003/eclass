@@ -7,7 +7,7 @@ import { PointSource } from "@prisma/client";
 import { EARNING_RULES, POINTS, SOURCE_LABEL } from "@/lib/points/config";
 import { scoreTierPoints } from "@/lib/points/hooks";
 import { vietnamDayStart } from "@/lib/points/engine";
-import { normalizeRewardInput, type RewardInput } from "@/lib/points/reward-input";
+import { normalizeRewardImageUrl, normalizeRewardInput, type RewardInput } from "@/lib/points/reward-input";
 import { validateManualGrant } from "@/lib/points/manual";
 import { REWARD_TEMPLATES } from "@/lib/points/templates";
 import { RARITY_THRESHOLDS } from "@/lib/points/rarity";
@@ -105,6 +105,25 @@ describe("Chuẩn hoá form quà", () => {
   test("quà 'Mọi học sinh' không giới hạn offline", () => {
     const r = normalizeRewardInput({ ...base, kind: "VIRTUAL" });
     assert.ok("data" in r && r.data.offlineOnly === false && r.data.kind === "VIRTUAL");
+  });
+
+  test("ảnh quà: chỉ nhận ảnh trên CDN của web (https) hoặc đường dẫn tĩnh; thiếu ô ảnh → giữ ảnh cũ, rỗng → bỏ ảnh", () => {
+    const cdn = "https://cdn.teacherduc.me/file/teacherduc-video-storage/images/abc-qua.webp";
+    assert.equal(normalizeRewardImageUrl(cdn), cdn);
+    assert.equal(normalizeRewardImageUrl("https://s3.us-east-005.backblazeb2.com/x/qua.png"), "https://s3.us-east-005.backblazeb2.com/x/qua.png");
+    assert.equal(normalizeRewardImageUrl("/news1.png"), "/news1.png");
+    for (const v of ["", "  ", null, undefined]) assert.equal(normalizeRewardImageUrl(v), null, String(v));
+    for (const bad of ["javascript:alert(1)", "http://cdn.teacherduc.me/a.png", "https://evil.com/a.png", "https://cdn.teacherduc.me.evil.com/a.png", "//evil.com/a.png", "data:image/png;base64,AAAA", 42, "/" + "a".repeat(600)]) {
+      assert.equal(normalizeRewardImageUrl(bad), false, String(bad));
+    }
+    // Form không có ô ảnh (trang quản lý quà cũ) → không đụng ảnh đang có
+    const keep = normalizeRewardInput(base);
+    assert.ok("data" in keep && !("imageUrl" in keep.data));
+    const set = normalizeRewardInput({ ...base, imageUrl: cdn });
+    assert.ok("data" in set && set.data.imageUrl === cdn);
+    const clear = normalizeRewardInput({ ...base, imageUrl: null });
+    assert.ok("data" in clear && clear.data.imageUrl === null);
+    assert.ok("error" in normalizeRewardInput({ ...base, imageUrl: "https://evil.com/x.png" }));
   });
 
   test("kind lạ → coi là quà hiện vật", () => {

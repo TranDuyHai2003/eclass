@@ -867,13 +867,46 @@ try {
       await setVal('[data-testid="ed-stock"]', 2);
       await sleep(200);
       expect(await a.ev(`return !!document.querySelector('[data-testid="reward-editor"] [data-art="gift"]')`), "xem trước quà hiện vật không có khung hộp quà");
+      // Đăng ảnh quà: chọn file → hộp Sửa ảnh (xoay) → Dùng ảnh này → tải lên (giả lập, không đẩy lên CDN thật) → xem trước có ảnh
+      await a.ev(`window.__up=[]; const rf=window.fetch.bind(window); window.fetch=(u,o)=>{ if(String(u).includes("/api/upload/image")){ const f=o.body.get("file"); window.__up.push(f.type+":"+f.size); return Promise.resolve(new Response(JSON.stringify({url:"/logo-96.png"}),{headers:{"content-type":"application/json"}})); } return rf(u,o); }; return true`);
+      const setFile = async (sel, file) => {
+        const { result: { root } } = await a.send("DOM.getDocument", { depth: 0 });
+        const { result: { nodeId } } = await a.send("DOM.querySelector", { nodeId: root.nodeId, selector: sel });
+        await a.send("DOM.setFileInputFiles", { nodeId, files: [file] });
+      };
+      await setFile('[data-testid="ed-image-input"]', path.join(root, "public/logo.png"));
+      await sleep(800);
+      expect(await a.ev(`return !!document.querySelector('[data-testid="image-cropper"]')`), "chọn ảnh xong không mở hộp Sửa ảnh");
+      await a.ev(`document.querySelector('[data-testid="crop-rotate"]').click()`);
+      await sleep(200);
+      await a.ev(`document.querySelector('[data-testid="crop-ok"]').click()`);
+      await sleep(1200);
+      const up1 = await a.ev(`return window.__up`);
+      expect(up1.length === 1 && /^image\/(webp|png):\d+$/.test(up1[0]), `ảnh không được cắt / tải lên: ${JSON.stringify(up1)}`);
+      expect(await a.ev(`return !document.querySelector('[data-testid="image-cropper"]') && document.querySelector('[data-testid="ed-image-thumb"]')?.getAttribute('src')==="/logo-96.png" && !!document.querySelector('[data-testid="reward-editor"] [data-reward-img]')`), "xem trước quà chưa dùng ảnh vừa đăng");
       await a.ev(`document.querySelector('[data-testid="ed-save"]').click()`);
       expect(await a.waitText(/Đã thêm quà/), "không thêm được quà từ tiệm");
       const created = await prisma.reward.findFirst({ where: { title: `${tag} Gấu bông thử` } });
       expect(created && created.price === 9000 && created.stock === 2 && created.kind === "PHYSICAL" && created.isActive, `DB quà mới sai: ${JSON.stringify(created)}`);
+      expect(created.imageUrl === "/logo-96.png", `ảnh quà không lưu: ${created.imageUrl}`);
       await sleep(800);
       const cardSel = `[data-testid="mgr-card"][data-title="${tag} Gấu bông thử"]`;
       expect(await a.ev(`return !!document.querySelector('${cardSel}')`), "quà mới không hiện trong khu quản lý");
+      expect(await a.ev(`return document.querySelector('${cardSel} [data-reward-img]')?.getAttribute('src')==="/logo-96.png"`), "thẻ quà trong khu quản lý không hiện ảnh");
+      // Sửa ảnh đang có (mở lại ảnh trên web) rồi bỏ ảnh → lưu → quay về tranh tự chọn
+      await a.ev(`document.querySelector('${cardSel} [data-testid="mgr-edit"]').click()`);
+      await sleep(300);
+      await a.ev(`document.querySelector('[data-testid="ed-image-edit"]').click()`);
+      await sleep(1000);
+      await a.ev(`document.querySelector('[data-testid="crop-ok"]').click()`);
+      await sleep(1200);
+      expect((await a.ev(`return window.__up.length`)) === 2, "Sửa ảnh đang có không tải lại ảnh đã cắt");
+      await a.ev(`document.querySelector('[data-testid="ed-image-remove"]').click()`);
+      await sleep(200);
+      await a.ev(`document.querySelector('[data-testid="ed-save"]').click()`);
+      expect(await a.waitText(/Đã lưu quà/), "không lưu được quà sau khi bỏ ảnh");
+      expect((await prisma.reward.findUnique({ where: { id: created.id } })).imageUrl === null, "bỏ ảnh không lưu");
+      await sleep(800);
       await a.ev(`document.querySelector('${cardSel} [data-testid="mgr-toggle"]').click()`);
       await sleep(1500);
       expect((await prisma.reward.findUnique({ where: { id: created.id } })).isActive === false, "ẩn quà không lưu");
