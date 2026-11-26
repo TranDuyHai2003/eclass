@@ -3,6 +3,7 @@ import { dueStatus, effectiveDueDate } from "@/lib/deadline";
 import { awardOnce, isEligibleStudent, lockWallet, revokeKey, runPointsSafely, updateWeekStreak } from "./engine";
 import type { Tx } from "./engine";
 import { checkSubmitQuests, runQuestsSafely } from "@/lib/game/quests";
+import { homeworkDueFor } from "./homework";
 
 /**
  * Các điểm gắn vào luồng nộp/chấm bài. Đều chạy SAU khi dữ liệu chính đã lưu, trong giao dịch riêng
@@ -178,16 +179,20 @@ export async function onHomeworkSubmitted(p: { userId: string; lessonId: string;
   await runPointsSafely("onHomeworkSubmitted", async (tx) => {
     if (!(await isEligibleStudent(tx, p.userId))) return;
     const wallet = await lockWallet(tx, p.userId);
-    await awardOnce(tx, {
-      userId: p.userId,
-      amount: POINTS.homeworkSubmit,
-      source: "HOMEWORK_SUBMIT",
-      key: `HW:${p.lessonId}`,
-      refId: p.submissionId,
-      reason: "Nộp bài tập về nhà",
-      capped: true,
-      now,
-    });
+    // Cơ chế 26/11: chỉ cộng khi nộp TRƯỚC hạn của lớp (chưa đặt hạn → cộng); trễ hạn vẫn tính hoạt động chuỗi tuần
+    const due = await homeworkDueFor(tx, p.lessonId, p.userId);
+    if (!due || now <= due) {
+      await awardOnce(tx, {
+        userId: p.userId,
+        amount: POINTS.homeworkSubmit,
+        source: "HOMEWORK_SUBMIT",
+        key: `HW:${p.lessonId}`,
+        refId: p.submissionId,
+        reason: due ? "Nộp bài tập về nhà đúng hạn" : "Nộp bài tập về nhà",
+        capped: true,
+        now,
+      });
+    }
     await updateWeekStreak(tx, wallet, now);
   });
   await runQuestsSafely("onHomeworkSubmitted", p.userId, (tx) => checkSubmitQuests(tx, { userId: p.userId, kind: "homework", now }));

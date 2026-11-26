@@ -72,6 +72,7 @@ async function cleanupStale() {
   if (stale.length) await prisma.reward.deleteMany({ where: { createdById: { in: stale.map((u) => u.id) } } });
   await prisma.reward.deleteMany({ where: { title: { startsWith: "e2e-points-" } } });
   await prisma.test.deleteMany({ where: { title: { startsWith: "e2e-points-" } } });
+  await prisma.course.deleteMany({ where: { title: { startsWith: "e2e-points-" } } });
   await prisma.user.deleteMany({ where: { email: { startsWith: "e2e-points-" } } });
   await prisma.studyClass.deleteMany({ where: { name: { startsWith: "e2e-points-" } } });
 }
@@ -100,7 +101,11 @@ async function setup() {
   await prisma.pointWallet.create({ data: { userId: student.id, balance: 15600, lifetimeEarned: 15600 } });
   // Quà túi giấy ăn (mở nhiệm vụ ẩn "Người Mở Đường Khăn Giấy") — có tranh riêng, không lấy nhầm tranh túi đeo chéo
   await prisma.reward.create({ data: { title: `${tag} Túi Giấy Ăn Nhỏ Hoạt Hình`, price: 10000, kind: "PHYSICAL", stock: 5 } });
-  return { cls, student, teacher, attempt, test };
+  // Bài có bài tập về nhà trong khoá học của lớp (trang Duyệt chữa bài)
+  const course = await prisma.course.create({ data: { title: `${tag} Khoá`, userId: teacher.id, isPublished: true, classes: { connect: [{ id: cls.id }] } } });
+  const chapter = await prisma.chapter.create({ data: { title: `${tag} Chương`, courseId: course.id, isPublished: true } });
+  const hwLesson = await prisma.lesson.create({ data: { title: `${tag} BTVN`, chapterId: chapter.id, hasHomework: true, isPublished: true } });
+  return { cls, student, teacher, attempt, test, hwLesson };
 }
 
 async function cleanup() {
@@ -114,6 +119,7 @@ async function cleanup() {
     await prisma.giftCode.deleteMany({ where: { createdById: teacher.id } });
   }
   await prisma.test.deleteMany({ where: { title: { startsWith: tag } } });
+  await prisma.course.deleteMany({ where: { title: { startsWith: tag } } });
   await prisma.user.deleteMany({ where: { email: { startsWith: tag } } });
   await prisma.studyClass.deleteMany({ where: { name: { startsWith: tag } } });
 }
@@ -157,7 +163,8 @@ try {
     await t.click(/^Lưu$/, "[role=dialog] button");
     expect(await t.waitText(/Đã thêm quà/), "không thấy thông báo Đã thêm quà");
     const r = await prisma.reward.findFirst({ where: { createdById: data.teacher.id, title: "Kẹo / bánh nhỏ" } });
-    expect(r && r.price === 6000 && r.offlineOnly, "quà mẫu lưu sai");
+    // 26/11: giá mẫu = tiền thật ÷ 3,6 (kẹo 3.000đ → 900 xu)
+    expect(r && r.price === 900 && r.offlineOnly, `quà mẫu lưu sai: ${r?.price}`);
   });
 
   await step("Thầy: form thêm quà — chưa nhập tên thì không lưu được; nhập đủ thì lưu", async () => {
@@ -176,37 +183,40 @@ try {
     expect(r && r.price === 50000 && r.kind === "VIRTUAL" && !r.offlineOnly, "quà nhập tay lưu sai");
   });
 
-  await step("Thầy: thưởng +150 xu cho học sinh (tìm theo tên)", async () => {
+  await step("Thầy: thưởng +100 xu cho học sinh (tìm theo tên)", async () => {
     await t.click(/^Thưởng xu$/);
     await t.fill("select", data.cls.id);
     await t.fill('input[placeholder="Tìm học sinh…"]', "Học sinh");
     await t.click(new RegExp(studentName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), "label");
     expect(await t.isDisabled(/^Thưởng [\d.]+ xu$/), "chưa nhập lý do mà nút thưởng không bị khoá");
-    await t.click(/^\+150$/);
+    await t.click(/^\+100$/);
     await t.click(/^Phát biểu xây dựng bài$/);
-    await t.click(/^Thưởng 150 xu$/);
+    await t.click(/^Thưởng 100 xu$/);
     expect(await t.waitText(/Đã thưởng xu cho 1 học sinh/), "không thấy thông báo thưởng xu");
-    expect((await balanceOf(data.student.id)) === 15750, "số dư sau thưởng phải 15750");
+    expect((await balanceOf(data.student.id)) === 15700, "số dư sau thưởng phải 15700");
   });
 
-  await step("Thầy: thưởng quá giới hạn ngày (1 500 xu) → cộng phần còn lại rồi báo lỗi", async () => {
+  await step("Thầy: thưởng quá giới hạn ngày (500 xu) → cộng phần còn lại rồi báo lỗi", async () => {
     for (let i = 0; i < 2; i++) {
       await t.click(new RegExp(studentName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), "label");
-      await t.click(/^\+750$/);
-      await t.click(/^Thưởng 750 xu$/);
+      await t.click(/^\+300$/);
+      await t.click(/^Thưởng 300 xu$/);
       await sleep(1500);
     }
-    expect((await balanceOf(data.student.id)) === 17100, `sau 150+750+600 (trần ngày) phải 17100 (thực tế ${await balanceOf(data.student.id)})`);
+    expect((await balanceOf(data.student.id)) === 16100, `sau 100+300+100 (trần ngày 500) phải 16100 (thực tế ${await balanceOf(data.student.id)})`);
     await t.click(new RegExp(studentName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), "label");
-    await t.click(/^\+150$/);
-    await t.click(/^Thưởng 150 xu$/);
+    await t.click(/^\+100$/);
+    await t.click(/^Thưởng 100 xu$/);
     expect(await t.waitText(/Không áp dụng được/), "không báo lỗi khi vượt giới hạn");
-    expect((await balanceOf(data.student.id)) === 17100, `số dư phải dừng ở 17100 (thực tế ${await balanceOf(data.student.id)})`);
+    expect((await balanceOf(data.student.id)) === 16100, `số dư phải dừng ở 16100 (thực tế ${await balanceOf(data.student.id)})`);
   });
 
   let giftCodes = [];
   await step("Thầy: tạo lô 10 thẻ cào × 3 ngọc, in được", async () => {
     await t.click(/^Mã quà tặng$/);
+    // 26/11: mặc định tặng xu → chọn Ngọc cho lô thẻ cào điểm 10
+    await t.ev(`const sel=[...document.querySelectorAll("select")].find(x=>[...x.options].some(o=>o.value==="GEM")); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"value").set.call(sel,"GEM"); sel.dispatchEvent(new Event("change",{bubbles:true})); return true`);
+    await sleep(300);
     await t.click(/^Tạo 10 mã/);
     expect(await t.waitText(/Vừa tạo 10 mã/), "không thấy lô mã vừa tạo");
     const rows = await prisma.giftCode.findMany({ where: { createdById: data.teacher.id }, select: { code: true, amount: true, currency: true } });
@@ -232,12 +242,12 @@ try {
   await step("Học sinh: chip xu trên header + thẻ chào ở trang chủ", async () => {
     await s.goto("/", /Tiệm quà/i);
     const chip = await s.ev(`return document.querySelector('header [data-wallet-chip]')?.innerText`);
-    expect(chip && chip.includes("17.100"), `chip header sai: ${chip}`);
+    expect(chip && chip.includes("16.100"), `chip header sai: ${chip}`);
     const hero = await s.ev(`return document.querySelector('[data-testid="student-hero"]')?.innerText || ""`);
     expect(/Chào /.test(hero), "thiếu lời chào ở thẻ chào trang chủ");
     expect(/Chó rách|Trứng bắc thảo|đẳng cấp|thần hào|999 Tỷ Xu/.test(hero), "thẻ chào thiếu danh hiệu");
     expect(/Bắt đầu học|Bài gần nhất/i.test(hero), "thẻ chào thiếu khối học tiếp");
-    expect(/17\.100/.test(hero), "thẻ chào thiếu số xu");
+    expect(/16\.100/.test(hero), "thẻ chào thiếu số xu");
   });
 
   await step("Học sinh: nhập thẻ cào → +3 ngọc; nhập lại → báo đã dùng; chip header hiện ngọc", async () => {
@@ -250,7 +260,7 @@ try {
     await s.click(/^Nhận quà$/, '[data-testid="scratch-open"] button');
     expect(await s.waitText(/\+3 ngọc/), "không thấy +3 ngọc");
     const w = await prisma.pointWallet.findUnique({ where: { userId: data.student.id } });
-    expect(w && w.gems === 3 && w.balance === 17100, `ví sai sau nhập mã: ${JSON.stringify(w)}`);
+    expect(w && w.gems === 3 && w.balance === 16100, `ví sai sau nhập mã: ${JSON.stringify(w)}`);
     await s.click(/^Nhập mã khác$/, '[data-testid="scratch-open"] button');
     await s.fill('[data-testid="giftcode-input"]', giftCodes[0]);
     await s.click(/^Nhận quà$/, '[data-testid="scratch-open"] button');
@@ -263,10 +273,10 @@ try {
   await step("Học sinh: trang Tiệm quà — số dư, chỉ thấy quà dành cho mình", async () => {
     await s.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
     const txt = await s.text();
-    expect(txt.includes("17.100"), "không thấy số dư 17.100");
+    expect(txt.includes("16.100"), "không thấy số dư 16.100");
     expect(txt.includes("Kẹo / bánh nhỏ") && txt.includes("Quà đắt"), "thiếu quà");
     const note = await s.ev(`[...document.querySelectorAll('[data-testid="reward-card"]')].find(c => c.dataset.title.endsWith("Quà đắt"))?.click(); await new Promise(r=>setTimeout(r,200)); return document.querySelector('[data-testid="shop-detail"] [data-testid="detail-note"]')?.innerText || ""`);
-    expect(/còn thiếu 32\.900 xu/i.test(note), `quà đắt phải báo còn thiếu 32.900 xu: ${note}`);
+    expect(/còn thiếu 33\.900 xu/i.test(note), `quà đắt phải báo còn thiếu 33.900 xu: ${note}`);
     const rarity = await s.ev(`return [...document.querySelectorAll('[data-testid="reward-card"]')].map(c => c.dataset.title.replace(/^.*Quà đắt$/, "Quà đắt") + ":" + c.dataset.rarity).join(",")`);
     expect(rarity.includes("Kẹo / bánh nhỏ:common") && rarity.includes("Quà đắt:legendary"), `độ hiếm sai: ${rarity}`);
     expect(/Chó rách|Trứng bắc thảo|đẳng cấp|thần hào|999 Tỷ Xu/.test(txt), "thanh trạng thái thiếu danh hiệu");
@@ -309,11 +319,11 @@ try {
 
   await step("Học sinh: đổi kẹo (hộp chi tiết báo số dư sau khi đổi) → trừ xu, hiện ở Túi đồ", async () => {
     const note = await s.ev(`document.querySelector('[data-testid="reward-card"][data-title="Kẹo / bánh nhỏ"]')?.click(); await new Promise(r=>setTimeout(r,200)); return document.querySelector('[data-testid="shop-detail"] [data-testid="detail-note"]')?.innerText || ""`);
-    expect(/Số dư sau khi đổi: 11\.100 xu/.test(note), `hộp chi tiết thiếu số dư sau khi đổi: ${note}`);
+    expect(/Số dư sau khi đổi: 15\.200 xu/.test(note), `hộp chi tiết thiếu số dư sau khi đổi: ${note}`);
     const opened = await s.ev(`const b=document.querySelector('[data-testid="shop-detail"] [data-testid="redeem"]'); if(!b || b.disabled) return false; b.click(); return true;`);
     expect(opened, "không thấy nút đổi kẹo");
     expect(await s.waitText(/Đã đổi "Kẹo \/ bánh nhỏ"/), "không thấy thông báo đổi quà");
-    expect((await balanceOf(data.student.id)) === 11100, "số dư sau đổi phải 11100");
+    expect((await balanceOf(data.student.id)) === 15200, "số dư sau đổi phải 15200");
     expect((await s.ev(`return document.querySelector("[data-celebrated]")?.dataset.celebrated`)) === "1", "không bắn pháo giấy khi đổi quà thành công");
     await s.ev(`document.querySelector('[data-testid="bag-open"]').click()`);
     expect(await s.waitText(/Chờ nhận quà/), "không thấy trạng thái Chờ nhận quà trong túi đồ");
@@ -322,7 +332,7 @@ try {
   await step("Học sinh: huỷ yêu cầu → hoàn xu", async () => {
     await s.click(/^Huỷ$/);
     expect(await s.waitText(/Đã huỷ và hoàn xu/), "không thấy thông báo huỷ");
-    expect((await balanceOf(data.student.id)) === 17100, "chưa hoàn xu");
+    expect((await balanceOf(data.student.id)) === 16100, "chưa hoàn xu");
   });
 
   await step("Học sinh: đổi lại kẹo (để thầy trao)", async () => {
@@ -965,6 +975,40 @@ try {
     expect(await t.ev(`return !document.querySelector('[data-testid="manage-toggle"]')`), "giáo viên không được thấy nút quản lý quà (chỉ admin)");
     await t.goto("/teacher/rewards", /Quà & Xu/i);
     expect(await t.ev(`return !!document.querySelector('[data-testid="open-shop"]')`), "trang quản lý quà thiếu nút Xem Tiệm quà cho giáo viên");
+  });
+
+  await step("Thầy: Duyệt chữa bài — đặt hạn nộp lớp, tìm tên, bấm Có chữa (+280) rồi Chữa đủ (+400); mã quà tự đặt dùng 1 lần", async () => {
+    const before = await balanceOf(data.student.id);
+    await t.goto(`/teacher/homework/check?class=${data.cls.id}&lesson=${data.hwLesson.id}`, /Duyệt chữa bài tập/i);
+    expect(await t.ev(`return !!document.querySelector('[data-testid="homework-check"]') && document.querySelectorAll('[data-testid="hc-row"]').length >= 1`), "trang duyệt không có danh sách lớp");
+    await t.fill('[data-testid="hc-due"]', "2099-12-31T21:00");
+    await t.ev(`document.querySelector('[data-testid="hc-due-save"]').click()`);
+    expect(await t.waitText(/Đã lưu hạn nộp/), "không lưu được hạn nộp");
+    const dl = await prisma.homeworkDeadline.findUnique({ where: { lessonId_classId: { lessonId: data.hwLesson.id, classId: data.cls.id } } });
+    expect(dl && dl.dueDate.toISOString() === "2099-12-31T14:00:00.000Z", `hạn nộp lưu sai (giờ VN): ${dl?.dueDate?.toISOString()}`);
+    await t.fill('[data-testid="hc-search"]', "hoc sinh");
+    await sleep(200);
+    const row = `[data-testid="hc-row"][data-user="${data.student.id}"]`;
+    expect(await t.ev(`return !!document.querySelector('${row}')`), "tìm tên (không dấu) không ra học sinh");
+    await t.ev(`document.querySelector('${row} [data-testid="hc-PARTIAL"]').click()`);
+    for (let i = 0; i < 20 && (await balanceOf(data.student.id)) !== before + 280; i++) await sleep(250);
+    expect((await balanceOf(data.student.id)) === before + 280, "Có chữa không cộng 280 xu");
+    await t.ev(`document.querySelector('${row} [data-testid="hc-FULL"]').click()`);
+    for (let i = 0; i < 20 && (await balanceOf(data.student.id)) !== before + 400; i++) await sleep(250);
+    expect((await balanceOf(data.student.id)) === before + 400, "Chữa đủ không điều chỉnh lên 400 xu");
+    expect((await t.ev(`return document.querySelector('${row}').dataset.level`)) === "FULL", "nút Chữa đủ chưa sáng");
+    // Mã quà tự đặt
+    await t.goto("/teacher/rewards", /Quà & Xu/i);
+    await t.click(/^Mã quà tặng$/);
+    const custom = `E2E${Date.now().toString(36).toUpperCase().slice(-5)}`;
+    await t.fill('[data-testid="giftcode-custom"]', custom.toLowerCase());
+    await t.click(/^Tạo 1 mã/);
+    expect(await t.waitText(new RegExp(custom)), "không thấy mã tự đặt vừa tạo");
+    const gc = await prisma.giftCode.findUnique({ where: { code: custom } });
+    expect(gc && gc.maxUses === 1 && gc.currency === "XU" && gc.amount === 300, `mã tự đặt lưu sai: ${JSON.stringify(gc)}`);
+    await t.ev(`[...document.querySelectorAll('[data-testid="giftcode-unused"] button')][0].click()`);
+    await sleep(200);
+    expect((await t.ev(`return document.querySelector('[data-testid="giftcode-unused"]').innerText`)).includes(custom), "mã chưa dùng không có trong danh sách lưu");
   });
 
   await t.close();

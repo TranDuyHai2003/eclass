@@ -9,7 +9,20 @@ import { EMPTY_GAME_CONFIG, applyGameConfig, type EarningConfig, type GameConfig
 export * from "./game-config-shared";
 
 const TTL_MS = 30_000;
+
+/**
+ * Test: mỗi file test chạy trong tiến trình riêng, song song → cấu hình để trong bộ nhớ của tiến trình (không đọc / ghi DB),
+ * tránh file này ghi cấu hình làm lệch xu của file khác. tests/setup/register.cjs đặt GAME_CONFIG_SOURCE=memory;
+ * test nào cần thử đường DB thật thì đặt lại "db".
+ */
 let cache: { at: number; data: GameConfigData } | null = null;
+const memoryMode = () => process.env.GAME_CONFIG_SOURCE === "memory";
+let memory: GameConfigData = EMPTY_GAME_CONFIG;
+export function setGameConfigForTests(cfg: Partial<GameConfigData> | null) {
+  memory = { itemPrices: cfg?.itemPrices ?? {}, earning: cfg?.earning ?? {} };
+  cache = null;
+  applyGameConfig(memory);
+}
 let inflight: Promise<GameConfigData> | null = null;
 
 async function read(): Promise<GameConfigData> {
@@ -22,6 +35,10 @@ async function read(): Promise<GameConfigData> {
 }
 
 export async function loadGameConfig(force = false): Promise<GameConfigData> {
+  if (memoryMode()) {
+    applyGameConfig(memory);
+    return memory;
+  }
   if (!force && cache && Date.now() - cache.at < TTL_MS) {
     applyGameConfig(cache.data);
     return cache.data;
@@ -45,6 +62,10 @@ export async function loadGameConfig(force = false): Promise<GameConfigData> {
 
 /** Ghi một khoá cấu hình rồi áp ngay trong tiến trình này */
 export async function writeGameConfig(key: "itemPrices" | "earning", value: ItemPrices | EarningConfig, userId: string) {
+  if (memoryMode()) {
+    memory = { ...memory, [key]: value };
+    return loadGameConfig(true);
+  }
   await prisma.gameConfig.upsert({
     where: { key },
     create: { key, value, updatedById: userId },

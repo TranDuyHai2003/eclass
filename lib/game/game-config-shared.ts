@@ -10,12 +10,8 @@ import { POINTS } from "@/lib/points/config";
 
 /* ============================== Giá đồ trang trí ============================== */
 
-/** Đổi giá tiền thật (đ) ra xu: chia 3,6 rồi làm tròn LÊN hàng trăm (20.000đ → 5.600 xu). Tính bằng số nguyên. */
-export const VND_PER_XU = 3.6;
-export function vndToXu(vnd: number): number {
-  const v = Math.max(0, Math.floor(Number(vnd) || 0));
-  return Math.ceil((v * 10) / 3600) * 100;
-}
+export { VND_PER_XU, vndToXu } from "@/lib/points/vnd";
+import { vndToXu } from "@/lib/points/vnd";
 
 /** "20000", "20.000", "20k", "1,5tr" → số đồng */
 export function parseVnd(raw: string): number | null {
@@ -80,6 +76,7 @@ type MutablePoints = {
   breakthrough: { points: number };
   finalTestSubmit: number; finalScoreMultiplier: number;
   homeworkSubmit: number; homeworkPass: number; dailyAutoCap: number;
+  homeworkReview: { partial: number; full: number };
   streak: { milestones: Record<number, number>; every4WeeksAfter12: number };
   manual: { maxPerGrant: number; dailyCapPerStudent: number };
 };
@@ -99,6 +96,10 @@ const tier = (i: number) => ({ get: () => P.scoreTiers[i].points, set: (v: numbe
 const ms = (w: number) => ({ get: () => P.streak.milestones[w], set: (v: number) => (P.streak.milestones[w] = v) });
 
 export const EARNING_FIELDS: EarningField[] = [
+  { key: "homeworkSubmit", group: "Bài tập về nhà", label: "Nộp đúng hạn (trước hạn của lớp)", min: 0, max: 100_000, get: () => P.homeworkSubmit, set: (v) => (P.homeworkSubmit = v) },
+  { key: "reviewPartial", group: "Bài tập về nhà", label: "Thầy duyệt: Có chữa", min: 0, max: 100_000, get: () => P.homeworkReview.partial, set: (v) => (P.homeworkReview.partial = v) },
+  { key: "reviewFull", group: "Bài tập về nhà", label: "Thầy duyệt: Chữa đủ, tốt", min: 0, max: 100_000, get: () => P.homeworkReview.full, set: (v) => (P.homeworkReview.full = v) },
+  { key: "homeworkPass", group: "Bài tập về nhà", label: "Bài nộp online được chấm Đạt", min: 0, max: 100_000, get: () => P.homeworkPass, set: (v) => (P.homeworkPass = v) },
   { key: "testSubmit", group: "Bài kiểm tra", label: "Nộp bài (đúng / chưa có hạn)", min: 0, max: 100_000, get: () => P.testSubmit, set: (v) => (P.testSubmit = v) },
   { key: "testSubmitLate", group: "Bài kiểm tra", label: "Nộp sau hạn", min: 0, max: 100_000, get: () => P.testSubmitLate, set: (v) => (P.testSubmitLate = v) },
   { key: "onTimeBonus", group: "Bài kiểm tra", label: "Thưởng nộp đúng hạn", min: 0, max: 100_000, get: () => P.onTimeBonus, set: (v) => (P.onTimeBonus = v) },
@@ -108,8 +109,6 @@ export const EARNING_FIELDS: EarningField[] = [
   { key: "breakthrough", group: "Điểm cao", label: "Bứt phá (cao hơn trung bình 5 bài gần nhất)", min: 0, max: 100_000, get: () => P.breakthrough.points, set: (v) => (P.breakthrough.points = v) },
   { key: "finalTestSubmit", group: "Thi cuối khoá", label: "Nộp đề thi cuối khoá", min: 0, max: 100_000, get: () => P.finalTestSubmit, set: (v) => (P.finalTestSubmit = v) },
   { key: "finalScoreMultiplier", group: "Thi cuối khoá", label: "Hệ số thưởng điểm cao (×)", hint: "1–5", min: 1, max: 5, get: () => P.finalScoreMultiplier, set: (v) => (P.finalScoreMultiplier = v) },
-  { key: "homeworkSubmit", group: "Bài tập về nhà", label: "Nộp bài tập về nhà", min: 0, max: 100_000, get: () => P.homeworkSubmit, set: (v) => (P.homeworkSubmit = v) },
-  { key: "homeworkPass", group: "Bài tập về nhà", label: "Được chấm Đạt", min: 0, max: 100_000, get: () => P.homeworkPass, set: (v) => (P.homeworkPass = v) },
   { key: "streak2", group: "Chuỗi tuần học", label: "Mốc 2 tuần", min: 0, max: 100_000, ...ms(2) },
   { key: "streak4", group: "Chuỗi tuần học", label: "Mốc 4 tuần", min: 0, max: 100_000, ...ms(4) },
   { key: "streak8", group: "Chuỗi tuần học", label: "Mốc 8 tuần", min: 0, max: 100_000, ...ms(8) },

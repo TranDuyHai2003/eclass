@@ -1,6 +1,6 @@
 /**
  * Độ hiếm của quà — tự suy ra từ giá (giáo viên không phải chọn), chỉ để trang trí thẻ quà.
- * Mốc theo thang xu: chăm cả tháng ≈ 12 000 xu.
+ * Mốc theo thang xu 26/11: mỗi bài tập về nhà tối đa 500 xu (100 nộp đúng hạn + 400 chữa đủ).
  */
 export type Rarity = "common" | "rare" | "epic" | "legendary";
 
@@ -52,8 +52,11 @@ export const RARITY: Record<Rarity, RarityStyle> = {
   },
 };
 
-/** Mốc giá (xu): ≤7 500 Phổ thông · ≤18 000 Hiếm · ≤45 000 Sử thi · còn lại Huyền thoại */
-export const RARITY_THRESHOLDS = { common: 7500, rare: 18000, epic: 45000 } as const;
+/**
+ * Mốc giá (xu): ≤1 500 Phổ thông · ≤3 000 Hiếm · ≤7 500 Sử thi · còn lại Huyền thoại.
+ * 26/11/2026: giá quà = tiền thật ÷ 3,6 (trước ~2 xu/1đ) → mốc cũ 7 500 / 18 000 / 45 000 thu nhỏ theo.
+ */
+export const RARITY_THRESHOLDS = { common: 1500, rare: 3000, epic: 7500 } as const;
 
 export function rarityOf(price: number): RarityStyle {
   if (price <= RARITY_THRESHOLDS.common) return RARITY.common;

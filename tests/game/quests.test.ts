@@ -11,6 +11,7 @@ import { ITEMS, ITEM_BY_ID, itemsOfSlot } from "@/lib/game/items";
 import { RARITY_ORDER, poolFor } from "@/lib/game/gacha-shared";
 import { onTestSubmitted } from "@/lib/points/hooks";
 import { createFixture, disconnect } from "../helpers/fixtures";
+import { applyLegacyEarning } from "../helpers/legacy-earning";
 
 const fx = createFixture();
 after(async () => {
@@ -160,6 +161,7 @@ describe("Mở hộp, đổi quà", () => {
 
 describe("Luồng thật (móc nối nộp bài)", () => {
   test("nộp bài 10 phút trước hạn → vẫn cộng xu, thêm biệt danh Phút 89 tự đeo", async () => {
+    applyLegacyEarning(); // xu bài kiểm tra mặc định tắt từ 26/11 — bật lại để kiểm cả việc cộng xu
     const s = await fx.user();
     const t1 = await fx.test({ dueDate: new Date(Date.now() + 10 * MIN) });
     const at = await fx.attempt(t1.id, s.id, 6);

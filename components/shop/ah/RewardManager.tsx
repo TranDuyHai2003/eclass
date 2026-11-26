@@ -15,6 +15,7 @@ import { RewardImageField } from "./RewardImageField";
 import { EarningManager, ItemPriceManager } from "./GameConfigManager";
 import { EMPTY_GAME_CONFIG, type GameConfigData } from "@/lib/game/game-config-shared";
 import type { AvatarConfig } from "@/lib/game/avatar";
+import { vndToXu } from "@/lib/points/vnd";
 
 type AdminReward = ShopAdminData["rewards"][number];
 type Filter = "all" | "PHYSICAL" | "VIRTUAL" | "hidden";
@@ -169,6 +170,8 @@ function RewardEditor({ form, setForm, classes, pending, onSave }: {
   const set = (patch: Partial<RewardInput>) => setForm({ ...form, ...patch });
   // Đang sửa / tải ảnh → chưa cho lưu (tránh lưu quà khi ảnh chưa lên xong)
   const [imgBusy, setImgBusy] = useState(false);
+  // Thẻ đặc quyền không có chi phí thật → "giá trị (đ)" chỉ để tính giá xu, không lưu vào chi phí
+  const [vndValue, setVndValue] = useState<number | null>(null);
   const num = (v: string) => (v.trim() === "" ? null : Math.max(0, Math.floor(Number(v)) || 0));
   const rar = rarityOf(Number(form.price) || 0);
   const field = "mt-1 h-11 w-full rounded-[14px] border-[2.5px] border-[#241e1a] bg-[#fffdf8] px-3 text-[15px] font-bold outline-none focus:ring-2 focus:ring-[#fbd048]";
@@ -203,11 +206,30 @@ function RewardEditor({ form, setForm, classes, pending, onSave }: {
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <label><span className={label}>Giá (xu) *</span><input data-testid="ed-price" type="number" inputMode="numeric" min={1} value={form.price || ""} onChange={(e) => set({ price: Number(e.target.value) })} className={field} /></label>
-              <label><span className={label}>Chi phí thật (đ)</span><input type="number" inputMode="numeric" min={0} value={form.costVnd ?? ""} placeholder="—" onChange={(e) => set({ costVnd: num(e.target.value) })} className={field} /></label>
+              <label>
+                <span className={label}>{form.kind === "PHYSICAL" ? "Giá tiền thật (đ)" : "Giá trị (đ)"}</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  data-testid="ed-vnd"
+                  value={(form.kind === "PHYSICAL" ? form.costVnd : vndValue) ?? ""}
+                  placeholder="—"
+                  onChange={(e) => {
+                    // Nhập tiền thật → giá xu tự tính = ÷ 3,6 làm tròn lên trăm (thầy quy định 26/11); vẫn sửa tay được ô Giá
+                    const v = num(e.target.value);
+                    if (form.kind === "VIRTUAL") setVndValue(v);
+                    set({ ...(form.kind === "PHYSICAL" ? { costVnd: v } : {}), ...(v ? { price: vndToXu(v) } : {}) });
+                  }}
+                  className={field}
+                />
+              </label>
               <label><span className={label}>Số lượng</span><input data-testid="ed-stock" type="number" inputMode="numeric" min={0} value={form.stock ?? ""} placeholder="∞" onChange={(e) => set({ stock: num(e.target.value) })} className={field} /></label>
               <label><span className={label}>Mỗi bạn / tháng</span><input type="number" inputMode="numeric" min={0} value={form.perStudentMonthlyLimit ?? ""} placeholder="∞" onChange={(e) => set({ perStudentMonthlyLimit: num(e.target.value) })} className={field} /></label>
             </div>
-            <p className="-mt-1 text-[11px] font-bold text-[#6e4722]">Học chăm cả tháng ≈ 12.000 xu. Độ hiếm tự theo giá: <b>{rar.label}</b>{form.costVnd ? ` · ≈ ${(Number(form.price) / form.costVnd).toFixed(1)} xu / 1đ` : ""}.</p>
+            <p className="-mt-1 text-[11px] font-bold text-[#6e4722]" data-testid="ed-price-hint">
+              Nhập giá tiền thật → giá xu = tiền ÷ 3,6, làm tròn lên trăm{(() => { const v = form.kind === "PHYSICAL" ? form.costVnd : vndValue; return v ? ` (${v.toLocaleString("vi-VN")}đ → ${vndToXu(v).toLocaleString("vi-VN")} xu)` : ""; })()}. Mỗi bài tập làm tốt ≈ 500 xu. Độ hiếm tự theo giá: <b>{rar.label}</b>.
+            </p>
             {classes.length > 0 && (
               <div>
                 <span className={label}>Áp dụng cho lớp (không chọn = mọi lớp)</span>

@@ -6,8 +6,8 @@ import { toast } from "sonner";
 import { Ban, Loader2, Printer, Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createGiftCodes, deactivateGiftBatch } from "@/actions/giftcode";
-import { MAX_AMOUNT, MAX_BATCH } from "@/lib/game/giftcode-shared";
-import type { GiftCodeBatch } from "@/lib/game/giftcode-queries";
+import { MAX_AMOUNT, MAX_BATCH, MAX_CODE_LENGTH, MIN_CODE_LENGTH, codeLengthOk, normalizeCode } from "@/lib/game/giftcode-shared";
+import type { GiftCodeBatch, UnusedGiftCode } from "@/lib/game/giftcode-queries";
 
 /** Escape HTML trước khi ghép vào trang in (review Gemini: ghi chú do thầy nhập có thể chứa < > ") */
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
@@ -16,12 +16,15 @@ const fmtDate = (iso: string) =>
   new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
 /** Tab "Mã quà tặng" của thầy: tạo lô thẻ cào, in, vô hiệu, xem lượt dùng */
-export function GiftCodesTab({ batches, classes }: { batches: GiftCodeBatch[]; classes: { id: string; name: string }[] }) {
+export function GiftCodesTab({ batches, unused = [], classes }: { batches: GiftCodeBatch[]; unused?: UnusedGiftCode[]; classes: { id: string; name: string }[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [count, setCount] = useState(10);
-  const [currency, setCurrency] = useState<"GEM" | "XU">("GEM");
-  const [amount, setAmount] = useState(3);
+  // Cơ chế 26/11: mã quà tặng là 1 trong 3 cách nhận xu → mặc định tặng xu
+  const [currency, setCurrency] = useState<"GEM" | "XU">("XU");
+  const [amount, setAmount] = useState(300);
+  const [customCode, setCustomCode] = useState("");
+  const [showUnused, setShowUnused] = useState(false);
   const [maxUses, setMaxUses] = useState(1);
   const [expiresAt, setExpiresAt] = useState("");
   const [classId, setClassId] = useState("");
@@ -33,11 +36,13 @@ export function GiftCodesTab({ batches, classes }: { batches: GiftCodeBatch[]; c
     start(async () => {
       // datetime-local không có múi giờ → đổi sang ISO ngay trên trình duyệt (giờ máy thầy) trước khi gửi
       const expiresIso = expiresAt ? new Date(expiresAt).toISOString() : null;
-      const res = await createGiftCodes({ count, currency, amount, maxUses, expiresAt: expiresIso, classId: classId || null, note });
+      const custom = normalizeCode(customCode);
+      const res = await createGiftCodes({ count: custom ? 1 : count, currency, amount, maxUses, expiresAt: expiresIso, classId: classId || null, note, customCode: custom || null });
       if (res.success) {
         toast.success(res.message);
         // Chụp nhãn tại thời điểm tạo → sửa form sau đó không làm thẻ in sai (review Gemini)
         setJustCreated({ codes: res.codes ?? [], label: `${amount.toLocaleString("vi-VN")} ${currency === "GEM" ? "ngọc" : "xu"} · ${note.trim() || "Thẻ quà tặng"}` });
+        setCustomCode("");
         router.refresh();
       } else toast.error(res.error);
     });
@@ -74,9 +79,21 @@ export function GiftCodesTab({ batches, classes }: { batches: GiftCodeBatch[]; c
           Tạo lô thẻ cào
         </p>
         <div className="grid grid-cols-2 gap-2">
+          <label className="col-span-2 text-xs font-bold text-slate-500">
+            Mã tự đặt (tuỳ chọn — để trống thì web tạo mã ngẫu nhiên)
+            <input
+              value={customCode}
+              maxLength={MAX_CODE_LENGTH + 4}
+              placeholder="VD: CHAMNGOAN"
+              data-testid="giftcode-custom"
+              onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
+              className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 font-mono text-sm font-black tracking-wider"
+            />
+            {customCode && !codeLengthOk(normalizeCode(customCode)) && <span className="mt-0.5 block text-[11px] text-rose-500">{MIN_CODE_LENGTH}–{MAX_CODE_LENGTH} chữ / số, không dấu.</span>}
+          </label>
           <label className="text-xs font-bold text-slate-500">
             Số mã
-            <input type="number" min={1} max={MAX_BATCH} value={count} onChange={(e) => setCount(Number(e.target.value))} className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-sm font-black" />
+            <input type="number" min={1} max={MAX_BATCH} value={customCode ? 1 : count} disabled={!!customCode} onChange={(e) => setCount(Number(e.target.value))} className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-sm font-black" />
           </label>
           <label className="text-xs font-bold text-slate-500">
             Loại tiền
@@ -112,7 +129,7 @@ export function GiftCodesTab({ batches, classes }: { batches: GiftCodeBatch[]; c
           </label>
         </div>
         <button type="button" disabled={pending} onClick={create} data-testid="giftcode-create" className="btn-3d btn-shine h-11 w-full bg-pink-500 text-sm text-white [--btn-edge:#9d174d] hover:bg-pink-400 disabled:opacity-50">
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ticket className="h-4 w-4" />} Tạo {count} mã × {amount.toLocaleString("vi-VN")} {currency === "GEM" ? "ngọc" : "xu"}
+          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ticket className="h-4 w-4" />} Tạo {customCode ? 1 : count} mã × {amount.toLocaleString("vi-VN")} {currency === "GEM" ? "ngọc" : "xu"}
         </button>
         <p className="text-[11px] text-slate-400">Mỗi mã 8 ký tự, không có chữ dễ nhầm (O/0, I/1). Mỗi học sinh chỉ dùng mỗi mã một lần. Lô đã tạo có thể vô hiệu bất cứ lúc nào.</p>
         {justCreated && (
@@ -130,6 +147,27 @@ export function GiftCodesTab({ batches, classes }: { batches: GiftCodeBatch[]; c
 
       {/* Danh sách lô */}
       <div className="space-y-3">
+        {/* Mã còn dùng được (gom mọi lô) — web giữ mã cho tới khi được dùng */}
+        <div className="rounded-3xl border-2 border-emerald-200 bg-white p-4 shadow-sm" data-testid="giftcode-unused">
+          <button type="button" onClick={() => setShowUnused((v) => !v)} className="flex w-full items-center justify-between gap-2 text-left">
+            <span className="text-sm font-black text-emerald-800">🎟️ Mã chưa dùng ({unused.length})</span>
+            <span className="text-xs font-bold text-emerald-700">{showUnused ? "Thu gọn" : "Xem tất cả"}</span>
+          </button>
+          {showUnused && (
+            <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
+              {unused.map((u) => (
+                <li key={u.code} className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2">
+                  <span className="font-mono text-sm font-black tracking-wider text-slate-800">{u.code}</span>
+                  <span className="text-[11px] font-bold text-slate-500">
+                    {u.amount.toLocaleString("vi-VN")} {u.currency === "GEM" ? "ngọc" : "xu"}{u.maxUses > 1 ? ` · còn ${u.left}/${u.maxUses} lượt` : ""}{u.className ? ` · ${u.className}` : ""}
+                  </span>
+                  <button type="button" onClick={() => navigator.clipboard?.writeText(u.code).then(() => toast.success(`Đã chép ${u.code}`))} className="ml-auto rounded-lg border border-emerald-200 bg-white px-2 py-0.5 text-[11px] font-black text-emerald-700">Chép</button>
+                </li>
+              ))}
+              {unused.length === 0 && <li className="text-sm text-slate-400">Không còn mã nào chưa dùng.</li>}
+            </ul>
+          )}
+        </div>
         {batches.length === 0 && <p className="rounded-3xl border border-slate-200/70 bg-white p-8 text-center text-sm text-slate-500">Chưa có lô mã nào. Tạo lô đầu tiên để phát thẻ cào cho học sinh được điểm 10 nhé!</p>}
         {batches.map((b) => (
           <div key={b.batchId} className="rounded-3xl border border-slate-200/70 bg-white p-4 shadow-sm">

@@ -39,6 +39,7 @@ model User {
   pointWallet          PointWallet?
   redemptions          Redemption[]
   giftCodeUses         GiftCodeUse[]
+  homeworkReviews      HomeworkReview[]
   items                UserItem[]
   avatar               UserAvatar?
   gachaPulls           GachaPull[]
@@ -148,6 +149,8 @@ model Lesson {
   attachments         Attachment[]
   comments            Comment[]
   homeworkSubmissions HomeworkSubmission[]
+  homeworkDeadlines   HomeworkDeadline[]
+  homeworkReviews     HomeworkReview[]
   chapter             Chapter              @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   progress            Progress[]
   test                Test?
@@ -465,6 +468,7 @@ model StudyClass {
   rewards              Reward[]
   deadlines            TestDeadline[]
   giftCodes            GiftCode[]
+  homeworkDeadlines    HomeworkDeadline[]
 }
 
 /// Hạn nộp riêng của một đề cho một lớp
@@ -514,6 +518,8 @@ enum PointSource {
   FINAL_TEST
   HOMEWORK_SUBMIT
   HOMEWORK_PASS
+  /// Giáo viên duyệt chữa bài tập trên lớp (26/11/2026)
+  HOMEWORK_REVIEW
   STREAK
   MANUAL
   REDEEM
@@ -721,4 +727,41 @@ model GameConfig {
   value       Json
   updatedById String?
   updatedAt   DateTime @updatedAt
+}
+
+/// Hạn nộp bài tập về nhà của một bài cho một lớp (26/11/2026): nộp trước hạn → +100 xu, sau hạn → 0
+model HomeworkDeadline {
+  id         String     @id @default(cuid())
+  lessonId   String
+  classId    String
+  dueDate    DateTime
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  studyClass StudyClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, classId])
+  @@index([classId])
+}
+
+enum HomeworkReviewLevel {
+  NONE
+  PARTIAL
+  FULL
+}
+
+/// Giáo viên duyệt chữa bài tập trên lớp: Chưa chữa (0) / Có chữa (+280) / Chữa đủ, tốt (+400) — sổ xu khoá HWREVIEW:<lessonId>
+model HomeworkReview {
+  id           String              @id @default(cuid())
+  lessonId     String
+  userId       String
+  level        HomeworkReviewLevel
+  reviewedById String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  lesson       Lesson              @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, userId])
+  @@index([userId])
 }

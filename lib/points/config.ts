@@ -16,43 +16,52 @@ export function isPointsEnabled() {
   return (process.env.POINTS_ENABLED ?? "on").toLowerCase() !== "off";
 }
 
+/**
+ * 26/11/2026 — thầy đổi cơ chế: CHỈ cộng xu qua 3 hành động (docs/ai-reviews/xu-3-actions/PLAN.md):
+ *   1) nộp bài tập về nhà đúng hạn +100; 2) giáo viên duyệt chữa bài +280 / +400; 3) mã quà tặng.
+ * Các nguồn cũ (bài kiểm tra, điểm cao, bứt phá, thi cuối khoá, chấm Đạt online, chuỗi tuần) để 0 = tắt;
+ * admin bật lại được ở Tiệm quà → Quản lý → Hoạt động kiếm xu. Thầy thưởng tay giữ nguyên.
+ */
 export const POINTS = {
-  /** Nộp bài kiểm tra / bài tập trắc nghiệm (lần đầu) */
-  testSubmit: 300,
-  /** Nộp sau hạn */
-  testSubmitLate: 150,
-  /** Nộp đúng hạn (chỉ khi đề có hạn hiệu lực với học sinh — hạn lớp hoặc hạn chung) */
-  onTimeBonus: 150,
+  /** Nộp bài kiểm tra / bài tập trắc nghiệm (lần đầu) — tắt từ 26/11 (trước 300) */
+  testSubmit: 0,
+  /** Nộp sau hạn — tắt (trước 150) */
+  testSubmitLate: 0,
+  /** Nộp đúng hạn bài kiểm tra — tắt (trước 150) */
+  onTimeBonus: 0,
   /** Phải làm ít nhất tỉ lệ này số câu mới được xu nộp bài (chống nộp trắng lấy xu) */
   minAnsweredRatio: 0.5,
   /** Thưởng theo điểm bài (lấy mức cao nhất đạt được) */
   scoreTiers: [
-    { min: 10, points: 450 },
-    { min: 8.5, points: 300 },
-    { min: 7, points: 150 },
+    { min: 10, points: 0 },
+    { min: 8.5, points: 0 },
+    { min: 7, points: 0 },
   ],
   /** Bứt phá: điểm bài này ≥ trung bình `window` bài gần nhất + `margin` (cần ít nhất `minPrevious` bài trước) */
-  breakthrough: { points: 150, window: 5, minPrevious: 3, margin: 1.5 },
+  breakthrough: { points: 0, window: 5, minPrevious: 3, margin: 1.5 },
   /** Đề thi cuối khoá: xu nộp bài riêng, thưởng điểm cao nhân hệ số */
-  finalTestSubmit: 750,
+  finalTestSubmit: 0,
   finalScoreMultiplier: 2,
-  /** Bài tập về nhà (nộp ảnh) */
-  homeworkSubmit: 150,
-  homeworkPass: 150,
+  /** Bài tập về nhà (nộp ảnh): chỉ cộng khi nộp TRƯỚC hạn của lớp (chưa đặt hạn → nộp là cộng) */
+  homeworkSubmit: 100,
+  /** Chấm Đạt bài nộp online — tắt (thay bằng duyệt chữa bài trên lớp) */
+  homeworkPass: 0,
+  /** Giáo viên duyệt chữa bài trên lớp: Có chữa / Chữa đủ, tốt (Chưa chữa = 0) */
+  homeworkReview: { partial: 280, full: 400 },
   /** Tối đa xu tự động (bài kiểm tra, bài tập) mỗi ngày — chặn bất thường */
   dailyAutoCap: 4500,
   /** Chuỗi tuần học: tuần đạt khi có ít nhất `minActivities` lần nộp bài (kiểm tra hoặc bài tập về nhà) */
   streak: {
     minActivities: 2,
     /** Xu thưởng khi chuỗi đạt mốc (số tuần → xu) */
-    milestones: { 2: 300, 4: 600, 8: 1200, 12: 1800 } as Record<number, number>,
-    /** Sau 12 tuần: cứ mỗi 4 tuần thêm */
-    every4WeeksAfter12: 1800,
+    milestones: { 2: 0, 4: 0, 8: 0, 12: 0 } as Record<number, number>,
+    /** Sau 12 tuần: cứ mỗi 4 tuần thêm — tắt (trước 1800) */
+    every4WeeksAfter12: 0,
     /** Mỗi 4 tuần liên tiếp được thêm 1 thẻ giữ chuỗi, giữ tối đa */
     maxFreezes: 2,
   },
-  /** Giáo viên thưởng/trừ tay */
-  manual: { maxPerGrant: 1500, dailyCapPerStudent: 1500 },
+  /** Thầy thưởng/trừ tay (26/11: thu nhỏ theo thang mới — tối đa bằng 1 bài tập làm tốt; trước 1500) */
+  manual: { maxPerGrant: 500, dailyCapPerStudent: 500 },
   /** Yêu cầu đổi quà chưa trao sau số ngày này thì tự hết hạn và hoàn xu */
   pendingExpiryDays: 30,
 } as const;
@@ -68,7 +77,7 @@ export const STREAK_ACTIVITY_SOURCES = ["TEST_SUBMIT", "FINAL_TEST", "HOMEWORK_S
  * mã quà tặng, gacha, mua đồ, đổi/hoàn quà không ảnh hưởng danh hiệu. REVOKE (âm) trừ lại phần đã kiếm.
  */
 export const EARNING_SOURCES = [
-  "TEST_SUBMIT", "ON_TIME", "TEST_SCORE", "BREAKTHROUGH", "FINAL_TEST", "HOMEWORK_SUBMIT", "HOMEWORK_PASS", "STREAK", "MANUAL", "REVOKE",
+  "TEST_SUBMIT", "ON_TIME", "TEST_SCORE", "BREAKTHROUGH", "FINAL_TEST", "HOMEWORK_SUBMIT", "HOMEWORK_PASS", "HOMEWORK_REVIEW", "STREAK", "MANUAL", "REVOKE",
 ] as const;
 
 export const SOURCE_LABEL: Record<string, string> = {
@@ -79,6 +88,7 @@ export const SOURCE_LABEL: Record<string, string> = {
   FINAL_TEST: "Thi cuối khoá",
   HOMEWORK_SUBMIT: "Nộp bài tập về nhà",
   HOMEWORK_PASS: "Bài tập về nhà đạt",
+  HOMEWORK_REVIEW: "Thầy duyệt chữa bài",
   STREAK: "Chuỗi tuần học",
   MANUAL: "Thầy thưởng",
   REDEEM: "Đổi quà",
@@ -92,22 +102,34 @@ export const SOURCE_LABEL: Record<string, string> = {
 const fmt = (n: number) => n.toLocaleString("vi-VN");
 
 /** Quy tắc hiển thị cho học sinh (trang Xu) — lấy từ cấu hình để luôn khớp (hàm: admin sửa mức xu → tính lại) */
-export const earningRules = (): { label: string; points: string; note?: string }[] => [
-  { label: "Nộp bài kiểm tra / bài tập", points: `+${fmt(POINTS.testSubmit)}`, note: `Nộp sau hạn +${fmt(POINTS.testSubmitLate)}. Cần làm ít nhất một nửa số câu` },
-  { label: "Nộp đúng hạn", points: `+${fmt(POINTS.onTimeBonus)}`, note: "Khi bài có hạn nộp và bạn nộp kịp" },
-  {
-    label: "Điểm cao",
-    points: POINTS.scoreTiers.map((t) => `+${fmt(t.points)}`).reverse().join(" / "),
-    note: POINTS.scoreTiers.map((t) => `≥${String(t.min).replace(".", ",")}`).reverse().join(" / "),
-  },
-  { label: "Bứt phá", points: `+${fmt(POINTS.breakthrough.points)}`, note: `Cao hơn trung bình ${POINTS.breakthrough.window} bài gần nhất từ ${String(POINTS.breakthrough.margin).replace(".", ",")} điểm` },
-  { label: "Đề thi cuối khoá", points: `+${fmt(POINTS.finalTestSubmit)}`, note: `Thưởng điểm cao ×${POINTS.finalScoreMultiplier}` },
-  { label: "Nộp bài tập về nhà", points: `+${fmt(POINTS.homeworkSubmit)}`, note: `Được chấm Đạt thêm +${fmt(POINTS.homeworkPass)}` },
-  {
-    label: "Chuỗi tuần học",
-    points: Object.values(POINTS.streak.milestones).map((v) => `+${fmt(v)}`).join(" / "),
-    note: `Mốc ${Object.keys(POINTS.streak.milestones).join(" / ")} tuần liên tiếp, mỗi tuần nộp ít nhất ${POINTS.streak.minActivities} bài`,
-  },
-  { label: "Thầy thưởng", points: `+1 … +${fmt(POINTS.manual.maxPerGrant)}`, note: "Phát biểu, giúp bạn, đi học đầy đủ…" },
-  { label: "Mã quà tặng", points: "Ngọc", note: "Thẻ cào thầy phát khi được điểm 10 trên lớp — nhập mã ở tiệm" },
-];
+export const earningRules = (): { label: string; points: string; note?: string }[] => {
+  const rules: { label: string; points: string; note?: string; on: boolean }[] = [
+    { on: POINTS.homeworkSubmit > 0, label: "Nộp bài tập về nhà đúng hạn", points: `+${fmt(POINTS.homeworkSubmit)}`, note: "Nộp ảnh bài làm trong trang bài học trước hạn thầy giao" },
+    {
+      on: POINTS.homeworkReview.full > 0 || POINTS.homeworkReview.partial > 0,
+      label: "Thầy duyệt chữa bài",
+      points: `+${fmt(POINTS.homeworkReview.partial)} / +${fmt(POINTS.homeworkReview.full)}`,
+      note: "Có chữa / Chữa đủ, tốt — thầy kiểm tra vở trên lớp",
+    },
+    { on: true, label: "Mã quà tặng", points: "Xu / Ngọc", note: "Thầy phát mã — nhập ở Tiệm quà → Thẻ cào, mỗi mã dùng một lần" },
+    { on: POINTS.testSubmit > 0, label: "Nộp bài kiểm tra", points: `+${fmt(POINTS.testSubmit)}`, note: `Nộp sau hạn +${fmt(POINTS.testSubmitLate)}. Cần làm ít nhất một nửa số câu` },
+    { on: POINTS.onTimeBonus > 0, label: "Nộp bài kiểm tra đúng hạn", points: `+${fmt(POINTS.onTimeBonus)}` },
+    {
+      on: POINTS.scoreTiers.some((t) => t.points > 0),
+      label: "Điểm cao",
+      points: POINTS.scoreTiers.map((t) => `+${fmt(t.points)}`).reverse().join(" / "),
+      note: POINTS.scoreTiers.map((t) => `≥${String(t.min).replace(".", ",")}`).reverse().join(" / "),
+    },
+    { on: POINTS.breakthrough.points > 0, label: "Bứt phá", points: `+${fmt(POINTS.breakthrough.points)}`, note: `Cao hơn trung bình ${POINTS.breakthrough.window} bài gần nhất từ ${String(POINTS.breakthrough.margin).replace(".", ",")} điểm` },
+    { on: POINTS.finalTestSubmit > 0, label: "Đề thi cuối khoá", points: `+${fmt(POINTS.finalTestSubmit)}`, note: `Thưởng điểm cao ×${POINTS.finalScoreMultiplier}` },
+    { on: POINTS.homeworkPass > 0, label: "Bài tập về nhà được chấm Đạt", points: `+${fmt(POINTS.homeworkPass)}` },
+    {
+      on: Object.values(POINTS.streak.milestones).some((v) => v > 0),
+      label: "Chuỗi tuần học",
+      points: Object.values(POINTS.streak.milestones).map((v) => `+${fmt(v)}`).join(" / "),
+      note: `Mốc ${Object.keys(POINTS.streak.milestones).join(" / ")} tuần liên tiếp, mỗi tuần nộp ít nhất ${POINTS.streak.minActivities} bài`,
+    },
+    { on: POINTS.manual.maxPerGrant > 0, label: "Thầy thưởng", points: `+1 … +${fmt(POINTS.manual.maxPerGrant)}`, note: "Trường hợp đặc biệt" },
+  ];
+  return rules.filter((r) => r.on).map(({ on: _on, ...r }) => r);
+};

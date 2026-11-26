@@ -39,7 +39,7 @@ export function EarnSection({ todo, todoTotal, recent, lifetimeEarned, level }: 
                 <div className="ah-hand line-clamp-1 text-base font-bold">{t.title}</div>
                 <div className="text-xs font-bold text-[#6e4722]">{t.dueDate ? fmtDue(t.dueDate, now) : "Không hạn nộp"}</div>
               </div>
-              <span className="font-black text-[#9e6b3f]">+{fmt(POINTS.testSubmit)} xu{t.dueDate && !overdue ? ` · +${POINTS.onTimeBonus} đúng hạn` : ""}</span>
+              {POINTS.testSubmit > 0 && <span className="font-black text-[#9e6b3f]">+{fmt(POINTS.testSubmit)} xu{t.dueDate && !overdue && POINTS.onTimeBonus > 0 ? ` · +${POINTS.onTimeBonus} đúng hạn` : ""}</span>}
               <Link href={`/watch/${t.lessonId}`} className="ah-btn ah-gold h-[42px] px-[18px]">Nộp ngay</Link>
             </div>
           );
@@ -59,7 +59,7 @@ export function EarnSection({ todo, todoTotal, recent, lifetimeEarned, level }: 
           </div>
         )}
         <div className="rounded-[18px] border-2 border-dashed border-[#241e1a] bg-[#fff6db] px-4 py-3 text-[13px] font-bold">
-          Bài tập về nhà: chụp ảnh bài làm và nộp ngay trong trang bài học (+{POINTS.homeworkSubmit} xu, được chấm Đạt +{POINTS.homeworkPass} xu).
+          Bài tập về nhà: chụp ảnh bài làm và nộp trong trang bài học <b>trước hạn</b> (+{fmt(POINTS.homeworkSubmit)} xu). Lên lớp thầy duyệt chữa bài: có chữa +{fmt(POINTS.homeworkReview.partial)} xu, chữa đủ và tốt +{fmt(POINTS.homeworkReview.full)} xu.
         </div>
       </section>
       <section className="ah-panel flex flex-col gap-3 p-5">

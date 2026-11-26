@@ -103,8 +103,8 @@ export function GuestLanding({ courses, rewards }: { courses: (CourseTileData & 
                 <div className="flex items-center gap-2.5 rounded-full border border-[#F3DC8E] bg-[#FFF6DB] py-2.5 pl-2.5 pr-4 shadow-[0_12px_28px_rgba(122,78,0,0.15)] lg:absolute lg:right-3 lg:top-[330px]">
                   <span aria-hidden className="h-8 w-8 rounded-full border-[3px] border-[#D8961B] bg-[#F5B82E]" />
                   <span className="flex flex-col">
-                    <span className="font-extrabold text-[#7A4E00]">+{POINTS.testSubmit.toLocaleString("vi-VN")} xu</span>
-                    <span className="text-xs text-[#6B4E12]">Nộp bài kiểm tra</span>
+                    <span className="font-extrabold text-[#7A4E00]">+{(POINTS.testSubmit || POINTS.homeworkSubmit).toLocaleString("vi-VN")} xu</span>
+                    <span className="text-xs text-[#6B4E12]">{POINTS.testSubmit ? "Nộp bài kiểm tra" : "Nộp bài tập đúng hạn"}</span>
                   </span>
                 </div>
               )}

@@ -5,6 +5,9 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { PointSource } from "@prisma/client";
 import { earningRules, POINTS, SOURCE_LABEL } from "@/lib/points/config";
+import { vndToXu } from "@/lib/points/vnd";
+import { setGameConfigForTests } from "@/lib/game/game-config";
+import { applyLegacyEarning } from "../helpers/legacy-earning";
 import { scoreTierPoints } from "@/lib/points/hooks";
 import { vietnamDayStart } from "@/lib/points/engine";
 import { normalizeRewardImageUrl, normalizeRewardInput, type RewardInput } from "@/lib/points/reward-input";
@@ -30,54 +33,63 @@ describe("Thang điểm", () => {
     for (const s of Object.values(PointSource)) assert.ok(SOURCE_LABEL[s], `thiếu nhãn cho ${s}`);
   });
 
-  test("bảng 'Cách nhận điểm' hiển thị đúng số trong cấu hình", () => {
-    const submit = earningRules().find((r) => r.label.startsWith("Nộp bài kiểm tra"));
-    assert.equal(submit?.points, `+${POINTS.testSubmit}`);
-    const tiers = earningRules().find((r) => r.label === "Điểm cao");
-    assert.equal(tiers?.points, "+150 / +300 / +450");
-    assert.equal(tiers?.note, "≥7 / ≥8,5 / ≥10");
-    for (const r of earningRules()) assert.ok(r.label && r.points, "mỗi dòng có nhãn và điểm");
+  test("bảng 'Cách nhận xu' theo cơ chế 3 hành động; nguồn đang tắt (0 xu) không hiện", () => {
+    const rules = earningRules();
+    assert.equal(rules[0].label, "Nộp bài tập về nhà đúng hạn");
+    assert.equal(rules[0].points, `+${POINTS.homeworkSubmit}`);
+    assert.equal(rules.find((r) => r.label === "Thầy duyệt chữa bài")?.points, "+280 / +400");
+    assert.ok(rules.some((r) => r.label === "Mã quà tặng"));
+    assert.ok(!rules.some((r) => r.label.startsWith("Nộp bài kiểm tra") || r.label === "Điểm cao" || r.label === "Chuỗi tuần học"), "nguồn cũ đã tắt");
+    for (const r of rules) assert.ok(r.label && r.points, "mỗi dòng có nhãn và điểm");
+  });
+
+  test("admin bật lại xu bài kiểm tra → bảng hiện lại đúng số", () => {
+    applyLegacyEarning();
+    try {
+      assert.equal(earningRules().find((r) => r.label.startsWith("Nộp bài kiểm tra"))?.points, "+300");
+      const tiers = earningRules().find((r) => r.label === "Điểm cao");
+      assert.equal(tiers?.points, "+150 / +300 / +450");
+      assert.equal(tiers?.note, "≥7 / ≥8,5 / ≥10");
+    } finally {
+      setGameConfigForTests(null);
+    }
   });
 });
 
-describe("Cân bằng kinh tế xu (chăm cả tháng ≈ 1 gói bim bim)", () => {
-  // Mô phỏng một tháng (4 tuần)
-  function month(p: { testsPerWeek: number; avgScore: number; homeworkPerWeek: number; homeworkPassRate: number }) {
-    const perTest = POINTS.testSubmit + scoreTierPoints(p.avgScore);
-    const perHw = POINTS.homeworkSubmit + POINTS.homeworkPass * p.homeworkPassRate;
-    const weekly = p.testsPerWeek * perTest + p.homeworkPerWeek * perHw;
-    const streak = p.testsPerWeek + p.homeworkPerWeek >= POINTS.streak.minActivities ? (POINTS.streak.milestones[2] ?? 0) + (POINTS.streak.milestones[4] ?? 0) : 0;
-    return Math.round(weekly * 4 + streak);
-  }
-  const bimbim = REWARD_TEMPLATES.find((t) => t.title === "Gói bim bim")!;
+describe("Cân bằng kinh tế xu (26/11: chỉ 3 hành động, giá = tiền thật ÷ 3,6)", () => {
+  /** Xu một tháng (4 tuần) chỉ từ bài tập về nhà */
+  const month = (hwPerWeek: number, onTimeRate: number, review: "NONE" | "PARTIAL" | "FULL") =>
+    Math.round(4 * hwPerWeek * (POINTS.homeworkSubmit * onTimeRate + (review === "FULL" ? POINTS.homeworkReview.full : review === "PARTIAL" ? POINTS.homeworkReview.partial : 0)));
+  const byTitle = (t: string) => REWARD_TEMPLATES.find((x) => x.title === t)!;
 
-  test("học sinh chăm cả tháng vừa đủ đổi 1 gói bim bim (không dư nhiều)", () => {
-    const diligent = month({ testsPerWeek: 5, avgScore: 8, homeworkPerWeek: 2, homeworkPassRate: 1 });
-    assert.ok(diligent >= bimbim.price, `chăm chỉ ${diligent} điểm phải đủ ${bimbim.price}`);
-    assert.ok(diligent < bimbim.price * 1.5, `chăm chỉ ${diligent} điểm không nên đổi được 1,5 gói`);
+  test("mức xu theo tài liệu thầy: nộp đúng hạn 100, có chữa 280, chữa đủ 400; nguồn cũ tắt", () => {
+    assert.equal(POINTS.homeworkSubmit, 100);
+    assert.deepEqual({ ...POINTS.homeworkReview }, { partial: 280, full: 400 });
+    for (const v of [POINTS.testSubmit, POINTS.onTimeBonus, POINTS.breakthrough.points, POINTS.finalTestSubmit, POINTS.homeworkPass, ...POINTS.scoreTiers.map((t) => t.points), ...Object.values(POINTS.streak.milestones)]) assert.equal(v, 0);
   });
 
-  test("học sinh trung bình cần hơn 1 tháng cho 1 gói bim bim", () => {
-    const average = month({ testsPerWeek: 3, avgScore: 6, homeworkPerWeek: 1, homeworkPassRate: 0.5 });
-    assert.ok(average < bimbim.price, `trung bình ${average} điểm/tháng`);
-    assert.ok(average >= 20, "nhưng vẫn có điểm để thấy tiến bộ");
+  test("học sinh chăm (2 bài/tuần, đúng hạn, chữa đủ): mỗi tháng đổi được quà nhỏ, trà sữa trong khoảng 2–3 tháng", () => {
+    const diligent = month(2, 1, "FULL");
+    assert.equal(diligent, 4000);
+    assert.ok(diligent >= byTitle("Gói bim bim").price, "đủ 1 gói bim bim mỗi tháng");
+    const tea = byTitle("Trà Sữa Tai Mèo 700ml").price;
+    assert.ok(tea > diligent && tea <= diligent * 3, `trà sữa ${tea} xu ≈ 2–3 tháng`);
   });
 
-  test("giới hạn ngày không chặn một ngày học bình thường (3 bài điểm 10 đúng hạn + 2 bài tập về nhà)", () => {
-    const busyDay = 3 * (POINTS.testSubmit + POINTS.onTimeBonus + scoreTierPoints(10) + POINTS.breakthrough.points) + 2 * (POINTS.homeworkSubmit + POINTS.homeworkPass);
-    assert.ok(busyDay <= POINTS.dailyAutoCap, `${busyDay} ≤ ${POINTS.dailyAutoCap}`);
+  test("học sinh chỉ nộp, không chữa vẫn đổi được quà rẻ nhất sau 1 tháng", () => {
+    const lazy = month(2, 1, "NONE");
+    assert.ok(lazy >= Math.min(...REWARD_TEMPLATES.map((t) => t.price)), `${lazy} xu/tháng`);
+    assert.ok(lazy < byTitle("Gói bim bim").price * 1.5, "nhưng ít hơn hẳn bạn chữa bài");
   });
 
-  test("nộp bài 300 xu; bài đúng hạn điểm 10 có bứt phá ≈ 300 × 3,5; đúng hạn không lớn hơn xu nộp bài", () => {
-    assert.equal(POINTS.testSubmit, 300);
-    const best = POINTS.testSubmit + POINTS.onTimeBonus + scoreTierPoints(10) + POINTS.breakthrough.points;
-    assert.ok(best >= 300 * 3 && best <= 300 * 4, String(best));
-    assert.ok(POINTS.onTimeBonus <= POINTS.testSubmit);
-    assert.ok(POINTS.testSubmitLate < POINTS.testSubmit);
+  test("giá mẫu = tiền thật ÷ 3,6 làm tròn lên trăm (quà hiện vật theo chi phí thật)", () => {
+    for (const t of REWARD_TEMPLATES.filter((x) => x.kind === "PHYSICAL")) assert.equal(t.price, vndToXu(t.costVnd ?? 0), t.title);
+    assert.equal(byTitle("Trà Sữa Tai Mèo 700ml").price, 8400);
   });
 
-  test("thưởng tay mỗi ngày không lấn át điểm học (≤ 1/5 quà lớn nhất trong mẫu thường dùng)", () => {
-    assert.ok(POINTS.manual.dailyCapPerStudent <= bimbim.price / 5);
+  test("thưởng tay mỗi lần / mỗi ngày không quá 1 bài tập làm tốt", () => {
+    const best = POINTS.homeworkSubmit + POINTS.homeworkReview.full;
+    assert.ok(POINTS.manual.maxPerGrant <= best && POINTS.manual.dailyCapPerStudent <= best);
   });
 
   test("mẫu quà: giá hợp lệ, có quà rẻ cho học sinh trung bình", () => {

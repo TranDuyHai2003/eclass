@@ -3,7 +3,7 @@ import type { Currency } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { awardOnce, isEligibleStudent, lockWallet, type Tx } from "@/lib/points/engine";
 import type { PointsResult } from "@/lib/points/redemption";
-import { ALPHABET, CODE_LENGTH, MAX_AMOUNT, MAX_BATCH, codeLengthOk, normalizeCode, parseVnDateTime } from "./giftcode-shared";
+import { ALPHABET, CODE_LENGTH, MAX_AMOUNT, MAX_BATCH, MAX_CODE_LENGTH, MIN_CODE_LENGTH, codeLengthOk, normalizeCode, parseVnDateTime } from "./giftcode-shared";
 
 export { CODE_LENGTH, MAX_AMOUNT, MAX_BATCH, normalizeCode } from "./giftcode-shared";
 
@@ -27,6 +27,8 @@ export interface GiftCodeBatchInput {
   expiresAt?: string | Date | null;
   classId?: string | null;
   note?: string | null;
+  /** Mã thầy tự đặt (4–16 chữ / số, không dấu) — chỉ khi tạo 1 mã */
+  customCode?: string | null;
 }
 
 export function validateBatchInput(input: GiftCodeBatchInput): string | null {
@@ -36,6 +38,11 @@ export function validateBatchInput(input: GiftCodeBatchInput): string | null {
     return `Giá trị mỗi mã từ 1 đến ${MAX_AMOUNT[input.currency].toLocaleString("vi-VN")}.`;
   }
   if (!Number.isInteger(input.maxUses) || input.maxUses < 1 || input.maxUses > 500) return "Số lượt dùng mỗi mã từ 1 đến 500.";
+  if (input.customCode) {
+    const c = normalizeCode(input.customCode);
+    if (input.count !== 1) return "Mã tự đặt chỉ tạo 1 mã mỗi lần.";
+    if (!codeLengthOk(c)) return `Mã tự đặt dài ${MIN_CODE_LENGTH}–${MAX_CODE_LENGTH} chữ / số (không dấu, không khoảng trắng).`;
+  }
   if (input.expiresAt) {
     const d = parseVnDateTime(input.expiresAt);
     if (!d) return "Hạn dùng không hợp lệ.";
@@ -45,11 +52,22 @@ export function validateBatchInput(input: GiftCodeBatchInput): string | null {
 }
 
 /** Tạo một lô mã; trả về danh sách mã để thầy in. Kiểm tra trùng trước khi ghi (xác suất trùng cực thấp nhưng vẫn chặn). */
+export class GiftCodeTaken extends Error {
+  constructor(public code: string) {
+    super(`Mã ${code} đã có rồi — chọn chữ khác nhé.`);
+  }
+}
+
 export async function createBatch(input: GiftCodeBatchInput, createdById: string) {
   const err = validateBatchInput(input);
   if (err) throw new Error(err);
   const batchId = `${Date.now().toString(36)}-${generateCode().slice(0, 4)}`;
   const codes = new Set<string>();
+  if (input.customCode) {
+    const code = normalizeCode(input.customCode);
+    if (await prisma.giftCode.findUnique({ where: { code }, select: { id: true } })) throw new GiftCodeTaken(code);
+    codes.add(code);
+  }
   while (codes.size < input.count) codes.add(generateCode());
   const existing = await prisma.giftCode.findMany({ where: { code: { in: [...codes] } }, select: { code: true } });
   for (const e of existing) {

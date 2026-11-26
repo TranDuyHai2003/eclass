@@ -22,6 +22,7 @@ import {
   MessageCircle,
   Youtube,
   FileText,
+  ClipboardCheck,
   Trophy,
   Crown,
   Gift,
@@ -81,6 +82,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
       icon: ClipboardList,
     },
     { href: "/teacher/homework", label: "Duyệt Bài tự luận", icon: FileText },
+    { href: "/teacher/homework/check", label: "Duyệt chữa bài (xu)", icon: ClipboardCheck },
     ...(pointsEnabled ? [{ href: "/teacher/rewards", label: "Quà & Xu", icon: Gift }] : []),
     { href: "/teacher/videos", label: "Thư viện Video", icon: PlaySquare },
   ];

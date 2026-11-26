@@ -35,6 +35,13 @@ export function createFixture() {
     async test(opts: { dueDate?: Date | null; courseId?: string | null } = {}) {
       return prisma.test.create({ data: { pdfUrl: "test.pdf", duration: 10, title: tag, dueDate: opts.dueDate ?? null, courseId: opts.courseId ?? null } });
     },
+    /** Bài học có bài tập về nhà (khoá học + chương riêng của lần chạy, xoá theo tên khi dọn) */
+    async homeworkLesson(opts: { classIds?: string[] } = {}) {
+      const owner = await prisma.user.create({ data: { email: `${tag}-owner-${Math.random().toString(36).slice(2, 8)}@test.local`, role: "TEACHER", isApproved: true } });
+      const course = await prisma.course.create({ data: { title: tag, userId: owner.id, isPublished: true, ...(opts.classIds?.length ? { classes: { connect: opts.classIds.map((id) => ({ id })) } } : {}) } });
+      const chapter = await prisma.chapter.create({ data: { title: tag, courseId: course.id, isPublished: true } });
+      return prisma.lesson.create({ data: { title: `${tag} BTVN`, chapterId: chapter.id, hasHomework: true, isPublished: true } });
+    },
     async attempt(testId: string, userId: string, score: number | null, completedAt: Date | null = new Date()) {
       return prisma.studentAttempt.create({ data: { testId, userId, score, completedAt } });
     },
@@ -77,6 +84,7 @@ export function createFixture() {
     async cleanup() {
       await prisma.reward.deleteMany({ where: { title: { startsWith: tag } } });
       await prisma.test.deleteMany({ where: { title: tag } });
+      await prisma.course.deleteMany({ where: { title: tag } });
       await prisma.user.deleteMany({ where: { email: { startsWith: tag } } });
       await prisma.studyClass.deleteMany({ where: { name: { startsWith: tag } } });
     },

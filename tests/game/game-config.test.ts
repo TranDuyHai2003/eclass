@@ -87,6 +87,25 @@ describe("Áp cấu hình", () => {
 });
 
 describe("Luồng thật (DB local)", () => {
+  test("đường DB thật: lưu bảng GameConfig rồi nạp lại áp đúng (cache 30 giây, lưu xong áp ngay)", async () => {
+    const prev = process.env.GAME_CONFIG_SOURCE;
+    process.env.GAME_CONFIG_SOURCE = "db";
+    try {
+      const admin = await fx.user({ role: "ADMIN" });
+      await writeGameConfig("itemPrices", { "frame-blue": { xu: 900, vnd: 3000 } }, admin.id);
+      const row = await prisma.gameConfig.findUnique({ where: { key: "itemPrices" } });
+      assert.deepEqual(row?.value, { "frame-blue": { xu: 900, vnd: 3000 } });
+      assert.deepEqual(ITEM_BY_ID["frame-blue"].price, { xu: 900 });
+      applyGameConfig(null);
+      await loadGameConfig(); // trong 30 giây: dùng cache, vẫn áp lại
+      assert.deepEqual(ITEM_BY_ID["frame-blue"].price, { xu: 900 });
+    } finally {
+      await prisma.gameConfig.deleteMany({ where: { key: { in: ["itemPrices", "earning"] } } });
+      process.env.GAME_CONFIG_SOURCE = prev;
+      applyGameConfig(null);
+    }
+  });
+
   test("mua thú cưng trừ đúng giá admin đặt", async () => {
     const admin = await fx.user({ role: "ADMIN" });
     await writeGameConfig("itemPrices", { "pet-moka": { xu: 5600, vnd: 20000 } }, admin.id);
@@ -97,10 +116,10 @@ describe("Luồng thật (DB local)", () => {
     assert.equal(await fx.balance(s.id), 400);
   });
 
-  test("nộp bài cộng mức xu admin đặt (đọc lại từ DB qua runPointsSafely)", async () => {
+  test("nộp bài cộng mức xu admin đặt (runPointsSafely tự nạp lại cấu hình)", async () => {
     const admin = await fx.user({ role: "ADMIN" });
     await writeGameConfig("earning", { testSubmit: 777 }, admin.id);
-    applyGameConfig(null); // giả lập tiến trình khác chưa áp: hook phải tự nạp từ DB
+    applyGameConfig(null); // giả lập tiến trình chưa áp: hook phải tự nạp lại
     await loadGameConfig(true);
     applyGameConfig(null);
     const s = await fx.user();

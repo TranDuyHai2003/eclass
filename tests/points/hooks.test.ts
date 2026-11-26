@@ -7,6 +7,10 @@ import { prisma } from "@/lib/prisma";
 import { POINTS } from "@/lib/points/config";
 import { onAttemptDeleted, onEssayGraded, onHomeworkGraded, onHomeworkSubmitted, onTestSubmitted, scoreTierPoints } from "@/lib/points/hooks";
 import { createFixture, disconnect, withPoints } from "../helpers/fixtures";
+import { applyLegacyEarning } from "../helpers/legacy-earning";
+
+// Cơ chế xu bài kiểm tra / điểm cao… mặc định tắt từ 26/11 — kiểm logic với mức cũ (admin bật lại được)
+applyLegacyEarning();
 
 const fx = createFixture();
 const P = POINTS;

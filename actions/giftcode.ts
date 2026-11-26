@@ -7,7 +7,7 @@ import { demoGuard } from "@/lib/demo";
 import { isPointsEnabled } from "@/lib/points/config";
 import { canUseShop } from "@/lib/points/shop-access";
 import type { PointsResult } from "@/lib/points/redemption";
-import { createBatch, noteFailure, rateLimited, redeemGiftCodeInTx, validateBatchInput, type GiftCodeBatchInput } from "@/lib/game/giftcode";
+import { GiftCodeTaken, createBatch, noteFailure, rateLimited, redeemGiftCodeInTx, validateBatchInput, type GiftCodeBatchInput } from "@/lib/game/giftcode";
 
 const DISABLED: PointsResult = { success: false, error: "Tính năng Xu đang tạm tắt." };
 
@@ -60,6 +60,7 @@ export async function createGiftCodes(input: GiftCodeBatchInput): Promise<Points
     expiresAt: input.expiresAt || null,
     classId: input.classId || null,
     note: input.note ?? null,
+    customCode: input.customCode ? String(input.customCode) : null,
   };
   const err = validateBatchInput(normalized);
   if (err) return { success: false, error: err };
@@ -67,7 +68,14 @@ export async function createGiftCodes(input: GiftCodeBatchInput): Promise<Points
     const exists = await prisma.studyClass.count({ where: { id: normalized.classId } });
     if (!exists) return { success: false, error: "Lớp không tồn tại." };
   }
-  const { batchId, codes } = await createBatch(normalized, staff.id);
+  let created: Awaited<ReturnType<typeof createBatch>>;
+  try {
+    created = await createBatch(normalized, staff.id);
+  } catch (e) {
+    if (e instanceof GiftCodeTaken || (e as { code?: string })?.code === "P2002") return { success: false, error: e instanceof GiftCodeTaken ? e.message : "Mã này đã có rồi — chọn chữ khác nhé." };
+    throw e;
+  }
+  const { batchId, codes } = created;
   revalidatePath("/teacher/rewards");
   return { success: true, message: `Đã tạo ${codes.length} mã.`, batchId, codes };
 }

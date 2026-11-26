@@ -37,3 +37,22 @@ export async function getGiftCodeBatches(limit = 30) {
 }
 
 export type GiftCodeBatch = Awaited<ReturnType<typeof getGiftCodeBatches>>[number];
+
+/** Mọi mã còn dùng được (đang bật, còn lượt, chưa hết hạn) — thầy xem lại mã đã tạo cho tới khi được dùng (26/11/2026) */
+export async function getUnusedGiftCodes(limit = 500) {
+  const now = new Date();
+  const rows = await prisma.giftCode.findMany({
+    where: { isActive: true, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+    orderBy: { createdAt: "desc" },
+    take: limit * 2,
+    select: { code: true, currency: true, amount: true, maxUses: true, usedCount: true, note: true, createdAt: true, expiresAt: true, studyClass: { select: { name: true } } },
+  });
+  return rows
+    .filter((r) => r.usedCount < r.maxUses)
+    .slice(0, limit)
+    .map((r) => ({
+      code: r.code, currency: r.currency, amount: r.amount, left: r.maxUses - r.usedCount, maxUses: r.maxUses, note: r.note,
+      className: r.studyClass?.name ?? null, createdAt: r.createdAt.toISOString(), expiresAt: r.expiresAt?.toISOString() ?? null,
+    }));
+}
+export type UnusedGiftCode = Awaited<ReturnType<typeof getUnusedGiftCodes>>[number];

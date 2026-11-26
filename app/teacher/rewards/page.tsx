@@ -6,7 +6,7 @@ import { TeacherRewards } from "@/components/points/TeacherRewards";
 import { isPointsEnabled, POINTS } from "@/lib/points/config";
 import { getTeacherRewardsPage } from "@/lib/points/queries";
 import { expireStaleRedemptions } from "@/lib/points/redemption";
-import { getGiftCodeBatches } from "@/lib/game/giftcode-queries";
+import { getGiftCodeBatches, getUnusedGiftCodes } from "@/lib/game/giftcode-queries";
 import { loadGameConfig } from "@/lib/game/game-config";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export default async function TeacherRewardsPage() {
   await loadGameConfig(); // giới hạn thưởng tay admin sửa
   if (!isPointsEnabled()) notFound();
   await expireStaleRedemptions().catch(() => {});
-  const [data, giftBatches, session] = await Promise.all([getTeacherRewardsPage(), getGiftCodeBatches(), auth()]);
+  const [data, giftBatches, unusedCodes, session] = await Promise.all([getTeacherRewardsPage(), getGiftCodeBatches(), getUnusedGiftCodes(), auth()]);
 
   return (
     <div className="space-y-5">
@@ -35,7 +35,7 @@ export default async function TeacherRewardsPage() {
           </Link>
         )}
       </div>
-      <TeacherRewards data={data} giftBatches={giftBatches} manualMax={POINTS.manual.maxPerGrant} manualDailyCap={POINTS.manual.dailyCapPerStudent} />
+      <TeacherRewards data={data} giftBatches={giftBatches} unusedCodes={unusedCodes} manualMax={POINTS.manual.maxPerGrant} manualDailyCap={POINTS.manual.dailyCapPerStudent} />
     </div>
   );
 }

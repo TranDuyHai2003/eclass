@@ -19,7 +19,7 @@ import { rarityOf } from "@/lib/points/rarity";
 import type { TeacherRewardsPageData } from "@/lib/points/queries";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { GiftCodesTab } from "./GiftCodesTab";
-import type { GiftCodeBatch } from "@/lib/game/giftcode-queries";
+import type { GiftCodeBatch, UnusedGiftCode } from "@/lib/game/giftcode-queries";
 
 type TabKey = "requests" | "rewards" | "grant" | "codes" | "stats";
 type Data = TeacherRewardsPageData;
@@ -51,7 +51,7 @@ const emptyForm = (): RewardInput => ({
   isActive: true,
 });
 
-export function TeacherRewards({ data, giftBatches, manualMax, manualDailyCap }: { data: Data; giftBatches: GiftCodeBatch[]; manualMax: number; manualDailyCap: number }) {
+export function TeacherRewards({ data, giftBatches, unusedCodes = [], manualMax, manualDailyCap }: { data: Data; giftBatches: GiftCodeBatch[]; unusedCodes?: UnusedGiftCode[]; manualMax: number; manualDailyCap: number }) {
   const router = useRouter();
   const [tab, setTab] = useState<TabKey>(data.pending.length ? "requests" : "rewards");
   const [pending, startTransition] = useTransition();
@@ -103,7 +103,7 @@ export function TeacherRewards({ data, giftBatches, manualMax, manualDailyCap }:
       {tab === "requests" && <RequestsTab data={data} pending={pending} run={run} />}
       {tab === "rewards" && <RewardsTab data={data} pending={pending} run={run} />}
       {tab === "grant" && <GrantTab data={data} pending={pending} run={run} manualMax={manualMax} manualDailyCap={manualDailyCap} />}
-      {tab === "codes" && <GiftCodesTab batches={giftBatches} classes={data.classes} />}
+      {tab === "codes" && <GiftCodesTab batches={giftBatches} unused={unusedCodes} classes={data.classes} />}
       {tab === "stats" && <StatsTab data={data} />}
     </div>
   );
@@ -672,7 +672,8 @@ function GrantTab({ data, pending, run, manualMax, manualDailyCap }: TabProps & 
         <div>
           <span className="text-xs font-bold text-slate-500">Số xu (âm để trừ)</span>
           <div className="mt-1 flex gap-1.5">
-            {[150, 300, 450, 750].map((v) => (
+            {/* Mức gợi ý theo giới hạn thưởng tay (admin sửa được; 26/11 mặc định 500) */}
+            {[...new Set([100, 200, 300, manualMax])].filter((v) => v > 0 && v <= manualMax).map((v) => (
               <button
                 key={v}
                 type="button"
