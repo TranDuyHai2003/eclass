@@ -36,6 +36,8 @@ FRAMES = {
 PETS_ITEMS = {"pet-dragon": (1, 1), "pet-owl": (3, 1), "pet-bunny": (4, 1), "pet-slime": (5, 1), "pet-phoenix": (6, 1), "pet-robot": (7, 1)}
 # Shiba ô sprite đồ vật đội mũ phù thuỷ → dùng ô tiệm (Shiba thường)
 PETS_SHOP = {"pet-bi": 31, "pet-moka": 4, "pet-shiba": 27}
+# Rương Hộp bí ẩn (ô tiệm 34 = Hộp Sao Mèo, 36 = Hộp Tinh Tú VIP) — nền trong để vẽ quầng sáng / vòng phép phía sau
+CHESTS = {"chest-xu": 34, "chest-gem": 36}
 # Ảnh có mặt trắng sát nền (mèo Mướp Bi): loang chặt hơn để không ăn vào mặt
 STEP_OF = {"pet-bi": 4.0, "pet-shiba": 3.0}
 
@@ -173,6 +175,10 @@ def main():
         cell = SHOP.crop(((i % 8) * SW, (i // 8) * SW, (i % 8 + 1) * SW, (i // 8 + 1) * SW))
         rgba, _, _ = cutout(cell, frame=False, step=STEP_OF.get(pid, STEP))
         save(trim_square(rgba), pid)
+    for cid, i in CHESTS.items():
+        cell = SHOP.crop(((i % 8) * SW, (i // 8) * SW, (i % 8 + 1) * SW, (i // 8 + 1) * SW))
+        rgba, _, _ = cutout(cell, frame=False, step=STEP_OF.get(cid, STEP))
+        save(trim_square(rgba, pad=0.02), cid)
     with open(TS_OUT, "w", encoding="utf-8") as f:
         f.write("// TỰ SINH bởi scripts/studio/cut-item-art.py — không sửa tay.\n")
         f.write("/** Tranh vẽ tay đã tách nền (public/studio/cut/<id>.webp). Khung: tỉ lệ ảnh / ô khung (>1 = trang trí thò ra ngoài) */\n")

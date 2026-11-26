@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CalendarClock, Check, Loader2, Search } from "lucide-react";
@@ -57,25 +57,46 @@ export function HomeworkCheck({ classes, classId, lessons, lessonId, list, xu }:
   const done = rows.filter((r) => r.level).length;
   const submitted = rows.filter((r) => r.submittedAt).length;
 
+  // Mức thầy chọn cuối cùng cho bạn đang lưu dở: bấm nút khác khi chưa lưu xong → lưu tiếp ngay sau (không bỏ qua lần bấm)
+  const wanted = useRef(new Map<string, HomeworkReviewLevel>());
+  /** Mức đã lưu thành công trên server (để hoàn lại khi lỗi) */
+  const savedLevel = useRef(new Map<string, HomeworkReviewLevel | null>((list?.students ?? []).map((s) => [s.id, s.level])));
+
   const review = async (r: Row, level: HomeworkReviewLevel) => {
-    if (!lessonId || busy.has(r.id)) return;
-    const prev = r.level;
-    if (prev === level) return;
-    setBusy((b) => new Set(b).add(r.id));
+    if (!lessonId) return;
     setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, level } : x)));
-    const res = await setHomeworkReview({ lessonId, userId: r.id, level }).catch(() => ({ success: false as const, error: "Mất kết nối, thử lại nhé." }));
+    if (busy.has(r.id)) {
+      wanted.current.set(r.id, level);
+      return;
+    }
+    if ((savedLevel.current.get(r.id) ?? null) === level) return;
+    setBusy((b) => new Set(b).add(r.id));
+    let next: HomeworkReviewLevel | undefined = level;
+    let total = 0;
+    let ok = true;
+    while (next) {
+      const lv: HomeworkReviewLevel = next;
+      wanted.current.delete(r.id);
+      const res = await setHomeworkReview({ lessonId, userId: r.id, level: lv }).catch(() => ({ success: false as const, error: "Mất kết nối, thử lại nhé." }));
+      if (!res.success) {
+        ok = false;
+        toast.error(res.error);
+        wanted.current.delete(r.id);
+        break;
+      }
+      savedLevel.current.set(r.id, lv);
+      total += res.delta;
+      const w = wanted.current.get(r.id);
+      next = w && w !== lv ? w : undefined;
+    }
     setBusy((b) => {
       const n = new Set(b);
       n.delete(r.id);
       return n;
     });
-    if (!res.success) {
-      setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, level: prev } : x)));
-      toast.error(res.error);
-      return;
-    }
-    const d = res.delta;
-    toast.success(`${r.name}: ${LEVELS.find((x) => x.level === level)?.label}${d ? ` (${d > 0 ? "+" : ""}${d.toLocaleString("vi-VN")} xu)` : ""}`, { duration: 1800 });
+    const final = savedLevel.current.get(r.id) ?? null;
+    setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, level: final as Row["level"] } : x)));
+    if (ok) toast.success(`${r.name}: ${LEVELS.find((x) => x.level === final)?.label ?? "—"}${total ? ` (${total > 0 ? "+" : ""}${total.toLocaleString("vi-VN")} xu)` : ""}`, { duration: 1800 });
   };
 
   const saveDue = (value: string | null) =>
@@ -154,7 +175,6 @@ export function HomeworkCheck({ classes, classId, lessons, lessonId, list, xu }:
                           key={L.level}
                           type="button"
                           aria-pressed={on}
-                          disabled={busy.has(r.id)}
                           data-testid={`hc-${L.level}`}
                           onClick={() => review(r, L.level)}
                           className={cn("flex h-12 flex-col items-center justify-center rounded-xl border-2 px-1 text-[12px] font-black leading-tight transition active:scale-95", on ? L.on : "border-slate-200 bg-white text-slate-600 hover:border-slate-300")}

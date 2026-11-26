@@ -1007,8 +1007,13 @@ try {
     const gc = await prisma.giftCode.findUnique({ where: { code: custom } });
     expect(gc && gc.maxUses === 1 && gc.currency === "XU" && gc.amount === 300, `mã tự đặt lưu sai: ${JSON.stringify(gc)}`);
     await t.ev(`[...document.querySelectorAll('[data-testid="giftcode-unused"] button')][0].click()`);
-    await sleep(200);
-    expect((await t.ev(`return document.querySelector('[data-testid="giftcode-unused"]').innerText`)).includes(custom), "mã chưa dùng không có trong danh sách lưu");
+    // Danh sách tải lại sau khi trang làm mới (router.refresh) — chờ tối đa 6 giây
+    let listed = false;
+    for (let i = 0; i < 24 && !listed; i++) {
+      listed = (await t.ev(`return document.querySelector('[data-testid="giftcode-unused"]')?.innerText || ""`)).includes(custom);
+      if (!listed) await sleep(250);
+    }
+    expect(listed, "mã chưa dùng không có trong danh sách lưu");
   });
 
   await t.close();
