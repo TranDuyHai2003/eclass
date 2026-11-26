@@ -2,6 +2,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { buildNpcLines } from "@/lib/game/npc";
+import { POINTS } from "@/lib/points/config";
 
 describe("buildNpcLines", () => {
   test("quá hạn trước sắp hạn trước chuỗi; không bao giờ nhắc rương/bảo hiểm", () => {
@@ -29,7 +30,7 @@ describe("buildNpcLines", () => {
     assert.equal(calm.length, 2);
     assert.match(calm[0], /cố lên/);
     assert.match(buildNpcLines({ canEarn: false })[0], /chờ thầy duyệt/);
-    assert.match(buildNpcLines({ lifetimeEarned: 0, thisWeekCounted: true })[0], /300 xu/);
+    assert.match(buildNpcLines({ lifetimeEarned: 0, thisWeekCounted: true })[0], new RegExp(`${POINTS.homeworkSubmit.toLocaleString("vi-VN")} xu`));
   });
 
   test("đủ xu mua quà mục tiêu → nhắc đổi; chưa đủ → không nhắc", () => {

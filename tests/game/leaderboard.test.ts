@@ -31,10 +31,10 @@ before(async () => {
   await fx.give(c, 9000);
   await fx.give(d, 99999);
   await fx.give(unapproved, 77777);
-  // b có 2 000 xu từ tháng trước (không tính kỳ tháng) + xu từ mã quà (không tính danh hiệu/kỳ)
+  // b có 2 000 xu từ tháng trước (không tính kỳ tháng); a có xu từ rương (không tính danh hiệu/kỳ)
   await prisma.pointLedger.updateMany({ where: { userId: b, amount: 3000 }, data: { amount: 1000 } });
   await prisma.pointLedger.create({ data: { userId: b, amount: 2000, source: "TEST_SUBMIT", createdAt: new Date(Date.now() - 45 * 86400000) } });
-  await prisma.pointLedger.create({ data: { userId: a, amount: 5000, source: "GIFTCODE" } });
+  await prisma.pointLedger.create({ data: { userId: a, amount: 5000, source: "GACHA" } });
   await prisma.pointWallet.update({ where: { userId: a }, data: { balance: 6000 } });
 });
 
@@ -53,10 +53,10 @@ describe("Bảng Vàng", () => {
     assert.deepEqual(rows.map((r) => r.userId), [a]);
   });
 
-  test("kỳ tháng: chỉ xu học được trong tháng VN, bỏ mã quà/gacha; xếp lại thứ tự", async () => {
+  test("kỳ tháng: chỉ xu tích luỹ trong tháng VN, bỏ gacha; xếp lại thứ tự", async () => {
     const rows = await getLeaderboardUncached({ grade: 7 }, "month", 30);
     const byId = new Map(rows.map((r) => [r.userId, r.xu]));
-    assert.equal(byId.get(a), 1000, "mã quà 5 000 không tính");
+    assert.equal(byId.get(a), 1000, "xu rương 5 000 không tính");
     assert.equal(byId.get(b), 1000, "2 000 xu tháng trước không tính");
     // bằng xu tháng → xếp theo tích luỹ (b 3 000 > a 1 000)
     assert.deepEqual(rows.map((r) => r.userId), [b, a]);

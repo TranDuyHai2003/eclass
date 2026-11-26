@@ -218,8 +218,8 @@ export const ITEM_BY_ID: Record<string, Item> = Object.fromEntries(ITEMS.map((i)
 
 export const RARITY_LABEL: Record<Rarity, string> = { common: "Phổ thông", rare: "Hiếm", epic: "Sử thi", legendary: "Huyền thoại" };
 
-/** Xu trả lại khi trúng đồ đã có (theo bậc) */
-export const DUPLICATE_REFUND: Record<Rarity, number> = { common: 150, rare: 450, epic: 1500, legendary: 4500 };
+/** Xu trả lại khi trúng đồ đã có (theo bậc). 26/11/2026: hạ từ 150/450/1500/4500 — mức cũ khiến Rương Xu (600 xu) lãi ~688 xu/lượt khi đủ bộ sưu tập → cày xu ngoài 3 cách chính thức. Test: tests/game/gacha.test.ts "không lãi xu" */
+export const DUPLICATE_REFUND: Record<Rarity, number> = { common: 100, rare: 300, epic: 900, legendary: 2400 };
 
 /** Món của một ô; biệt danh nhiệm vụ ẩn chỉ có mặt khi đã sở hữu (truyền `owned`), để không lộ nhiệm vụ chưa mở */
 export function itemsOfSlot(slot: Slot, owned?: { has(id: string): boolean }) {

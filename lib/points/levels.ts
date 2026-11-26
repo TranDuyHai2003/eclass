@@ -1,5 +1,5 @@
 /**
- * Danh hiệu (cấp) học sinh — tính theo TỔNG xu đã kiếm từ học tập (lifetimeEarned), không giảm khi tiêu xu.
+ * Danh hiệu (cấp) học sinh — tính theo TỔNG xu tích luỹ (lifetimeEarned: học tập, thầy thưởng, mã quà), không giảm khi tiêu xu.
  * Tên + mốc theo tài liệu "Biệt danh" của thầy (24/11/2026) — đổi tại đây là đủ, logic không phụ thuộc tên.
  * Thang: học chăm ~12 000 xu/tháng → Lv.4 sau 1 tháng, Lv.8 (30 000) sau ~2,5 tháng.
  */

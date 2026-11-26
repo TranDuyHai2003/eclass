@@ -1,13 +1,21 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { addShopRewardTemplates, archiveReward, saveReward } from "@/actions/points";
 import type { RewardInput } from "@/lib/points/reward-input";
-import type { ShopAdminData } from "@/lib/points/queries";
+import type { ShopAdminData, TeacherRewardsPageData } from "@/lib/points/queries";
+import type { GiftCodeBatch, UnusedGiftCode } from "@/lib/game/giftcode-queries";
+import { RequestsTab } from "./manage/RequestsTab";
+import { GrantTab } from "./manage/GrantTab";
+import { GiftCodesTab } from "./manage/GiftCodesTab";
+import { StatsTab } from "./manage/StatsTab";
+import type { ManageTab } from "@/lib/points/manage-tabs";
 import { rarityOf } from "@/lib/points/rarity";
-import { missingShopTemplates } from "@/lib/points/templates";
+import { REWARD_TEMPLATES, missingShopTemplates } from "@/lib/points/templates";
 import { play } from "@/lib/sound";
 import { CoinDot, fmt } from "./parts";
 import { RewardArt } from "./RewardArt";
@@ -51,17 +59,71 @@ const toForm = (r: AdminReward): RewardInput => ({
   isActive: r.isActive,
 });
 
+export type { ManageTab };
+
+/** Mọi dữ liệu khu quản lý (trang /rewards nạp khi tài khoản là giáo viên / admin) */
+export interface ManageData {
+  shop: ShopAdminData;
+  teacher: TeacherRewardsPageData;
+  giftBatches: GiftCodeBatch[];
+  unusedCodes: UnusedGiftCode[];
+  manualMax: number;
+  manualDailyCap: number;
+  isAdmin: boolean;
+}
+
 /**
- * Quản lý quà ngay trong Tiệm quà (chỉ admin): xem mọi quà (cả quà đang ẩn), thêm / sửa đủ trường, ẩn / hiện, xoá,
- * thêm cả bộ quà mẫu. Dùng server action có sẵn (đã kiểm quyền) — trang tự làm mới nhờ revalidatePath.
+ * "Quản lý tiệm" — mọi việc quản lý quà & xu của thầy gom vào Tiệm quà (thầy yêu cầu 26/11/2026, thay trang /teacher/rewards):
+ * đơn đổi quà, quà & thẻ, thưởng xu, mã quà tặng, thống kê; admin thêm giá đồ trang trí và mức xu các hoạt động.
+ * Server action có sẵn đã kiểm quyền; trang tự làm mới nhờ revalidatePath / router.refresh.
  */
-export function RewardManager({ data, gameConfig, avatar }: { data: ShopAdminData; gameConfig?: GameConfigData; avatar: AvatarConfig }) {
-  const [tab, setTab] = useState<"rewards" | "prices" | "earning">("rewards");
+export function RewardManager({ data, gameConfig, avatar, tab, onTab }: { data: ManageData; gameConfig?: GameConfigData; avatar: AvatarConfig; tab: ManageTab; onTab: (t: ManageTab) => void }) {
+  const pendingCount = data.teacher.pending.length;
+  const tabs: [ManageTab, string, number?][] = [
+    ["requests", "📬 Đơn đổi quà", pendingCount],
+    ["rewards", "🎁 Quà & thẻ"],
+    ["grant", "🪙 Thưởng xu"],
+    ["codes", "🎟️ Mã quà tặng"],
+    ["stats", "📊 Thống kê"],
+    ...(data.isAdmin ? ([["prices", "🏷️ Giá đồ trang trí"], ["earning", "⚙️ Mức xu"]] as [ManageTab, string][]) : []),
+  ];
+  const current = tabs.some(([k]) => k === tab) ? tab : "rewards";
+  return (
+    <section className="ah-panel flex flex-col gap-4 p-4 sm:p-5" data-testid="reward-manager" aria-label="Quản lý tiệm">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <h2 className="ah-hand text-[24px] font-bold">🛠️ Quản lý tiệm</h2>
+        <span className="text-xs font-extrabold text-[#6e4722]">Chỉ giáo viên / admin thấy khu này</span>
+        <Link href="/teacher/homework/check" data-testid="mgr-review-link" className="ah-btn ah-sky ml-auto h-10 shrink-0 whitespace-nowrap px-3.5 text-[13px]">✍️ Duyệt chữa bài<span className="max-sm:hidden">&nbsp;(+280 / +400 xu)</span> →</Link>
+      </div>
+      <div className="-mx-1 flex gap-1.5 overflow-x-auto border-b-2 border-[#efe3cc] px-1 pb-3 [scrollbar-width:thin]" role="tablist" aria-label="Mục quản lý">
+        {tabs.map(([k, label, badge]) => (
+          <button key={k} type="button" role="tab" aria-selected={current === k} data-testid={`mgr-tab-${k}`} onClick={() => { play("click"); onTab(k); }} className={cn("ah-btn relative h-10 shrink-0 px-3.5 text-[13px]", current === k ? "ah-coral" : "ah-cream")}>
+            {label}
+            {!!badge && <span className="ml-1 rounded-full border-2 border-[#241e1a] bg-[#fbd048] px-1.5 text-[11px] leading-4 text-[#241e1a]">{badge}</span>}
+          </button>
+        ))}
+      </div>
+      {current === "requests" && <RequestsTab data={data.teacher} />}
+      {current === "rewards" && <CatalogTab data={data.shop} />}
+      {current === "grant" && <GrantTab data={data.teacher} manualMax={data.manualMax} manualDailyCap={data.manualDailyCap} />}
+      {current === "codes" && <GiftCodesTab batches={data.giftBatches} unused={data.unusedCodes} classes={data.shop.classes} />}
+      {current === "stats" && <StatsTab data={data.teacher} />}
+      {current === "prices" && data.isAdmin && <ItemPriceManager key={JSON.stringify(gameConfig?.itemPrices ?? {})} config={gameConfig ?? EMPTY_GAME_CONFIG} avatar={avatar} />}
+      {current === "earning" && data.isAdmin && <EarningManager key={JSON.stringify(gameConfig?.earning ?? {})} config={gameConfig ?? EMPTY_GAME_CONFIG} />}
+    </section>
+  );
+}
+
+/** Quà & thẻ: xem mọi quà (cả quà đang ẩn), thêm / sửa đủ trường (ảnh, giá tiền thật → xu), ẩn / hiện, xoá, thêm bộ quà mẫu */
+function CatalogTab({ data }: { data: ShopAdminData }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [form, setForm] = useState<RewardInput | null>(null);
   const [armed, setArmed] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const router = useRouter();
   const missing = missingShopTemplates(data.rewards.map((r) => r.title));
+  const have = new Set(data.rewards.map((r) => r.title.trim().toLowerCase()));
+  const quick = REWARD_TEMPLATES.filter((t) => !have.has(t.title.toLowerCase()));
   const list = data.rewards.filter((r) => (filter === "all" ? true : filter === "hidden" ? !r.isActive : r.kind === filter));
   const count = (f: Filter) => data.rewards.filter((r) => (f === "all" ? true : f === "hidden" ? !r.isActive : r.kind === f)).length;
 
@@ -72,6 +134,7 @@ export function RewardManager({ data, gameConfig, avatar }: { data: ShopAdminDat
         play("coin");
         if (res.message) toast.success(res.message);
         after?.();
+        router.refresh();
       } else {
         play("error");
         toast.error(res.error || "Có lỗi xảy ra");
@@ -79,21 +142,9 @@ export function RewardManager({ data, gameConfig, avatar }: { data: ShopAdminDat
     });
 
   return (
-    <section className="ah-panel flex flex-col gap-4 p-4 sm:p-5" data-testid="reward-manager" aria-label="Quản lý quà">
+    <div className="flex flex-col gap-4" data-testid="mgr-rewards">
       <div className="flex flex-wrap items-center gap-2.5">
-        <h2 className="ah-hand text-[22px] font-bold">🛠️ Quản lý tiệm</h2>
-        <span className="text-xs font-extrabold text-[#6e4722]">Chỉ admin thấy khu này</span>
-      </div>
-      <div className="flex flex-wrap gap-1.5 border-b-2 border-[#efe3cc] pb-3" role="tablist" aria-label="Mục quản lý">
-        {([["rewards", "🎁 Quà & thẻ"], ["prices", "🏷️ Giá thú cưng · khung · bảng tên"], ["earning", "🪙 Hoạt động kiếm xu"]] as const).map(([k, label]) => (
-          <button key={k} type="button" role="tab" aria-selected={tab === k} data-testid={`mgr-tab-${k}`} onClick={() => { play("click"); setTab(k); }} className={cn("ah-btn h-10 px-3.5 text-[13px]", tab === k ? "ah-coral" : "ah-cream")}>{label}</button>
-        ))}
-      </div>
-      {tab === "prices" && <ItemPriceManager key={JSON.stringify(gameConfig?.itemPrices ?? {})} config={gameConfig ?? EMPTY_GAME_CONFIG} avatar={avatar} />}
-      {tab === "earning" && <EarningManager key={JSON.stringify(gameConfig?.earning ?? {})} config={gameConfig ?? EMPTY_GAME_CONFIG} />}
-      {tab === "rewards" && (<>
-      <div className="flex flex-wrap items-center gap-2.5">
-        <span className="text-xs font-extrabold text-[#6e4722]">Học sinh thấy quà đang bật</span>
+        <span className="text-xs font-extrabold text-[#6e4722]">Học sinh thấy quà đang bật · bấm Sửa để đổi ảnh, giá, số lượng</span>
         <div className="ml-auto flex flex-wrap gap-2">
           {missing.length > 0 && (
             <button type="button" disabled={pending} data-testid="mgr-add-set" onClick={() => act(() => addShopRewardTemplates())} className="ah-btn ah-mint h-10 px-3.5 text-sm">
@@ -105,6 +156,19 @@ export function RewardManager({ data, gameConfig, avatar }: { data: ShopAdminDat
           </button>
         </div>
       </div>
+
+      {quick.length > 0 && (
+        <details className="rounded-[16px] border-2 border-dashed border-[#c9b08a] bg-[#fffdf8] px-3 py-2" data-testid="mgr-templates">
+          <summary className="cursor-pointer text-xs font-black text-[#6e4722]">⚡ Thêm nhanh từ mẫu ({quick.length} món chưa có) — bấm một món để mở form điền sẵn</summary>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {quick.map((t) => (
+              <button key={t.title} type="button" data-testid="mgr-template" onClick={() => { play("click"); setForm({ ...emptyForm(t.kind), ...t, imageUrl: null, classIds: [], isActive: true }); }} className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border-2 border-[#d6c3a5] bg-white px-2.5 py-1 text-xs font-extrabold hover:border-[#241e1a]">
+                <span aria-hidden>{t.emoji}</span> {t.title} <span className="text-[#9e6b3f]">{fmt(t.price)} xu</span>
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
 
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Lọc quà">
         {([["all", "Tất cả"], ["PHYSICAL", "🎁 Quà hiện vật"], ["VIRTUAL", "🎫 Thẻ đặc quyền"], ["hidden", "🙈 Đang ẩn"]] as [Filter, string][]).map(([k, label]) => (
@@ -155,8 +219,7 @@ export function RewardManager({ data, gameConfig, avatar }: { data: ShopAdminDat
       </div>
 
       {form && <RewardEditor form={form} setForm={setForm} classes={data.classes} pending={pending} onSave={() => act(() => saveReward(form), () => setForm(null))} />}
-      </>)}
-    </section>
+    </div>
   );
 }
 
@@ -201,7 +264,7 @@ function RewardEditor({ form, setForm, classes, pending, onSave }: {
                 ))}
               </div>
               {form.kind === "VIRTUAL" && (
-                <label className="mt-2 flex items-center gap-2 text-[13px] font-bold"><input type="checkbox" checked={!!form.offlineOnly} onChange={(e) => set({ offlineOnly: e.target.checked })} className="h-4 w-4" /> Chỉ dùng tại lớp (ẩn với học sinh online)</label>
+                <label className="mt-2 flex items-center gap-2 text-[13px] font-bold"><input type="checkbox" data-testid="ed-offline" checked={!!form.offlineOnly} onChange={(e) => set({ offlineOnly: e.target.checked })} className="h-4 w-4" /> Chỉ dùng tại lớp (ẩn với học sinh online)</label>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

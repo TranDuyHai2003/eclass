@@ -8,7 +8,7 @@ import { ShopModal } from "./ShopModal";
 export function TitlesModal({ open, onOpenChange, lifetimeEarned }: { open: boolean; onOpenChange: (o: boolean) => void; lifetimeEarned: number }) {
   const level = getLevel(lifetimeEarned);
   return (
-    <ShopModal open={open} onOpenChange={onOpenChange} title="🏅 Hệ Thống Danh Hiệu" testId="titles-modal" description="Tích luỹ xu từ học tập (tiêu xu không bị mất) để mở khoá danh hiệu mới!">
+    <ShopModal open={open} onOpenChange={onOpenChange} title="🏅 Hệ Thống Danh Hiệu" testId="titles-modal" description="Tích luỹ xu từ học tập và mã quà tặng (tiêu xu không bị mất) để mở khoá danh hiệu mới!">
       <div className="flex items-center justify-between gap-2 rounded-2xl border-[2.5px] border-[#5b3d1e] bg-[#fff1c2] px-3 py-2">
         <div>
           <p className="text-[11px] font-bold text-[#7a5a35]">Tổng xu tích luỹ</p>

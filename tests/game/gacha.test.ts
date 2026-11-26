@@ -34,6 +34,25 @@ const consistent = async (userId: string) => {
   assert.equal(w!.gems, await fx.ledgerSum(userId, "GEM"), "ngọc khớp sổ");
 };
 
+describe("Rương không phải máy in xu (26/11/2026)", () => {
+  test("đã sở hữu MỌI món: trung bình xu nhận lại mỗi lượt Rương Xu vẫn thấp hơn giá mở", () => {
+    const rng = seeded(20261126);
+    const owned = new Set(ITEMS.map((i) => i.id));
+    const cost = (CHESTS.xu.cost as { xu: number }).xu;
+    let pity = 0;
+    let xu = 0;
+    const N = 100_000;
+    for (let i = 0; i < N; i++) {
+      const r = roll("xu", rng, pity, owned);
+      pity = r.pityAfter;
+      if (r.outcome.kind === "item") xu += r.outcome.refundXu;
+      else if (r.outcome.kind === "xu") xu += r.outcome.amount;
+    }
+    const avg = xu / N;
+    assert.ok(avg < cost * 0.85, `trung bình ${avg.toFixed(0)} xu/lượt, giá ${cost}`);
+  });
+});
+
 describe("Tỉ lệ và bể quà (thuần)", () => {
   test("tổng tỉ lệ mỗi rương = 100; mỗi bậc có ít nhất 1 quà; Rương Ngọc không có Phổ thông", () => {
     for (const chest of Object.values(CHESTS)) {

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getVietnamMonthStart, getVietnamWeekStart, getWeekCode } from "@/lib/ranking/history-engine";
-import { POINTS, STREAK_ACTIVITY_SOURCES } from "./config";
+import { EARNING_SOURCES, POINTS, STREAK_ACTIVITY_SOURCES } from "./config";
 import { visibleRewardWhere } from "./redemption";
 import { getAvatar } from "@/lib/game/inventory";
 
@@ -194,17 +194,7 @@ export type ShopAdminData = Awaited<ReturnType<typeof getShopAdminData>>;
 
 export async function getTeacherRewardsPage() {
   const monthStart = getVietnamMonthStart();
-  const [rewards, pending, recent, classes, monthEntries, deliveredThisMonth] = await Promise.all([
-    prisma.reward.findMany({
-      where: { deletedAt: null },
-      orderBy: [{ isActive: "desc" }, { price: "asc" }],
-      select: {
-        id: true, title: true, description: true, emoji: true, price: true, stock: true, perStudentMonthlyLimit: true,
-        kind: true, offlineOnly: true, costVnd: true, isActive: true,
-        classes: { select: { id: true, name: true } },
-        _count: { select: { redemptions: { where: { status: "PENDING" } } } },
-      },
-    }),
+  const [pending, recent, classes, monthEntries, deliveredThisMonth] = await Promise.all([
     prisma.redemption.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "asc" },
@@ -238,7 +228,8 @@ export async function getTeacherRewardsPage() {
     }),
     prisma.pointLedger.groupBy({
       by: ["source"],
-      where: { createdAt: { gte: monthStart } },
+      // chỉ xu (ngọc từ mã quà không phải xu)
+      where: { createdAt: { gte: monthStart }, currency: "XU" },
       _sum: { amount: true },
     }),
     prisma.redemption.findMany({
@@ -255,12 +246,13 @@ export async function getTeacherRewardsPage() {
 
   const sumOf = (sources: string[]) =>
     monthEntries.filter((e) => sources.includes(e.source)).reduce((s, e) => s + (e._sum.amount ?? 0), 0);
-  const earnSources = ["TEST_SUBMIT", "TEST_SCORE", "BREAKTHROUGH", "FINAL_TEST", "HOMEWORK_SUBMIT", "HOMEWORK_PASS", "STREAK", "MANUAL", "REVOKE"];
+  // Cùng danh sách nguồn với xu tích luỹ (gồm duyệt chữa bài, mã quà xu…) — trước đây liệt kê tay nên thiếu nguồn mới
+  const earnSources: string[] = [...EARNING_SOURCES];
 
   // Top học sinh chăm chỉ tháng này (điểm kiếm được, không tính đổi/hoàn)
   const topRaw = await prisma.pointLedger.groupBy({
     by: ["userId"],
-    where: { createdAt: { gte: monthStart }, source: { in: earnSources as any } },
+    where: { createdAt: { gte: monthStart }, currency: "XU", source: { in: [...EARNING_SOURCES] } },
     _sum: { amount: true },
     orderBy: { _sum: { amount: "desc" } },
     take: 10,
@@ -272,7 +264,6 @@ export async function getTeacherRewardsPage() {
   const userById = new Map(topUsers.map((u) => [u.id, u]));
 
   return {
-    rewards,
     pending: pending.map((p) => ({ ...p, createdAt: p.createdAt.toISOString() })),
     recent: recent.map((r) => ({ ...r, createdAt: r.createdAt.toISOString(), handledAt: r.handledAt?.toISOString() ?? null })),
     classes: allClasses.map((c) => ({

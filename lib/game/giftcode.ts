@@ -144,19 +144,24 @@ export async function redeemGiftCodeInTx(tx: Tx, userId: string, rawCode: string
   };
 }
 
-/** Chống dò mã: tối đa `limit` lần nhập sai trong `windowMs` cho mỗi học sinh (đếm trong bộ nhớ của tiến trình — đủ cho một dyno) */
+/**
+ * Chống dò mã: tối đa `limit` lần nhập sai trong `windowMs` VÀ `dailyLimit` lần sai trong 24 giờ cho mỗi học sinh
+ * (đếm trong bộ nhớ của tiến trình — đủ cho một dyno). 26/11/2026: thêm trần ngày vì mã thầy tự đặt (4–16 chữ) có thể là từ dễ đoán.
+ */
 const failures = new Map<string, number[]>();
-export const RATE_LIMIT = { limit: 10, windowMs: 10 * 60 * 1000 };
+export const RATE_LIMIT = { limit: 10, windowMs: 10 * 60 * 1000, dailyLimit: 30, dayMs: 24 * 60 * 60 * 1000 };
 
+const recent = (userId: string, now: number) => (failures.get(userId) ?? []).filter((t) => now - t < RATE_LIMIT.dayMs);
 export function rateLimited(userId: string, now = Date.now()) {
-  const list = (failures.get(userId) ?? []).filter((t) => now - t < RATE_LIMIT.windowMs);
-  failures.set(userId, list);
-  return list.length >= RATE_LIMIT.limit;
+  const day = recent(userId, now);
+  failures.set(userId, day);
+  if (day.length >= RATE_LIMIT.dailyLimit) return true;
+  return day.filter((t) => now - t < RATE_LIMIT.windowMs).length >= RATE_LIMIT.limit;
 }
 export function noteFailure(userId: string, now = Date.now()) {
-  const list = (failures.get(userId) ?? []).filter((t) => now - t < RATE_LIMIT.windowMs);
-  list.push(now);
-  failures.set(userId, list);
+  const day = recent(userId, now);
+  day.push(now);
+  failures.set(userId, day);
 }
 export function resetFailures(userId?: string) {
   if (userId) failures.delete(userId);

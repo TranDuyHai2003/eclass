@@ -3,9 +3,12 @@ import { auth } from "@/auth";
 import { ShopPage } from "@/components/shop/ShopPage";
 import { ShopClosed } from "@/components/shop/ShopClosed";
 import { canUseShop } from "@/lib/points/shop-access";
-import { getHeaderPoints, getShopAdminData } from "@/lib/points/queries";
+import { getHeaderPoints, getShopAdminData, getTeacherRewardsPage } from "@/lib/points/queries";
 import { getQuestProgress } from "@/lib/game/quests";
-import { isPointsEnabled } from "@/lib/points/config";
+import { POINTS, isPointsEnabled } from "@/lib/points/config";
+import { getGiftCodeBatches, getUnusedGiftCodes } from "@/lib/game/giftcode-queries";
+import { parseManageTab } from "@/lib/points/manage-tabs";
+import type { ManageData } from "@/components/shop/ah/RewardManager";
 import { getStudentPointsPage } from "@/lib/points/queries";
 import { expireStaleRedemptions } from "@/lib/points/redemption";
 import { getStudentHomeExtras, getVisibleCourseIds } from "@/lib/home/student-home";
@@ -21,7 +24,7 @@ import { loadGameConfig } from "@/lib/game/game-config";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Tiệm Quà Học Đường — Xu & Kim Cương" };
 
-export default async function RewardsPage() {
+export default async function RewardsPage({ searchParams }: { searchParams: Promise<{ manage?: string | string[] }> }) {
   if (!isPointsEnabled()) notFound();
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -34,13 +37,14 @@ export default async function RewardsPage() {
   const gameConfig = await loadGameConfig();
   const gachaOn = isGachaEnabled();
   const isAdmin = session.user.role === "ADMIN";
+  const isStaff = isAdmin || session.user.role === "TEACHER";
   const [data, me, grades, today, manageData] = await Promise.all([
     getStudentPointsPage(uid),
     prisma.user.findUnique({ where: { id: uid }, select: { name: true, studyClass: { select: { name: true, grade: true } } } }),
     getGrades(),
     gachaOn ? pullsToday(uid).catch(() => 0) : Promise.resolve(0),
-    // Quản lý quà ngay trong tiệm: chỉ admin
-    isAdmin ? getShopAdminData() : Promise.resolve(null),
+    // Khu "Quản lý tiệm" (giáo viên + admin): đơn đổi quà, quà, thưởng xu, mã quà, thống kê; admin thêm giá đồ & mức xu
+    isStaff ? loadManageData(isAdmin) : Promise.resolve(null),
   ]);
   const quests = await getQuestProgress(uid).catch(() => []);
   const myGrade = me?.studyClass?.grade ?? null;
@@ -74,8 +78,14 @@ export default async function RewardsPage() {
       gacha={gachaOn ? { pullsToday: today } : null}
       adminView={session.user.role === "ADMIN" || session.user.role === "TEACHER"}
       manageData={manageData}
+      initialManage={manageData ? parseManageTab((await searchParams).manage, { isAdmin, hasPending: manageData.teacher.pending.length > 0 }) : null}
       quests={quests}
       gameConfig={gameConfig}
     />
   );
+}
+
+async function loadManageData(isAdmin: boolean): Promise<ManageData> {
+  const [shop, teacher, giftBatches, unusedCodes] = await Promise.all([getShopAdminData(), getTeacherRewardsPage(), getGiftCodeBatches(), getUnusedGiftCodes()]);
+  return { shop, teacher, giftBatches, unusedCodes, manualMax: POINTS.manual.maxPerGrant, manualDailyCap: POINTS.manual.dailyCapPerStudent, isAdmin };
 }

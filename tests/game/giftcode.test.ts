@@ -79,12 +79,12 @@ describe("Học sinh nhập mã", () => {
     assert.equal(await gems(s.id), 3);
   });
 
-  test("mã xu cộng vào balance nhưng không vào danh hiệu", async () => {
+  test("mã xu cộng vào số dư VÀ xu tích luỹ (26/11: mã quà là 1 trong 3 cách nhận xu — trước đây không cộng tích luỹ)", async () => {
     const s = await fx.user();
     const { codes } = await batch({ currency: "XU", amount: 500 });
     assert.equal((await redeem(s.id, codes[0])).success, true);
     assert.equal(await fx.balance(s.id), 500);
-    assert.equal((await fx.wallet(s.id))!.lifetimeEarned, 0);
+    assert.equal((await fx.wallet(s.id))!.lifetimeEarned, 500);
   });
 
   test("mã thầy đặt tên dễ nhớ (4–16 ký tự, vd DIEM10) nhập được, mỗi bạn một lần; mã quá ngắn / quá dài bị từ chối", async () => {
@@ -169,6 +169,17 @@ describe("Chống dò mã", () => {
     assert.equal(rateLimited("u1", t0), true);
     assert.equal(rateLimited("u1", t0 + RATE_LIMIT.windowMs + 1), false);
     assert.equal(rateLimited("u2", t0), false, "học sinh khác không bị ảnh hưởng");
+    resetFailures();
+  });
+
+  test(`trần ngày: ${RATE_LIMIT.dailyLimit} lần sai trong 24 giờ thì chặn dù rải đều (dò mã tự đặt)`, () => {
+    resetFailures();
+    const t0 = 1_000_000_000;
+    const step = RATE_LIMIT.windowMs + 1; // mỗi lần cách nhau hơn 10 phút → không dính giới hạn 10 phút
+    for (let i = 0; i < RATE_LIMIT.dailyLimit; i++) noteFailure("u3", t0 + i * 1000 * 60 * 30);
+    const last = t0 + (RATE_LIMIT.dailyLimit - 1) * 1000 * 60 * 30;
+    assert.equal(rateLimited("u3", last + step), true);
+    assert.equal(rateLimited("u3", t0 + RATE_LIMIT.dayMs * 2), false, "qua ngày thì mở lại");
     resetFailures();
   });
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { studentCanCancel } from "@/lib/points/config";
 import Link from "next/link";
 import { ITEM_BY_ID, SLOTS, type Item } from "@/lib/game/items";
 import type { AvatarConfig } from "@/lib/game/avatar";
@@ -38,9 +39,12 @@ export function BagSection({ redemptions, owned, avatar, pending, name, onEquip,
               <div className="ah-hand line-clamp-2 text-[15px] font-bold">{r.reward.title}</div>
               <div className="text-xs font-bold text-[#6e4722]">{STATUS[r.status] ?? r.status} · {fmtDate(r.createdAt)} · {fmt(r.price)} xu{r.note ? ` · ${r.note}` : ""}</div>
             </div>
-            {r.status === "PENDING" && (
-              <button type="button" disabled={pending} onClick={() => onCancel(r.id)} className="ah-btn ah-cream h-9 shrink-0 px-3 text-[13px]">Huỷ</button>
-            )}
+            {r.status === "PENDING" &&
+              (studentCanCancel(r.createdAt) ? (
+                <button type="button" disabled={pending} data-testid="redemption-cancel" onClick={() => onCancel(r.id)} className="ah-btn ah-cream h-9 shrink-0 px-3 text-[13px]">Huỷ</button>
+              ) : (
+                <span className="shrink-0 text-right text-[11px] font-bold text-[#6e4722]">Muốn huỷ?<br />Báo thầy nhé</span>
+              ))}
           </div>
         ))}
         {items.map((it) => {

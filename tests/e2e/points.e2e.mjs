@@ -153,14 +153,21 @@ try {
   // -------------------------------------------------- Thầy
   const t = await openBrowser({ baseUrl: BASE_URL, token: tTok });
 
-  await step("Thầy: mở trang Quà & Điểm thưởng", async () => {
-    await t.goto("/teacher/rewards", /Quà & Xu/i);
+  await step("Thầy: link cũ /teacher/rewards chuyển vào khu Quản lý tiệm trong Tiệm quà (giáo viên cũng quản lý được)", async () => {
+    await t.goto("/teacher/rewards", /Quản lý tiệm/i);
+    expect(await t.ev(`return location.pathname === "/rewards" && new URLSearchParams(location.search).has("manage") && !!document.querySelector('[data-testid="reward-manager"]')`), "không chuyển vào khu quản lý trong tiệm");
+    expect(await t.ev(`return !document.querySelector('[data-testid="mgr-tab-prices"]') && !document.querySelector('[data-testid="mgr-tab-earning"]')`), "giáo viên không được thấy mục giá đồ / mức xu (chỉ admin)");
+    expect(await t.ev(`return document.querySelector('[data-testid="mgr-review-link"]')?.getAttribute("href") === "/teacher/homework/check"`), "thiếu nút sang trang Duyệt chữa bài");
+    await t.ev(`document.querySelector('[data-testid="mgr-tab-rewards"]').click()`);
+    await sleep(300);
+    expect(new URL(await t.ev(`return location.href`)).searchParams.get("manage") === "rewards", "địa chỉ trang không giữ mục đang mở");
   });
 
   await step("Thầy: thêm quà từ mẫu 'Kẹo / bánh nhỏ'", async () => {
-    await t.click(/^Quản lý quà$/);
-    await t.click(/Kẹo \/ bánh nhỏ/);
-    await t.click(/^Lưu$/, "[role=dialog] button");
+    await t.ev(`document.querySelector('[data-testid="mgr-templates"]').open = true`);
+    await sleep(200);
+    await t.click(/Kẹo \/ bánh nhỏ/, '[data-testid="mgr-template"]');
+    await t.ev(`document.querySelector('[data-testid="ed-save"]').click()`);
     expect(await t.waitText(/Đã thêm quà/), "không thấy thông báo Đã thêm quà");
     const r = await prisma.reward.findFirst({ where: { createdById: data.teacher.id, title: "Kẹo / bánh nhỏ" } });
     // 26/11: giá mẫu = tiền thật ÷ 3,6 (kẹo 3.000đ → 900 xu)
@@ -168,30 +175,40 @@ try {
   });
 
   await step("Thầy: form thêm quà — chưa nhập tên thì không lưu được; nhập đủ thì lưu", async () => {
-    await t.click(/^Thêm quà$/);
-    expect(await t.isDisabled(/^Lưu$/, "[role=dialog] button"), "nút Lưu phải bị khoá khi chưa có tên");
-    const titleInput = await t.ev(`const l=[...document.querySelectorAll("[role=dialog] label")].find(x=>/Tên quà/i.test(x.innerText)); const i=l?.querySelector("input"); if(!i) return false; i.id="e2e-title"; return true;`);
-    expect(titleInput, "không thấy ô Tên quà");
-    await t.fill("#e2e-title", `${tag} Quà đắt`);
-    const priceInput = await t.ev(`const l=[...document.querySelectorAll("[role=dialog] label")].find(x=>/Giá \\(xu\\)/i.test(x.innerText)); const i=l?.querySelector("input"); if(!i) return false; i.id="e2e-price"; return true;`);
-    expect(priceInput, "không thấy ô Giá");
-    await t.fill("#e2e-price", "50000");
-    await t.click(/^Mọi học sinh/, "[role=dialog] button");
-    await t.click(/^Lưu$/, "[role=dialog] button");
-    expect(await t.waitText(/Quà đắt/), "quà mới không hiện trong danh sách");
+    await sleep(800);
+    await t.ev(`document.querySelector('[data-testid="mgr-new"]').click()`);
+    await sleep(300);
+    expect(await t.ev(`return document.querySelector('[data-testid="ed-save"]').disabled`), "nút Lưu phải bị khoá khi chưa có tên");
+    await t.fill('[data-testid="ed-title"]', `${tag} Quà đắt`);
+    await t.ev(`document.querySelector('[data-testid="ed-kind-VIRTUAL"]').click()`);
+    await sleep(200);
+    await t.fill('[data-testid="ed-price"]', "50000");
+    await t.ev(`const c=document.querySelector('[data-testid="ed-offline"]'); if(c?.checked) c.click(); return true`);
+    await sleep(300);
+    const ed = await t.ev(`return { price: document.querySelector('[data-testid="ed-price"]').value, offline: document.querySelector('[data-testid="ed-offline"]')?.checked }`);
+    expect(ed.price === "50000" && ed.offline === false, `form chưa đúng trước khi lưu: ${JSON.stringify(ed)}`);
+    await t.ev(`document.querySelector('[data-testid="ed-save"]').click()`);
+    // Ô xem trước trong form đã có tên quà → chờ form đóng và thẻ quà mới hiện trong khu quản lý
+    let shown = false;
+    for (let i = 0; i < 40 && !shown; i++) {
+      shown = await t.ev(`return !document.querySelector('[data-testid="reward-editor"]') && !!document.querySelector('[data-testid="mgr-card"][data-title="${tag} Quà đắt"]')`);
+      if (!shown) await sleep(250);
+    }
+    expect(shown, "quà mới không hiện trong danh sách");
     const r = await prisma.reward.findFirst({ where: { title: `${tag} Quà đắt` } });
-    expect(r && r.price === 50000 && r.kind === "VIRTUAL" && !r.offlineOnly, "quà nhập tay lưu sai");
+    expect(r && r.price === 50000 && r.kind === "VIRTUAL" && !r.offlineOnly, `quà nhập tay lưu sai: ${JSON.stringify(r && { price: r.price, kind: r.kind, offlineOnly: r.offlineOnly })}`);
   });
 
-  await step("Thầy: thưởng +100 xu cho học sinh (tìm theo tên)", async () => {
-    await t.click(/^Thưởng xu$/);
-    await t.fill("select", data.cls.id);
-    await t.fill('input[placeholder="Tìm học sinh…"]', "Học sinh");
+  await step("Thầy: thưởng +100 xu cho học sinh (tìm theo tên, gõ không dấu)", async () => {
+    await t.ev(`document.querySelector('[data-testid="mgr-tab-grant"]').click()`);
+    await sleep(300);
+    await t.fill('[data-testid="grant-class"]', data.cls.id);
+    await t.fill('[data-testid="grant-search"]', "hoc sinh");
     await t.click(new RegExp(studentName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), "label");
-    expect(await t.isDisabled(/^Thưởng [\d.]+ xu$/), "chưa nhập lý do mà nút thưởng không bị khoá");
+    expect(await t.ev(`return document.querySelector('[data-testid="grant-submit"]').disabled`), "chưa nhập lý do mà nút thưởng không bị khoá");
     await t.click(/^\+100$/);
     await t.click(/^Phát biểu xây dựng bài$/);
-    await t.click(/^Thưởng 100 xu$/);
+    await t.click(/Thưởng 100 xu$/);
     expect(await t.waitText(/Đã thưởng xu cho 1 học sinh/), "không thấy thông báo thưởng xu");
     expect((await balanceOf(data.student.id)) === 15700, "số dư sau thưởng phải 15700");
   });
@@ -200,22 +217,23 @@ try {
     for (let i = 0; i < 2; i++) {
       await t.click(new RegExp(studentName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), "label");
       await t.click(/^\+300$/);
-      await t.click(/^Thưởng 300 xu$/);
+      await t.click(/Thưởng 300 xu$/);
       await sleep(1500);
     }
     expect((await balanceOf(data.student.id)) === 16100, `sau 100+300+100 (trần ngày 500) phải 16100 (thực tế ${await balanceOf(data.student.id)})`);
     await t.click(new RegExp(studentName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), "label");
     await t.click(/^\+100$/);
-    await t.click(/^Thưởng 100 xu$/);
+    await t.click(/Thưởng 100 xu$/);
     expect(await t.waitText(/Không áp dụng được/), "không báo lỗi khi vượt giới hạn");
     expect((await balanceOf(data.student.id)) === 16100, `số dư phải dừng ở 16100 (thực tế ${await balanceOf(data.student.id)})`);
   });
 
   let giftCodes = [];
   await step("Thầy: tạo lô 10 thẻ cào × 3 ngọc, in được", async () => {
-    await t.click(/^Mã quà tặng$/);
+    await t.ev(`document.querySelector('[data-testid="mgr-tab-codes"]').click()`);
+    await sleep(300);
     // 26/11: mặc định tặng xu → chọn Ngọc cho lô thẻ cào điểm 10
-    await t.ev(`const sel=[...document.querySelectorAll("select")].find(x=>[...x.options].some(o=>o.value==="GEM")); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"value").set.call(sel,"GEM"); sel.dispatchEvent(new Event("change",{bubbles:true})); return true`);
+    await t.ev(`document.querySelector('[data-testid="giftcode-cur-GEM"]').click()`);
     await sleep(300);
     await t.click(/^Tạo 10 mã/);
     expect(await t.waitText(/Vừa tạo 10 mã/), "không thấy lô mã vừa tạo");
@@ -351,13 +369,14 @@ try {
 
   // -------------------------------------------------- Thầy trao / từ chối
   await step("Thầy: từ chối bắt buộc lý do; trao quà hàng loạt", async () => {
-    await t.goto("/teacher/rewards", /quà đang chờ trao/i);
+    await t.goto("/rewards?manage=requests", /quà đang chờ trao/i);
     // Từ chối: chưa nhập lý do thì nút khoá
-    await t.click(/^Từ chối$/);
-    expect(await t.isDisabled(/^Từ chối & hoàn xu$/, "[role=dialog] button"), "nút từ chối không bị khoá khi thiếu lý do");
+    await t.ev(`document.querySelector('[data-testid="req-reject"]').click()`);
+    await sleep(300);
+    expect(await t.ev(`return document.querySelector('[data-testid="reject-confirm"]').disabled`), "nút từ chối không bị khoá khi thiếu lý do");
     await t.click(/^Thôi$/, "[role=dialog] button");
     await t.click(/^Chọn tất cả$/, "label");
-    await t.click(/^Đã trao \(\d+\)$/);
+    await t.click(/Đã trao \(\d+\)$/);
     expect(await t.waitText(/Đã đánh dấu \d+ quà đã trao/), "không thấy thông báo đã trao");
     const red = await prisma.redemption.findFirst({ where: { userId: data.student.id, status: "DELIVERED" } });
     expect(red, "yêu cầu chưa chuyển sang Đã trao");
@@ -372,8 +391,7 @@ try {
   });
 
   await step("Thầy: thống kê tháng có số liệu", async () => {
-    await t.goto("/teacher/rewards", /Quà & Xu/i);
-    await t.click(/^Thống kê$/);
+    await t.goto("/rewards?manage=stats", /Quản lý tiệm/i);
     expect(await t.waitText(/Chăm chỉ nhất tháng này/i), "không thấy bảng thống kê");
   });
 
@@ -843,9 +861,10 @@ try {
       const overlap = await s.ev(`const a=document.querySelector('header [data-wallet-chip]')?.getBoundingClientRect(); const b=document.querySelector('header a[href="/"]')?.getBoundingClientRect(); if(!a||!b) return "thiếu chip/logo"; return (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) ? "chip đè logo" : "";`);
       if (overlap) problems.push(`HS header: ${overlap}`);
       await t.setSize(w, h);
-      await t.goto("/teacher/rewards", /Quà & Xu/i);
-      for (const tab of ["Yêu cầu đổi quà", "Quản lý quà", "Thưởng xu", "Mã quà tặng", "Thống kê"]) {
-        await t.click(new RegExp("^" + tab), "button");
+      await t.goto("/rewards?manage=requests", /Quản lý tiệm/i);
+      for (const tab of ["requests", "rewards", "grant", "codes", "stats"]) {
+        await t.ev(`document.querySelector('[data-testid="mgr-tab-${tab}"]').click()`);
+        await sleep(400);
         for (const x of await t.layoutProblems()) problems.push(`GV ${tab}: ${x}`);
       }
       await t.screenshot(path.join(SHOTS, `teacher-${w}.png`));
@@ -868,10 +887,13 @@ try {
       await a.ev(`document.querySelector('[data-testid="cat-physical"]').click()`);
       await sleep(300);
       expect(await a.ev(`return document.querySelectorAll('[data-testid="reward-card"]').length >= 1`), "admin không thấy quà hiện vật");
-      // Quản lý quà ngay trong tiệm (chỉ admin): thêm → thấy trong khu quản lý + DB → ẩn → xoá (bấm 2 lần)
+      // Quản lý quà ngay trong tiệm: thêm → thấy trong khu quản lý + DB → ẩn → xoá (bấm 2 lần)
       await a.ev(`document.querySelector('[data-testid="manage-toggle"]').click()`);
       await sleep(400);
       expect(await a.ev(`return !!document.querySelector('[data-testid="reward-manager"]')`), "admin không mở được khu quản lý quà");
+      expect(await a.ev(`return !!document.querySelector('[data-testid="mgr-tab-prices"]') && !!document.querySelector('[data-testid="mgr-tab-earning"]')`), "admin thiếu mục giá đồ / mức xu");
+      await a.ev(`document.querySelector('[data-testid="mgr-tab-rewards"]').click()`);
+      await sleep(300);
       await a.ev(`document.querySelector('[data-testid="mgr-new"]').click()`);
       await sleep(300);
       const setVal = (sel, v) => a.ev(`const i=document.querySelector('${sel}'); const d=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(i),"value").set; d.call(i, ${JSON.stringify(String(v))}); i.dispatchEvent(new Event("input",{bubbles:true}));`);
@@ -942,10 +964,15 @@ try {
       const cfg = await prisma.gameConfig.findUnique({ where: { key: "itemPrices" } });
       expect(cfg?.value?.["pet-moka"]?.xu === 5600 && cfg.value["pet-moka"].vnd === 20000, `DB giá sai: ${JSON.stringify(cfg?.value)}`);
       await sleep(1200);
+      await a.ev(`document.querySelector('[data-testid="banner-manage"]').click()`); // về xem tiệm như học sinh
+      await sleep(400);
+      expect(await a.ev(`return !document.querySelector('[data-testid="reward-manager"]') && !new URLSearchParams(location.search).has("manage")`), "tắt quản lý không về tiệm");
       await a.ev(`document.querySelector('[data-testid="cat-pet"]').click()`);
       await sleep(500);
       expect(/5\.600 Xu/.test(await a.ev(`return document.querySelector('[data-testid="item-card"][data-item="pet-moka"]')?.innerText || ""`)), "thẻ Moka trong tiệm chưa đổi giá");
       // Mức xu các hoạt động: nộp bài 500 → lưu → DB; rồi Về mặc định
+      await a.ev(`document.querySelector('[data-testid="manage-toggle"]').click()`);
+      await sleep(400);
       await a.ev(`document.querySelector('[data-testid="mgr-tab-earning"]').click()`);
       await sleep(400);
       await setVal('[data-testid="earn-testSubmit"]', "500");
@@ -964,17 +991,17 @@ try {
       await a.ev(`document.querySelector('[data-testid="price-save"]').click()`);
       await sleep(1500);
       expect(JSON.stringify((await prisma.gameConfig.findUnique({ where: { key: "itemPrices" } }))?.value) === "{}", "Về giá gốc không lưu");
-      await a.goto("/teacher/rewards", /Quà & Xu/i);
-      expect(await a.ev(`return document.querySelector('[data-testid="open-shop"]')?.getAttribute("href") === "/rewards"`), "trang quản lý quà thiếu nút Xem Tiệm quà cho admin");
+      await a.goto("/rewards?manage=prices", /Quản lý tiệm/i);
+      expect(await a.ev(`return document.querySelector('[data-testid="mgr-tab-prices"]')?.getAttribute("aria-selected") === "true"`), "link ?manage=prices không mở đúng mục cho admin");
       expect(a.errors.length === 0, a.errors.join("\n    "));
     } finally {
       await a.close();
     }
     await t.goto("/rewards", /Chăm làm bài · Đổi quà xinh/i);
     expect(await t.ev(`return location.pathname === "/rewards" && !!document.querySelector('[data-testid="admin-view"]')`), "giáo viên chưa xem được tiệm");
-    expect(await t.ev(`return !document.querySelector('[data-testid="manage-toggle"]')`), "giáo viên không được thấy nút quản lý quà (chỉ admin)");
-    await t.goto("/teacher/rewards", /Quà & Xu/i);
-    expect(await t.ev(`return !!document.querySelector('[data-testid="open-shop"]')`), "trang quản lý quà thiếu nút Xem Tiệm quà cho giáo viên");
+    expect(await t.ev(`return !!document.querySelector('[data-testid="manage-toggle"]') && !document.querySelector('[data-testid="reward-manager"]')`), "giáo viên phải thấy nút Quản lý tiệm (khu quản lý đóng khi vào /rewards thường)");
+    await t.goto("/rewards?manage=prices", /Quản lý tiệm/i);
+    expect(await t.ev(`return !document.querySelector('[data-testid="mgr-tab-prices"]') && document.querySelector('[role=tab][aria-selected=true]')?.dataset.testid !== "mgr-tab-prices"`), "giáo viên không được mở mục giá đồ qua link");
   });
 
   await step("Thầy: Duyệt chữa bài — đặt hạn nộp lớp, tìm tên, bấm Có chữa (+280) rồi Chữa đủ (+400); mã quà tự đặt dùng 1 lần", async () => {
@@ -998,15 +1025,13 @@ try {
     expect((await balanceOf(data.student.id)) === before + 400, "Chữa đủ không điều chỉnh lên 400 xu");
     expect((await t.ev(`return document.querySelector('${row}').dataset.level`)) === "FULL", "nút Chữa đủ chưa sáng");
     // Mã quà tự đặt
-    await t.goto("/teacher/rewards", /Quà & Xu/i);
-    await t.click(/^Mã quà tặng$/);
+    await t.goto("/rewards?manage=codes", /Tạo mã quà tặng/i);
     const custom = `E2E${Date.now().toString(36).toUpperCase().slice(-5)}`;
     await t.fill('[data-testid="giftcode-custom"]', custom.toLowerCase());
     await t.click(/^Tạo 1 mã/);
     expect(await t.waitText(new RegExp(custom)), "không thấy mã tự đặt vừa tạo");
     const gc = await prisma.giftCode.findUnique({ where: { code: custom } });
     expect(gc && gc.maxUses === 1 && gc.currency === "XU" && gc.amount === 300, `mã tự đặt lưu sai: ${JSON.stringify(gc)}`);
-    await t.ev(`[...document.querySelectorAll('[data-testid="giftcode-unused"] button')][0].click()`);
     // Danh sách tải lại sau khi trang làm mới (router.refresh) — chờ tối đa 6 giây
     let listed = false;
     for (let i = 0; i < 24 && !listed; i++) {

@@ -26,7 +26,7 @@ export function HistoryModal({ open, onOpenChange, ledger, levelIndex }: { open:
       </div>
       {tab === "history" && (
         ledger.length === 0 ? (
-          <p className="rounded-2xl bg-[#fff1c2] p-5 text-center text-sm font-semibold text-[#7a5a35]">Chưa có xu nào. Nộp bài đầu tiên để nhận 300 xu nhé!</p>
+          <p className="rounded-2xl bg-[#fff1c2] p-5 text-center text-sm font-semibold text-[#7a5a35]">Chưa có xu nào. Nộp bài tập về nhà đúng hạn để nhận xu đầu tiên nhé!</p>
         ) : (
           <ol className="divide-y divide-[#efe6d6] rounded-2xl border-2 border-[#5b3d1e]/40 bg-white">
             {ledger.map((l) => (

@@ -93,7 +93,7 @@ export async function writeEntry(tx: Tx, e: EntryInput) {
     `;
     return;
   }
-  // Danh hiệu chỉ tính xu từ học tập (và thu hồi của nó); mã quà, gacha, mua đồ, đổi/hoàn quà không ảnh hưởng
+  // Xu tích luỹ (danh hiệu): học tập, thầy thưởng, mã quà xu (và thu hồi của chúng); gacha, mua đồ, đổi/hoàn quà không ảnh hưởng
   const countsAsEarning = e.countsAsEarning ?? (EARNING_SOURCES as readonly string[]).includes(e.source);
   await tx.$executeRaw`
     UPDATE "PointWallet"
@@ -148,7 +148,7 @@ export async function awardOnce(
 
 /**
  * Thu hồi tiền của một khoá (vd giáo viên xoá lượt làm, đổi bài tập từ Đạt sang Chưa đạt) — đúng loại tiền của khoá.
- * lifetimeEarned chỉ bị trừ nếu dòng gốc của khoá là nguồn học tập (review Gemini: thu hồi GIFTCODE/GACHA không được làm tụt danh hiệu).
+ * lifetimeEarned chỉ bị trừ nếu dòng gốc của khoá là nguồn tính tích luỹ (học, thầy thưởng, mã quà xu) — thu hồi GACHA không làm tụt danh hiệu.
  */
 export async function revokeKey(tx: Tx, userId: string, key: string, reason: string, createdById?: string | null, currency: Currency = "XU") {
   const net = await netForKey(tx, userId, key, currency);

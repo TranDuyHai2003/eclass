@@ -28,7 +28,7 @@ export async function redeemGiftCode(code: string): Promise<RedeemGiftCodeResult
   const userId = me?.id;
   if (!userId) return { success: false, error: "Vui lòng đăng nhập." };
   if (!canUseShop(me)) return { success: false, error: "Tiệm quà đang mở thử cho lớp offline." };
-  if (rateLimited(userId)) return { success: false, error: "Bạn nhập sai quá nhiều lần, thử lại sau 10 phút nhé." };
+  if (rateLimited(userId)) return { success: false, error: "Bạn nhập sai quá nhiều lần, thử lại sau nhé." };
   try {
     const res = await prisma.$transaction((tx) => redeemGiftCodeInTx(tx, userId, String(code ?? "")));
     if (!res.success) noteFailure(userId);
@@ -76,7 +76,7 @@ export async function createGiftCodes(input: GiftCodeBatchInput): Promise<Points
     throw e;
   }
   const { batchId, codes } = created;
-  revalidatePath("/teacher/rewards");
+  revalidatePath("/rewards");
   return { success: true, message: `Đã tạo ${codes.length} mã.`, batchId, codes };
 }
 
@@ -86,6 +86,6 @@ export async function deactivateGiftBatch(batchId: string): Promise<PointsResult
   if (blocked) return blocked;
   await requireStaff();
   const r = await prisma.giftCode.updateMany({ where: { batchId, isActive: true }, data: { isActive: false } });
-  revalidatePath("/teacher/rewards");
+  revalidatePath("/rewards");
   return r.count ? { success: true, message: `Đã vô hiệu ${r.count} mã.` } : { success: false, error: "Lô này đã vô hiệu." };
 }

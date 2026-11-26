@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { demoGuard } from "@/lib/demo";
-import { isPointsEnabled } from "@/lib/points/config";
+import { isPointsEnabled, studentCanCancel } from "@/lib/points/config";
 import { grantManualInTx, validateManualGrant } from "@/lib/points/manual";
 import {
   closeWithRefund,
@@ -28,7 +28,6 @@ const LOGIN: PointsResult = { success: false, error: "Vui lòng đăng nhập." 
 
 function revalidateAll() {
   revalidatePath("/rewards");
-  revalidatePath("/teacher/rewards");
 }
 
 async function requireStaff() {
@@ -72,8 +71,9 @@ export async function cancelRedemption(redemptionId: string): Promise<PointsResu
   const userId = (await auth())?.user?.id;
   if (!userId) return LOGIN;
 
-  const r = await prisma.redemption.findUnique({ where: { id: redemptionId }, select: { userId: true } });
+  const r = await prisma.redemption.findUnique({ where: { id: String(redemptionId) }, select: { userId: true, createdAt: true } });
   if (!r || r.userId !== userId) return { success: false, error: "Không tìm thấy yêu cầu." };
+  if (!studentCanCancel(r.createdAt)) return { success: false, error: "Đã quá 2 giờ — muốn huỷ thì em báo thầy nhé." };
   const ok = await prisma.$transaction((tx) => closeWithRefund(tx, redemptionId, "CANCELLED", { handledById: userId }));
   revalidateAll();
   return ok ? { success: true, message: "Đã huỷ và hoàn xu." } : { success: false, error: "Yêu cầu đã được xử lý, không huỷ được." };

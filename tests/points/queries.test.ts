@@ -5,7 +5,7 @@ import { test, describe, after } from "node:test";
 import assert from "node:assert/strict";
 import { prisma } from "@/lib/prisma";
 import { POINTS } from "@/lib/points/config";
-import { getHeaderPoints, getPointsCard, getPointsForAttempt, getStudentPointsPage, getTeacherRewardsPage } from "@/lib/points/queries";
+import { getHeaderPoints, getPointsCard, getPointsForAttempt, getShopAdminData, getStudentPointsPage, getTeacherRewardsPage } from "@/lib/points/queries";
 import { redeemInTx } from "@/lib/points/redemption";
 import { getWeekCode } from "@/lib/ranking/history-engine";
 import { createFixture, disconnect } from "../helpers/fixtures";
@@ -214,7 +214,23 @@ describe("Trang quản lý của thầy", () => {
 
     assert.ok(d.stats.earnedThisMonth >= 50);
     assert.ok(d.stats.spentThisMonth >= 20);
-    assert.ok(d.rewards.some((x) => x.id === r.id && x._count.redemptions === 1));
+    const shop = await getShopAdminData();
+    assert.ok(shop.rewards.some((x) => x.id === r.id && x.pending === 1), "khu Quà & thẻ thấy số đơn chờ trao");
+  });
+
+  test("thống kê tháng: tính xu duyệt chữa bài + mã quà xu; không tính ngọc", async () => {
+    const s = await fx.user();
+    // số lớn để chắc chắn lọt top 10 dù file test khác chạy song song cùng DB
+    await prisma.pointLedger.createMany({
+      data: [
+        { userId: s.id, amount: 400_000, source: "HOMEWORK_REVIEW", key: `HWREVIEW:${fx.tag}` },
+        { userId: s.id, amount: 300_000, source: "GIFTCODE", key: `GIFTCODE:${fx.tag}-x` },
+        { userId: s.id, amount: 500_000, source: "GIFTCODE", key: `GIFTCODE:${fx.tag}-g`, currency: "GEM" },
+      ],
+    });
+    const d = await getTeacherRewardsPage();
+    assert.equal(d.stats.top.find((t) => t.userId === s.id)?.points, 700_000, "xu duyệt chữa + mã xu, không cộng ngọc");
+    assert.ok(d.stats.earnedThisMonth >= 700_000);
   });
 
   test("chi phí: tính theo quà đã trao trong tháng", async () => {

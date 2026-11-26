@@ -73,11 +73,12 @@ export const AUTO_CAPPED_SOURCES = ["TEST_SUBMIT", "ON_TIME", "TEST_SCORE", "BRE
 export const STREAK_ACTIVITY_SOURCES = ["TEST_SUBMIT", "FINAL_TEST", "HOMEWORK_SUBMIT"] as const;
 
 /**
- * Các nguồn tính vào "tổng xu đã kiếm" (lifetimeEarned → danh hiệu). Chỉ xu từ HỌC và thầy thưởng;
- * mã quà tặng, gacha, mua đồ, đổi/hoàn quà không ảnh hưởng danh hiệu. REVOKE (âm) trừ lại phần đã kiếm.
+ * Các nguồn tính vào "xu tích luỹ" (lifetimeEarned → danh hiệu, Bảng Vàng). Xu từ HỌC, thầy thưởng và MÃ QUÀ TẶNG
+ * (26/11/2026: mã quà là 1 trong 3 cách nhận xu chính thức — thầy báo xu từ mã không được cộng tích luỹ);
+ * gacha, mua đồ, đổi/hoàn quà không ảnh hưởng. REVOKE (âm) trừ lại phần đã kiếm. Ngọc (GEM) không bao giờ tính.
  */
 export const EARNING_SOURCES = [
-  "TEST_SUBMIT", "ON_TIME", "TEST_SCORE", "BREAKTHROUGH", "FINAL_TEST", "HOMEWORK_SUBMIT", "HOMEWORK_PASS", "HOMEWORK_REVIEW", "STREAK", "MANUAL", "REVOKE",
+  "TEST_SUBMIT", "ON_TIME", "TEST_SCORE", "BREAKTHROUGH", "FINAL_TEST", "HOMEWORK_SUBMIT", "HOMEWORK_PASS", "HOMEWORK_REVIEW", "STREAK", "MANUAL", "GIFTCODE", "REVOKE",
 ] as const;
 
 export const SOURCE_LABEL: Record<string, string> = {
@@ -133,3 +134,11 @@ export const earningRules = (): { label: string; points: string; note?: string }
   ];
   return rules.filter((r) => r.on).map(({ on: _on, ...r }) => r);
 };
+
+/**
+ * Học sinh tự huỷ đơn đổi quà (hoàn xu) chỉ trong 2 giờ đầu — đủ để sửa đổi nhầm.
+ * 26/11/2026 (rà lỗ hổng): trước đây huỷ được mọi lúc khi đơn còn "chờ trao" → nhận quà trên lớp xong, thầy chưa kịp bấm
+ * "Đã trao" thì huỷ để lấy lại xu. Quá 2 giờ: báo thầy, thầy từ chối (hoàn xu) ở Quản lý tiệm.
+ */
+export const STUDENT_CANCEL_WINDOW_MS = 2 * 60 * 60 * 1000;
+export const studentCanCancel = (createdAt: string | Date, now: number = Date.now()) => now - new Date(createdAt).getTime() <= STUDENT_CANCEL_WINDOW_MS;

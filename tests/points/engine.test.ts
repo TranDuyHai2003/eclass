@@ -81,7 +81,7 @@ describe("Hai loại tiền (xu / ngọc) — review Gemini", () => {
     assert.equal(w!.balance, await fx.ledgerSum(u, "XU"));
   });
 
-  test("xu từ mã quà / gacha / mua đồ / hoàn quà không làm tăng danh hiệu (lifetimeEarned)", async () => {
+  test("xu từ gacha / mua đồ / hoàn quà không làm tăng danh hiệu; xu từ mã quà CÓ tính tích luỹ (26/11)", async () => {
     const u = (await fx.user()).id;
     await prisma.$transaction(async (tx) => {
       await lockWallet(tx, u);
@@ -93,7 +93,7 @@ describe("Hai loại tiền (xu / ngọc) — review Gemini", () => {
     });
     const w = await fx.wallet(u);
     assert.equal(w!.balance, 430);
-    assert.equal(w!.lifetimeEarned, 300);
+    assert.equal(w!.lifetimeEarned, 400, "300 học + 100 mã quà");
   });
 
   test("awardOnce / revokeKey theo đúng loại tiền: khoá ngọc không chạm xu", async () => {
@@ -113,21 +113,28 @@ describe("Hai loại tiền (xu / ngọc) — review Gemini", () => {
     assert.equal(await fx.ledgerSum(u, "XU"), 0);
   });
 
-  test("thu hồi khoá xu từ mã quà (không phải nguồn học) không làm tụt lifetimeEarned (review Gemini)", async () => {
+  test("thu hồi khoá xu từ mã quà trừ lại đúng phần tích luỹ đã cộng; thu hồi gacha không chạm danh hiệu", async () => {
     const u = (await fx.user()).id;
     await prisma.$transaction(async (tx) => {
       await lockWallet(tx, u);
       await awardOnce(tx, { userId: u, amount: 300, source: "TEST_SUBMIT", key: "T9" });
       await awardOnce(tx, { userId: u, amount: 500, source: "GIFTCODE", key: "GC9" });
     });
-    assert.equal((await fx.wallet(u))!.lifetimeEarned, 300);
+    assert.equal((await fx.wallet(u))!.lifetimeEarned, 800);
     await prisma.$transaction(async (tx) => {
       await lockWallet(tx, u);
       assert.equal(await revokeKey(tx, u, "GC9", "thu hồi mã"), 500);
     });
     let w = await fx.wallet(u);
     assert.equal(w!.balance, 300);
-    assert.equal(w!.lifetimeEarned, 300, "thu hồi mã quà không chạm danh hiệu");
+    assert.equal(w!.lifetimeEarned, 300, "thu hồi mã quà trừ lại phần tích luỹ của mã");
+    await prisma.$transaction(async (tx) => {
+      await lockWallet(tx, u);
+      await awardOnce(tx, { userId: u, amount: 200, source: "GACHA", key: "GA9" });
+      assert.equal(await revokeKey(tx, u, "GA9", "thu hồi rương"), 200);
+    });
+    w = await fx.wallet(u);
+    assert.equal(w!.lifetimeEarned, 300, "xu rương / thu hồi rương không chạm danh hiệu");
     await prisma.$transaction(async (tx) => {
       await lockWallet(tx, u);
       assert.equal(await revokeKey(tx, u, "T9", "xoá bài"), 300);

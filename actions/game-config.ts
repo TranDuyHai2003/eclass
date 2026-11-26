@@ -22,7 +22,6 @@ function revalidate() {
   revalidatePath("/rewards");
   revalidatePath("/profile");
   revalidatePath("/");
-  revalidatePath("/teacher/rewards");
 }
 
 export async function saveItemPrices(input: unknown): Promise<Result> {

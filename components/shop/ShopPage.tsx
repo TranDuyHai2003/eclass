@@ -9,7 +9,7 @@ import { mali, nunito } from "@/lib/fonts";
 import "./ah/theme.css";
 import { cancelRedemption, redeemReward, setGoalReward } from "@/actions/points";
 import { buyItem, saveAvatar } from "@/actions/avatar";
-import type { ShopAdminData, StudentPointsPageData } from "@/lib/points/queries";
+import type { StudentPointsPageData } from "@/lib/points/queries";
 import type { HomeTodoItem } from "@/lib/home/student-home";
 import { LEVELS, getLevel } from "@/lib/points/levels";
 import { rarityOf, type Rarity } from "@/lib/points/rarity";
@@ -39,7 +39,8 @@ import { RewardArt, RewardPic } from "./ah/RewardArt";
 import { QuestBoard, QuestUnlocked, type QuestRow } from "./ah/QuestBoard";
 import { QUESTS, CAT_PETS_PER_DAY } from "@/lib/game/quests-shared";
 import { claimCatQuest } from "@/actions/quests";
-import { RewardManager } from "./ah/RewardManager";
+import { RewardManager, type ManageData } from "./ah/RewardManager";
+import type { ManageTab } from "@/lib/points/manage-tabs";
 import { applyGameConfig, type GameConfigData } from "@/lib/game/game-config-shared";
 
 type Reward = StudentPointsPageData["rewards"][number];
@@ -90,14 +91,16 @@ export interface ShopPageProps {
   gacha?: { pullsToday: number } | null;
   /** Tài khoản thầy / admin xem tiệm: chỉ xem, các thao tác đổi / mở hộp / nhập mã do server từ chối */
   adminView?: boolean;
-  /** Chỉ admin: dữ liệu quản lý quà ngay trong tiệm */
-  manageData?: ShopAdminData | null;
+  /** Giáo viên / admin: dữ liệu khu "Quản lý tiệm" (đơn đổi quà, quà, thưởng xu, mã quà, thống kê…) */
+  manageData?: ManageData | null;
+  /** Mở sẵn khu quản lý ở mục này (?manage=… — link "Quà & Xu" ở thanh bên của thầy) */
+  initialManage?: ManageTab | null;
   /** Biệt danh nhiệm vụ ẩn đã mở (còn hạn) */
   quests?: QuestRow[];
 }
 
 /** Tiệm quà — giao diện "Adorable Home" của canvas ShopV2 (thanh gỗ, khối hồ sơ, mèo linh vật, danh mục trái, thẻ theo độ hiếm); logic xu/ngọc/quà/đồ/rương giữ nguyên */
-export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, event = null, gacha = null, adminView = false, manageData = null, quests = [], gameConfig }: ShopPageProps) {
+export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, event = null, gacha = null, adminView = false, manageData = null, initialManage = null, quests = [], gameConfig }: ShopPageProps) {
   applyGameConfig(gameConfig);
   const router = useRouter();
   const online = useOnline();
@@ -111,7 +114,27 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   const [custom, setCustom] = useState(false);
   const [gold, setGold] = useState(false);
   const canManage = adminView && !!manageData;
-  const [manage, setManage] = useState(false);
+  const [manage, setManageState] = useState(!!initialManage && !!manageData);
+  const [mTab, setMTabState] = useState<ManageTab>(initialManage ?? (manageData?.teacher.pending.length ? "requests" : "rewards"));
+  // Giữ mục quản lý trên địa chỉ trang → tải lại / gửi link vẫn mở đúng chỗ
+  const syncUrl = (on: boolean, t: ManageTab) => {
+    try {
+      const u = new URL(window.location.href);
+      if (on) u.searchParams.set("manage", t);
+      else u.searchParams.delete("manage");
+      window.history.replaceState(window.history.state, "", u.toString());
+    } catch {}
+  };
+  const setManage = (fn: (v: boolean) => boolean) => {
+    const on = fn(manage);
+    setManageState(on);
+    syncUrl(on, mTab);
+    if (on) window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const setMTab = (t: ManageTab) => {
+    setMTabState(t);
+    syncUrl(true, t);
+  };
   const [questOpen, setQuestOpen] = useState(false);
   const [questNew, setQuestNew] = useState<string[]>([]);
   const [lvUp, setLvUp] = useState<number | null>(null);
@@ -147,9 +170,17 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
   const bagCount = data.redemptions.filter((r) => r.status === "PENDING").length + owned.size;
   const plateDark = !!avatar.nameplate && ITEM_BY_ID[avatar.nameplate]?.v2 === "dark";
 
+  const pendingOrders = manageData?.teacher.pending.length ?? 0;
   const lines = useMemo(
     () =>
-      buildNpcLines({
+      // Thầy / admin xem tiệm: mèo nhắc việc quản lý thay vì câu dành cho học sinh ("tài khoản chờ duyệt"…)
+      adminView
+        ? [
+            pendingOrders > 0 ? `Thầy ơi, có ${pendingOrders} đơn đổi quà đang chờ trao — bấm "Quản lý tiệm" nhé 🎁` : "Chào thầy! Chưa có đơn đổi quà nào đang chờ 🐾",
+            "Thầy bấm \"Quản lý tiệm\" để sửa quà, thưởng xu, tạo mã quà tặng nha.",
+            "Học sinh nhận xu khi: nộp BTVN đúng hạn, được thầy duyệt chữa bài, nhập mã quà tặng.",
+          ]
+        : buildNpcLines({
         name: user.name,
         canEarn: data.canEarn,
         todoCount: todoTotal,
@@ -162,7 +193,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
         gems: wallet.gems,
         goal: goal ? { title: goal.title, price: goal.price } : null,
       }).map((l) => l.replace(/Mình là Lucky Boy, bấm vào mình để nghe tiếp nhé 😉/, "Meo~ vuốt ve tớ đi, tớ kể tiếp cho nghe 🐾")),
-    [user.name, data.canEarn, todoTotal, wallet, level, goal],
+    [adminView, pendingOrders, user.name, data.canEarn, todoTotal, wallet, level, goal],
   );
 
   // Đi từ /leaderboard (hoặc link "#bang-vang") → mở sẵn hộp Bảng Vàng; thông báo nhiệm vụ ẩn ("#nhiem-vu") → mở bảng nhiệm vụ
@@ -413,11 +444,9 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
       <WeatherLayer weather={weather} />
       {adminView && (
         <div role="status" data-testid="admin-view" className="relative z-[5] flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-[#2A1F5C] px-4 py-2 text-center text-xs font-bold text-[#FDE68A]">
-          <span>Bạn đang xem Tiệm quà bằng tài khoản giáo viên — giao diện giống học sinh, chỉ xem (đổi quà, mở hộp, nhập mã dành cho học sinh).</span>
-          {canManage ? (
-            <button type="button" onClick={() => { play("click"); setManage((v) => !v); }} className="cursor-pointer underline decoration-dotted">{manage ? "Tắt quản lý quà" : "🛠️ Quản lý quà ngay tại đây"}</button>
-          ) : (
-            <Link href="/teacher/rewards" className="underline decoration-dotted">Quản lý quà →</Link>
+          <span>{manage ? "Đang quản lý tiệm — sửa xong bấm \"Xem tiệm như học sinh\" để xem kết quả." : "Bạn đang xem Tiệm quà bằng tài khoản giáo viên — giao diện giống học sinh, chỉ xem (đổi quà, mở hộp, nhập mã dành cho học sinh)."}</span>
+          {canManage && (
+            <button type="button" data-testid="banner-manage" onClick={() => { play("click"); setManage((v) => !v); }} className="cursor-pointer rounded-full bg-[#FDE68A] px-3 py-0.5 font-black text-[#2A1F5C]">{manage ? "👀 Xem tiệm như học sinh" : "🛠️ Quản lý tiệm"}</button>
           )}
         </div>
       )}
@@ -474,12 +503,12 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
             <button type="button" onClick={() => router.refresh()} className="ah-btn ah-coral h-10 px-4">Thử lại</button>
           </div>
         )}
-        {!data.canEarn && (
+        {!data.canEarn && !adminView && (
           <div className="ah-panel bg-[#fff1c9] px-[18px] py-3 font-bold text-[#6e4722]">Tài khoản cần được thầy duyệt để bắt đầu nhận xu và đổi quà.</div>
         )}
 
-        {/* ===== Hàng hồ sơ + mèo linh vật (bố cục mẫu 24/11) ===== */}
-        <div className="flex flex-wrap items-stretch gap-[18px]">
+        {/* ===== Hàng hồ sơ + mèo linh vật (bố cục mẫu 24/11) — ẩn khi thầy đang quản lý để khu quản lý lên đầu ===== */}
+        <div className={cn("flex flex-wrap items-stretch gap-[18px]", canManage && manage && "hidden")}>
           <section className="ah-panel flex min-w-0 flex-[999_1_560px] p-[14px]" data-testid="shop-hud">
             <PlateBox id={avatar.nameplate} className="min-w-0 flex-[999_1_560px]" testId="hud-nameplate">
               <div className="flex flex-wrap items-center gap-4 px-[18px] py-3.5">
@@ -511,7 +540,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
                     <Link href="/profile" className="ah-btn ah-cream h-[34px] px-3 text-[13px]">👤 Hồ sơ</Link>
                     {canManage && (
                       <button type="button" data-testid="manage-toggle" aria-pressed={manage} onClick={() => { play("click"); setManage((v) => !v); }} className={cn("ah-btn h-[34px] px-3 text-[13px]", manage ? "ah-grape" : "ah-sky")}>
-                        🛠️ {manage ? "Đang quản lý quà" : "Quản lý quà"}
+                        🛠️ {manage ? "Đang quản lý tiệm" : "Quản lý tiệm"}
                       </button>
                     )}
                   </div>
@@ -542,8 +571,11 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
 
         </div>
 
+        {/* ===== Khu quản lý (giáo viên / admin): thay chỗ lưới quà khi bật ===== */}
+        {canManage && manage && manageData && <RewardManager data={manageData} gameConfig={gameConfig} avatar={avatar} tab={mTab} onTab={setMTab} />}
+
         {/* ===== Thân trang ===== */}
-        <div className="flex flex-wrap items-start gap-[22px]">
+        <div className={cn("flex flex-wrap items-start gap-[22px]", canManage && manage && "hidden")}>
           <aside className="ah-panel flex min-w-0 max-w-[290px] flex-[1_1_250px] flex-col gap-2.5 p-4 max-md:max-w-none" aria-label="Danh mục tiệm quà">
             <div className="ah-hand px-1 pb-1 pt-0.5 font-bold text-[#6e4722]">Danh mục tiệm quà</div>
             <div role="tablist" aria-label="Danh mục quà" aria-orientation="vertical" className="flex min-w-0 flex-col gap-2.5 max-md:-mx-1 max-md:flex-row max-md:overflow-x-auto max-md:px-1 max-md:pb-2 max-md:pt-0.5 max-md:[scrollbar-width:none]">
@@ -574,7 +606,6 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           </aside>
 
           <main ref={mainRef} className="flex min-w-0 flex-[999_1_600px] scroll-mt-4 flex-col gap-[18px]">
-            {canManage && manage && manageData && <RewardManager data={manageData} gameConfig={gameConfig} avatar={avatar} />}
               <div className="flex flex-col gap-[18px]">
                 <div className="ah-panel flex flex-wrap items-center gap-2.5 px-4 py-3 shadow-[0_4px_0_rgba(36,30,26,0.92)]" data-testid="grid-head">
                   <h2 className="ah-hand text-[24px] font-bold max-sm:text-xl">

@@ -41,7 +41,7 @@ export function LeaderboardView({
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-400 text-amber-950 shadow-[0_3px_0_0_#d97706]"><Crown className="h-5 w-5" /></span>
             Bảng Vàng
           </h1>
-          <p className="text-sm font-medium text-slate-500">Xu kiếm được từ học tập — mỗi khối là một &quot;server&quot; riêng. Đổi quà, mở rương không làm tụt hạng.</p>
+          <p className="text-sm font-medium text-slate-500">Xu tích luỹ từ học tập và mã quà tặng — mỗi khối là một &quot;server&quot; riêng. Đổi quà, mở rương không làm tụt hạng.</p>
         </div>
         <div className="flex gap-1 rounded-2xl border-2 border-slate-200/80 bg-slate-100/80 p-1" role="tablist" aria-label="Kỳ">
           {(["all", "month"] as Period[]).map((p) => (

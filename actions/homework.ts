@@ -12,6 +12,9 @@ import {
   reviewSubmissionSelect,
 } from "@/lib/homework-review";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { cleanHomeworkAttachments, homeworkKeyOf } from "@/lib/homework-files";
+import { getVisibleCourseIds } from "@/lib/home/student-home";
+import { revokeKey, lockWallet } from "@/lib/points/engine";
 
 // ----------------------------------------------------------------------
 // 1. CẤU HÌNH S3 CLIENT CHUẨN ĐỂ GỌI TRỰC TIẾP TỪ SERVER ACTION
@@ -28,18 +31,19 @@ const b2Client = new S3Client({
 
 const B2_BUCKET_NAME = process.env.B2_BUCKET_NAME || "";
 
-function extractS3Key(fileUrl: string): string | null {
-  try {
-    const parsedUrl = new URL(fileUrl);
-    let pathname = parsedUrl.pathname;
-    if (pathname.startsWith("/")) pathname = pathname.substring(1);
-    const prefixToRemove = `file/${B2_BUCKET_NAME}/`;
-    if (pathname.startsWith(prefixToRemove))
-      pathname = pathname.replace(prefixToRemove, "");
-    return pathname;
-  } catch (error) {
-    return null;
-  }
+
+/**
+ * Chỉ được xoá tệp BTVN (khoá images|documents/<id>-homework…) mà KHÔNG nằm trong bài nộp của người khác.
+ * Trước 26/11/2026: nhận URL bất kỳ → học sinh xoá được ảnh / tài liệu bài giảng hoặc bài của bạn.
+ */
+async function deletableHomeworkKey(url: string, userId: string): Promise<string | null> {
+  const key = homeworkKeyOf(url);
+  if (!key) return null;
+  const rows = await prisma.$queryRaw<{ n: bigint }[]>`
+    SELECT COUNT(*)::bigint AS n FROM "HomeworkSubmission"
+    WHERE "userId" <> ${userId} AND array_to_string("attachments", ' ') LIKE ${"%" + key.replace(/[\\%_]/g, (c) => "\\" + c) + "%"}
+  `;
+  return Number(rows[0]?.n ?? 0) > 0 ? null : key;
 }
 
 // ----------------------------------------------------------------------
@@ -55,7 +59,7 @@ export async function deleteDraftFile(url: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
-  const s3Key = extractS3Key(url);
+  const s3Key = await deletableHomeworkKey(url, session.user.id);
   if (!s3Key) return { success: false };
 
   try {
@@ -70,20 +74,28 @@ export async function deleteDraftFile(url: string) {
 
 export async function submitHomework(
   lessonId: string,
-  attachments: { name: string; url: string; size?: number }[],
+  rawAttachments: { name: string; url: string; size?: number }[],
 ) {
   const demoBlocked = await demoGuard();
   if (demoBlocked) return demoBlocked;
 
   // Rà soát lại toàn bộ file trước khi lưu
-  for (const file of attachments) {
-    if (file.size && file.size > MAX_FILE_SIZE) {
+  for (const file of Array.isArray(rawAttachments) ? rawAttachments : []) {
+    if (file?.size && file.size > MAX_FILE_SIZE) {
       throw new Error("File quá lớn! Vui lòng chụp lại với chất lượng vừa phải hoặc dùng ảnh nén.");
     }
   }
 
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
+
+  // Chống lấy xu khống (26/11/2026): bài phải có BTVN, thuộc khoá học sinh được học, và có tệp thật đã tải lên
+  if (typeof lessonId !== "string" || !lessonId) throw new Error("Bài học không hợp lệ.");
+  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { hasHomework: true, chapter: { select: { courseId: true } } } });
+  if (!lesson?.hasHomework) throw new Error("Bài học này không có bài tập về nhà.");
+  if (session.user.role === "STUDENT" && !(await getVisibleCourseIds(session.user.id)).includes(lesson.chapter.courseId)) {
+    throw new Error("Em chưa được học khoá này.");
+  }
 
   const existing = await prisma.homeworkSubmission.findUnique({
     where: {
@@ -97,6 +109,11 @@ export async function submitHomework(
   if (existing && existing.status === "SATISFACTORY") {
     throw new Error("Bài làm đã đạt yêu cầu, không thể thay đổi nội dung.");
   }
+
+  const mine = ((existing?.attachments ?? []) as unknown as { url?: string }[]).map((f) => f?.url).filter((u): u is string => typeof u === "string");
+  const cleaned = cleanHomeworkAttachments(rawAttachments, mine);
+  if ("error" in cleaned) throw new Error(cleaned.error);
+  const attachments = cleaned.ok;
 
   // 🔥 CHẶN RÁC MỒ CÔI KHI NỘP LẠI BÀI: Xóa file cũ trước khi ghi đè
   if (
@@ -112,7 +129,7 @@ export async function submitHomework(
       const isRetained = attachments.some(newFile => newFile.url === file.url);
       if (isRetained) continue;
 
-      const s3Key = extractS3Key(file.url);
+      const s3Key = await deletableHomeworkKey(file.url, session.user.id);
       if (!s3Key) continue;
 
       try {
@@ -220,7 +237,7 @@ export async function deleteHomeworkSubmission(submissionId: string) {
     }[];
     for (const file of filesToDelete) {
       if (!file.url) continue;
-      const s3Key = extractS3Key(file.url);
+      const s3Key = await deletableHomeworkKey(file.url, submissionToDelete.userId);
       if (!s3Key) continue;
 
       try {
@@ -239,9 +256,11 @@ export async function deleteHomeworkSubmission(submissionId: string) {
     }
   }
 
-  // Sau khi dọn vật lý xong mới tiến hành xóa bản ghi trong DB
-  await prisma.homeworkSubmission.delete({
-    where: { id: submissionId },
+  // Sau khi dọn vật lý xong mới tiến hành xóa bản ghi trong DB; thu hồi +100 xu nộp bài (bài rác / nộp nhầm) trong cùng giao dịch
+  await prisma.$transaction(async (tx) => {
+    await tx.homeworkSubmission.delete({ where: { id: submissionId } });
+    await lockWallet(tx, submissionToDelete.userId);
+    await revokeKey(tx, submissionToDelete.userId, `HW:${submissionToDelete.lessonId}`, "Giáo viên xoá bài nộp bài tập về nhà", session.user.id ?? null);
   });
 
   revalidatePath("/teacher/homework");
