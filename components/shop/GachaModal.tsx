@@ -9,7 +9,6 @@ import { ITEM_BY_ID, RARITY_LABEL } from "@/lib/game/items";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { play } from "@/lib/sound";
 import { Chibi } from "@/components/avatar/Chibi";
-import { PetSvg } from "@/components/avatar/PetSvg";
 import { Confetti } from "@/components/points/Confetti";
 import { CoinBurst } from "@/components/game/CoinBurst";
 import { useGachaPull } from "@/components/game/useGachaPull";
@@ -18,6 +17,7 @@ import { GiftBoxSvg } from "./GiftBoxSvg";
 import { BAND } from "./ProductCard";
 import { PityBar } from "./PityBar";
 import { GachaCinematic } from "@/components/studio/effects";
+import { PetImage } from "@/components/studio/CutArt";
 
 /** Cực phẩm trưng hai bên sân khấu (đều có trong bể quà của rương) */
 export const FEATURED = { left: ["acc-halo", "outfit-astro"], right: ["pet-shadow", "frame-rainbow"] };
@@ -25,7 +25,7 @@ export const FEATURED = { left: ["acc-halo", "outfit-astro"], right: ["pet-shado
 export function ItemThumb({ itemId, avatar, size = 40 }: { itemId: string; avatar: AvatarConfig; size?: number }) {
   const item = ITEM_BY_ID[itemId];
   if (!item) return null;
-  return item.slot === "pet" ? <PetSvg itemId={itemId} size={size} /> : <Chibi config={{ ...avatar, [item.slot]: itemId }} size={size} />;
+  return item.slot === "pet" ? <PetImage id={itemId} size={size} className="object-contain" /> : <Chibi config={{ ...avatar, [item.slot]: itemId }} size={size} />;
 }
 
 function Featured({ ids, avatar }: { ids: string[]; avatar: AvatarConfig }) {

@@ -91,8 +91,8 @@ export const SOURCE_LABEL: Record<string, string> = {
 
 const fmt = (n: number) => n.toLocaleString("vi-VN");
 
-/** Quy tắc hiển thị cho học sinh (trang Xu) — lấy từ cấu hình để luôn khớp */
-export const EARNING_RULES: { label: string; points: string; note?: string }[] = [
+/** Quy tắc hiển thị cho học sinh (trang Xu) — lấy từ cấu hình để luôn khớp (hàm: admin sửa mức xu → tính lại) */
+export const earningRules = (): { label: string; points: string; note?: string }[] => [
   { label: "Nộp bài kiểm tra / bài tập", points: `+${fmt(POINTS.testSubmit)}`, note: `Nộp sau hạn +${fmt(POINTS.testSubmitLate)}. Cần làm ít nhất một nửa số câu` },
   { label: "Nộp đúng hạn", points: `+${fmt(POINTS.onTimeBonus)}`, note: "Khi bài có hạn nộp và bạn nộp kịp" },
   {

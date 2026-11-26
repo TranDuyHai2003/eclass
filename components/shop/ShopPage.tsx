@@ -40,6 +40,7 @@ import { QuestBoard, QuestUnlocked, type QuestRow } from "./ah/QuestBoard";
 import { QUESTS, CAT_PETS_PER_DAY } from "@/lib/game/quests-shared";
 import { claimCatQuest } from "@/actions/quests";
 import { RewardManager } from "./ah/RewardManager";
+import { applyGameConfig, type GameConfigData } from "@/lib/game/game-config-shared";
 
 type Reward = StudentPointsPageData["rewards"][number];
 type Sec = "shop" | "earn" | "code" | "gacha" | "gold" | "bag";
@@ -75,6 +76,8 @@ type Entry =
   | { key: string; kind: "item"; rarity: Rarity; name: string; it: Item };
 
 export interface ShopPageProps {
+  /** Giá đồ / mức xu admin sửa (GameConfig) — áp trước khi vẽ để khớp server */
+  gameConfig?: GameConfigData;
   data: StudentPointsPageData;
   user: { id: string; name: string | null; className: string | null; grade: number | null };
   todo: HomeTodoItem[];
@@ -94,7 +97,8 @@ export interface ShopPageProps {
 }
 
 /** Tiệm quà — giao diện "Adorable Home" của canvas ShopV2 (thanh gỗ, khối hồ sơ, mèo linh vật, danh mục trái, thẻ theo độ hiếm); logic xu/ngọc/quà/đồ/rương giữ nguyên */
-export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, event = null, gacha = null, adminView = false, manageData = null, quests = [] }: ShopPageProps) {
+export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, event = null, gacha = null, adminView = false, manageData = null, quests = [], gameConfig }: ShopPageProps) {
+  applyGameConfig(gameConfig);
   const router = useRouter();
   const online = useOnline();
   const [sec, setSec] = useState<Sec>("shop");
@@ -570,7 +574,7 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           </aside>
 
           <main ref={mainRef} className="flex min-w-0 flex-[999_1_600px] scroll-mt-4 flex-col gap-[18px]">
-            {canManage && manage && manageData && <RewardManager data={manageData} />}
+            {canManage && manage && manageData && <RewardManager data={manageData} gameConfig={gameConfig} avatar={avatar} />}
               <div className="flex flex-col gap-[18px]">
                 <div className="ah-panel flex flex-wrap items-center gap-2.5 px-4 py-3 shadow-[0_4px_0_rgba(36,30,26,0.92)]" data-testid="grid-head">
                   <h2 className="ah-hand text-[24px] font-bold max-sm:text-xl">

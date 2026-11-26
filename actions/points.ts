@@ -17,6 +17,7 @@ import { normalizeRewardInput, type RewardInput } from "@/lib/points/reward-inpu
 import { addShopTemplatesInTx } from "@/lib/points/shop-templates";
 import { canUseShop } from "@/lib/points/shop-access";
 import { checkRedeemQuests, runQuestsSafely } from "@/lib/game/quests";
+import { loadGameConfig } from "@/lib/game/game-config";
 
 /**
  * Server actions của Điểm thưởng: chỉ kiểm tra quyền rồi gọi phần lõi trong lib/points (đã có test ở tests/points).
@@ -169,6 +170,7 @@ export async function grantPoints(input: { userIds: string[]; amount: number; re
   if (blocked) return blocked;
   const staff = await requireStaff();
 
+  await loadGameConfig(); // giới hạn thưởng tay admin sửa
   const amount = Number(input.amount);
   const invalid = validateManualGrant(amount, input.reason);
   if (invalid) return { success: false, error: invalid };

@@ -15,18 +15,21 @@ import { Brows, FaceArt } from "@/components/avatar/FaceArt";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { play } from "@/lib/sound";
 import { Chibi, FxShape } from "@/components/avatar/Chibi";
-import { PetSvg } from "@/components/avatar/PetSvg";
 import { CoinBurst } from "@/components/game/CoinBurst";
 import { Confetti } from "@/components/points/Confetti";
-import { ShopArt, Sprite, faceStyle, frameSpriteStyle, hasSprite, shopItemIndex } from "@/components/studio/Sprite";
+import { ShopArt, Sprite, faceStyle, hasSprite, shopItemIndex } from "@/components/studio/Sprite";
 import { Nameplate } from "@/components/studio/Nameplate";
 import { AvatarFace } from "@/components/studio/AvatarFace";
 import { ProfileBanner } from "./ProfileBanner";
 import { ProfileScene } from "./ProfileScene";
 import { FrameRing } from "./FrameRing";
 import { FrameFx } from "@/components/avatar/FrameFx";
+import { FrameCut, PetImage, hasCutFrame } from "@/components/studio/CutArt";
+import { applyGameConfig, type GameConfigData } from "@/lib/game/game-config-shared";
 
 export interface DecorStudioProps {
+  /** Giá đồ admin sửa (GameConfig) — áp trước khi vẽ */
+  gameConfig?: GameConfigData;
   user: { id: string; name: string | null; email: string | null; image: string | null };
   config: AvatarConfig;
   owned: string[];
@@ -89,7 +92,8 @@ const pill = (c: [string, string]) => ({ background: c[0], color: c[1] });
 const titlePill = (id: string) => pill(TITLE_COLORS[id] ?? LEVEL_PILL);
 
 /** Hồ sơ & Trang trí — dựng theo artboard "Hồ sơ & Trang trí – Desktop" của canvas thiết kế (GĐ9) */
-export default function DecorStudio({ user, config: initial, owned: ownedInit, wallet, canEarn, isDemo, completedLessons, level, initialTry, hotHair = [] }: DecorStudioProps) {
+export default function DecorStudio({ user, config: initial, owned: ownedInit, wallet, canEarn, isDemo, completedLessons, level, initialTry, hotHair = [], gameConfig }: DecorStudioProps) {
+  applyGameConfig(gameConfig);
   const router = useRouter();
   const tryItem = initialTry ? ITEM_BY_ID[initialTry] : undefined;
   const [config, setConfig] = useState<AvatarConfig>(() => (tryItem ? { ...initial, [tryItem.slot]: tryItem.id } : initial));
@@ -231,17 +235,18 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
 
   /** Ảnh của một món trong lưới / ô "Đang trang bị" (ưu tiên ảnh canvas, không có thì SVG) */
   const artOf = (it: Item, small = false) => {
-    if (hasSprite(it.id)) return <Sprite id={it.id} className={cn("w-full", small && "h-full")} />;
-    const shopIdx = shopItemIndex(it.id);
-    if (shopIdx !== undefined) return <ShopArt index={shopIdx} className={small ? "h-[52px] w-[52px]" : "h-full"} />;
-    if (it.slot === "pet") return <PetSvg itemId={it.id} size={small ? 44 : 72} />;
+    if (it.slot === "pet") return <PetImage id={it.id} size={small ? 44 : 72} className={small ? "h-11 w-11" : "h-[72px] w-[72px]"} />;
+    // Khung: cùng tranh với Tiệm quà (tranh vẽ tay tách nền / SVG nhiều lớp), không dùng ô tranh tiệm cũ
     if (it.slot === "frame")
       return (
         <span className={cn("relative block", small ? "h-11 w-11" : "h-[72px] w-[72px]")}>
-          <span className="absolute inset-[15%] rounded-full bg-[#DDD6FE]" />
-          <FrameRing frameId={it.id} className="absolute inset-0 h-full w-full" />
+          <span className="absolute inset-[21%] rounded-full bg-[#DDD6FE]" />
+          {hasCutFrame(it.id) ? <FrameCut id={it.id} /> : <FrameRing frameId={it.id} className="absolute inset-0 h-full w-full" />}
         </span>
       );
+    if (hasSprite(it.id)) return <Sprite id={it.id} className={cn("w-full", small && "h-full")} />;
+    const shopIdx = shopItemIndex(it.id);
+    if (shopIdx !== undefined) return <ShopArt index={shopIdx} className={small ? "h-[52px] w-[52px]" : "h-full"} />;
     if (it.slot === "background") return <ProfileScene bgId={it.id} className="h-full w-full" />;
     if (it.slot === "effect") return <EffectThumb kind={it.v ?? ""} />;
     return <Chibi config={{ ...config, ...noFx, [it.slot]: it.id }} size={small ? 40 : 66} />;
@@ -263,7 +268,6 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
     },
   ];
 
-  const frameStyle = config.frame ? frameSpriteStyle(config.frame, 112) : undefined;
 
   return (
     <div className="flex flex-wrap items-start gap-6" data-testid="decor-studio">
@@ -275,10 +279,15 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
         <ProfileBanner config={config} name={user.name} showAvatar={false} previewing={dirty} />
         <div className="flex flex-col gap-[18px] px-6 pb-6">
           <div className="-mt-[52px] flex items-end gap-3.5">
-            <div className="relative h-28 w-28 shrink-0 rounded-full bg-[#EEF0FB] shadow-[0_0_0_4px_#fff]" style={frameStyle} data-testid="profile-avatar-ring" data-frame={config.frame ?? ""}>
-              <AvatarFace config={config} bg="#EDE7FD" title={user.name ?? undefined} className="absolute inset-6" />
-              {config.frame && !frameStyle && <FrameRing frameId={config.frame} className="absolute inset-0 h-full w-full" />}
-              {config.frame && frameStyle && <FrameFx frameId={config.frame} />}
+            <div className={cn("relative h-28 w-28 shrink-0 rounded-full", !config.frame && "bg-[#EEF0FB] shadow-[0_0_0_4px_#fff]")} data-testid="profile-avatar-ring" data-frame={config.frame ?? ""}>
+              <AvatarFace config={config} bg="#EDE7FD" title={user.name ?? undefined} className={cn("absolute", config.frame ? "inset-[21%]" : "inset-6")} />
+              {config.frame && hasCutFrame(config.frame) && (
+                <>
+                  <FrameCut id={config.frame} />
+                  <FrameFx frameId={config.frame} />
+                </>
+              )}
+              {config.frame && !hasCutFrame(config.frame) && <FrameRing frameId={config.frame} className="absolute inset-0 h-full w-full" />}
             </div>
             {config.nameplate ? (
               <Nameplate id={config.nameplate} className="mb-1 min-w-0 flex-1 px-3 py-2" testId="profile-nameplate">

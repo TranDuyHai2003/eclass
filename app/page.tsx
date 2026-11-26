@@ -11,6 +11,7 @@ import { getLevel } from "@/lib/points/levels";
 import { maskUsersForDemo } from "@/lib/demo-privacy";
 import { prisma, prismaBase } from "@/lib/prisma";
 import { unstable_cache } from "next/cache";
+import { loadGameConfig } from "@/lib/game/game-config";
 
 /** Quà đang mở cho mọi lớp (không gắn lớp riêng) — hiện ở trang chủ khách, cache 60 giây */
 const getGuestRewards = unstable_cache(
@@ -39,6 +40,8 @@ function buildHomeNpc(c: Omit<Parameters<typeof buildNpcLines>[0], "overdue" | "
 }
 
 export default async function Home() {
+  // Mức xu / giá admin sửa: áp trước khi đọc dữ liệu (thẻ điểm, trang chủ khách)
+  const gameConfig = await loadGameConfig();
   const session = await auth();
   const { courses, lastLesson, stats } = await getDashboardData();
   const isStudent = session?.user?.role === "STUDENT" && !!session.user.id;
@@ -91,6 +94,7 @@ export default async function Home() {
       top3={top3}
       grade={grade}
       guestRewards={guestRewards}
+      gameConfig={gameConfig}
     />
   );
 }

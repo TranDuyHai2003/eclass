@@ -4,7 +4,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { PointSource } from "@prisma/client";
-import { EARNING_RULES, POINTS, SOURCE_LABEL } from "@/lib/points/config";
+import { earningRules, POINTS, SOURCE_LABEL } from "@/lib/points/config";
 import { scoreTierPoints } from "@/lib/points/hooks";
 import { vietnamDayStart } from "@/lib/points/engine";
 import { normalizeRewardImageUrl, normalizeRewardInput, type RewardInput } from "@/lib/points/reward-input";
@@ -31,12 +31,12 @@ describe("Thang điểm", () => {
   });
 
   test("bảng 'Cách nhận điểm' hiển thị đúng số trong cấu hình", () => {
-    const submit = EARNING_RULES.find((r) => r.label.startsWith("Nộp bài kiểm tra"));
+    const submit = earningRules().find((r) => r.label.startsWith("Nộp bài kiểm tra"));
     assert.equal(submit?.points, `+${POINTS.testSubmit}`);
-    const tiers = EARNING_RULES.find((r) => r.label === "Điểm cao");
+    const tiers = earningRules().find((r) => r.label === "Điểm cao");
     assert.equal(tiers?.points, "+150 / +300 / +450");
     assert.equal(tiers?.note, "≥7 / ≥8,5 / ≥10");
-    for (const r of EARNING_RULES) assert.ok(r.label && r.points, "mỗi dòng có nhãn và điểm");
+    for (const r of earningRules()) assert.ok(r.label && r.points, "mỗi dòng có nhãn và điểm");
   });
 });
 

@@ -21,6 +21,7 @@ import { StudentTasks } from "./StudentTasks";
 import { GuestLanding, type LandingReward } from "../landing/GuestLanding";
 
 import { SortSelect } from "@/components/ui/SortSelect";
+import { applyGameConfig, type GameConfigData } from "@/lib/game/game-config-shared";
 
 export function Dashboard({
   user,
@@ -34,6 +35,7 @@ export function Dashboard({
   top3,
   grade,
   guestRewards,
+  gameConfig,
 }: {
   user: any;
   courses: any[];
@@ -52,7 +54,10 @@ export function Dashboard({
   grade?: number | null;
   /** Quà đang mở cho mọi lớp — chỉ trang chủ khách */
   guestRewards?: LandingReward[];
+  /** Mức xu admin sửa (GameConfig) — áp trước khi vẽ (trang chủ khách ghi "+300 xu nộp bài"…) */
+  gameConfig?: GameConfigData;
 }) {
+  applyGameConfig(gameConfig);
   const searchParams = useSearchParams();
   const currentSort = searchParams?.get("sort") || "default";
 

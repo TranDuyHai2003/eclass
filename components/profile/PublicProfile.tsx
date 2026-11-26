@@ -5,9 +5,9 @@ import { LEVELS } from "@/lib/points/levels";
 import type { PublicProfile } from "@/lib/game/profile";
 import { Chibi } from "@/components/avatar/Chibi";
 import { ITEM_BY_ID } from "@/lib/game/items";
-import { PetSvg } from "@/components/avatar/PetSvg";
 import { ProfileScene } from "./ProfileScene";
 import { EffectLayer } from "./EffectLayer";
+import { PetImage } from "@/components/studio/CutArt";
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", year: "numeric" });
 
@@ -31,7 +31,7 @@ export function PublicProfileView({ p }: { p: PublicProfile }) {
             <Chibi config={p.avatar} size={168} title={p.name ?? undefined} />
             {p.avatar.pet && (
               <span className="absolute -bottom-2 -right-4 rounded-full bg-white/90 p-1 shadow-md ring-2 ring-white" title={ITEM_BY_ID[p.avatar.pet]?.name}>
-                <PetSvg itemId={p.avatar.pet} size={64} />
+                <PetImage id={p.avatar.pet} size={64} className="h-16 w-16" />
               </span>
             )}
           </div>

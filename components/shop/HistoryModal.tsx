@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ShopModal } from "./ShopModal";
-import { EARNING_RULES, SOURCE_LABEL } from "@/lib/points/config";
+import { earningRules, SOURCE_LABEL } from "@/lib/points/config";
 import { LEVELS } from "@/lib/points/levels";
 import type { StudentPointsPageData } from "@/lib/points/queries";
 
@@ -46,7 +46,7 @@ export function HistoryModal({ open, onOpenChange, ledger, levelIndex }: { open:
       )}
       {tab === "rules" && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {EARNING_RULES.map((r, i) => (
+          {earningRules().map((r, i) => (
             <div key={r.label} className="flex items-start gap-2 rounded-2xl border-2 border-[#5b3d1e]/40 bg-white p-3">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#fff1c2] text-lg">{RULE_ICONS[i] ?? "⭐"}</span>
               <div className="min-w-0 flex-1">

@@ -7,7 +7,7 @@ import { ITEM_BY_ID, RARITY_LABEL, SLOTS, type Item } from "@/lib/game/items";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import type { StudentPointsPageData } from "@/lib/points/queries";
 import { Chibi } from "@/components/avatar/Chibi";
-import { PetSvg } from "@/components/avatar/PetSvg";
+import { PetImage } from "@/components/studio/CutArt";
 
 type Redemption = StudentPointsPageData["redemptions"][number];
 type Tab = "all" | "gifts" | "frames" | "pets";
@@ -105,7 +105,7 @@ export function InventoryModal({
             const on = avatar.pet === item.id;
             return (
               <div key={item.id} className={cn("flex items-center gap-2 rounded-2xl border-2 bg-white p-2", on ? "border-[#4fae4a]" : "border-[#5b3d1e]/50")}>
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#fff1c2]"><PetSvg itemId={item.id} size={44} /></span>
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#fff1c2]"><PetImage id={item.id} size={44} className="h-11 w-11" /></span>
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-1 text-sm font-black text-[#3b2a14]">{item.name}</p>
                   <p className="text-[11px] font-semibold text-[#7a5a35]">Mèo Cún · {RARITY_LABEL[item.rarity]}</p>

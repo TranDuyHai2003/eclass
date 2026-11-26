@@ -2,6 +2,7 @@ import type { Currency, PointSource } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getVietnamWeekStart, getWeekCode, VN_UTC_OFFSET_MS } from "@/lib/ranking/history-engine";
 import { AUTO_CAPPED_SOURCES, EARNING_SOURCES, POINTS, STREAK_ACTIVITY_SOURCES, isPointsEnabled } from "./config";
+import { loadGameConfig } from "@/lib/game/game-config";
 
 /**
  * Lõi Điểm thưởng. Mọi thay đổi điểm đi qua các hàm ở đây:
@@ -220,6 +221,8 @@ export async function updateWeekStreak(tx: Tx, wallet: WalletRow, now: Date = ne
 export async function runPointsSafely(label: string, fn: (tx: Tx) => Promise<unknown>) {
   if (!isPointsEnabled()) return;
   try {
+    // Mức xu admin sửa (GameConfig) — cache 30s, lỗi đọc thì giữ mức đang áp
+    await loadGameConfig();
     await prisma.$transaction(fn, { timeout: 15000 });
   } catch (err) {
     console.error(`[points] ${label} failed:`, err);

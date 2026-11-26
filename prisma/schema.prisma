@@ -713,3 +713,12 @@ model Redemption {
   @@index([userId])
   @@index([rewardId])
 }
+
+/// Cấu hình game admin sửa được (26/11/2026): key "itemPrices" (giá thú cưng / khung / bảng tên), "earning" (mức xu các hoạt động).
+/// Giá trị gốc nằm trong code (lib/game/items.ts, lib/points/config.ts); bảng chỉ lưu phần ghi đè. PLAN: docs/ai-reviews/game-config/PLAN.md
+model GameConfig {
+  key         String   @id
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}

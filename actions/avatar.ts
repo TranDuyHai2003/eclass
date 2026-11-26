@@ -8,6 +8,7 @@ import { isPointsEnabled } from "@/lib/points/config";
 import type { PointsResult } from "@/lib/points/redemption";
 import { BundleAbort, buyBundleInTx, buyItemInTx, saveAvatarConfig, type BundleResult, type BuyResult } from "@/lib/game/inventory";
 import type { AvatarConfig } from "@/lib/game/avatar";
+import { loadGameConfig } from "@/lib/game/game-config";
 
 const LOGIN: PointsResult = { success: false, error: "Vui lòng đăng nhập." };
 
@@ -26,6 +27,7 @@ export async function buyItem(itemId: string): Promise<BuyResult> {
   const userId = (await auth())?.user?.id;
   if (!userId) return LOGIN;
   try {
+    await loadGameConfig(); // giá admin sửa
     const res = await prisma.$transaction((tx) => buyItemInTx(tx, userId, String(itemId ?? "")));
     if (res.success) revalidate(userId);
     return res;
@@ -45,6 +47,7 @@ export async function buyBundle(itemIds: string[]): Promise<BundleResult> {
   if (!userId) return LOGIN;
   if (!Array.isArray(itemIds)) return { success: false, error: "Bộ đồ không hợp lệ." };
   try {
+    await loadGameConfig();
     const res = await prisma.$transaction((tx) => buyBundleInTx(tx, userId, itemIds.map(String)));
     if (res.success) revalidate(userId);
     return res;

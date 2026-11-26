@@ -104,6 +104,8 @@ async function setup() {
 }
 
 async function cleanup() {
+  // Cấu hình giá / mức xu thử trên giao diện (bước admin) — xoá nếu bước bị dừng giữa chừng
+  await prisma.gameConfig.deleteMany({ where: { key: { in: ["itemPrices", "earning"] } } }).catch(() => {});
   await prisma.reward.deleteMany({ where: { title: { startsWith: tag } } });
   // Quà tạo từ mẫu trên giao diện mang tên mẫu → xoá theo người tạo
   const teacher = await prisma.user.findUnique({ where: { email: `${tag}-gv@test.local` } });
@@ -596,7 +598,8 @@ try {
     // Viền avatar (24/11): Tai Mèo dùng tranh vẽ tay (sprite đồ vật), Thiên Thần là SVG nhiều lớp; mọi thẻ viền lồng sẵn mặt học sinh
     await s.ev(`document.querySelector('[data-testid="cat-frame"]').click()`);
     await sleep(300);
-    expect(await s.ev(`const c=document.querySelector('[data-testid="item-card"][data-item="frame-catear"]'); return !!c && [...c.querySelectorAll('span')].some(x=>/studio\\/items\\.webp/.test(getComputedStyle(x).backgroundImage))`), "khung Tai Mèo chưa dùng tranh vẽ tay");
+    // 26/11: tranh vẽ tay đã tách nền (ảnh riêng, nền trong suốt) — trước cắt ô sprite bằng khung tròn nên tai mèo bị cụt
+    expect(await s.ev(`const i=document.querySelector('[data-testid="item-card"][data-item="frame-catear"] img[data-frame-cut="frame-catear"]'); return !!i && /studio\\/cut\\/frame-catear\\.webp/.test(i.src)`), "khung Tai Mèo chưa dùng tranh vẽ tay tách nền");
     expect(await s.ev(`return !!document.querySelector('[data-testid="item-card"][data-item="frame-blue"] svg[data-frame="frame-blue"]')`), "khung Thiên Thần chưa vẽ SVG");
     expect(await s.ev(`const cs=[...document.querySelectorAll('[data-testid="item-card"][data-item^="frame-"]')]; return cs.length>0 && cs.every(c=>!/studio\\/shop-v2\\.webp/.test(c.innerHTML))`), "còn thẻ viền dùng vòng mảnh v2");
     const frames = await s.ev(`return [...document.querySelectorAll('[data-testid="item-card"]')].map(c => c.dataset.item).join("|")`);
@@ -768,11 +771,11 @@ try {
     // Hồi quy 24/11: danh mục bị giãn theo cả hàng nút → thân tiệm tràn khỏi màn hình, không kéo tới mục cuối
     const fit = await s.ev(`const a=document.querySelector('aside[aria-label="Danh mục tiệm quà"]').getBoundingClientRect(); const c=document.querySelector('[data-testid="reward-card"],[data-testid="item-card"]').getBoundingClientRect(); const t=document.querySelector('[role="tablist"][aria-label="Danh mục quà"]'); return { aside: Math.round(a.right), card: Math.round(c.right), vw: innerWidth, scroll: t.scrollWidth > t.clientWidth && t.clientWidth <= innerWidth }`);
     expect(fit.aside <= fit.vw && fit.card <= fit.vw && fit.scroll, `danh mục / thẻ tràn màn hình 320px: ${JSON.stringify(fit)}`);
-    // Hồi quy 24/11: khung lấy từ ảnh ghép (Băng Tinh…) trên thẻ điện thoại phải tính nền theo %, không lệch sang ô bên cạnh
+    // Hồi quy 24/11 + 26/11: khung vẽ tay (Băng Tinh…) trên thẻ điện thoại là ảnh tách nền phủ đúng ô (không lệch sang ô bên cạnh, không bị cắt tròn)
     await s.ev(`document.querySelector('[data-testid="cat-frame"]').click()`);
     await sleep(300);
-    const ice = await s.ev(`const sp=[...document.querySelectorAll('[data-testid="item-card"][data-item="frame-ice"] span')].find(x => /items\\.webp/.test(x.style.backgroundImage)); return sp ? sp.style.backgroundSize : "none"`);
-    expect(/%/.test(ice), `khung Băng Tinh chưa tính nền theo %: ${ice}`);
+    const ice = await s.ev(`const i=document.querySelector('[data-testid="item-card"][data-item="frame-ice"] img[data-frame-cut="frame-ice"]'); if(!i) return "none"; const r=i.getBoundingClientRect(), p=i.parentElement.getBoundingClientRect(); return { w: Math.round(r.width), pw: Math.round(p.width), cx: Math.round(r.left + r.width/2 - p.left - p.width/2), loaded: i.complete && i.naturalWidth > 0 }`);
+    expect(ice !== "none" && ice.loaded && ice.w >= ice.pw && ice.w <= ice.pw * 1.1 && Math.abs(ice.cx) <= 1, `khung Băng Tinh vẽ sai: ${JSON.stringify(ice)}`);
     await s.ev(`document.querySelector('[data-testid="cat-all"]').click()`);
     await sleep(200);
     // Hồi quy 24/11: trên điện thoại bấm "Nộp bài" / "Thẻ cào & Code" mở hộp nổi ngay tại chỗ — thấy ngay, trang KHÔNG nhảy xuống nội dung
@@ -915,6 +918,42 @@ try {
       await a.ev(`document.querySelector('${cardSel} [data-testid="mgr-delete"]').click()`);
       await sleep(1500);
       expect(!!(await prisma.reward.findUnique({ where: { id: created.id } })).deletedAt, "xoá quà không lưu");
+      // Giá thú cưng theo tiền thật: 20.000đ → 5.600 xu (÷3,6 làm tròn lên trăm) → lưu → thẻ tiệm đổi giá
+      await a.ev(`document.querySelector('[data-testid="mgr-tab-prices"]').click()`);
+      await sleep(400);
+      await a.ev(`document.querySelector('[data-testid="price-slot-pet"]').click()`);
+      await sleep(200);
+      const rowSel = `[data-testid="price-row"][data-item="pet-moka"]`;
+      await setVal(`${rowSel} [data-testid="price-vnd"]`, "20000");
+      await sleep(200);
+      expect(/5\.600 xu/.test(await a.ev(`return document.querySelector('${rowSel} [data-testid="price-preview"]')?.innerText || ""`)), "nhập 20000đ không ra 5.600 xu");
+      await a.ev(`document.querySelector('[data-testid="price-save"]').click()`);
+      expect(await a.waitText(/Đã lưu giá đồ trang trí/), "không lưu được giá đồ");
+      const cfg = await prisma.gameConfig.findUnique({ where: { key: "itemPrices" } });
+      expect(cfg?.value?.["pet-moka"]?.xu === 5600 && cfg.value["pet-moka"].vnd === 20000, `DB giá sai: ${JSON.stringify(cfg?.value)}`);
+      await sleep(1200);
+      await a.ev(`document.querySelector('[data-testid="cat-pet"]').click()`);
+      await sleep(500);
+      expect(/5\.600 Xu/.test(await a.ev(`return document.querySelector('[data-testid="item-card"][data-item="pet-moka"]')?.innerText || ""`)), "thẻ Moka trong tiệm chưa đổi giá");
+      // Mức xu các hoạt động: nộp bài 500 → lưu → DB; rồi Về mặc định
+      await a.ev(`document.querySelector('[data-testid="mgr-tab-earning"]').click()`);
+      await sleep(400);
+      await setVal('[data-testid="earn-testSubmit"]', "500");
+      await a.ev(`document.querySelector('[data-testid="earn-save"]').click()`);
+      expect(await a.waitText(/Đã lưu mức xu các hoạt động/), "không lưu được mức xu");
+      expect((await prisma.gameConfig.findUnique({ where: { key: "earning" } }))?.value?.testSubmit === 500, "DB mức xu sai");
+      await sleep(1200);
+      await a.ev(`document.querySelector('[data-testid="earn-reset-all"]').click()`);
+      await sleep(1500);
+      expect(JSON.stringify((await prisma.gameConfig.findUnique({ where: { key: "earning" } }))?.value) === "{}", "Về mặc định mức xu không lưu");
+      await a.ev(`document.querySelector('[data-testid="mgr-tab-prices"]').click()`);
+      await sleep(300);
+      await a.ev(`document.querySelector('[data-testid="price-slot-pet"]').click()`);
+      await sleep(200);
+      await a.ev(`document.querySelector('${rowSel} [data-testid="price-reset"]').click()`);
+      await a.ev(`document.querySelector('[data-testid="price-save"]').click()`);
+      await sleep(1500);
+      expect(JSON.stringify((await prisma.gameConfig.findUnique({ where: { key: "itemPrices" } }))?.value) === "{}", "Về giá gốc không lưu");
       await a.goto("/teacher/rewards", /Quà & Xu/i);
       expect(await a.ev(`return document.querySelector('[data-testid="open-shop"]')?.getAttribute("href") === "/rewards"`), "trang quản lý quà thiếu nút Xem Tiệm quà cho admin");
       expect(a.errors.length === 0, a.errors.join("\n    "));

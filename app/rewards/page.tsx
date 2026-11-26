@@ -15,6 +15,7 @@ import { weeklyChallenge } from "@/lib/game/weekly-challenge";
 import { maskUsersForDemo } from "@/lib/demo-privacy";
 import { prisma, prismaBase } from "@/lib/prisma";
 import type { BoardData } from "@/components/shop/LeaderboardModal";
+import { loadGameConfig } from "@/lib/game/game-config";
 
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,8 @@ export default async function RewardsPage() {
   if (!canUseShop(session.user)) return <ShopClosed balance={(await getHeaderPoints(uid).catch(() => null))?.balance ?? null} />;
 
   await expireStaleRedemptions().catch(() => {});
+  // Giá đồ / mức xu admin sửa → áp trước khi đọc dữ liệu, truyền xuống client để vẽ cùng giá
+  const gameConfig = await loadGameConfig();
   const gachaOn = isGachaEnabled();
   const isAdmin = session.user.role === "ADMIN";
   const [data, me, grades, today, manageData] = await Promise.all([
@@ -72,6 +75,7 @@ export default async function RewardsPage() {
       adminView={session.user.role === "ADMIN" || session.user.role === "TEACHER"}
       manageData={manageData}
       quests={quests}
+      gameConfig={gameConfig}
     />
   );
 }

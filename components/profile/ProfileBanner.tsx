@@ -1,13 +1,13 @@
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { ITEM_BY_ID } from "@/lib/game/items";
 import { Chibi } from "@/components/avatar/Chibi";
-import { PetSvg } from "@/components/avatar/PetSvg";
 import { IconEye } from "@/components/studio/icons";
 import { cn } from "@/lib/utils";
 import { ProfileScene } from "./ProfileScene";
 import { EffectLayer } from "./EffectLayer";
 import { FrameRing } from "./FrameRing";
-import { ShopArt, Sprite, hasSprite, shopItemIndex } from "@/components/studio/Sprite";
+import { Sprite, hasSprite } from "@/components/studio/Sprite";
+import { FrameCut, PetImage, hasCutFrame } from "@/components/studio/CutArt";
 
 /**
  * Banner hồ sơ dùng chung (trang /profile và hồ sơ công khai): cảnh Hình nền + Hiệu ứng động + nhân vật + thú cưng,
@@ -45,13 +45,7 @@ export function ProfileBanner({
           <Chibi config={{ ...config, background: null, frame: null, effect: null }} size={showAvatar ? 118 : 132} className="animate-float drop-shadow-[0_6px_8px_rgba(15,23,42,0.25)]" title={name ?? undefined} />
           {config.pet && (
             <span className="mb-1 shrink-0" title={ITEM_BY_ID[config.pet]?.name}>
-              {hasSprite(config.pet) ? (
-                <Sprite id={config.pet} className="w-[78px] rounded-xl [mask-image:radial-gradient(closest-side,#000_70%,transparent_100%)]" />
-              ) : shopItemIndex(config.pet) !== undefined ? (
-                <ShopArt index={shopItemIndex(config.pet)!} className="w-[72px]" />
-              ) : (
-                <PetSvg itemId={config.pet} size={58} className="drop-shadow-[0_4px_6px_rgba(15,23,42,0.25)]" />
-              )}
+              <PetImage id={config.pet} size={58} className="h-[72px] w-[72px] drop-shadow-[0_4px_6px_rgba(15,23,42,0.25)]" />
             </span>
           )}
         </div>
@@ -74,7 +68,7 @@ export function AvatarRing({ frameId, image, name, className }: { frameId?: stri
           <span className="flex h-full w-full items-center justify-center text-2xl font-extrabold text-white">{initial}</span>
         )}
       </div>
-      <FrameRing frameId={frameId} className="absolute inset-0 h-full w-full" />
+      {hasCutFrame(frameId) ? <FrameCut id={frameId} /> : <FrameRing frameId={frameId} className="absolute inset-0 h-full w-full" />}
     </div>
   );
 }

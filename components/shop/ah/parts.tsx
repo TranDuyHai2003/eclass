@@ -10,8 +10,8 @@ import { Nameplate } from "@/components/studio/Nameplate";
 import { FrameRing } from "@/components/profile/FrameRing";
 import { FrameFx } from "@/components/avatar/FrameFx";
 import { Chibi } from "@/components/avatar/Chibi";
-import { PetSvg } from "@/components/avatar/PetSvg";
-import { ShopArt, Sprite, V2Art, frameSpriteStyle, hasSprite, shopItemIndex, v2Index } from "@/components/studio/Sprite";
+import { ShopArt, Sprite, V2Art, hasSprite, shopItemIndex, v2Index } from "@/components/studio/Sprite";
+import { FrameCut, PetImage, hasCutFrame } from "@/components/studio/CutArt";
 
 /* Mảnh giao diện dùng chung của Tiệm quà v2 "Adorable Home" (canvas ShopV2.dc.html) */
 
@@ -32,31 +32,27 @@ export function GemDot({ size = 15, className }: { size?: number; className?: st
   return <GemIcon size={Math.round(size * 1.5)} className={noBorder(className)} />;
 }
 
-/** Khung viền phủ lên ảnh đại diện: tranh khung vẽ tay trong sprite đồ vật → vòng SVG nhiều lớp (FrameRing) */
+/** Khung viền phủ lên ảnh đại diện: tranh vẽ tay đã tách nền (FrameCut) → vòng SVG nhiều lớp (FrameRing) */
 export function FrameOverlay({ frameId }: { frameId?: string | null; size?: number }) {
   if (!frameId) return null;
-  const st = frameSpriteStyle(frameId);
-  if (st)
+  if (hasCutFrame(frameId))
     return (
       <>
-        <span aria-hidden className="absolute inset-0 rounded-full" style={st} />
+        <FrameCut id={frameId} />
         <FrameFx frameId={frameId} />
       </>
     );
   return <FrameRing frameId={frameId} className="absolute inset-0 h-full w-full" />;
 }
 
-/** Ảnh đại diện tròn: khuôn mặt nhân vật (nền kem) + khung viền đang đeo */
+/** Ảnh đại diện tròn: khuôn mặt nhân vật (nền kem) + khung viền đang đeo (khung nền trong suốt → vẽ đè lên mặt) */
 export function AvatarRing({ config, size, inset, title, className }: { config: AvatarConfig; size: number; inset: number; title?: string; className?: string }) {
-  // Khung lấy từ ảnh ghép có nền sáng ở giữa → vẽ DƯỚI khuôn mặt (không phủ mờ mặt), hiệu ứng vẫn ở trên
-  const under = config.frame ? frameSpriteStyle(config.frame) : undefined;
   return (
     <span className={cn("relative block shrink-0", className)} style={{ width: size, height: size }} data-testid="avatar-ring">
-      {under && <span aria-hidden className="absolute inset-0 rounded-full" style={under} />}
       <span className="absolute" style={{ inset }}>
         <AvatarFace config={config} title={title} className="h-full w-full" bg="#fffdf8" />
       </span>
-      {under ? <FrameFx frameId={config.frame} /> : <FrameOverlay frameId={config.frame} size={size} />}
+      <FrameOverlay frameId={config.frame} />
     </span>
   );
 }
@@ -81,21 +77,17 @@ export function ItemArt({ it, avatar, name, withFace }: { it: Item; avatar: Avat
         <span className="ah-hand text-sm font-bold">{shortName(name)}</span>
       </Nameplate>
     );
-  if (it.slot === "frame") {
-    // Tranh khung vẽ tay có nền sáng ở giữa → vẽ DƯỚI khuôn mặt (như AvatarRing), hiệu ứng vẫn ở trên
-    const under = withFace ? frameSpriteStyle(it.id) : undefined;
+  if (it.slot === "frame")
     return (
       <span className="relative block aspect-square h-[86%]">
-        {under && <span aria-hidden className="absolute inset-0 rounded-full" style={under} />}
         {withFace && (
           <span className="absolute inset-[21%]">
             <AvatarFace config={avatar} className="h-full w-full" bg="#fffdf8" />
           </span>
         )}
-        {under ? <FrameFx frameId={it.id} /> : <FrameOverlay frameId={it.id} />}
+        <FrameOverlay frameId={it.id} />
       </span>
     );
-  }
   if (it.slot === "pet") return <PetPic id={it.id} className="relative h-[84%] w-auto" />;
   const v2 = v2Index(it.id);
   if (v2 !== undefined) return <V2Art index={v2} className="relative h-[82%]" />;
@@ -115,12 +107,9 @@ export function ItemArt({ it, avatar, name, withFace }: { it: Item; avatar: Avat
   );
 }
 
-/** Ảnh thú cưng: tranh vẽ tay của tiệm → ô sprite đồ vật (bo góc) → SVG có khối */
+/** Ảnh thú cưng (dùng chung components/studio/CutArt.tsx): tranh vẽ tay tách nền → ô tranh tiệm → SVG có khối */
 export function PetPic({ id, className }: { id: string; className?: string }) {
-  const idx = shopItemIndex(id);
-  if (idx !== undefined) return <ShopArt index={idx} className={cn("aspect-square", className)} />;
-  if (hasSprite(id)) return <Sprite id={id} className={cn(className, "h-auto w-[80%] rounded-lg")} />;
-  return <PetSvg itemId={id} size={120} className={className} />;
+  return <PetImage id={id} className={className} />;
 }
 
 export const itemById = (id?: string | null) => (id ? ITEM_BY_ID[id] : undefined);

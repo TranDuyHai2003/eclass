@@ -7,12 +7,14 @@ import { isPointsEnabled, POINTS } from "@/lib/points/config";
 import { getTeacherRewardsPage } from "@/lib/points/queries";
 import { expireStaleRedemptions } from "@/lib/points/redemption";
 import { getGiftCodeBatches } from "@/lib/game/giftcode-queries";
+import { loadGameConfig } from "@/lib/game/game-config";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Quà & Xu" };
 
 // Quyền giáo viên/admin đã kiểm tra ở app/teacher/layout.tsx
 export default async function TeacherRewardsPage() {
+  await loadGameConfig(); // giới hạn thưởng tay admin sửa
   if (!isPointsEnabled()) notFound();
   await expireStaleRedemptions().catch(() => {});
   const [data, giftBatches, session] = await Promise.all([getTeacherRewardsPage(), getGiftCodeBatches(), auth()]);

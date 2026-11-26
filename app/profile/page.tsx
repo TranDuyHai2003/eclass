@@ -12,6 +12,7 @@ import { getAvatar, getHotHair } from "@/lib/game/inventory";
 import type { DecorStudioProps } from "@/components/profile/DecorStudio";
 import { ITEM_BY_ID } from "@/lib/game/items";
 import { beVietnam } from "@/lib/fonts";
+import { loadGameConfig } from "@/lib/game/game-config";
 
 export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ try?: string }> }) {
   const session = await auth();
@@ -48,6 +49,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
     if (wallet && av) {
       const hotHair = await getHotHair().catch(() => []);
       decor = {
+        gameConfig: await loadGameConfig(),
         hotHair,
         config: av.config,
         owned: av.owned,
