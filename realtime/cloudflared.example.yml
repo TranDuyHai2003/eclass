@@ -1,0 +1,8 @@
+# MẪU định tuyến named tunnel — chép thành cloudflared.yml trên máy chủ và thay <domain> (bản thật không commit). Token nằm trong .env.
+# DNS: eclass-rt / eclass-cdn.<domain> → CNAME <tunnel-id>.cfargotunnel.com (proxied).
+ingress:
+  - hostname: eclass-rt.<domain>
+    service: http://realtime:2567
+  - hostname: eclass-cdn.<domain>
+    service: http://assets:80
+  - service: http_status:404

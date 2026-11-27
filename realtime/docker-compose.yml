@@ -1,4 +1,9 @@
-# Math World realtime server. LAN: ws://<máy>:2567 · Internet không mở port: bật profile "tunnel" (Cloudflare quick tunnel).
+# Math World realtime server + kho model.
+#  • realtime: WebSocket (LAN: ws://<máy>:2567).
+#  • assets: nginx phục vụ ./assets (VRM / GLB nặng, không nằm trong git).
+#  • tunnel-named (profile "named"): Cloudflare named tunnel — token trong .env (TUNNEL_TOKEN, không commit);
+#    định tuyến trong cloudflared.yml: eclass-rt → http://realtime:2567, eclass-cdn → http://assets:80.
+#  • tunnel (profile "tunnel"): quick tunnel cũ (trycloudflare, URL đổi mỗi lần khởi động) — chỉ để thử.
 services:
   realtime:
     build: .
@@ -8,6 +13,22 @@ services:
     env_file: .env
     volumes:
       - ./data:/app/data
+  assets:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./assets:/usr/share/nginx/html:ro
+      - ./assets.nginx.conf:/etc/nginx/conf.d/default.conf:ro
+  tunnel-named:
+    profiles: ["named"]
+    image: cloudflare/cloudflared:2026.11.2
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflared.yml:/etc/cloudflared/config.yml:ro
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:-}
+    depends_on: [realtime, assets]
   tunnel:
     profiles: ["tunnel"]
     image: cloudflare/cloudflared:2025.2.0

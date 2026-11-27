@@ -12,5 +12,5 @@ export default async function Page() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const state = await getWorldState(session.user.id);
-  return <WorldPage initialState={state} readOnly={!!session.user.isDemo} defaultName={session.user.name ?? ""} />;
+  return <WorldPage initialState={state} readOnly={!!session.user.isDemo} defaultName={session.user.name ?? ""} heavyAssetBase={process.env.WORLD_HEAVY_ASSET_BASE || null} />;
 }

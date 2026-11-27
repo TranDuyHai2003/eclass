@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { useMemo } from "react";
 import type { WorldState } from "@/lib/world/service";
 import type { WorldApi } from "./api";
+import { setHeavyAssetBase } from "@/lib/world/avatars";
 import { worldExplain, worldPredict, worldRealtimeToken, worldRequestChallenge, worldState, worldSubmit } from "@/actions/world";
 
 const WorldClient = dynamic(() => import("./WorldClient").then((m) => m.WorldClient), {
@@ -22,7 +23,9 @@ export function WorldLoading() {
   );
 }
 
-export function WorldPage({ initialState, readOnly, defaultName }: { initialState: WorldState; readOnly: boolean; defaultName?: string }) {
+export function WorldPage({ initialState, readOnly, defaultName, heavyAssetBase }: { initialState: WorldState; readOnly: boolean; defaultName?: string; heavyAssetBase?: string | null }) {
+  // đặt gốc model nặng TRƯỚC khi WorldClient (tải lười) dựng cảnh
+  useMemo(() => setHeavyAssetBase(heavyAssetBase), [heavyAssetBase]);
   const api = useMemo<WorldApi>(
     () => ({ state: worldState, request: worldRequestChallenge, submit: worldSubmit, predict: worldPredict, explain: worldExplain, realtime: worldRealtimeToken }),
     [],

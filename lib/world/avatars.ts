@@ -14,7 +14,19 @@ export interface AvatarDef {
 
 /** Gốc tải asset: dev dùng /world, production có thể trỏ CDN (NEXT_PUBLIC_WORLD_ASSET_BASE) */
 export const WORLD_ASSET_BASE = (process.env.NEXT_PUBLIC_WORLD_ASSET_BASE || "/world").replace(/\/$/, "");
-export const worldAsset = (path: string) => `${WORLD_ASSET_BASE}/${path.replace(/^\//, "")}`;
+/**
+ * Model nặng (VRM nhân vật, GLB animation) không nằm trong git → phục vụ từ kho riêng (Cloudflare tunnel eclass-cdn).
+ * Gốc đặt LÚC CHẠY: server đọc env WORLD_HEAVY_ASSET_BASE mỗi lần mở /world và truyền xuống (đổi địa chỉ không phải build lại).
+ */
+let heavyBase: string | null = null;
+const HEAVY = /^(avatars|anim)\//;
+export function setHeavyAssetBase(base: string | null | undefined) {
+  heavyBase = base ? base.replace(/\/$/, "") : null;
+}
+export const worldAsset = (path: string) => {
+  const p = path.replace(/^\//, "");
+  return `${heavyBase && HEAVY.test(p) ? heavyBase : WORLD_ASSET_BASE}/${p}`;
+};
 
 export const AVATARS: AvatarDef[] = [
   { id: "adventurer", name: "Lữ Khách", file: "avatars/adventurer.vrm", color: "#c89b6d", tagline: "Nhà thám hiểm áo choàng xanh" },

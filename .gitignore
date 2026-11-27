@@ -74,3 +74,5 @@ docs/ai-reviews/**/.review-stderr.log
 /realtime/.env
 /realtime/data/
 /realtime/node_modules/
+/realtime/assets/
+/realtime/cloudflared.yml

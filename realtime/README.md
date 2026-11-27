@@ -9,6 +9,14 @@ ssh <user>@<host> 'cd <install-dir> && docker compose --profile tunnel up -d --b
 ```
 `.env` on the server (created once, never committed): `WORLD_RT_SECRET=<random>` · `ALLOW_ANON=1` (LAN/dev only — set to 0 for production).
 
+## Production: Cloudflare named tunnel (stable hostnames)
+- `docker compose --profile named up -d` starts `realtime`, `assets` (nginx serving `./assets`, i.e. the heavy VRM/GLB files that are not in git) and `tunnel-named`.
+- `TUNNEL_TOKEN=<token>` lives only in the server's `.env` (copied by the account owner from the dashboard; never committed).
+- Routing is local (`cloudflared.yml`): `eclass-rt.<domain>` → `realtime:2567`, `eclass-cdn.<domain>` → `assets:80`; DNS = proxied CNAMEs to `<tunnel-id>.cfargotunnel.com`.
+- A Cache Rule (`https://eclass-cdn.<domain>/world/*` → eligible for cache) keeps the server sending each model once per edge location.
+- Upload models: `scp public/world/avatars/*.vrm … :<install-dir>/assets/world/avatars/` and `public/world/anim/*.glb` → `assets/world/anim/`.
+- Web app (Heroku, read at runtime — no rebuild when it changes): `WORLD_RT_URL=wss://eclass-rt.<domain>`, `WORLD_HEAVY_ASSET_BASE=https://eclass-cdn.<domain>/world`.
+
 ## Without opening ports
 - LAN: `ws://<host-lan-ip>:2567`.
 - Internet: Cloudflare **quick tunnel** (profile `tunnel`) → `./tunnel-url.sh` prints the current `wss://…trycloudflare.com` (changes on every restart).
