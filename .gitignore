@@ -65,3 +65,12 @@ yarn-error.log*
 # Nội dung tạm gửi cho AI reviewer (scripts/ai-review.sh)
 docs/ai-reviews/**/review-input-*.md
 docs/ai-reviews/**/.review-stderr.log
+
+# Thế giới Toán 3D: model/animation nặng — lưu trên CDN (B2), không commit. Xem public/world/CREDITS.md
+/public/world/avatars/*.vrm
+/public/world/anim/*.glb
+
+# Máy chủ realtime: bí mật và dữ liệu chỉ nằm trên máy chủ
+/realtime/.env
+/realtime/data/
+/realtime/node_modules/

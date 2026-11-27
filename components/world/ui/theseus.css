@@ -1,0 +1,34 @@
+/* Con tàu Theseus — thẻ đáy màn hình kiểu bản vẽ xưởng đóng tàu: giấy da, mực xanh biển, viền dây thừng.
+   (Tailwind preflight → nền/viền/padding cần !important) */
+.w-ship { position: absolute; left: 50%; bottom: max(16px, var(--pb, 16px)); z-index: 40; width: min(820px, calc(100% - 24px)); max-height: min(56vh, 520px);
+  display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 14px !important; overflow-y: auto; color: #2a2016; font-family: var(--font-mplus), sans-serif;
+  border-radius: 14px !important; background: linear-gradient(180deg, rgba(246, 236, 214, 0.97), rgba(233, 219, 190, 0.97)) !important;
+  box-shadow: 0 0 0 1px #8b6a43, 0 0 0 4px rgba(246, 236, 214, 0.9), 0 0 0 5px #2f6f9a, 0 16px 40px rgba(0, 0, 0, 0.45); }
+.w-ship__head { display: flex; align-items: center; justify-content: space-between; }
+.w-ship__kicker { font-size: 11.5px; font-weight: 800; letter-spacing: 0.14em; color: #2f6f9a; }
+.w-ship p { margin: 0 !important; font-size: 14.5px; line-height: 1.55; }
+.w-ship__hint { font-style: italic; color: #6b3f1f; }
+.w-ship__row { display: flex; flex-wrap: wrap; gap: 6px; }
+.w-ship__btn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px !important; font-size: 13px; font-weight: 800; color: #2a2016 !important;
+  background: rgba(139, 106, 67, 0.12) !important; border: 1px solid rgba(139, 106, 67, 0.6) !important; border-radius: 8px !important; transition: transform 0.1s, background 0.15s; }
+.w-ship__btn:hover { background: rgba(139, 106, 67, 0.24) !important; }
+.w-ship__btn:active { transform: scale(0.97); }
+.w-ship__btn svg { width: 16px; height: 16px; }
+.w-ship__btn--icon { width: 36px; padding: 0 !important; justify-content: center; }
+.w-ship__btn--gold { color: #fff8ea !important; background: linear-gradient(180deg, #3a83b3, #2f6f9a) !important; border-color: #1f4f70 !important; }
+.w-ship__gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 560px) { .w-ship__gauges { grid-template-columns: 1fr; } }
+.w-ship__gauge { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; align-items: center; font-size: 12px; }
+.w-ship__gauge span { font-weight: 700; color: #5a4630; }
+.w-ship__gauge b { grid-row: 1; grid-column: 2; font-size: 13px; }
+.w-ship__planks { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; }
+.w-ship__planks i { height: 12px; border-radius: 2px !important; background: rgba(90, 70, 48, 0.15) !important; transition: background 0.3s; }
+.w-ship__gauge.is-a .w-ship__planks i.is-on { background: linear-gradient(180deg, #9a8670, #7a6652) !important; }
+.w-ship__gauge.is-b .w-ship__planks i.is-on { background: linear-gradient(180deg, #9a8670, #6f7a58) !important; }
+.w-ship__theories table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.w-ship__theories th, .w-ship__theories td { padding: 5px 8px !important; text-align: left; vertical-align: top; border-bottom: 1px solid rgba(139, 106, 67, 0.25) !important; }
+.w-ship__theories th { font-size: 11.5px; letter-spacing: 0.08em; color: #2f6f9a; }
+.w-ship__theories td small { display: block; font-size: 11.5px; color: #6a5640; }
+.w-ship__theories tr.is-you td { background: rgba(47, 111, 154, 0.12) !important; }
+.w-ship__you { margin-left: 6px; font-size: 10.5px; font-style: normal; font-weight: 800; color: #2f6f9a; }
+.w-ship__theories p { margin-top: 8px !important; }

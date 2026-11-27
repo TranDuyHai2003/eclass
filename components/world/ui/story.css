@@ -1,0 +1,109 @@
+/* ══════════════ Phông chữ game ══════════════
+   Chakra Petch (tiêu đề, số, nút: sắc cạnh kiểu cyber/khoa học) + M PLUS Rounded 1c (thân chữ tròn kiểu Blue Archive) */
+.w-root { font-family: var(--font-mplus), var(--font-bvp), system-ui, sans-serif !important; }
+.w-root .w-title, .w-root .w-btn, .w-root .w-chip, .w-root .w-banner, .w-root .w-hp__name, .w-root .w-hp__num,
+.w-root .w-skill__num, .w-root .w-key, .w-root .w-weapon__name, .w-root .w-sheet__title, .w-root .w-bag__title,
+.w-root .w-detail__name, .w-root .w-float, .w-root .w-tabs button, .w-root .w-slot, .w-root .w-pill,
+.w-root .w-quest__chapter, .w-root .w-quest__title, .w-root .w-qdone, .w-root .w-dlg__name b, .w-root .w-reveal__card h3,
+.w-root .w-sigil__name, .w-root .w-sigil__tier, .w-root .w-archive__no, .w-root .w-card__foot {
+  font-family: var(--font-chakra), var(--font-mplus), sans-serif !important;
+}
+
+/* ══════════════ Theo dõi nhiệm vụ (kiểu Genshin) ══════════════ */
+.w-quest { display: flex; flex-direction: column; gap: 2px; max-width: calc(var(--u) * 250px); margin-top: calc(var(--u) * 6px) !important; padding: 6px 18px 7px 8px !important; pointer-events: none; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  background: linear-gradient(90deg, rgba(14, 18, 42, 0.55), rgba(14, 18, 42, 0)); border-left: 2px solid rgba(255, 224, 138, 0.8) !important; }
+.w-quest__chapter { font-size: calc(var(--u) * 10px); font-weight: 600; letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.75); text-transform: uppercase; }
+.w-quest__title { display: flex; align-items: center; gap: 6px; font-size: calc(var(--u) * 14px); font-weight: 700; color: #ffe08a; }
+.w-quest__gem { display: inline-block; width: 9px; height: 9px; transform: rotate(45deg); background: linear-gradient(135deg, #fff3c4, #ffc94a); box-shadow: 0 0 8px #ffc94a; flex: none; }
+.w-quest__goal { padding-left: 15px !important; font-size: calc(var(--u) * 12px); font-weight: 700; color: #fff; }
+.w-quest__goal b { color: #ffe08a; }
+
+/* ══════════════ Banner hoàn thành ══════════════ */
+.w-qdone { position: absolute; left: 50%; top: 24%; translate: -50% 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 80px !important; pointer-events: none; text-align: center;
+  background: linear-gradient(90deg, transparent, rgba(20, 24, 52, 0.78) 18%, rgba(20, 24, 52, 0.78) 82%, transparent); }
+.w-qdone::before, .w-qdone::after { content: ""; position: absolute; left: 10%; right: 10%; height: 1px; background: linear-gradient(90deg, transparent, #ffd27a, transparent); }
+.w-qdone::before { top: 4px; } .w-qdone::after { bottom: 4px; }
+.w-qdone__kicker { font-size: 12px; font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase; color: #ffd27a; }
+.w-qdone__title { font-size: 24px; font-weight: 700; font-style: italic; color: #fff6dc; text-shadow: 0 0 14px rgba(255, 210, 122, 0.6); }
+
+/* ══════════════ Hội thoại (kiểu Blue Archive) ══════════════ */
+.w-dlg { position: absolute; inset: 0; z-index: 44; background: linear-gradient(180deg, transparent 45%, rgba(10, 14, 36, 0.55)); }
+.w-dlg__portrait { position: absolute; left: max(2vw, env(safe-area-inset-left)); bottom: 0; height: min(78vh, 640px); aspect-ratio: 1; pointer-events: none; }
+.w-dlg__portrait img { width: 100%; height: 100%; object-fit: contain; object-position: bottom; filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.35)); }
+.w-dlg__box { position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); translate: -50% 0; width: min(880px, 94vw); min-height: 128px; padding: 26px 34px 22px !important;
+  border-radius: 14px !important; color: #24305a; background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(236, 244, 255, 0.94));
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 0 0 4px rgba(120, 180, 255, 0.25), 0 16px 40px rgba(10, 14, 40, 0.35); }
+.w-dlg__box::before { content: ""; position: absolute; left: 0; top: 18px; bottom: 18px; width: 5px; border-radius: 0 4px 4px 0 !important; background: var(--nc); }
+.w-dlg__name { position: absolute; left: 26px; top: -18px; display: flex; align-items: baseline; gap: 10px; padding: 5px 18px !important; transform: skewX(-12deg);
+  background: linear-gradient(90deg, #2b3a67, #3c5594); border-radius: 6px !important; box-shadow: 0 4px 12px rgba(20, 30, 70, 0.35); }
+.w-dlg__name > * { transform: skewX(12deg); }
+.w-dlg__name b { font-size: 18px; font-weight: 700; color: #fff; }
+.w-dlg__name span { font-size: 11px; font-weight: 700; color: var(--nc); }
+.w-dlg__text { font-size: clamp(14px, 2.1vh, 18px); line-height: 1.65; font-weight: 700; min-height: 3.3em; }
+.w-dlg__next { position: absolute; right: 22px; bottom: 12px; color: #3c5594; }
+@media (max-height: 460px) { .w-dlg__box { min-height: 96px; padding: 20px 22px 14px !important; } .w-dlg__portrait { height: 92vh; } }
+
+/* ══════════════ Thư khố ══════════════ */
+.w-archive__count { margin-left: auto !important; margin-right: 8px !important; font-weight: 700; color: #ecd7a9; }
+.w-archive__list { min-height: 0; overflow-y: auto; padding: 12px !important; display: flex; flex-direction: column; gap: 6px; }
+.w-archive__item { display: flex; align-items: center; gap: 10px; padding: 10px 12px !important; border-radius: 10px !important; text-align: left; font-weight: 700; font-size: 14px; color: #f6f1e4;
+  background: rgba(255, 255, 255, 0.05) !important; box-shadow: inset 0 0 0 1px rgba(236, 215, 169, 0.18); }
+.w-archive__item:disabled { color: rgba(255, 255, 255, 0.35); }
+.w-archive__item.is-sel { background: rgba(236, 215, 169, 0.16) !important; box-shadow: inset 0 0 0 1.5px #ecd7a9; }
+.w-archive__no { font-size: 12px; color: #ecd7a9; }
+.w-archive__page .w-detail__text { font-size: 15px; line-height: 1.7; }
+
+/* ══════════════ Nút kiểu Blue Archive (thẻ trắng, icon xanh đậm, bóng mềm) ══════════════ */
+.w-hud .w-round, .w-modal .w-round, .w-sheet .w-round { color: #2b3a67 !important; background: linear-gradient(180deg, #ffffff, #e8f1ff) !important; border-radius: 12px !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.95), 0 3px 0 #b9c9e8, 0 6px 14px rgba(20, 30, 70, 0.25) !important; backdrop-filter: none; }
+.w-hud .w-round:hover { box-shadow: 0 0 0 1px #fff, 0 3px 0 #9fb6e0, 0 0 0 4px rgba(120, 190, 255, 0.35), 0 6px 14px rgba(20, 30, 70, 0.25) !important; }
+.w-hud .w-round:active { translate: 0 2px; box-shadow: 0 0 0 1px #fff, 0 1px 0 #b9c9e8 !important; }
+.w-hud .w-round svg { filter: none; }
+
+/* ══════════════ Thanh máu boss (kiểu Genshin) ══════════════ */
+.w-boss { position: absolute; left: 50%; top: calc(var(--pt) + var(--u) * 8px); translate: -50% 0; width: min(560px, 62vw); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+.w-boss__name { display: flex; align-items: baseline; gap: 10px; font-family: var(--font-chakra), sans-serif; font-weight: 700; font-size: calc(var(--u) * 16px); color: #fff; text-shadow: 0 1px 4px #000; }
+.w-boss__name i { font-size: 12px; color: #ff9ecb; font-style: normal; }
+.w-boss__hp, .w-boss__coh { position: relative; width: 100%; border-radius: 99px !important; overflow: hidden; background: rgba(14, 17, 38, 0.7); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45); }
+.w-boss__hp { height: calc(var(--u) * 9px); }
+.w-boss__coh { height: calc(var(--u) * 4px); width: 70%; }
+.w-boss__hp > div { height: 100%; background: linear-gradient(90deg, #ff5d7a, #ff9e7a); transition: width 0.15s; }
+.w-boss__hp > div.is-shield { background: linear-gradient(90deg, #9fe6ff, #e6f8ff); }
+.w-boss__coh > div { height: 100%; background: linear-gradient(90deg, #c8a6ff, #ffd27a); transition: width 0.2s; }
+.w-boss__coh > div.is-broken { background: #ffffff; animation: w-ready 0.8s infinite; }
+.w-boss__tag { margin-top: 2px !important; padding: 2px 12px !important; font-size: calc(var(--u) * 12px); font-weight: 700; color: #ffd27a; background: rgba(14, 17, 38, 0.6); border-radius: 4px !important; }
+.w-boss__tag--warn { color: #ffb3a8; }
+
+/* ══════════════ Tâm ngắm ══════════════ */
+.w-cross { position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; translate: -50% -50%; pointer-events: none; }
+.w-cross svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.w-cross circle, .w-cross path { fill: none; }
+.w-cross__bg { stroke: rgba(255, 255, 255, 0.25); stroke-width: 2.5; }
+.w-cross__fg { stroke: #ffd27a; stroke-width: 3.5; stroke-linecap: round; filter: drop-shadow(0 0 3px #ffd27a); }
+.w-cross__lines { stroke: #fff; stroke-width: 2; stroke-linecap: round; filter: drop-shadow(0 0 2px rgba(0,0,0,.8)); }
+.w-cross__dot { fill: #fff !important; }
+.w-cross.is-full .w-cross__lines { stroke: #ffd27a; }
+.w-cross.is-full { animation: w-ready 0.6s infinite; border-radius: 99px !important; }
+
+/* ══════════════ Lò rèn Ma trận ══════════════ */
+.w-forge { height: auto !important; max-height: 100%; }
+.w-forge__hint { margin-left: 8px !important; font-size: 12px; color: rgba(255,255,255,.7); flex: 1; }
+.w-forge__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; padding: 14px !important; overflow-y: auto; }
+.w-forge__card { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px !important; border-radius: 12px !important; text-align: left; color: #f6f1e4;
+  background: linear-gradient(160deg, rgba(255,255,255,.08), rgba(255,255,255,.02)) !important; box-shadow: inset 0 0 0 1px rgba(236,215,169,.35); transition: transform .12s; }
+.w-forge__card:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1.5px #ecd7a9, 0 6px 16px rgba(0,0,0,.25); }
+.w-forge__card b { font-family: var(--font-chakra), sans-serif; font-size: 15px; color: #ffe08a; }
+.w-forge__mat { display: grid; grid-template-columns: repeat(3, 28px); gap: 2px; padding: 4px 8px !important; border-left: 2px solid #ecd7a9 !important; border-right: 2px solid #ecd7a9 !important; border-radius: 4px !important; font-family: var(--font-chakra), sans-serif; font-weight: 700; }
+.w-forge__mat i { font-style: normal; text-align: center; }
+.w-forge__det { font-family: var(--font-chakra), sans-serif; font-weight: 700; color: #9fe6ff; font-size: 13px; }
+.w-forge__card small { font-size: 12px; line-height: 1.45; color: rgba(255,255,255,.78); }
+.w-forge__foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 10px 16px 14px !important; font-size: 13px; color: rgba(255,255,255,.85); border-top: 1px solid rgba(236,215,169,.2) !important; }
+.w-forge__foot b { color: #ffe08a; }
+.w-forge__log { color: #9fe6ff; }
+
+/* ══════════════ Tên vùng khi đến nơi ══════════════ */
+.w-area { position: absolute; left: 50%; top: 26%; translate: -50% 0; z-index: 30; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; text-align: center; width: min(90vw, 640px); }
+.w-area__name { font-family: var(--font-chakra), sans-serif; font-weight: 700; font-size: clamp(26px, 5vh, 44px); letter-spacing: 0.06em; color: #fff; text-shadow: 0 2px 10px rgba(10, 14, 40, 0.65), 0 0 24px rgba(160, 200, 255, 0.45); }
+.w-area__sub { font-size: clamp(12px, 2vh, 16px); font-weight: 700; color: rgba(255, 255, 255, 0.9); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7); }
+.w-area__line { display: block; width: 70%; height: 1px; background: linear-gradient(90deg, transparent, rgba(255, 240, 200, 0.95), transparent); position: relative; }
+.w-area__line::after { content: ""; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; translate: -50% -50%; rotate: 45deg; background: #ffe08a; box-shadow: 0 0 8px #ffe08a; }

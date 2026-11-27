@@ -1,0 +1,38 @@
+/* Phòng Nghịch Lý — thẻ đáy màn hình: nền đêm tím sâu, viền màu riêng từng trạm (--pdx). (Tailwind preflight → cần !important) */
+.w-pdx { --pdx: #ffd27a; position: absolute; left: 50%; bottom: max(14px, var(--pb, 14px)); z-index: 40; width: min(860px, calc(100% - 20px)); max-height: min(64vh, 600px); overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 14px !important; color: #f3eefc; font-family: var(--font-mplus), sans-serif;
+  border-radius: 16px !important; background: radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--pdx) 22%, transparent), transparent 60%), linear-gradient(180deg, rgba(30, 24, 58, 0.96), rgba(16, 12, 34, 0.97)) !important;
+  box-shadow: 0 0 0 1px var(--pdx), 0 0 0 4px rgba(20, 16, 40, 0.95), 0 0 0 5px color-mix(in srgb, var(--pdx) 45%, transparent), 0 16px 40px rgba(0, 0, 0, 0.5); }
+.w-pdx__head { display: flex; align-items: center; gap: 6px; }
+.w-pdx__title { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.w-pdx__title b { font-size: 18px; color: var(--pdx); text-shadow: 0 0 12px color-mix(in srgb, var(--pdx) 50%, transparent); }
+.w-pdx__kicker { font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; color: #b9aedc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.w-pdx__body { display: flex; flex-direction: column; gap: 8px; }
+.w-pdx p { margin: 0 !important; font-size: 14px; line-height: 1.55; }
+.w-pdx__story { color: #e8e2f8; }
+.w-pdx__lab { display: flex; flex-direction: column; gap: 6px; padding: 10px !important; border-radius: 12px !important; background: rgba(255, 255, 255, 0.05) !important; border: 1px solid color-mix(in srgb, var(--pdx) 35%, transparent) !important; }
+.w-pdx__svg { width: 100%; height: auto; max-height: 170px; color: #d9d0f2; }
+.w-pdx__num { font-size: 13px !important; color: #d9d0f2; }
+.w-pdx__num b { color: var(--pdx); font-variant-numeric: tabular-nums; }
+.w-pdx__small { font-size: 13px !important; color: #cfc6ea; }
+.w-pdx__btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px !important; font-size: 13px; font-weight: 800; color: #f3eefc !important; align-self: flex-start;
+  background: rgba(255, 255, 255, 0.06) !important; border: 1px solid color-mix(in srgb, var(--pdx) 55%, transparent) !important; border-radius: 9px !important; transition: background 0.15s, transform 0.1s; }
+.w-pdx__btn:hover { background: color-mix(in srgb, var(--pdx) 20%, transparent) !important; }
+.w-pdx__btn:active { transform: scale(0.97); }
+.w-pdx__btn.is-on { color: #1a1530 !important; background: var(--pdx) !important; }
+.w-pdx__btn svg { width: 16px; height: 16px; }
+.w-pdx__btn--icon { width: 34px; padding: 0 !important; justify-content: center; align-self: center; }
+.w-pdx__btn--key { color: #1a1530 !important; background: linear-gradient(180deg, color-mix(in srgb, var(--pdx) 80%, white), var(--pdx)) !important; }
+.w-pdx__row { display: flex; flex-wrap: wrap; gap: 6px; }
+.w-pdx__slider { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: #cfc6ea; }
+.w-pdx__slider input { accent-color: var(--pdx); width: 100%; }
+.w-pdx__bars { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: center; font-size: 12.5px; }
+.w-pdx__bars > div { display: flex; flex-direction: column; gap: 3px; }
+.w-pdx__bars i { display: block; min-width: 90px; padding: 2px 6px !important; font-style: normal; font-size: 11.5px; font-weight: 800; white-space: nowrap; border-radius: 5px !important; color: #1a1530; transition: width 0.4s; }
+.w-pdx__bars i.is-a { background: #ff9ec0 !important; }
+.w-pdx__bars i.is-b { background: #7fe3ff !important; }
+.w-pdx__words { display: flex; flex-wrap: wrap; gap: 4px; }
+.w-pdx__words span { padding: 1px 7px !important; font-size: 12px; font-family: ui-monospace, Consolas, monospace; border: 1px solid; border-radius: 10px !important; background: rgba(0, 0, 0, 0.2) !important; }
+.w-pdx__key { display: flex; gap: 6px; padding: 8px 10px !important; border-radius: 10px !important; background: color-mix(in srgb, var(--pdx) 14%, transparent) !important; border-left: 3px solid var(--pdx) !important; }
+.w-pdx__key svg { flex: none; width: 18px; height: 18px; color: var(--pdx); margin-top: 2px; }
+.w-pdx__think { font-style: italic; color: #c9bfe8; font-size: 13px !important; }

@@ -1,0 +1,62 @@
+/* Sân khấu Ba Cánh Cửa — thẻ đáy màn hình kiểu game show: nền đêm tím, viền bóng đèn marquee, chữ vàng hồng.
+   (Tailwind preflight được ưu tiên cao → các thuộc tính nền/viền/padding cần !important) */
+.w-mstage { position: absolute; left: 50%; bottom: max(16px, var(--pb, 16px)); transform: translateX(-50%); z-index: 40; width: min(860px, calc(100% - 24px));
+  max-height: min(62vh, 560px); display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 14px !important; color: #fbefff;
+  font-family: var(--font-mplus), sans-serif; border-radius: 16px !important; overflow: hidden;
+  background: radial-gradient(120% 140% at 50% -20%, rgba(120, 60, 170, 0.55), transparent 60%), linear-gradient(180deg, rgba(36, 20, 70, 0.95), rgba(16, 10, 38, 0.97)) !important;
+  box-shadow: 0 0 0 1px rgba(255, 210, 120, 0.7), 0 0 0 5px rgba(60, 20, 70, 0.9), 0 0 0 6px rgba(255, 150, 190, 0.45), 0 18px 44px rgba(0, 0, 0, 0.55); }
+/* dải bóng đèn chạy đuổi ở mép trên */
+.w-mstage::before { content: ""; position: absolute; left: 10px; right: 10px; top: 4px; height: 5px; border-radius: 3px;
+  background: radial-gradient(circle, #fff3c4 0 1.6px, transparent 2.4px) 0 50% / 14px 5px repeat-x; filter: drop-shadow(0 0 3px #ffd36a);
+  animation: w-mstage-chase 0.9s steps(2) infinite; }
+@keyframes w-mstage-chase { to { background-position: 14px 50%; } }
+@media (prefers-reduced-motion: reduce) { .w-mstage::before { animation: none; } }
+.w-mstage__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.w-mstage__kicker { font-size: 11.5px; font-weight: 800; letter-spacing: 0.14em; color: #ffd36a; text-shadow: 0 0 10px rgba(255, 190, 80, 0.6); }
+.w-mstage__tabs { display: flex; gap: 4px; margin-left: auto !important; }
+.w-mstage__tab { height: 30px; padding: 0 12px !important; font-size: 12.5px; font-weight: 700; color: #e9d8ff !important; border-radius: 15px !important;
+  background: rgba(255, 255, 255, 0.06) !important; border: 1px solid rgba(255, 255, 255, 0.14) !important; }
+.w-mstage__tab.is-on { color: #2a0f2a !important; background: linear-gradient(180deg, #ffb3cd, #ff7aa6) !important; border-color: #ffd0e0 !important; }
+.w-mstage__body { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; min-height: 0; }
+.w-mstage p { margin: 0 !important; font-size: 14.5px; line-height: 1.55; }
+.w-mstage__row { display: flex; flex-wrap: wrap; gap: 8px; }
+.w-mstage__btn { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px !important; font-size: 13.5px; font-weight: 800; color: #fbefff !important;
+  background: rgba(255, 255, 255, 0.08) !important; border: 1px solid rgba(255, 210, 120, 0.6) !important; border-radius: 10px !important; transition: transform 0.1s, background 0.15s; }
+.w-mstage__btn:hover { background: rgba(255, 210, 120, 0.18) !important; }
+.w-mstage__btn:active { transform: scale(0.97); }
+.w-mstage__btn svg { width: 16px; height: 16px; }
+.w-mstage__btn--icon { width: 36px; height: 36px; padding: 0 !important; justify-content: center; }
+.w-mstage__btn--hot { color: #2b1206 !important; background: linear-gradient(180deg, #ffe08a, #ffb347) !important; border-color: #fff0c0 !important; box-shadow: 0 0 14px rgba(255, 190, 80, 0.45); }
+.w-mstage__door { display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: 1 1 150px; height: 56px; font-size: 16px; font-weight: 900; letter-spacing: 0.04em;
+  color: #2a0f20 !important; border-radius: 12px 12px 6px 6px !important; border: 2px solid rgba(255, 255, 255, 0.85) !important; transition: transform 0.12s, filter 0.12s;
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.16), 0 0 0 3px rgba(255, 243, 196, 0.25), 0 6px 16px rgba(0, 0, 0, 0.35); }
+.w-mstage__door svg { width: 20px; height: 20px; }
+.w-mstage__door:hover { transform: translateY(-3px); filter: brightness(1.12); }
+.w-mstage__door.is-pink { background: linear-gradient(180deg, #ff9cb6, #ff6f91) !important; }
+.w-mstage__door.is-teal { background: linear-gradient(180deg, #8ee6f4, #3fc1d9) !important; }
+.w-mstage__door.is-gold { background: linear-gradient(180deg, #ffe08a, #ffc23d) !important; }
+.w-mstage__drum { color: #ffd36a; font-weight: 800; animation: w-mstage-pulse 0.25s ease-in-out infinite alternate; }
+@keyframes w-mstage-pulse { from { opacity: 0.6; } to { opacity: 1; } }
+.w-mstage__result b { color: #ffb3cd; }
+.w-mstage__result.is-win b { color: #ffe08a; text-shadow: 0 0 12px rgba(255, 200, 80, 0.8); }
+.w-mstage__stats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 12.5px; color: #d9c8f5; padding-top: 6px !important; border-top: 1px dashed rgba(255, 255, 255, 0.15) !important; }
+.w-mstage__stats b { color: #fff; }
+.w-mstage__stats .is-sim b { color: #7ff0ff; }
+.w-mstage__link { font-size: 12px; color: #ffb3cd !important; text-decoration: underline; background: none !important; }
+/* 100 cửa */
+.w-mstage__grid { display: grid; grid-template-columns: repeat(20, minmax(0, 1fr)); gap: 3px; }
+@media (max-width: 560px) { .w-mstage__grid { grid-template-columns: repeat(10, minmax(0, 1fr)); } }
+.w-mstage__cell { height: 26px; font-size: 9.5px; font-weight: 800; color: rgba(42, 15, 32, 0.8) !important; border-radius: 5px 5px 2px 2px !important; padding: 0 !important;
+  background: linear-gradient(180deg, #c9b8ff, #9b84e8) !important; border: 1px solid rgba(255, 255, 255, 0.5) !important; transition: transform 0.15s, opacity 0.2s, background 0.2s; }
+.w-mstage__cell:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.15); }
+.w-mstage__cell:disabled { cursor: default; }
+.w-mstage__cell.is-goat { opacity: 0.28; background: #3a2e55 !important; color: #bbb !important; transform: scale(0.86); }
+.w-mstage__cell.is-pick { background: linear-gradient(180deg, #ff9cb6, #ff6f91) !important; outline: 2px solid #fff; opacity: 1; transform: none; }
+.w-mstage__cell.is-keep { background: linear-gradient(180deg, #8ee6f4, #3fc1d9) !important; outline: 2px solid #fff; box-shadow: 0 0 10px #7ff0ff; opacity: 1; transform: none; }
+.w-mstage__cell.is-car { background: linear-gradient(180deg, #ffe08a, #ffb347) !important; box-shadow: 0 0 14px #ffd36a; opacity: 1; transform: scale(1.12); }
+/* Vì sao */
+.w-mstage__table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.w-mstage__table th, .w-mstage__table td { padding: 5px 8px !important; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important; }
+.w-mstage__table th { color: #ffd36a; font-size: 12px; letter-spacing: 0.06em; }
+.w-mstage__table td.is-win { color: #7dff9a; font-weight: 900; }
+.w-mstage__note { font-size: 13px !important; color: #d9c8f5; font-style: italic; }

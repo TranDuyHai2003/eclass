@@ -1,0 +1,50 @@
+/* Căn phòng Trung Hoa — giấy dó, mực đen, triện đỏ. (Tailwind preflight → nền/viền/padding cần !important) */
+.w-cr { position: absolute; left: 50%; bottom: max(14px, var(--pb, 14px)); z-index: 40; width: min(940px, calc(100% - 20px)); max-height: min(62vh, 600px); overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 14px !important; color: #2a2018; font-family: var(--font-mplus), sans-serif;
+  border-radius: 12px !important; background: linear-gradient(180deg, rgba(250, 243, 226, 0.97), rgba(238, 226, 200, 0.97)) !important;
+  box-shadow: 0 0 0 1px #8c2f2f, 0 0 0 4px rgba(250, 243, 226, 0.92), 0 0 0 5px rgba(140, 47, 47, 0.5), 0 16px 40px rgba(0, 0, 0, 0.45); }
+.w-cr__head { display: flex; align-items: center; justify-content: space-between; }
+.w-cr__kicker { font-size: 11.5px; font-weight: 800; letter-spacing: 0.14em; color: #8c2f2f; }
+.w-cr p { margin: 0 !important; font-size: 14px; line-height: 1.55; }
+.w-cr__btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px !important; font-size: 13px; font-weight: 800; color: #2a2018 !important;
+  background: rgba(140, 47, 47, 0.08) !important; border: 1px solid rgba(140, 47, 47, 0.45) !important; border-radius: 8px !important; }
+.w-cr__btn:hover:not(:disabled) { background: rgba(140, 47, 47, 0.16) !important; }
+.w-cr__btn:disabled { opacity: 0.4; }
+.w-cr__btn svg { width: 16px; height: 16px; }
+.w-cr__btn--icon { width: 34px; padding: 0 !important; justify-content: center; }
+.w-cr__btn--red { color: #fff6ea !important; background: linear-gradient(180deg, #b23b3b, #8c2f2f) !important; border-color: #6a1f1f !important; }
+.w-cr__row { display: flex; flex-wrap: wrap; gap: 6px; }
+.w-cr__work { display: grid; grid-template-columns: 1.1fr 1fr; gap: 12px; }
+@media (max-width: 700px) { .w-cr__work { grid-template-columns: 1fr; } }
+.w-cr__desk { display: flex; flex-direction: column; gap: 8px; }
+.w-cr__lead { font-size: 13.5px !important; }
+.w-cr__slip, .w-cr__answer { display: flex; flex-wrap: wrap; gap: 2px; min-height: 52px; align-items: center; padding: 6px 10px !important; border-radius: 6px !important;
+  font-family: "Noto Serif SC", "Noto Sans SC", "Microsoft YaHei", "SimSun", serif; }
+.w-cr__slip { background: #fffaf0 !important; border: 1px solid rgba(42, 32, 24, 0.25) !important; box-shadow: 2px 3px 0 rgba(42, 32, 24, 0.12); }
+.w-cr__slip span, .w-cr__answer span { font-size: 30px; line-height: 1.2; }
+.w-cr__answer { background: rgba(255, 255, 255, 0.5) !important; border: 1px dashed rgba(140, 47, 47, 0.5) !important; }
+.w-cr__answer em { font-size: 13px; color: #8a7a66; }
+.w-cr__answer.is-shake { animation: w-cr-shake 0.35s; }
+@keyframes w-cr-shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+.w-cr__tray { display: flex; flex-wrap: wrap; gap: 5px; }
+.w-cr__tile { width: 44px; height: 46px; font-size: 26px; font-family: "Noto Serif SC", "Noto Sans SC", "Microsoft YaHei", "SimSun", serif; color: #2a2018 !important;
+  background: linear-gradient(180deg, #fffaf0, #efe2c4) !important; border: 1px solid rgba(42, 32, 24, 0.3) !important; border-radius: 6px !important; box-shadow: 0 2px 0 rgba(42, 32, 24, 0.2); transition: transform 0.1s; }
+.w-cr__tile:hover:not(:disabled) { transform: translateY(-2px); }
+.w-cr__tile:disabled { opacity: 0.25; }
+.w-cr__hint { color: #8c2f2f; font-style: italic; font-size: 13px !important; }
+.w-cr__book { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px !important; border-radius: 8px !important; background: #f6ecd6 !important; border: 1px solid rgba(140, 47, 47, 0.3) !important; }
+.w-cr__bookhead { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; color: #8c2f2f; margin-bottom: 2px !important; }
+.w-cr__rule { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; padding: 3px 0 !important; border-bottom: 1px dotted rgba(42, 32, 24, 0.2) !important;
+  font-family: "Noto Serif SC", "Noto Sans SC", "Microsoft YaHei", "SimSun", serif; font-size: 18px; }
+.w-cr__arrow { color: #8c2f2f; font-size: 14px; }
+.w-cr__write { color: #4a2a18; }
+.w-cr__reveal { display: flex; flex-direction: column; gap: 8px; }
+.w-cr__reveal table { width: 100%; border-collapse: collapse; }
+.w-cr__reveal td { width: 50%; padding: 5px 8px !important; vertical-align: top; border-bottom: 1px solid rgba(140, 47, 47, 0.2) !important; }
+.w-cr__zh { display: block; font-size: 20px; font-family: "Noto Serif SC", "Noto Sans SC", "Microsoft YaHei", "SimSun", serif; }
+.w-cr__reveal small { display: block; font-size: 12.5px; color: #6a5640; font-style: italic; }
+.w-cr__replies { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 700px) { .w-cr__replies { grid-template-columns: 1fr; } }
+.w-cr__replies > div { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px !important; border-radius: 8px !important; background: rgba(255, 255, 255, 0.5) !important; border-left: 3px solid #8c2f2f !important; font-size: 13px; line-height: 1.5; }
+.w-cr__replies b { color: #8c2f2f; }
+.w-cr__think { font-style: italic; color: #6a3f1f; }

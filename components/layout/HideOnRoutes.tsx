@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 
 /** Trang "đứng riêng" có thanh điều hướng của chính nó (Tiệm quà theo canvas ShopV2) → ẩn header chung của web */
-const STANDALONE = ["/rewards"];
+const STANDALONE = ["/rewards", "/world", "/world/preview"];
 
 export function HideOnStandalone({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -1,0 +1,16 @@
+# Math World realtime server. LAN: ws://<máy>:2567 · Internet không mở port: bật profile "tunnel" (Cloudflare quick tunnel).
+services:
+  realtime:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "2567:2567"
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+  tunnel:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:2025.2.0
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://realtime:2567
+    depends_on: [realtime]

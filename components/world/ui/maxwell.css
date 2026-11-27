@@ -1,0 +1,45 @@
+/* Quỷ Maxwell — thẻ đáy màn hình kiểu dụng cụ đồng thời Victoria: nền mực xanh đen, viền đồng, số liệu như mặt đồng hồ.
+   (Tailwind preflight → nền/viền/padding cần !important) */
+.w-mx { position: absolute; left: 50%; bottom: max(16px, var(--pb, 16px)); z-index: 40; width: min(820px, calc(100% - 24px)); max-height: min(58vh, 540px); overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 14px !important; color: #f3ead6; font-family: var(--font-mplus), sans-serif;
+  border-radius: 14px !important; background: radial-gradient(120% 120% at 50% 0%, rgba(60, 44, 100, 0.9), transparent 60%), linear-gradient(180deg, rgba(22, 24, 40, 0.96), rgba(14, 14, 26, 0.97)) !important;
+  box-shadow: 0 0 0 1px #d9a845, 0 0 0 4px rgba(22, 24, 40, 0.95), 0 0 0 5px rgba(217, 168, 69, 0.45), 0 16px 40px rgba(0, 0, 0, 0.5); }
+.w-mx__head { display: flex; align-items: center; justify-content: space-between; }
+.w-mx__kicker { font-size: 11.5px; font-weight: 800; letter-spacing: 0.14em; color: #e6c25a; }
+.w-mx p { margin: 0 !important; font-size: 14px; line-height: 1.55; }
+.w-mx__btn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px !important; font-size: 13px; font-weight: 800; color: #f3ead6 !important;
+  background: rgba(217, 168, 69, 0.12) !important; border: 1px solid rgba(217, 168, 69, 0.55) !important; border-radius: 8px !important; transition: background 0.15s, transform 0.1s; }
+.w-mx__btn:hover:not(:disabled) { background: rgba(217, 168, 69, 0.24) !important; }
+.w-mx__btn:disabled { opacity: 0.45; }
+.w-mx__btn.is-on { background: rgba(217, 168, 69, 0.32) !important; }
+.w-mx__btn svg { width: 16px; height: 16px; }
+.w-mx__btn--icon { width: 36px; padding: 0 !important; justify-content: center; }
+.w-mx__row { display: flex; flex-wrap: wrap; gap: 6px; }
+.w-mx__modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 3px !important; border-radius: 10px !important; background: rgba(0, 0, 0, 0.3) !important; }
+@media (max-width: 560px) { .w-mx__modes { grid-template-columns: repeat(2, 1fr); } }
+.w-mx__mode { height: 32px; font-size: 12.5px; font-weight: 800; color: #cfc6b2 !important; border-radius: 7px !important; background: transparent !important; }
+.w-mx__mode.is-on { color: #1d1608 !important; background: linear-gradient(180deg, #f2d27a, #d9a845) !important; }
+.w-mx__temps { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; }
+.w-mx__temps > div:not(.w-mx__delta) { display: flex; flex-direction: column; padding: 6px 10px !important; border-radius: 10px !important; }
+.w-mx__temps .is-l { background: linear-gradient(90deg, rgba(74, 168, 255, 0.28), transparent) !important; }
+.w-mx__temps .is-r { align-items: flex-end; background: linear-gradient(270deg, rgba(255, 90, 74, 0.28), transparent) !important; }
+.w-mx__temps span { font-size: 11.5px; color: #cfc6b2; }
+.w-mx__temps b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.w-mx__temps small { font-size: 11px; color: #a9a08c; }
+.w-mx__delta { font-size: 14px; font-weight: 800; color: #a9a08c; font-variant-numeric: tabular-nums; }
+.w-mx__delta.is-on { color: #ffd36a; text-shadow: 0 0 10px rgba(255, 200, 80, 0.6); }
+.w-mx__hold { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 6px 12px !important; font-size: 13px; font-weight: 800; color: #1d1608 !important;
+  border-radius: 12px !important; background: linear-gradient(180deg, #ffe08a, #e6a83a) !important; touch-action: none; user-select: none; box-shadow: 0 0 14px rgba(255, 200, 80, 0.35); }
+.w-mx__hold:active { transform: scale(0.98); filter: brightness(1.15); }
+.w-mx__hold svg { width: 20px; height: 20px; flex: none; }
+.w-mx__ledger { display: flex; flex-direction: column; gap: 4px; }
+.w-mx__ledger > div { display: grid; grid-template-columns: 170px 1fr 52px; align-items: center; gap: 8px; font-size: 12.5px; }
+@media (max-width: 560px) { .w-mx__ledger > div { grid-template-columns: 120px 1fr 44px; } }
+.w-mx__ledger i { display: block; height: 12px; border-radius: 6px !important; transition: width 0.3s; }
+.w-mx__ledger i.is-gas { background: linear-gradient(90deg, #4aa8ff, #ff5a4a) !important; }
+.w-mx__ledger i.is-mem { background: linear-gradient(90deg, #b58bff, #e6c25a) !important; }
+.w-mx__ledger b { text-align: right; font-variant-numeric: tabular-nums; }
+.w-mx__ledger small { font-size: 11px; color: #a9a08c; }
+.w-mx__heat { color: #ffcf8a; font-size: 13px !important; }
+.w-mx__why { display: flex; flex-direction: column; gap: 6px; padding-top: 6px !important; border-top: 1px dashed rgba(217, 168, 69, 0.35) !important; }
+.w-mx__note { font-style: italic; color: #cfc6b2; font-size: 13px !important; }

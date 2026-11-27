@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, ChevronRight, PlayCircle } from "lucide-react";
+import { BookOpen, ChevronRight, Gamepad2, PlayCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLevel } from "@/lib/points/levels";
 import { rarityOf } from "@/lib/points/rarity";
@@ -54,14 +54,24 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside,
                 <p className="text-sm font-medium text-blue-100">Hôm nay mình cùng học tiếp nhé.</p>
               </div>
             </div>
-            {level && (
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Vào game Thế giới Toán 3D (trang riêng, toàn màn hình) */}
               <Link
-                href={shopOpen ? "/rewards" : "/profile"}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-black ring-1 ring-white/25 hover:bg-white/25"
+                href="/world"
+                data-testid="hero-game"
+                className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-300 to-orange-400 px-3.5 py-1.5 text-xs font-black text-indigo-950 shadow-[0_3px_0_0_#b45309] ring-1 ring-white/40 transition-transform hover:scale-105 active:translate-y-0.5 active:shadow-none"
               >
-                <span aria-hidden>{level.icon}</span> {level.short}
+                <Gamepad2 className="h-4 w-4" /> Vào Game
               </Link>
-            )}
+              {level && (
+                <Link
+                  href={shopOpen ? "/rewards" : "/profile"}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-black ring-1 ring-white/25 hover:bg-white/25"
+                >
+                  <span aria-hidden>{level.icon}</span> {level.short}
+                </Link>
+              )}
+            </div>
           </div>
 
           {level && points && (

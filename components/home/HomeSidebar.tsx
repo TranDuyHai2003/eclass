@@ -26,6 +26,7 @@ import {
   Trophy,
   Crown,
   Gift,
+  Gamepad2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
@@ -62,6 +63,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
       ? [{ icon: HomeIcon, label: "Trang chủ", href: "/", exact: true }]
       : [{ icon: LogIn, label: "Đăng nhập", href: "/login" }]),
     { icon: BookOpen, label: "Khóa Học", href: "/courses" },
+    ...(currentUser ? [{ icon: Gamepad2, label: "Game Thế giới Toán", href: "/world" }] : []),
     { icon: Trophy, label: "Bảng xếp hạng Hunter", href: "/ranking" },
     // Học sinh vào được tiệm: Bảng Vàng nằm trong Tiệm quà nên không cần mục riêng
     ...(pointsEnabled && !(role === "STUDENT" && canUseShop(currentUser)) ? [{ icon: Crown, label: "Bảng Vàng", href: "/leaderboard" }] : []),

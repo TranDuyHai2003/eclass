@@ -1,0 +1,203 @@
+/* Math World UI kit — original design language mixing two anime-game conventions:
+   ornate dark panels with thin gold double frames + filigree corners, and bright skewed
+   parallelogram buttons with bold italic type, shine sweeps and diagonal-stripe transitions. */
+
+.w-root {
+  --w-navy: #1c2240;
+  --w-navy-2: #12162b;
+  --w-gold: #ecd7a9;
+  --w-gold-2: #c9a564;
+  --w-cyan: #2ec5ff;
+  --w-cyan-2: #128de0;
+  --w-ink: #f6f1e4;
+  font-family: var(--font-nunito), var(--font-bvp), system-ui, sans-serif;
+}
+/* Firefox: chỉ có màu + độ mảnh. KHÔNG đặt cho Chrome — Chrome ≥121 thấy scrollbar-color/width là bỏ qua ::-webkit-scrollbar */
+@supports (-moz-appearance: none) {
+  .w-root { scrollbar-color: #d9b871 rgba(12, 16, 36, 0.55); scrollbar-width: thin; }
+}
+
+/* ── Thanh cuộn kiểu game: rãnh xanh đêm viền vàng mảnh, con trượt vàng kim có gờ sáng, không nút mũi tên ── */
+.w-root ::-webkit-scrollbar { width: 10px; height: 10px; }
+.w-root ::-webkit-scrollbar-track {
+  background: linear-gradient(90deg, rgba(8, 11, 28, 0.75), rgba(28, 34, 64, 0.6) 50%, rgba(8, 11, 28, 0.75));
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(236, 215, 169, 0.22), inset 0 0 6px rgba(0, 0, 0, 0.5);
+  margin: 6px 0;
+}
+.w-root ::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.55) 0 1px, transparent 1px 100%) padding-box,
+    linear-gradient(180deg, #fff3cf 0%, #ecd7a9 30%, #c9a564 70%, #9a7432 100%) padding-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(60, 40, 8, 0.55), 0 0 6px rgba(236, 215, 169, 0.35);
+  min-height: 36px;
+}
+.w-root ::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.7) 0 1px, transparent 1px 100%) padding-box,
+    linear-gradient(180deg, #fffbe8 0%, #f6e2b0 30%, #dcb46a 70%, #ab8238 100%) padding-box;
+  box-shadow: 0 0 0 1px rgba(60, 40, 8, 0.6), 0 0 10px rgba(255, 220, 140, 0.6);
+}
+.w-root ::-webkit-scrollbar-thumb:active { background: linear-gradient(180deg, #ffe9a8, #e0b55a) padding-box; }
+.w-root ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.w-root ::-webkit-scrollbar-corner { background: transparent; }
+
+/* credit + phiên bản */
+.w-credit { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.02em; color: rgba(246, 241, 228, 0.72); }
+.w-credit b { font-style: italic; color: var(--w-gold); text-shadow: 0 0 8px rgba(236, 215, 169, 0.45); }
+.w-credit__ver { padding: 1px 7px; border-radius: 999px; font-size: 10px; color: #2b1d05; background: linear-gradient(90deg, #fff1c4, #e3bf6e); box-shadow: 0 1px 0 #9a6b16; }
+
+/* ── Panel ───────────────────────────────── */
+.w-panel {
+  position: relative;
+  color: var(--w-ink);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(120, 150, 255, 0.14), transparent 60%),
+    linear-gradient(180deg, rgba(34, 41, 75, 0.94), rgba(18, 22, 43, 0.96));
+  border: 1px solid rgba(236, 215, 169, 0.6) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    inset 0 0 0 4px rgba(18, 22, 43, 0.9),
+    inset 0 0 0 5px rgba(236, 215, 169, 0.28),
+    0 18px 60px rgba(8, 10, 30, 0.55),
+    0 0 40px rgba(130, 200, 255, 0.12);
+  backdrop-filter: blur(6px);
+}
+.w-panel::before,
+.w-panel::after {
+  content: "";
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  pointer-events: none;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 46'><g fill='none' stroke='%23ecd7a9' stroke-width='1.4'><path d='M3 22 V8 Q3 3 8 3 H22'/><path d='M8 16 Q8 8 16 8'/><circle cx='8' cy='8' r='2.2' fill='%23ecd7a9'/><path d='M26 3 l3 -2 l3 2 l-3 2z' fill='%23ecd7a9'/><path d='M3 26 l-2 3 l2 3 l2 -3z' fill='%23ecd7a9'/></g></svg>") no-repeat;
+}
+.w-panel::before { top: 6px; left: 6px; }
+.w-panel::after { bottom: 6px; right: 6px; transform: rotate(180deg); }
+
+.w-title {
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #fff6dc 0%, #ecd7a9 55%, #c9a564 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.35));
+}
+.w-divider {
+  height: 10px;
+  background:
+    linear-gradient(90deg, transparent, rgba(236, 215, 169, 0.7) 20%, rgba(236, 215, 169, 0.7) 80%, transparent) center / 100% 1px no-repeat;
+  position: relative;
+}
+.w-divider::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  background: var(--w-gold);
+  transform: translate(-50%, -50%) rotate(45deg);
+  box-shadow: 0 0 8px rgba(236, 215, 169, 0.9);
+}
+
+/* ── Skewed buttons ──────────────────────── */
+.w-btn {
+  --skew: -12deg;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  padding: 0.55em 1.5em !important;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  color: #fff;
+  transform: skewX(var(--skew));
+  border-radius: 6px !important;
+  isolation: isolate;
+  overflow: hidden;
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+  background: linear-gradient(180deg, #5fd8ff 0%, var(--w-cyan) 45%, var(--w-cyan-2) 100%);
+  box-shadow: 0 4px 0 #0b5f9e, 0 8px 20px rgba(18, 141, 224, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  text-shadow: 0 1px 0 rgba(0, 40, 90, 0.4);
+}
+.w-btn > * { transform: skewX(calc(var(--skew) * -1)); }
+.w-btn::after {
+  content: "";
+  position: absolute;
+  inset: -20% auto -20% -60%;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.45s ease;
+  z-index: -1;
+  left: -60%;
+}
+.w-btn:hover::after { left: 130%; }
+.w-btn:hover { filter: brightness(1.08); transform: skewX(var(--skew)) translateY(-1px); }
+.w-btn:active { transform: skewX(var(--skew)) translateY(3px); box-shadow: 0 1px 0 #0b5f9e, 0 4px 10px rgba(18, 141, 224, 0.4); }
+.w-btn:disabled { filter: grayscale(0.7) brightness(0.8); pointer-events: none; }
+
+.w-btn--gold {
+  color: #3b2a07;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+  background: linear-gradient(180deg, #fff1c4 0%, #f4d27c 50%, #d9a63c 100%);
+  box-shadow: 0 4px 0 #9a6b16, 0 8px 20px rgba(217, 166, 60, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.w-btn--gold:active { box-shadow: 0 1px 0 #9a6b16; }
+.w-btn--ghost {
+  color: var(--w-ink);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(236, 215, 169, 0.5);
+  text-shadow: none;
+}
+.w-btn--ghost:active { box-shadow: inset 0 0 0 1px rgba(236, 215, 169, 0.8); }
+.w-btn--sm { padding: 0.35em 1em !important; font-size: 0.8rem; }
+.w-btn--lg { padding: 0.7em 2.4em !important; font-size: 1.15rem; }
+
+/* Chip / tag nghiêng */
+.w-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.15em 0.8em !important;
+  transform: skewX(-12deg);
+  font-weight: 900;
+  font-style: italic;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: #0b2948;
+  background: linear-gradient(90deg, #bff0ff, #8fe0ff);
+  border-radius: 3px !important;
+}
+.w-chip > * { transform: skewX(12deg); }
+.w-chip--gold { color: #3b2a07; background: linear-gradient(90deg, #fff1c4, #f0cf7f); }
+.w-chip--rose { color: #fff; background: linear-gradient(90deg, #ff7fa8, #ff4f86); }
+
+/* Ô lựa chọn trong câu hỏi */
+.w-option {
+  position: relative;
+  border-radius: 12px !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+  box-shadow: inset 0 0 0 1px rgba(236, 215, 169, 0.25);
+  transition: box-shadow 0.15s, background 0.15s, transform 0.15s;
+}
+.w-option:hover { box-shadow: inset 0 0 0 1px rgba(236, 215, 169, 0.6); transform: translateY(-1px); }
+.w-option[data-on="true"] { background: linear-gradient(180deg, rgba(46, 197, 255, 0.28), rgba(18, 141, 224, 0.18)); box-shadow: inset 0 0 0 2px #7fdcff, 0 0 18px rgba(46, 197, 255, 0.35); }
+.w-option[data-ok="true"] { background: linear-gradient(180deg, rgba(90, 209, 168, 0.3), rgba(40, 150, 110, 0.18)); box-shadow: inset 0 0 0 2px #6ee7b7; }
+.w-option[data-bad="true"] { background: linear-gradient(180deg, rgba(255, 93, 122, 0.3), rgba(200, 40, 80, 0.18)); box-shadow: inset 0 0 0 2px #fda4af; }
+
+/* ── Chuyển cảnh sọc chéo ─────────────────── */
+.w-wipe {
+  position: absolute;
+  inset: -20%;
+  z-index: 60;
+  pointer-events: none;
+  background: repeating-linear-gradient(-60deg, #2ec5ff 0 60px, #ffffff 60px 120px, #ecd7a9 120px 150px, #ffffff 150px 210px);
+}

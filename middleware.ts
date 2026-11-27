@@ -24,6 +24,7 @@ export default auth((req) => {
     "/admin",
     "/practice",
     "/library",
+    "/world",
   ].some((route) => nextUrl.pathname.startsWith(route));
 
   // 1. Cho phép các API Auth
@@ -43,8 +44,9 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/", nextUrl));
   }
 
-  // 3. Bảo vệ các route cần đăng nhập
-  if (!isLoggedIn && isProtectedRoute) {
+  // 3. Bảo vệ các route cần đăng nhập (trừ trang xem thử Thế giới Toán khi chạy dev — dữ liệu giả, không đụng DB)
+  const isDevWorldPreview = process.env.NODE_ENV !== "production" && nextUrl.pathname === "/world/preview";
+  if (!isLoggedIn && isProtectedRoute && !isDevWorldPreview) {
     return NextResponse.redirect(new URL("/login", nextUrl));
   }
 
