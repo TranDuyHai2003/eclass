@@ -24,6 +24,8 @@ if (!["localhost", "127.0.0.1", "[::1]", "::1"].includes(host) && process.env.AL
 
 // Cấu hình game (giá đồ / mức xu admin sửa) giữ trong bộ nhớ từng file test — các file chạy song song không ghi đè nhau qua DB
 if (!process.env.GAME_CONFIG_SOURCE) process.env.GAME_CONFIG_SOURCE = "memory";
+// Mốc bắt đầu cộng xu nộp bài (lib/points/config.ts HOMEWORK_XU) — test chạy như đã mở
+process.env.HOMEWORK_XU_START = process.env.HOMEWORK_XU_START || "2000-01-01T00:00:00Z";
 process.env.TS_NODE_TRANSPILE_ONLY = "1";
 process.env.TS_NODE_COMPILER_OPTIONS = JSON.stringify({ module: "commonjs", moduleResolution: "node", jsx: "react-jsx" });
 require("ts-node/register");

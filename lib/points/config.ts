@@ -143,3 +143,11 @@ export const earningRules = (): { label: string; points: string; note?: string }
  */
 export const STUDENT_CANCEL_WINDOW_MS = 2 * 60 * 60 * 1000;
 export const studentCanCancel = (createdAt: string | Date, now: number = Date.now()) => now - new Date(createdAt).getTime() <= STUDENT_CANCEL_WINDOW_MS;
+
+/**
+ * Thầy 28/11/2026: "sự kiện cộng xu nộp bài bắt đầu từ 07:00 ngày mai" → xu nộp bài tập về nhà (làm đề online / nộp ảnh)
+ * chỉ cộng cho bài nộp từ mốc này (giờ VN). Duyệt chữa bài, mã quà, thưởng tay không bị ảnh hưởng.
+ * Test đặt HOMEWORK_XU_START sớm hơn (tests/setup/register.cjs) để không phụ thuộc ngày chạy.
+ */
+export const HOMEWORK_XU = { start: new Date(process.env.HOMEWORK_XU_START || "2026-11-29T07:00:00+07:00") };
+export const homeworkXuOpen = (now: Date = new Date()) => now.getTime() >= HOMEWORK_XU.start.getTime();

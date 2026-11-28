@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { POINTS } from "@/lib/points/config";
+import { HOMEWORK_XU, POINTS, homeworkXuOpen } from "@/lib/points/config";
 import { LEVELS } from "@/lib/points/levels";
 import type { HomeTodoItem } from "@/lib/home/student-home";
 import type { RecentDone } from "../TasksModal";
@@ -59,6 +59,9 @@ export function EarnSection({ todo, todoTotal, recent, lifetimeEarned, level }: 
           </div>
         )}
         <div className="rounded-[18px] border-2 border-dashed border-[#241e1a] bg-[#fff6db] px-4 py-3 text-[13px] font-bold">
+          {!homeworkXuOpen() && (
+            <b className="mb-1 block text-[#b83d27]">⏰ Xu nộp bài bắt đầu tính từ {HOMEWORK_XU.start.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })} — nộp trước giờ này chưa có xu.</b>
+          )}
           Bài tập về nhà: làm BTVN trên web (hoặc nộp ảnh bài làm) <b>trước hạn</b>, bài của khoá lớp mình (+{fmt(POINTS.homeworkSubmit)} xu, chỉ lần đầu — làm lại không cộng thêm). Lên lớp thầy duyệt chữa bài: có chữa +{fmt(POINTS.homeworkReview.partial)} xu, chữa đủ và tốt +{fmt(POINTS.homeworkReview.full)} xu.
         </div>
       </section>

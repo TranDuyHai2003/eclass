@@ -4,7 +4,7 @@
 import { test, describe, after } from "node:test";
 import assert from "node:assert/strict";
 import { prisma } from "@/lib/prisma";
-import { POINTS } from "@/lib/points/config";
+import { HOMEWORK_XU, POINTS } from "@/lib/points/config";
 import { onAttemptDeleted, onEssayGraded, onHomeworkGraded, onHomeworkSubmitted, onTestSubmitted, scoreTierPoints } from "@/lib/points/hooks";
 import { createFixture, disconnect, withPoints } from "../helpers/fixtures";
 import { applyLegacyEarning } from "../helpers/legacy-earning";
@@ -311,6 +311,23 @@ describe("BTVN làm online (đề loại HOMEWORK) — +100 xu (thầy báo 28/1
     const blank = await run();
     await doTest(blank.s.id, blank.t, 1);
     assert.equal(await hw(blank.s.id), 0, "nộp gần như trắng");
+  });
+
+  test("trước mốc bắt đầu cộng xu nộp bài (thầy: 07:00 29/11) → 0 xu, cả đề online lẫn bài nộp ảnh", async () => {
+    const prev = HOMEWORK_XU.start;
+    HOMEWORK_XU.start = new Date(Date.now() + 3600_000);
+    try {
+      const { s, t } = await run();
+      await doTest(s.id, t);
+      assert.equal(await hw(s.id), 0, "đề online trước mốc");
+      const cls = await fx.cls();
+      const s2 = await fx.user({ classId: cls.id });
+      const lesson = await fx.homeworkLesson({ classIds: [cls.id] });
+      await onHomeworkSubmitted({ userId: s2.id, lessonId: lesson.id, submissionId: "x" });
+      assert.equal(await fx.balance(s2.id), 0, "bài nộp ảnh trước mốc");
+    } finally {
+      HOMEWORK_XU.start = prev;
+    }
   });
 
   test("thầy xoá lượt làm → thu hồi 100; làm lại lần đầu (không còn lượt nào khác) được lại", async () => {

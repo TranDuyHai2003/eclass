@@ -1,4 +1,4 @@
-import { POINTS } from "./config";
+import { POINTS, homeworkXuOpen } from "./config";
 import { dueStatus, effectiveDueDate } from "@/lib/deadline";
 import { awardOnce, isEligibleStudent, lockWallet, revokeKey, runPointsSafely, updateWeekStreak } from "./engine";
 import type { Tx } from "./engine";
@@ -113,7 +113,7 @@ export async function onTestSubmitted(p: {
     });
 
     // BTVN làm online: lần làm đầu, bài thuộc khoá lớp mình, nộp đúng hạn (chưa đặt hạn → bài giao trong 30 ngày)
-    if (!isFinal && POINTS.homeworkSubmit > 0) {
+    if (!isFinal && POINTS.homeworkSubmit > 0 && homeworkXuOpen(now)) {
       const info = await tx.test.findUnique({
         where: { id: p.test.id },
         select: { type: true, createdAt: true, lesson: { select: { createdAt: true, chapter: { select: { courseId: true } } } } },
@@ -217,6 +217,7 @@ export async function onHomeworkSubmitted(p: { userId: string; lessonId: string;
     const lesson = await tx.lesson.findUnique({ where: { id: p.lessonId }, select: { createdAt: true, chapter: { select: { courseId: true } } } });
     const status = !due ? "none" : now <= due ? "on-time" : "late";
     if (
+      homeworkXuOpen(now) &&
       !p.resubmit &&
       lesson &&
       homeworkOnTimeForXu(status, lesson.createdAt, now) &&
