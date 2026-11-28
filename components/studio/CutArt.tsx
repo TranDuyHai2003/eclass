@@ -48,11 +48,11 @@ export function faceBoxStyle(frameId?: string | null, fallbackInsetPct = 21): Re
 }
 
 /** Ảnh thú cưng: tranh vẽ tay tách nền → ô tranh tiệm → SVG có khối. Giữ tỉ lệ, nằm gọn trong khung cha. */
-export function PetImage({ id, className, size = 120 }: { id: string; className?: string; size?: number }) {
+export function PetImage({ id, className, size = 120, style }: { id: string; className?: string; size?: number; style?: React.CSSProperties }) {
   if (hasCutPet(id))
     // eslint-disable-next-line @next/next/no-img-element -- ảnh tĩnh nhỏ, nền trong suốt
-    return <img src={cutSrc(id)} alt="" aria-hidden draggable={false} decoding="async" data-pet-cut={id} className={cn("aspect-square object-contain", className)} />;
+    return <img src={cutSrc(id)} alt="" aria-hidden draggable={false} decoding="async" data-pet-cut={id} className={cn("aspect-square object-contain", className)} style={style} />;
   const idx = shopItemIndex(id);
-  if (idx !== undefined) return <ShopArt index={idx} className={cn("aspect-square", className)} />;
-  return <PetSvg itemId={id} size={size} className={className} />;
+  if (idx !== undefined) return <span className="block" style={style}><ShopArt index={idx} className={cn("aspect-square h-full w-full", className)} /></span>;
+  return <span className="block" style={style}><PetSvg itemId={id} size={size} className={cn("h-full w-full", className)} /></span>;
 }

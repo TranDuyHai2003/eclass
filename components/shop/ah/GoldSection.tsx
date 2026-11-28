@@ -7,10 +7,12 @@ import type { AvatarConfig } from "@/lib/game/avatar";
 import { play } from "@/lib/sound";
 import type { BoardData } from "../LeaderboardModal";
 import { AvatarRing, CoinDot, PlateBox, fmt } from "./parts";
+import { ShowcaseStage } from "@/components/profile/ShowcaseStage";
+import { cn } from "@/lib/utils";
 
 /**
  * Hộp "Bảng Vàng Server Khối" — y như mẫu Gemini Canvas (24/11): hộp nổi, nhãn vàng trên đỉnh, nút đóng đỏ,
- * banner sự kiện tuần, tab khối ở giữa, mỗi hàng là bảng tên + khung viền của bạn đó; dữ liệu thật.
+ * banner sự kiện tuần, tab khối ở giữa, mỗi bạn là thẻ khoe đủ đồ (nền, hiệu ứng, nhân vật, thú cưng, khung, bảng tên, danh hiệu).
  */
 export function GoldModal({ boards, myGrade, me, event, onClose }: {
   boards: BoardData[];
@@ -23,7 +25,7 @@ export function GoldModal({ boards, myGrade, me, event, onClose }: {
   const board = boards.find((b) => b.grade === grade);
   return (
     <div className="fixed inset-0 z-[62] flex items-center justify-center bg-[rgba(36,30,26,0.55)] p-4 pt-8" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-labelledby="gold-title" data-testid="leaderboard-modal" className="ah-dialog ah-panel v2-pop relative flex max-h-[88vh] w-full max-w-[440px] flex-col gap-3.5 px-4 pb-4 pt-8">
+      <div role="dialog" aria-modal="true" aria-labelledby="gold-title" data-testid="leaderboard-modal" className="ah-dialog ah-panel v2-pop relative flex max-h-[88vh] w-full max-w-[560px] flex-col gap-3.5 px-4 pb-4 pt-8">
         <h2 id="gold-title" className="ah-hand ah-gold absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border-[2.5px] border-[#241e1a] px-5 py-1.5 text-base font-bold">
           🏆 Bảng Vàng Server Khối
         </h2>
@@ -46,8 +48,8 @@ export function GoldModal({ boards, myGrade, me, event, onClose }: {
           <>
             <div className="flex flex-wrap justify-center gap-2" role="tablist" aria-label="Chọn khối">
               {boards.map((b) => (
-                <button key={b.grade} type="button" role="tab" aria-selected={grade === b.grade} data-testid={`board-g${b.grade}`} onClick={() => { play("click"); setGrade(b.grade); }} className={`ah-btn ${grade === b.grade ? "ah-gold" : "ah-cream"} h-9 px-3.5 text-[13px]`}>
-                  Server Khối {b.grade}
+                <button key={b.grade} type="button" role="tab" aria-selected={grade === b.grade} data-testid={`board-g${b.grade}`} onClick={() => { play("click"); setGrade(b.grade); }} className={`ah-btn ${grade === b.grade ? "ah-gold" : "ah-cream"} h-9 px-3.5 text-[13px] max-sm:h-8 max-sm:px-2.5 max-sm:text-[12px]`}>
+                  <span className="max-sm:hidden">Server&nbsp;</span>Khối {b.grade}
                 </button>
               ))}
             </div>
@@ -68,29 +70,43 @@ export function GoldModal({ boards, myGrade, me, event, onClose }: {
   );
 }
 
+const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+
+/**
+ * Một bạn trên Bảng Vàng = thẻ khoe đồ (28/11: thầy muốn lên bảng là khoe được hết như ở Hồ sơ):
+ * sân khấu Hình nền + Hiệu ứng + nhân vật cả người + thú cưng, ảnh đại diện có Khung viền, tên trên Bảng tên,
+ * danh hiệu đang đeo, cấp và số xu.
+ */
 function Row({ rank, name, sub, xu, avatar, mine, href }: { rank: number; name: string; sub: string; xu: number; avatar: AvatarConfig; mine?: boolean; href?: string }) {
   const dark = !!avatar.nameplate && ITEM_BY_ID[avatar.nameplate]?.v2 === "dark";
+  const title = avatar.title ? ITEM_BY_ID[avatar.title]?.name : null;
   const body = (
-    <div className={`flex min-h-[60px] items-center gap-2.5 px-3 py-2 ${dark ? "text-white" : "text-[#241e1a]"}`}>
-      <b className="ah-hand w-8 shrink-0 text-base">#{rank}</b>
-      <AvatarRing config={avatar} size={46} inset={9} />
-      <div className="min-w-0 flex-1">
-        <div className="ah-hand truncate text-sm font-bold">{name}</div>
-        <div className="truncate text-[11px] font-bold opacity-90">{sub}</div>
-      </div>
-      <span
-        className={`inline-flex shrink-0 items-center gap-1 rounded-full border-2 px-2.5 py-1 text-xs font-black tabular-nums ${dark ? "border-white/25 bg-black/35 text-white" : "border-[#241e1a] bg-[#fffdf8] text-[#241e1a]"}`}
-      >
-        <CoinDot size={13} />
+    <ShowcaseStage config={avatar} name={name} className="h-[136px]" chibiSize={88} petSize={44} align="right" sceneMinW={540}>
+      {/* Xu ở góc phải trên (không chen vào bảng tên → điện thoại không bị cắt) */}
+      <span className="absolute right-2 top-2 z-[1] inline-flex items-center gap-1 rounded-full border-2 border-[#241e1a] bg-[#fffdf8] px-2 py-0.5 text-[12px] font-black tabular-nums text-[#241e1a] shadow-[0_2px_0_#241e1a]" data-testid="board-xu">
+        <CoinDot size={12} />
         {fmt(xu)} Xu
       </span>
-    </div>
+      <div className="absolute inset-y-0 left-0 flex w-[62%] items-center gap-2 py-2 pl-2.5 sm:w-[min(70%,330px)]">
+        <div className="flex shrink-0 flex-col items-center gap-0.5">
+          <span className={cn("ah-hand flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-[#241e1a] px-1 text-sm font-bold shadow-[0_2px_0_#241e1a]", rank <= 3 ? "bg-[#fde047]" : "bg-[#fffdf8]")} data-testid="board-rank">
+            {MEDAL[rank] ?? `#${rank}`}
+          </span>
+          <AvatarRing config={avatar} size={56} inset={12} />
+        </div>
+        <PlateBox id={avatar.nameplate} className="min-w-0 flex-1 rounded-[14px] border-2 shadow-[0_2px_0_#241e1a]">
+          <div className={cn("flex min-w-0 flex-col gap-0.5 px-2.5 py-1.5", dark ? "text-white" : "text-[#241e1a]")}>
+            <span className="ah-hand truncate text-[15px] font-bold leading-tight">{name}</span>
+            <span className="truncate text-[11px] font-bold opacity-90 max-sm:hidden">{sub}</span>
+            {title && <span className="max-w-full self-start truncate rounded-full border border-[#241e1a] bg-[#2A1F5C] px-2 py-px text-[10px] font-black text-[#FDE68A]" data-testid="board-title">« {title} »</span>}
+          </div>
+        </PlateBox>
+      </div>
+    </ShowcaseStage>
   );
   return (
-    <li className="list-none rounded-[16px]" style={mine ? { boxShadow: "0 0 0 3px #fde047" } : undefined}>
-      <PlateBox id={avatar.nameplate} className="rounded-[16px] shadow-[0_3px_0_#241e1a]">
-        {href ? <Link href={href} className="block">{body}</Link> : body}
-      </PlateBox>
+    <li className="list-none shrink-0 overflow-hidden rounded-[18px] border-[2.5px] border-[#241e1a] shadow-[0_3px_0_#241e1a]" style={mine ? { boxShadow: "0 0 0 3px #fde047, 0 3px 0 #241e1a" } : undefined} data-testid="board-row">
+      {href ? <Link href={href} className="block">{body}</Link> : body}
     </li>
   );
 }

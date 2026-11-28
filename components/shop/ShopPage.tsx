@@ -40,6 +40,7 @@ import { QuestBoard, QuestUnlocked, type QuestRow } from "./ah/QuestBoard";
 import { QUESTS, CAT_PETS_PER_DAY } from "@/lib/game/quests-shared";
 import { claimCatQuest } from "@/actions/quests";
 import { RewardManager, type ManageData } from "./ah/RewardManager";
+import { ShowcaseStage } from "@/components/profile/ShowcaseStage";
 import type { ManageTab } from "@/lib/points/manage-tabs";
 import { applyGameConfig, type GameConfigData } from "@/lib/game/game-config-shared";
 
@@ -512,8 +513,12 @@ export function ShopPage({ data, user, todo, todoTotal, recent = [], boards, eve
           <section className="ah-panel flex min-w-0 flex-[999_1_560px] p-[14px]" data-testid="shop-hud">
             <PlateBox id={avatar.nameplate} className="min-w-0 flex-[999_1_560px]" testId="hud-nameplate">
               <div className="flex flex-wrap items-center gap-4 px-[18px] py-3.5">
-                <Link href="/profile" title="Hồ sơ của bạn" className="shrink-0 rounded-full">
-                  <AvatarRing config={avatar} size={104} inset={22} title={user.name ?? undefined} />
+                {/* Khoe đủ đồ như trang Hồ sơ (28/11): nền + hiệu ứng + nhân vật cả người + thú cưng, ảnh đại diện có khung ở góc */}
+                <Link href="/profile" title="Hồ sơ của bạn" className="relative mb-3 ml-3 block w-[min(240px,100%)] shrink-0" data-testid="hud-stage">
+                  <ShowcaseStage config={avatar} name={user.name} className="h-[176px] rounded-[18px] border-[2.5px] border-[#241e1a] shadow-[0_3px_0_#241e1a]" chibiSize={116} petSize={58} sceneMinW={320} contentClassName="pl-14" />
+                  <span className="absolute -bottom-3 -left-3">
+                    <AvatarRing config={avatar} size={84} inset={18} title={user.name ?? undefined} />
+                  </span>
                 </Link>
                 <div className={cn("flex min-w-0 flex-[1_1_300px] flex-col gap-2", plateDark ? "text-white" : "text-[#1E1B2E]")}>
                   <div className="flex flex-wrap items-center gap-2">

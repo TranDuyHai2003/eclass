@@ -571,6 +571,9 @@ try {
     await s.goto("/leaderboard?tab=g7&period=all", /Bảng Vàng Server Khối/i);
     expect(await s.ev(`return location.pathname === "/rewards" && !!document.querySelector('[data-testid="leaderboard-modal"]')`), "học sinh vào /leaderboard không được đưa vào hộp Bảng Vàng của tiệm");
     expect(/Học sinh/.test(await s.ev(`return document.querySelector('[data-testid="leaderboard-modal"]')?.innerText || ""`)), "hộp Bảng Vàng không có mình");
+    // 28/11: mỗi bạn trên Bảng Vàng khoe đủ đồ (sân khấu nền + nhân vật + thú cưng, khung, bảng tên); khối hồ sơ trong tiệm cũng vậy
+    expect(await s.ev(`return document.querySelectorAll('[data-testid="leaderboard-modal"] [data-testid="board-row"] [data-testid="showcase-stage"]').length >= 1`), "thẻ Bảng Vàng thiếu sân khấu khoe đồ");
+    expect(await s.ev(`return !!document.querySelector('[data-testid="hud-stage"] [data-testid="showcase-stage"]')`), "khối hồ sơ trong tiệm thiếu sân khấu khoe đồ");
     await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
     // 28/11: thầy cũng xem Bảng Vàng trong Tiệm quà (bỏ trang riêng / mục thanh bên)
     await t.goto("/leaderboard?tab=g7&period=all", /Bảng Vàng Server Khối/i);
