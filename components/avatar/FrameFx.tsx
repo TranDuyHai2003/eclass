@@ -252,13 +252,20 @@ export function frameFxKind(frameId?: string | null): Kind | null {
   return (it.v2 ?? (it.v === "gold" || it.v === "rainbow" ? it.v : "plain")) as Kind;
 }
 
+/** Mặt nạ khoét tròn giữa (bán kính ≈ 33% cạnh = vùng mặt) */
+const FACE_HOLE_MASK: React.CSSProperties = {
+  maskImage: "radial-gradient(circle closest-side, transparent 64%, #000 68%)",
+  WebkitMaskImage: "radial-gradient(circle closest-side, transparent 64%, #000 68%)",
+};
+
 export function FrameFx({ frameId, className }: { frameId?: string | null; className?: string }) {
   const kind = frameFxKind(frameId);
   const ref = useRef<SVGSVGElement>(null);
   useEffect(() => pauseOffscreen(ref.current), [kind]);
   if (!kind) return null;
   return (
-    <svg ref={ref} viewBox="0 0 120 120" aria-hidden className={cn("ffx pointer-events-none absolute inset-0 h-full w-full select-none", className)} data-frame-fx={kind}>
+    // Hiệu ứng chỉ ở vùng viền, không đè lên mặt (28/11: vệt sao băng / cánh hoa rơi cắt ngang mặt trông như khung lệch)
+    <svg ref={ref} viewBox="0 0 120 120" aria-hidden className={cn("ffx pointer-events-none absolute inset-0 h-full w-full select-none", className)} style={FACE_HOLE_MASK} data-frame-fx={kind}>
       <Theme kind={kind} />
     </svg>
   );

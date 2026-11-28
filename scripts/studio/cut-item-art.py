@@ -47,6 +47,8 @@ STEP_OF = {"pet-bi": 4.0, "pet-shiba": 3.0}
 STEP = 9.0  # chênh màu tối đa giữa 2 điểm nền kề nhau (nền chuyển màu từ từ)
 MIN_LUM = 175  # nền là màu sáng
 HOLE_FRACTION = 0.30
+# Bán kính mặt tối thiểu theo khung (28/11): hoa anh đào bông to thò vào lỗ → mặt 21% quá nhỏ; cho hoa đè lên mép mặt
+FACE_MIN = {"frame-sakura": 0.26}
 
 
 def flood_bg(a: np.ndarray, seeds, step: float = STEP) -> np.ndarray:
@@ -162,7 +164,7 @@ def trim_square(rgba: np.ndarray, pad=0.04):
     return out
 
 
-def face_spot(alpha: np.ndarray, k: float):
+def face_spot(alpha: np.ndarray, k: float, fid: str = ""):
     """
     Chỗ đặt mặt (tỉ lệ theo cạnh ô khung): [bán kính, lệch ngang, lệch dọc].
     Khung có lỗ kín → tâm mặt = TÂM LỖ (ô khung đã căn theo tâm lỗ → lệch 0); 28/11 thầy thấy mặt lệch khi dịch tâm
@@ -197,7 +199,7 @@ def face_spot(alpha: np.ndarray, k: float):
             lo = r
         else:
             hi = r
-    return [round(float(lo / box), 3), round(float((x - c) / box), 3), round(float((y - c) / box), 3)]
+    return [round(float(max(lo / box, FACE_MIN.get(fid, 0))), 3), round(float((x - c) / box), 3), round(float((y - c) / box), 3)]
 
 
 def write_ts(scales, faces):
@@ -216,7 +218,7 @@ def faces_only():
     faces = {}
     for fid, k in scales.items():
         a = np.asarray(Image.open(os.path.join(OUT_DIR, f"{fid}.webp")).convert("RGBA"))[..., 3]
-        faces[fid] = face_spot(a, k)
+        faces[fid] = face_spot(a, k, fid)
     write_ts(scales, faces)
     print("faces", faces)
 
@@ -230,7 +232,7 @@ def main():
         sq, scale = frame_square(rgba, fg)
         save(sq, fid)
         scales[fid] = round(float(scale), 4)
-        faces[fid] = face_spot(sq[..., 3], scales[fid])
+        faces[fid] = face_spot(sq[..., 3], scales[fid], fid)
     for pid, (c, r) in PETS_ITEMS.items():
         cell = ITEMS.crop((c * IW, r * IH, (c + 1) * IW, (r + 1) * IH))
         rgba, _, _ = cutout(cell, frame=False)

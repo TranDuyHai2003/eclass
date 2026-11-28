@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { CUT_FRAME_FACE, CUT_FRAME_SCALE, CUT_PETS } from "@/lib/game/cut-art";
+import { SVG_FRAME_FACE } from "@/lib/game/frame-face";
 import { PetSvg } from "@/components/avatar/PetSvg";
 import { ShopArt, shopItemIndex } from "./Sprite";
 
@@ -37,10 +38,10 @@ export function FrameCut({ id, className }: { id: string; className?: string }) 
 /**
  * Chỗ đặt mặt nhân vật trong khung (28/11: thầy báo khung lệch, khuất góc — lỗ giữa nhiều khung không tròn đều:
  * tai mèo có chân thò vào, trăng khuyết lệch, hoa anh đào bông to). Khung tranh vẽ tay → vị trí riêng từng khung
- * (CUT_FRAME_FACE, script tính); khung khác → inset mặc định (% cạnh).
+ * (CUT_FRAME_FACE, script tính); khung SVG → SVG_FRAME_FACE (đo 28/11); khung lạ → inset mặc định (% cạnh).
  */
 export function faceBoxStyle(frameId?: string | null, fallbackInsetPct = 21): React.CSSProperties {
-  const f = frameId ? CUT_FRAME_FACE[frameId] : undefined;
+  const f = frameId ? (CUT_FRAME_FACE[frameId] ?? SVG_FRAME_FACE[frameId]) : undefined;
   if (!f) return { inset: `${fallbackInsetPct}%` };
   const [r, dx, dy] = f;
   const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
@@ -56,3 +57,6 @@ export function PetImage({ id, className, size = 120, style }: { id: string; cla
   if (idx !== undefined) return <span className="block" style={style}><ShopArt index={idx} className={cn("aspect-square h-full w-full", className)} /></span>;
   return <span className="block" style={style}><PetSvg itemId={id} size={size} className={cn("h-full w-full", className)} /></span>;
 }
+
+/** Khung có chỗ đặt mặt riêng (tranh vẽ tay hoặc SVG đã đo) */
+export const hasFaceSpot = (frameId?: string | null) => !!frameId && (frameId in CUT_FRAME_FACE || frameId in SVG_FRAME_FACE);
