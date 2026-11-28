@@ -14,6 +14,9 @@ import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { worldAsset } from "@/lib/world/avatars";
 import { PILLARS, PIPES, RENDER_SINK, SURFS, WALLS, ZONES, renderLayers, type Zone } from "@/lib/world/sirenMaze";
+import { HARMONIC } from "@/lib/world/harmonicState";
+import { KEY_MAX, keyLift, resetKeys, stepKeys } from "@/lib/world/sirenFloor";
+import { reduceMotion } from "./SirenGravity";
 
 /** Bảng màu theo khu: mặt sàn / thân / điểm nhấn */
 export const PALETTE: Record<Zone, { deck: string; side: string; acc: string }> = {
@@ -37,6 +40,9 @@ class Builder {
   col: number[] = [];
   acc: number[] = [];
   info: number[] = []; // zone, top y
+  key: number[] = []; // chỉ số phím sàn (lib/world/sirenFloor KEYS) hoặc −1
+  /** phím đang dựng (mọi tam giác thêm vào mang chỉ số này) */
+  curKey = -1;
   private c = new THREE.Color();
   private a = new THREE.Color();
   tri(p: THREE.Vector3[], n: THREE.Vector3, color: string, acc: string, zone: number, top: number) {
@@ -48,6 +54,7 @@ class Builder {
       this.col.push(this.c.r, this.c.g, this.c.b);
       this.acc.push(this.a.r, this.a.g, this.a.b);
       this.info.push(zone, top);
+      this.key.push(this.curKey);
     }
   }
   quad(a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, d: THREE.Vector3, n: THREE.Vector3 | null, color: string, acc: string, zone: number, top: number) {
@@ -62,6 +69,7 @@ class Builder {
     g.setAttribute("color", new THREE.Float32BufferAttribute(this.col, 3));
     g.setAttribute("aAcc", new THREE.Float32BufferAttribute(this.acc, 3));
     g.setAttribute("aInfo", new THREE.Float32BufferAttribute(this.info, 2));
+    g.setAttribute("aKey", new THREE.Float32BufferAttribute(this.key, 1));
     g.computeBoundingSphere();
     return g;
   }
@@ -180,9 +188,14 @@ function buildMaze(): THREE.BufferGeometry {
   for (const s of SURFS) {
     // đấu trường + đài nổi đã có hình riêng (ArenaFloor / Platforms trong Siren.tsx)
     if (s.zone === "arena") continue;
+    // cầu khuông nhạc: hình riêng uốn sóng (SirenFloor.tsx)
+    if (s.dyn === "staff") continue;
     const y = s.y - RENDER_SINK * (layer.get(s.id) ?? 0);
+    // phím sàn: cả khối bậc nhô / lún theo lò xo (vertex shader đọc uKeys)
+    b.curKey = s.dyn === "key" ? (s.di ?? -1) : -1;
     if (s.kind === "disc") addDisc(b, { x: s.x, z: s.z, y, r: s.r!, thick: s.thick }, s.zone);
     else addBox(b, s.x, s.z, s.hx!, s.hz!, s.yaw!, y - s.thick, y, s.zone, s.step ? PALETTE[s.zone].acc : undefined);
+    b.curKey = -1;
     // đệm nảy: đĩa màu riêng nổi hẳn 3 cm (trước đây 1 mm → nhấp nháy với mặt đài)
     if (s.bounce) addDisc(b, { x: s.x, z: s.z, y: y + 0.03, r: s.r! * 0.82, thick: 0.05 }, s.zone, false, s.bounce > 1 ? "#a8ff54" : "#ffba35");
   }
@@ -206,6 +219,8 @@ function buildMaze(): THREE.BufferGeometry {
 const PAPER_VERT = /* glsl */ `
 attribute vec3 aAcc;
 attribute vec2 aInfo;
+attribute float aKey;
+uniform vec4 uKeys[${KEY_MAX / 4}];
 varying vec3 vCol;
 varying vec3 vAcc;
 varying vec3 vN;
@@ -217,10 +232,19 @@ void main(){
   vCol = color;
   vAcc = aAcc;
   vN = normalize(mat3(modelMatrix) * normal);
-  vec4 w = modelMatrix * vec4(position, 1.0);
+  vec3 p = position;
+  float lift = 0.0;
+  if (aKey > -0.5) {
+    int i = int(aKey + 0.5);
+    vec4 k4 = uKeys[i / 4];
+    int c = i - (i / 4) * 4;
+    lift = c == 0 ? k4.x : c == 1 ? k4.y : c == 2 ? k4.z : k4.w;
+    p.y += lift;
+  }
+  vec4 w = modelMatrix * vec4(p, 1.0);
   vW = w.xyz;
   vZone = aInfo.x;
-  vTop = aInfo.y;
+  vTop = aInfo.y + lift;
   vec4 mv = viewMatrix * w;
   vFogDepth = -mv.z;
   gl_Position = projectionMatrix * mv;
@@ -348,20 +372,35 @@ export function makePaperMaterial() {
     fragmentShader: PAPER_FRAG,
     vertexColors: true,
     fog: true,
-    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uSun: { value: new THREE.Vector3(12, 20, 8).normalize() }, uInk: { value: new THREE.Color("#20172c") } }]),
+    uniforms: THREE.UniformsUtils.merge([
+      THREE.UniformsLib.fog,
+      { uSun: { value: new THREE.Vector3(12, 20, 8).normalize() }, uInk: { value: new THREE.Color("#20172c") }, uKeys: { value: Array.from({ length: KEY_MAX / 4 }, () => new THREE.Vector4()) } },
+    ]),
   });
 }
 
 export function MazeGeometry() {
   const geo = useMemo(() => buildMaze(), []);
   const mat = useMemo(() => makePaperMaterial(), []);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    resetKeys();
+    return () => {
       geo.dispose();
       mat.dispose();
-    },
-    [geo, mat],
-  );
+      resetKeys();
+    };
+  }, [geo, mat]);
+  // phím sàn: MỘT chỗ bước lò xo mỗi khung (va chạm CPU đọc cùng KEYS), rồi chép độ nhô (m) vào uniform
+  const rm = useMemo(() => ({ on: false, at: -1 }), []);
+  useFrame((_, dt) => {
+    if (HARMONIC.time - rm.at > 1 || HARMONIC.time < rm.at) {
+      rm.at = HARMONIC.time;
+      rm.on = reduceMotion();
+    }
+    stepKeys(HARMONIC.beat, Math.min(dt, 0.1), rm.on);
+    const u = mat.uniforms.uKeys.value as THREE.Vector4[];
+    for (let j = 0; j < u.length; j++) u[j].set(keyLift(j * 4), keyLift(j * 4 + 1), keyLift(j * 4 + 2), keyLift(j * 4 + 3));
+  });
   return <mesh name="perf:maze" geometry={geo} material={mat} frustumCulled={false} />;
 }
 

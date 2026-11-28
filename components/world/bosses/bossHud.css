@@ -1,0 +1,35 @@
+/* HUD boss / sự kiện Vùng Kỳ quan — dùng lại .w-boss (story.css) cho thanh máu; thẻ phụ gọn cho điện thoại ngang */
+.bx-card {
+  margin-top: calc(var(--u) * 4px) !important;
+  padding: calc(var(--u) * 6px) calc(var(--u) * 12px) !important;
+  max-width: 100%;
+  border-radius: 10px !important;
+  background: rgba(14, 17, 38, 0.72);
+  box-shadow: 0 0 0 1px rgba(236, 215, 169, 0.35);
+  color: #fff;
+  font-size: calc(var(--u) * 12px);
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}
+.bx-card b { color: #ecd7a9; }
+.bx-row { display: flex; flex-wrap: wrap; justify-content: center; gap: calc(var(--u) * 6px); margin-top: 2px !important; }
+.bx-chip { padding: 0 calc(var(--u) * 7px) !important; border-radius: 99px !important; background: rgba(255, 255, 255, 0.1); font-weight: 700; white-space: nowrap; }
+.bx-chip--ok { background: rgba(125, 255, 200, 0.25); color: #b9ffe1; }
+.bx-chip--gold { background: rgba(255, 211, 107, 0.22); color: #ffe3a1; }
+.bx-chip--bet { box-shadow: 0 0 0 2px #ffffff; }
+.bx-hint { color: rgba(255, 255, 255, 0.78); }
+.bx-warn { color: #ffb3a8; font-weight: 700; }
+.bx-math { font-family: var(--font-chakra), ui-monospace, monospace; letter-spacing: 0.01em; }
+.bx-pts { position: relative; width: 70%; height: calc(var(--u) * 5px); border-radius: 99px !important; overflow: hidden; background: rgba(14, 17, 38, 0.7); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); }
+.bx-pts > div { height: 100%; background: linear-gradient(90deg, #8cb8ff, #8deb9e); transition: width 0.2s; }
+.bx-toast { margin-top: calc(var(--u) * 6px) !important; padding: calc(var(--u) * 4px) calc(var(--u) * 14px) !important; border-radius: 6px !important; font-weight: 800; font-size: calc(var(--u) * 13px); background: rgba(14, 17, 38, 0.72); color: #fff; text-align: center; max-width: 100%; }
+.bx-toast--win { color: #ffe08a; box-shadow: 0 0 0 1px rgba(255, 224, 138, 0.6); }
+.bx-toast--warn { color: #ffc2b8; }
+.bx-wrap { position: absolute; left: 50%; top: calc(var(--pt) + var(--u) * 8px); translate: -50% 0; width: min(560px, 62vw); display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+.bx-wrap .w-boss { position: static; translate: none; width: 100%; }
+/* điện thoại ngang (thấp): bớt dòng gợi ý dài */
+@media (max-height: 480px) {
+  .bx-hint--long { display: none; }
+  .bx-wrap { width: min(560px, 56vw); }
+}

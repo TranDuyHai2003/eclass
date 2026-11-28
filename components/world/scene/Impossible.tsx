@@ -15,10 +15,20 @@ import { PlatoCave, caveBlocked, SAGE } from "./PlatoCave";
 import { MontyStage, montyBlocked, montyGround, HOST } from "./MontyStage";
 import { CourtRail } from "./CourtRail";
 import { TheseusDocks, theseusBlocked, WRIGHT } from "./TheseusDocks";
+import { TheseusCubist } from "./TheseusCubist";
 import { MaxwellLab, maxwellBlocked, nearDemon } from "./MaxwellLab";
 import { ChineseRoomScene, croomBlocked, croomGround, LAN } from "./ChineseRoom";
 import { TessRoom } from "./TessRoom";
 import { clampCamera, insideRoomVolume, nearConsole, roomBlocked, roomGround, TR, updateRoomNav } from "@/lib/world/tessRoom";
+import { nearPendulumLever } from "@/lib/world/pendulumWave";
+import { nearGalton } from "@/lib/world/galtonBoard";
+import { nearSlit } from "@/lib/world/doubleSlit";
+import { nearHarpBeam } from "@/lib/world/lissajous";
+import { nearHypercube } from "@/lib/world/hypercube";
+import { nearOrrery } from "@/lib/world/orrery";
+import { orreryHint } from "./OrreryRoom";
+import { nearColorStation } from "@/lib/world/colorTheory";
+import { colorHint } from "./PrismHall";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Outlines, Sparkles, useTexture } from "@react-three/drei";
 import { Label3D } from "../ui/Labels";
@@ -136,6 +146,9 @@ function StencilPortal({ position, geometry, openness, children }: { position: [
       const o = Math.max(0.001, openness());
       maskRef.current.scale.x = o;
       maskRef.current.visible = o > 0.01;
+      // cửa đóng: nội dung chỉ hiện trong vùng stencil = 1 mà mặt nạ không vẽ → ẩn luôn nội dung (khỏi gửi lệnh vẽ, useFrame
+      // bên trong tự bỏ phần trình diễn qua scene/shown)
+      if (content.current) content.current.visible = maskRef.current.visible;
     }
     if (tick.current++ % 30 !== 0 || !content.current) return;
     content.current.traverse((o) => {
@@ -199,7 +212,7 @@ export function Impossible() {
   useLayoutEffect(() => {
     // Suy ra không gian từ vị trí (gắn lại cảnh khi đang ở trong bốt không được ném người chơi ra sân)
     const pl = useWorld.getState().player;
-    SPACE.v = pl.z < BOOTH.z + BOOTH.d / 2 - 0.2 && insideRoomVolume(pl.x - ROOM.x, 1, pl.z - ROOM.z) ? "hall" : "court";
+    SPACE.v = pl.z < BOOTH.z + BOOTH.d / 2 - 0.2 && insideRoomVolume(pl.x - ROOM.x, Math.max(1, pl.y + 1), pl.z - ROOM.z) ? "hall" : "court";
     if (process.env.NODE_ENV !== "production") (window as unknown as { __imp: unknown }).__imp = { gl, scene, SPACE };
     if (!hall.current) return;
     // Cảnh vẽ qua EffectComposer vào render target (không gian màu tuyến tính) → biên dịch với một RT đang gắn,
@@ -305,6 +318,8 @@ function Court() {
       <PlatoCave />
       <MontyStage />
       <TheseusDocks />
+      {/* Tàu Theseus lập thể: cùng con tàu từ 4 góc nhìn trong một bức collage; ván vừa thay sáng vàng ở mọi góc */}
+      <TheseusCubist />
       <MaxwellLab />
       {/* Đài Phép Chiếu: mảnh vỡ lập thể chỉ ghép thành chân dung kiểu Picasso từ đúng một điểm nhìn */}
       <AnamorphSculpture />
@@ -423,6 +438,9 @@ function impNearby(p: THREE.Vector3): Nearby | null {
     return null;
   }
   // ở trên cao: không gợi ý nói chuyện / cổng bên dưới
+  // Phòng Lăng kính (sàn y 5, sau vòm tầng lửng 90°): bệ F của các trạm lý thuyết màu
+  const ca = SPACE.v === "hall" ? nearColorStation(p.x - ROOM.x, p.z - ROOM.z, p.y) : null;
+  if (ca) return { kind: "action", id: `color:${ca}`, label: colorHint(ca, lang === "vi") };
   if (p.y > 4.5) return null;
   if (Math.hypot(p.x, p.z - 16) < 2.6) return { kind: "portal", id: "hub", label: tt(lang, "returnHub") };
   if (SPACE.v === "court" && Math.hypot(p.x - ANAM.x, p.z - ANAM.z) < 1.6) return { kind: "paradox", id: "anamorph", label: lang === "vi" ? "Nhìn từ điểm chiếu" : "Look from the projection point" };
@@ -440,5 +458,18 @@ function impNearby(p: THREE.Vector3): Nearby | null {
   // Cuối hành lang Thư viện (phía tây phòng điều khiển) → Thư viện Babel
   if (SPACE.v === "hall" && p.x - ROOM.x < -(TR.R + TR.CORR.L - 1.6) && Math.abs(p.z - ROOM.z) < 1.4) return { kind: "portal", id: "babel", label: lang === "vi" ? "Bước vào Thư viện Babel" : "Step into the Library of Babel" };
   if (SPACE.v === "hall" && nearConsole(p.x - ROOM.x, p.z - ROOM.z, p.y)) return { kind: "console", label: lang === "vi" ? "Dùng bàn điều khiển" : "Use the console" };
+  // Thiên văn đồ (cuối hành lang đông): cần gạt thời gian, núm tâm sai
+  const orr = SPACE.v === "hall" ? nearOrrery(p.x - ROOM.x, p.z - ROOM.z, p.y) : null;
+  if (orr) return { kind: "action", id: orr === "lever" ? "orrery-time" : "orrery-ecc", label: orreryHint(orr, lang === "vi") };
+  if (SPACE.v === "hall" && nearHypercube(p.x - ROOM.x, p.z - ROOM.z, p.y)) return { kind: "action", id: "hypercube-plane", label: lang === "vi" ? "Đổi mặt phẳng quay của siêu khối" : "Change the tesseract's rotation plane" };
+  const beam = SPACE.v === "hall" ? nearHarpBeam(p.x - ROOM.x, p.z - ROOM.z, p.y) : null;
+  if (beam !== null) return { kind: "action", id: `harp:${beam}`, label: lang === "vi" ? `Gảy tia tần số ${beam + 1}` : `Pluck beam ${beam + 1}` };
+  const slit = SPACE.v === "hall" ? nearSlit(p.x - ROOM.x, p.z - ROOM.z, p.y) : null;
+  if (slit === "detector") return { kind: "action", id: "slit-detector", label: lang === "vi" ? "Bật / tắt máy dò đường đi (khe Young)" : "Toggle the which-path detector" };
+  if (slit === "gap") return { kind: "action", id: "slit-gap", label: lang === "vi" ? "Đổi khoảng cách hai khe" : "Change the slit gap" };
+  const gal = SPACE.v === "hall" ? nearGalton(p.x - ROOM.x, p.z - ROOM.z, p.y) : null;
+  if (gal === "drop") return { kind: "action", id: "galton-drop", label: lang === "vi" ? "Thả 240 viên qua bảng Galton" : "Drop 240 balls through the Galton board" };
+  if (gal === "tilt") return { kind: "action", id: "galton-tilt", label: lang === "vi" ? "Nghiêng bảng Galton (đổi p)" : "Tilt the Galton board (change p)" };
+  if (SPACE.v === "hall" && nearPendulumLever(p.x - ROOM.x, p.z - ROOM.z, p.y)) return { kind: "action", id: "pendulum-release", label: lang === "vi" ? "Thả lại con lắc sóng (cùng pha)" : "Release the pendulum wave (in phase)" };
   return null;
 }

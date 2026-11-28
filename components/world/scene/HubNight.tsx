@@ -23,6 +23,7 @@ const MOON_COL = new THREE.Color("#9fb4ff");
 const TMP = new THREE.Color();
 const TMP2 = new THREE.Color();
 const DAY_TINT = new THREE.Color(1.03, 0.99, 0.95);
+const WARM = new THREE.Color();
 
 /** ngày hiện tại hoặc giờ thử (window.__hour) */
 function nowDate(): Date {
@@ -33,7 +34,7 @@ function nowDate(): Date {
   return new Date(base + (o - 7) * 3600e3);
 }
 
-export function HubDayCycle({ U, lampMats }: { U: BakedUniforms; lampMats: { mat: THREE.MeshBasicMaterial; base: THREE.Color }[] }) {
+export function HubDayCycle({ U, lampMats, warm = false }: { U: BakedUniforms; lampMats: { mat: THREE.MeshBasicMaterial; base: THREE.Color }[]; warm?: boolean }) {
   const { scene } = useThree();
   const lights = useRef<{ key: THREE.DirectionalLight | null; hemi: THREE.HemisphereLight | null }>({ key: null, hemi: null });
   const acc = useRef(1);
@@ -84,6 +85,16 @@ export function HubDayCycle({ U, lampMats }: { U: BakedUniforms; lampMats: { mat
     if (twi > 0) {
       TMP2.setRGB(...s.hor, THREE.SRGBColorSpace);
       U.uTint.value.lerp(TMP2.multiplyScalar(1 / Math.max(TMP2.r, TMP2.g, TMP2.b, 1e-3)), 0.75 * twi);
+    }
+    if (warm) {
+      // Quảng trường kiểu Genshin: nhuộm GI nướng bớt rực một nửa + ngả kem ấm — đá trắng / sa thạch đọc là đá dưới nắng,
+      // không lăng tím hồng lúc hoàng hôn (đêm vẫn lam theo ánh trời)
+      const t = U.uTint.value;
+      const g = (t.r + t.g + t.b) / 3;
+      const k = 1 - night;
+      t.setRGB(g + (t.r - g) * 0.55, g + (t.g - g) * 0.55, g + (t.b - g) * 0.55);
+      WARM.setRGB(t.r * 1.05, t.g, t.b * 0.9);
+      t.lerp(WARM, k);
     }
     scene.environmentIntensity = 0.9 * (0.3 + 0.7 * scale);
     // trời

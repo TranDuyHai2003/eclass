@@ -8,11 +8,18 @@
  * Hiện khi việc tải kéo dài > 0,3 s; đã hiện thì ở lại tối thiểu 1,6 s rồi mờ dần.
  */
 import { useEffect, useRef, useState } from "react";
+import type React from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useProgress } from "@react-three/drei";
 import { CURVES, FACTS, buffonHit, buffonPi, dft, epicycleAt, galtonBin, pendStep, sampleCurve, sieve, ulam, type CurveId, type Epicycle, type Pend } from "@/lib/world/loadToys";
+import { STABLE_FRAMES, STAGES, STAGE_LABEL, STAGE_SHORT, buildsIncrementally, createLoadTracker, prefersReducedMotion, type LoadSnapshot, type StageId } from "@/lib/world/loadProgress";
+import { LOAD_SIG } from "@/lib/world/loadSignals";
 import { useWorld } from "../store";
 import { TITLES } from "./AreaTitle";
+import { ConvergeBar } from "./ConvergeBar";
+import { useTransit } from "./transit";
+import { REALM_PALETTE } from "./WormholeTravel";
+import "./interstitial.css";
 
 type L = { vi: string; en: string };
 interface Toy {
@@ -455,81 +462,182 @@ function kindOf(item: string, vi: boolean) {
   return vi ? "dữ liệu" : "data";
 }
 
-/** armKey đổi (vào game / đổi thế giới / đổi nhân vật) → canh việc tải tiếp theo */
+type Info = { stage: StageId | "ready"; done: StageId[]; detail: string };
+
+/**
+ * armKey đổi (vào game / đổi thế giới / đổi nhân vật) → canh lượt tải tiếp theo.
+ * Tiến độ THẬT theo giai đoạn (lib/world/loadProgress): tệp → dựng thế giới → biên dịch shader → ổn định khung hình;
+ * chỉ tắt khi mọi giai đoạn xong VÀ thanh đã đầy (ảnh "hội tụ" sạch nhiễu).
+ * Đang bay trong lỗ sâu: chờ gần hết đường hầm mới quyết hiện hay không; nếu hiện thì hiện NGAY bên dưới đường hầm
+ * (không mờ dần lần hai) → đường hầm tan ra để lộ màn chờ cùng màu thế giới đích, như một chuyển cảnh liền mạch.
+ */
 export function LoadingScreen({ armKey, scene }: { armKey: string; scene: string }) {
-  const { active, item, loaded, total } = useProgress();
-  const vi = useWorld((s) => s.lang === "vi");
+  const lang = useWorld((s) => (s.lang === "vi" ? "vi" : "en"));
+  const vi = lang === "vi";
   const [show, setShow] = useState(false);
-  const st = useRef({ armedAt: 0, shownAt: 0, idleAt: 0 });
+  const [instant, setInstant] = useState(false);
+  const [reduced, setReduced] = useState(false);
+  const st = useRef({ armedAt: 0, shownAt: 0, idleAt: 0, readyAt: 0, base: 0, disp: 0, tracker: createLoadTracker(), snap: null as LoadSnapshot | null });
   const [toy, setToy] = useState<Toy | null>(null);
   const [fact, setFact] = useState(0);
-  const [pct, setPct] = useState(0);
+  const [info, setInfo] = useState<Info>({ stage: "assets", done: [], detail: "" });
+  // mạng chậm / tệp treo: sau 12 s cho phép vào luôn (phần còn lại tải tiếp trong nền) — không giả 100 %
+  const [slow, setSlow] = useState(false);
+  const enterNow = () => {
+    st.current.armedAt = 0;
+    setShow(false);
+    useTransit.setState({ load: "idle" });
+  };
   // lên dây khi armKey đổi
   useEffect(() => {
-    st.current.armedAt = performance.now();
+    const s = st.current;
+    const p = useProgress.getState();
+    s.armedAt = performance.now();
+    s.tracker = createLoadTracker();
+    s.base = p.active ? p.loaded : p.total;
+    s.readyAt = 0;
+    s.idleAt = 0;
+    if (useTransit.getState().load !== "shown") useTransit.setState({ load: "armed" });
   }, [armKey]);
   useEffect(() => {
     const id = window.setInterval(() => {
       const now = performance.now();
       const s = st.current;
+      if (!s.armedAt && !show) return;
+      const p = useProgress.getState();
+      if (p.active) s.idleAt = 0;
+      else if (!s.idleAt) s.idleAt = now;
+      const sc = useWorld.getState().scene;
+      const build = buildsIncrementally(sc) ? (LOAD_SIG.build?.() ?? null) : null;
+      const loaded = Math.max(0, p.loaded - s.base);
+      const total = Math.max(0, p.total - s.base);
+      let snap = s.tracker.update({
+        now,
+        scene: sc,
+        active: p.active,
+        loaded,
+        total,
+        quietMs: p.active ? 0 : now - s.idleAt,
+        mounted: LOAD_SIG.mounted === sc,
+        build,
+        shadersDone: LOAD_SIG.prewarm.scene === sc && LOAD_SIG.prewarm.done,
+        stableFrames: LOAD_SIG.stable,
+      });
+      // DEV: window.__loadFreeze = 0..1 → giữ màn chờ ở tiến độ đó (chụp ảnh / kiểm tra bố cục); xoá để chạy tiếp
+      const fz = process.env.NODE_ENV !== "production" ? (window as unknown as { __loadFreeze?: number }).__loadFreeze : undefined;
+      if (typeof fz === "number") snap = { ...snap, ready: false, target: fz, stage: STAGES[Math.min(3, Math.floor(fz * 4))] };
+      s.snap = snap;
       if (!show) {
-        if (!s.armedAt) return;
-        if (active && now - s.armedAt > 300) {
+        const tr = useTransit.getState();
+        // còn trong đường hầm → quyết sau (đường hầm đang che, thế giới có thể kịp xong)
+        if (tr.travelTo && now < tr.travelEnd - 260) return;
+        const el = now - s.armedAt;
+        if (!snap.ready && el > 300) {
           s.shownAt = now;
-          s.idleAt = 0;
+          s.readyAt = 0;
+          s.disp = 0;
           setToy(TOYS[nextToy()]());
           setFact(Math.floor(Math.random() * FACTS.length));
-          setPct(0);
+          setInstant(!!tr.travelTo);
+          setReduced(prefersReducedMotion());
           setShow(true);
-        } else if (!active && now - s.armedAt > 1500) s.armedAt = 0; // đã có sẵn trong bộ nhớ đệm → không cần màn chờ
+          useTransit.setState({ load: "shown" });
+        } else if (snap.ready && (el > 1500 || tr.travelTo)) {
+          // đã có sẵn trong bộ nhớ đệm → không cần màn chờ
+          s.armedAt = 0;
+          if (useTransit.getState().load === "armed") useTransit.setState({ load: "idle" });
+        }
         return;
       }
-      // tiến độ không tụt lùi khi có thêm tệp mới vào hàng đợi
-      setPct((v) => Math.max(v, Math.round(useProgress.getState().progress)));
-      if (active) s.idleAt = 0;
-      else if (!s.idleAt) s.idleAt = now;
-      if (!active && s.idleAt && now - s.idleAt > 600 && now - s.shownAt > 1600) {
+      const stage = snap.stage;
+      const detail =
+        stage === "assets" && total > 0
+          ? `${p.item ? kindOf(p.item, vi) + " · " : ""}${Math.min(loaded, total)}/${total}`
+          : stage === "build" && build
+            ? `${build.done}/${build.need} chunk`
+            : stage === "settle"
+              ? `${Math.min(LOAD_SIG.stable, STABLE_FRAMES)}/${STABLE_FRAMES}`
+              : "";
+      const cur = stage === "ready" ? STAGES.length : STAGES.indexOf(stage);
+      const done = STAGES.filter((_, k) => k < cur);
+      setInfo((o) => (o.stage === stage && o.detail === detail ? o : { stage, done, detail }));
+      setSlow(!snap.ready && now - s.shownAt > 12000);
+      if (snap.ready && !s.readyAt && s.disp >= 0.999) s.readyAt = now;
+      // giữ khung "hội tụ" sạch một nhịp cho mắt kịp thấy, rồi mở ra thế giới
+      if (s.readyAt && now - s.readyAt > 420 && now - s.shownAt > 1400) {
         setShow(false);
         s.armedAt = 0;
+        useTransit.setState({ load: "idle" });
       }
     }, 100);
     return () => window.clearInterval(id);
-  }, [show, active]);
+  }, [show, vi]);
   useEffect(() => {
     if (!show) return;
     const id = window.setInterval(() => setFact((f) => (f + 1) % FACTS.length), 7000);
     return () => window.clearInterval(id);
   }, [show]);
+  const pal = REALM_PALETTE[scene] ?? REALM_PALETTE.hub;
+  const ready = info.stage === "ready";
   return (
     <AnimatePresence>
       {show && toy && (
-        <motion.div className="w-load" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.5 } }}>
+        <motion.div
+          className={`w-load${ready ? " is-ready" : ""}`}
+          style={{ "--ra": pal[0], "--rb": pal[1] } as React.CSSProperties}
+          initial={instant ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, scale: reduced ? 1 : 1.03, transition: { duration: 0.55, ease: "easeIn" } }}
+        >
           <div className="w-load__stars" />
           <header className="w-load__head">
-            <small>{vi ? "Đang mở" : "Opening"}</small>
-            <b>{TITLES[scene]?.name[vi ? "vi" : "en"] ?? "Math World"}</b>
+            <small>{vi ? "Đang mở cổng tới" : "Opening the way to"}</small>
+            <b>{TITLES[scene]?.name[lang] ?? "Math World"}</b>
           </header>
           <div className="w-load__stage">
             <ToyCanvas toy={toy} />
             <div className="w-load__cap">
               <h3>
-                {toy.title[vi ? "vi" : "en"]}
+                {toy.title[lang]}
                 {toy.stat && <ToyStat toy={toy} />}
               </h3>
-              <p>{toy.desc[vi ? "vi" : "en"]}</p>
-              <em>{toy.hint[vi ? "vi" : "en"]}</em>
+              <p>{toy.desc[lang]}</p>
+              <em>{toy.hint[lang]}</em>
             </div>
           </div>
           <AnimatePresence mode="wait">
             <motion.p key={fact} className="w-load__fact" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-              <span>{vi ? "Bạn có biết?" : "Did you know?"}</span> {FACTS[fact][vi ? "vi" : "en"]}
+              <span>{vi ? "Bạn có biết?" : "Did you know?"}</span> {FACTS[fact][lang]}
             </motion.p>
           </AnimatePresence>
-          <footer className="w-load__bar">
-            <i style={{ width: `${pct}%` }} />
-            <span>
-              {vi ? "Đang tải" : "Loading"} {item ? kindOf(item, vi) : ""} · {loaded}/{total} · {pct}%
-            </span>
+          <footer className="w-load__foot">
+            <div className="w-load__row">
+              <span className="w-load__now" aria-live="polite">
+                <b>{STAGE_LABEL[info.stage][lang]}</b>
+                {info.detail && <em>{info.detail}</em>}
+              </span>
+              {slow ? (
+                <button type="button" className="w-load__skip" onClick={enterNow} title={vi ? "Phần còn lại tải tiếp trong nền" : "The rest keeps loading in the background"}>
+                  {vi ? "Vào luôn (tải nốt trong nền)" : "Enter now (finish in background)"}
+                </button>
+              ) : (
+                <ol className="w-load__pips">
+                  {STAGES.map((x) => (
+                    <li key={x} className={info.done.includes(x) || ready ? "is-done" : info.stage === x ? "is-now" : ""}>
+                      <i />
+                      <span>{STAGE_SHORT[x][lang]}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+            <ConvergeBar
+              scene={scene}
+              lang={lang}
+              reduced={reduced}
+              feed={() => ({ target: st.current.snap?.target ?? 0, ready: !!st.current.snap?.ready })}
+              onDisplay={(p) => (st.current.disp = p)}
+            />
           </footer>
         </motion.div>
       )}

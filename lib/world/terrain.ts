@@ -7,7 +7,7 @@ import { WONDER_IDS, type WonderId } from "./wonders";
 export const CHUNK = 32;
 const SEED = 1729; // số Hardy–Ramanujan
 
-function hash2(x: number, z: number, s = SEED): number {
+export function hash2(x: number, z: number, s = SEED): number {
   let h = Math.imul(x | 0, 374761393) ^ Math.imul(z | 0, 668265263) ^ Math.imul(s, 2246822519);
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
@@ -27,7 +27,7 @@ function valueNoise(x: number, z: number, s: number): number {
   return a + (b - a) * ux + (c - a) * uz + (a - b - c + d) * ux * uz;
 }
 
-function fbm(x: number, z: number, octaves = 4, s = SEED): number {
+export function fbm(x: number, z: number, octaves = 4, s = SEED): number {
   let sum = 0;
   let amp = 0.5;
   let f = 1;
@@ -39,10 +39,32 @@ function fbm(x: number, z: number, octaves = 4, s = SEED): number {
   return sum / (1 - 0.5 ** octaves);
 }
 
-/** Độ cao địa hình (m). Bằng phẳng quanh điểm xuất phát để có chỗ đứng. */
+/**
+ * sin TẤT ĐỊNH (chỉ + − × và floor): Math.sin có thể lệch bit cuối giữa các engine JS → floor(độ cao khối) khác nhau
+ * giữa máy khách và server. Thu gọn về [−π/2, π/2] rồi đa thức Taylor bậc 11 (sai số < 1e-7).
+ */
+const PI = 3.141592653589793;
+export function dsin(x: number): number {
+  const k = Math.floor(x / PI + 0.5);
+  let r = x - k * PI;
+  if (k & 1) r = -r;
+  const r2 = r * r;
+  return r * (1 + r2 * (-1 / 6 + r2 * (1 / 120 + r2 * (-1 / 5040 + r2 * (1 / 362880 + r2 * (-1 / 39916800))))));
+}
+export const dcos = (x: number) => dsin(x + PI / 2);
+
 // ───────────── Biome toán học (≈ 20–25% đất liền) ─────────────
-export type MathBiome = "function" | "sierpinski" | "fractal" | "saddle";
-const MATH_KINDS: MathBiome[] = ["function", "sierpinski", "fractal", "saddle"];
+export type MathBiome = "function" | "sierpinski" | "fractal" | "saddle" | "voronoi";
+const MATH_KINDS: Exclude<MathBiome, "voronoi">[] = ["function", "sierpinski", "fractal", "saddle"];
+
+/** Tên + công thức cho biển báo biome */
+export const MATH_BIOME_INFO: Record<MathBiome, { vi: string; en: string; formula: string }> = {
+  function: { vi: "Đồng bằng Hàm số", en: "Function Plains", formula: "y = 6·sin(x/12)·cos(z/15)" },
+  sierpinski: { vi: "Cao nguyên Sierpiński", en: "Sierpiński Badlands", formula: "nhô lên khi (i AND j) = 0" },
+  fractal: { vi: "Cao nguyên Fractal", en: "Fractal Highlands", formula: "z ↦ z² + c" },
+  saddle: { vi: "Hồ Yên ngựa", en: "Saddle Lake", formula: "y = (x² − z²)/260" },
+  voronoi: { vi: "Thảo nguyên Voronoi", en: "Voronoi Steppe", formula: "mỗi điểm thuộc hạt gần nhất" },
+};
 const CELL = 150;
 /** Vùng toán học: trục "kỳ quan" nhiễu tần số thấp; loại biome theo ô 150 m (tất định theo hạt) */
 export function mathBiome(x: number, z: number): { kind: MathBiome; w: number; cx: number; cz: number } | null {
@@ -54,7 +76,33 @@ export function mathBiome(x: number, z: number): { kind: MathBiome; w: number; c
   const ci = Math.floor(x / CELL);
   const cj = Math.floor(z / CELL);
   const hsh = Math.abs(Math.imul(ci * 73856093, 1) ^ Math.imul(cj * 19349663, 1)) >>> 0;
-  return { kind: MATH_KINDS[hsh % MATH_KINDS.length], w: w * w * (3 - 2 * w), cx: (ci + 0.5) * CELL, cz: (cj + 0.5) * CELL };
+  // ~1/6 ô là Thảo nguyên Voronoi (nhánh hash riêng → các ô cũ giữ nguyên loại)
+  const kind: MathBiome = (hsh >>> 8) % 6 === 0 ? "voronoi" : MATH_KINDS[hsh % MATH_KINDS.length];
+  return { kind, w: w * w * (3 - 2 * w), cx: (ci + 0.5) * CELL, cz: (cj + 0.5) * CELL };
+}
+
+/** Thảo nguyên Voronoi: hạt ngẫu nhiên tất định trên lưới 18 m; mỗi ô là một bậc cao riêng, ranh giới là rãnh nứt */
+const VOR = 18;
+export function voronoiCell(x: number, z: number): { id: number; d1: number; d2: number } {
+  const gi = Math.floor(x / VOR);
+  const gj = Math.floor(z / VOR);
+  let d1 = 1e9;
+  let d2 = 1e9;
+  let id = 0;
+  for (let a = -1; a <= 1; a++)
+    for (let b = -1; b <= 1; b++) {
+      const ci = gi + a;
+      const cj = gj + b;
+      const sx = (ci + 0.15 + 0.7 * hash2(ci, cj, 4242)) * VOR;
+      const sz = (cj + 0.15 + 0.7 * hash2(ci, cj, 9191)) * VOR;
+      const d = Math.hypot(x - sx, z - sz);
+      if (d < d1) {
+        d2 = d1;
+        d1 = d;
+        id = (Math.imul(ci, 92821) ^ Math.imul(cj, 68917)) >>> 0;
+      } else if (d < d2) d2 = d;
+    }
+  return { id, d1, d2 };
 }
 
 function mathHeight(kind: MathBiome, x: number, z: number, cx: number, cz: number): number {
@@ -63,7 +111,7 @@ function mathHeight(kind: MathBiome, x: number, z: number, cx: number, cz: numbe
   switch (kind) {
     case "function":
       // Đồng bằng Hàm số: mặt đất CHÍNH LÀ đồ thị f(x, z) = 6·sin(x/12)·cos(z/15) — đi bộ lên được nơi |f′| ≤ 1
-      return 6 * Math.sin(x / 12) * Math.cos(z / 15) + 2;
+      return 6 * dsin(x / 12) * dcos(z / 15) + 2;
     case "sierpinski": {
       // Cao nguyên Sierpiński: bậc thang nâng lên ở ô có (i & j) = 0 (theo khối 4×4) — tam giác Sierpiński nhìn từ trên
       const i = Math.floor(x / 4) & 63;
@@ -87,6 +135,12 @@ function mathHeight(kind: MathBiome, x: number, z: number, cx: number, cz: numbe
     case "saddle":
       // Hồ yên ngựa: z = (x² − y²)/k — điểm yên ngựa ở tâm ô
       return (u * u - v * v) / 260;
+    case "voronoi": {
+      // mỗi ô Voronoi một bậc (1–7 m); sát ranh giới (d2 − d1 nhỏ) là rãnh nứt sâu
+      const c = voronoiCell(x, z);
+      if (c.d2 - c.d1 < 1.4) return 0;
+      return 1 + Math.floor(((c.id % 997) / 997) * 4) * 2;
+    }
   }
 }
 
@@ -118,8 +172,7 @@ export function biome(x: number, z: number): Biome {
 export const WATER_LEVEL = -2.2;
 
 /** Màu đỉnh theo độ cao + biome (RGB 0..1) */
-export function groundColor(x: number, z: number, h: number): [number, number, number] {
-  const bi = biome(x, z);
+export function groundColor(x: number, z: number, h: number, bi: Biome = biome(x, z)): [number, number, number] {
   if (h < WATER_LEVEL + 0.4) return [0.86, 0.8, 0.6]; // bãi cát
   // Đồng bằng Hàm số: nền giấy kẻ ô — vạch mỗi 8 khối (trục toạ độ đậm hơn)
   if (bi === "function") {
@@ -133,6 +186,13 @@ export function groundColor(x: number, z: number, h: number): [number, number, n
     return [0.35 + 0.25 * k, 0.25 + 0.55 * k, 0.6 + 0.3 * k];
   }
   if (bi === "saddle") return [0.55, 0.85, 0.72];
+  if (bi === "voronoi") {
+    // mỗi ô một sắc phấn (tô màu đồ thị kiểu bản đồ), rãnh nứt sẫm
+    const c = voronoiCell(x, z);
+    if (c.d2 - c.d1 < 1.4) return [0.36, 0.3, 0.26];
+    const P5: [number, number, number][] = [[0.96, 0.78, 0.55], [0.66, 0.82, 0.62], [0.62, 0.74, 0.92], [0.92, 0.66, 0.7], [0.86, 0.84, 0.6]];
+    return P5[c.id % P5.length];
+  }
   const t = Math.min(1, Math.max(0, (h - 0) / 16));
   const palettes: Record<"meadow" | "crystal" | "dusk", [number[], number[], number[]]> = {
     meadow: [[0.3, 0.62, 0.3], [0.47, 0.7, 0.36], [0.92, 0.95, 1]],
@@ -203,4 +263,22 @@ export function topKind(x: number, z: number, top: number): BlockKind {
   if (top >= 19) return "snow";
   if (top >= 15) return "stone";
   return "grass";
+}
+
+/** Tâm các ô biome toán học quanh (x, z) trong bán kính R (cho biển báo) — chỉ ô thật sự có biome ở tâm */
+export function nearbyMathCells(x: number, z: number, R: number): { kind: MathBiome; cx: number; cz: number }[] {
+  const out: { kind: MathBiome; cx: number; cz: number }[] = [];
+  const i0 = Math.floor((x - R) / CELL);
+  const i1 = Math.floor((x + R) / CELL);
+  const j0 = Math.floor((z - R) / CELL);
+  const j1 = Math.floor((z + R) / CELL);
+  for (let i = i0; i <= i1; i++)
+    for (let j = j0; j <= j1; j++) {
+      const cx = (i + 0.5) * CELL;
+      const cz = (j + 0.5) * CELL;
+      if (Math.hypot(cx - x, cz - z) > R) continue;
+      const mb = mathBiome(cx, cz);
+      if (mb && mb.w > 0.5) out.push({ kind: mb.kind, cx, cz });
+    }
+  return out;
 }

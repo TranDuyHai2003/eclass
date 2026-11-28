@@ -10,17 +10,48 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { VRMLoaderPlugin, VRMUtils, type VRM, type VRMHumanBoneName } from "@pixiv/three-vrm";
 import { toonMaterial } from "../fx/shaders";
-import { timeScale, type ActClip } from "../store";
+import { timeScale, useWorld, type ActClip } from "../store";
+import { outlineOn } from "@/lib/world/perfGate";
 import { CLIPS, loadLibrary, retargetClip, type ClipKey } from "./retarget";
 import { worldAsset } from "@/lib/world/avatars";
 import { RENDER_STYLE } from "../fx/renderStyle";
+import { loadWithKtx2 } from "../fx/ktx2";
 import { groundSpeedFromFeet, locoClip, strideTimeScale, type FootSample } from "@/lib/world/stride";
 
-export type Pose = "idle" | "walk" | "run" | "cast" | "cheer" | "hurt" | "jump" | "slash" | "roll" | "fall" | "land" | "stance";
+export type Pose = "idle" | "walk" | "run" | "cast" | "cheer" | "hurt" | "jump" | "slash" | "roll" | "fall" | "land" | "stance" | "swim" | "tread";
 /** Vật cầm tay: mô hình + tay + khoảng dịch dọc trục cán (m) để tay nắm đúng chỗ */
 export type Held = { obj: THREE.Object3D; hand: "right" | "left"; grip: number } | null;
 
 const cache = new Map<string, Promise<VRM>>();
+/**
+ * Số chỗ đang dùng mỗi bản VRM (khoá cache). Bản của người chơi khác (`peer:<id>`) hết người dùng quá EVICT_MS thì bỏ khỏi
+ * cache + huỷ geometry / vật liệu / texture / skeleton — mỗi bản được nạp riêng (GLTFLoader không dùng chung tài nguyên giữa
+ * các lần nạp) nên huỷ không ảnh hưởng bản khác. NPC / người chơi giữ cache (quay lại cảnh không phải nạp lại).
+ */
+const users = new Map<string, number>();
+const EVICT_MS = 15000;
+const vrmKey = (url: string, instance: string) => (instance ? `${url}|${instance}` : url);
+function retainVrm(key: string) {
+  users.set(key, (users.get(key) ?? 0) + 1);
+}
+function releaseVrm(key: string, evict: boolean) {
+  const n = (users.get(key) ?? 1) - 1;
+  if (n > 0) return void users.set(key, n);
+  users.delete(key);
+  if (!evict) return;
+  setTimeout(() => {
+    if (users.get(key)) return;
+    const p = cache.get(key);
+    if (!p) return;
+    cache.delete(key);
+    p.then((vrm) => {
+      vrm.scene.removeFromParent();
+      VRMUtils.deepDispose(vrm.scene);
+    }).catch(() => {});
+  }, EVICT_MS);
+}
+/** dev: số bản VRM đang giữ (kiểm tra thu hồi bộ nhớ) */
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") (window as unknown as { __vrmCache: unknown }).__vrmCache = () => ({ cached: [...cache.keys()], users: Object.fromEntries(users) });
 
 /** Thêm vật liệu viền (mặt sau, đẩy ra theo pháp tuyến) như cách three-vrm làm — cho model không có sẵn viền */
 function addOutlinePass(mesh: THREE.Mesh) {
@@ -201,21 +232,27 @@ const FOOT_B = new THREE.Vector3();
 
 /** instance: khoá phân biệt nhiều bản của cùng một model (một VRM không thể ở hai nơi cùng lúc) */
 function loadVrm(url: string, instance = ""): Promise<VRM> {
-  const key = instance ? `${url}|${instance}` : url;
+  const key = vrmKey(url, instance);
   if (!cache.has(key)) {
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMLoaderPlugin(parser));
-    cache.set(
-      key,
-      loader.loadAsync(url).then((gltf) => {
+    const p = loadWithKtx2(loader, url).then((gltf) => {
         const vrm = gltf.userData.vrm as VRM;
         VRMUtils.removeUnnecessaryVertices(gltf.scene);
         VRMUtils.combineSkeletons(gltf.scene);
         VRMUtils.rotateVRM0(vrm); // VRM0 nhìn về -Z → quay về +Z như VRM1
         vrm.scene.traverse((o) => {
-          o.frustumCulled = false;
           const mesh = o as THREE.Mesh;
           if (!mesh.isMesh) return;
+          // khối bao bảo thủ thay cho frustumCulled = false: khối bao của tư thế gốc (chữ T) nới thêm cho tóc / váy lò xo, đòn
+          // đánh, cú lăn → nhân vật ngoài khung nhìn (theo TỪNG máy quay: chính, phản chiếu, cổng, bóng) không bị gửi lệnh vẽ
+          if ((mesh as THREE.SkinnedMesh).isSkinnedMesh) {
+            const g = mesh.geometry;
+            g.computeBoundingBox();
+            const sphere = g.boundingBox!.getBoundingSphere(new THREE.Sphere());
+            sphere.radius = Math.max(sphere.radius, 0.9) + 0.6;
+            (mesh as THREE.SkinnedMesh).boundingSphere = sphere;
+          }
           for (const m of (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) as (THREE.Material & Record<string, unknown>)[]) {
             if (!m) continue;
             // Lọc anisotropic cho texture nhân vật — sắc nét khi nhìn cận
@@ -256,8 +293,10 @@ function loadVrm(url: string, instance = ""): Promise<VRM> {
             if (m?.isOutline && !outs.includes(m)) outs.push(m);
         });
         return vrm;
-      }),
-    );
+      });
+    // nạp lỗi: bỏ promise hỏng khỏi cache (lần sau thử lại được)
+    p.catch(() => cache.get(key) === p && cache.delete(key));
+    cache.set(key, p);
   }
   return cache.get(key)!;
 }
@@ -273,6 +312,8 @@ export function Avatar({ url, pose = "idle", speed = 0, scale = 1, npc = false, 
       setFailed(true);
       return;
     }
+    const key = vrmKey(url, instance);
+    retainVrm(key);
     loadVrm(url, instance)
       .then((v) => alive && setVrm(v))
       .catch((e) => {
@@ -281,6 +322,7 @@ export function Avatar({ url, pose = "idle", speed = 0, scale = 1, npc = false, 
       });
     return () => {
       alive = false;
+      releaseVrm(key, instance.startsWith("peer:"));
     };
   }, [url, instance]);
 
@@ -288,7 +330,7 @@ export function Avatar({ url, pose = "idle", speed = 0, scale = 1, npc = false, 
   return <ChibiFallback pose={pose} speed={speed} loading={!failed} />;
 }
 
-const POSE_CLIP: Record<Pose, ClipKey> = { idle: "idle", walk: "walk", run: "run", cast: "cast", cheer: "cheer", hurt: "hurt", jump: "jump", slash: "slash", roll: "roll", fall: "fall", land: "land", stance: "stance" };
+const POSE_CLIP: Record<Pose, ClipKey> = { idle: "idle", walk: "walk", run: "run", cast: "cast", cheer: "cheer", hurt: "hurt", jump: "jump", slash: "slash", roll: "roll", fall: "fall", land: "land", stance: "stance", swim: "swim", tread: "tread" };
 /** Động tác một lần (đòn đánh…): vào nhanh 0,06 s như game hành động; còn lại chuyển mềm */
 const ONE_SHOT = new Set<Pose>(["slash", "cast", "roll", "jump", "hurt", "land"]);
 
@@ -465,7 +507,14 @@ function VrmRig({ vrm, pose, speed, scale, npc, emote, expression, actId, actCli
 
   useFrame((state, rawDt) => {
     applyAvatarStyle(vrm, RENDER_STYLE.real);
-    if (!RENDER_STYLE.real) fitOutline(vrm, state.camera, state.size.height);
+    // viền MToon (thêm một lượt vẽ toàn bộ lưới da) chỉ cho nhân vật gần; NPC / người khác ở xa hoặc máy yếu: tắt (viền mực
+    // hậu kỳ Ink vẫn vẽ bóng dáng) — lib/world/perfGate.outlineOn, có trễ để khỏi nháy
+    const ud = vrm.scene.userData as { outlineNear?: boolean; outlineMats?: OutlineMat[] };
+    const dist = npc ? vrm.scene.getWorldPosition(NPC_POS).distanceTo(state.camera.position) : 0;
+    ud.outlineNear = outlineOn(dist, ud.outlineNear ?? true, npc, useWorld.getState().quality);
+    const on = !RENDER_STYLE.real && ud.outlineNear;
+    const outs = ud.outlineMats;
+    if (outs?.length && outs[0].visible !== on) for (const m of outs) m.visible = on;
     const dt = rawDt * timeScale();
     const h = vrm.humanoid;
     const bone = (n: VRMHumanBoneName) => h.getNormalizedBoneNode(n);
@@ -481,6 +530,7 @@ function VrmRig({ vrm, pose, speed, scale, npc, emote, expression, actId, actCli
       const hz = !NPC_FRUSTUM.intersectsSphere(NPC_SPHERE) ? 4 : NPC_POS.distanceTo(state.camera.position) > 14 ? 12 : 30;
       if (acc.current < 1 / hz) return;
     }
+    if (on) fitOutline(vrm, state.camera, state.size.height);
     const stepDt = npc ? Math.min(0.25, acc.current) * timeScale() : dt;
     acc.current = 0;
     // vận tốc ngang THẬT của nhân vật (làm mượt ~0,1 s) → tốc độ phát clip đi / chạy khớp bước chân (không trượt)

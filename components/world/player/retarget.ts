@@ -80,6 +80,8 @@ export const CLIPS = {
   slash: "Sword_Attack",
   roll: "Roll",
   interact: "Interact",
+  swim: "Swim_Fwd_Loop",
+  tread: "Swim_Idle_Loop",
 } as const;
 export type ClipKey = keyof typeof CLIPS;
 

@@ -10,9 +10,10 @@ import { useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useWorld } from "../store";
-import { B, blockAt } from "@/lib/world/voxels";
-import { blockTop } from "@/lib/world/terrain";
+import { B, blockAt, columnTop, setBlock } from "@/lib/world/voxels";
+import { ROLL_R, fulgurite, rollingSphereTarget, type StrikeCand } from "@/lib/world/lightning";
 import { addFx, playerHurt } from "../combat/combat";
+import { strike } from "../fx/StrikeFx";
 import { floatText } from "../ui/Labels";
 import { unlockNote } from "../story/quest";
 import { sfx } from "@/lib/world/sfx";
@@ -84,27 +85,41 @@ export function Storm() {
     const now = performance.now();
     if (now < nextStrike.current) return;
     nextStrike.current = now + 2600 + Math.random() * 2600;
-    // Sét chọn đường dễ nhất xuống đất: điểm CAO NHẤT quanh người chơi; khối vàng (dẫn điện) được ưu tiên
+    // Tia tiên đạo hạ xuống gần người chơi; điểm bị đánh theo MÔ HÌNH QUẢ CẦU LĂN (lib/world/lightning):
+    // vật cao + dẫn điện (vàng) gần tia hứng sét trước — cột thu lôi vàng tự xây che chở vùng quanh chân nó.
     const p = useWorld.getState().player;
-    let best = { x: p.x, z: p.z, y: p.y + 1.8, score: p.y + 1.8 + 0.6 };
-    for (let i = 0; i < 40; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const r = 2 + Math.random() * 16;
-      const x = Math.floor(p.x + Math.cos(a) * r);
-      const z = Math.floor(p.z + Math.sin(a) * r);
-      const top = blockTop(x, z);
-      const gold = blockAt(x, top - 1, z) === B.gold ? 3 : 0;
-      if (top + gold > best.score) best = { x: x + 0.5, z: z + 0.5, y: top, score: top + gold };
-    }
-    const at = new THREE.Vector3(best.x, best.y, best.z);
+    const lx = p.x + (Math.random() - 0.5) * 12;
+    const lz = p.z + (Math.random() - 0.5) * 12;
+    const cands: StrikeCand[] = [];
+    for (let dx = -ROLL_R; dx <= ROLL_R; dx++)
+      for (let dz = -ROLL_R; dz <= ROLL_R; dz++) {
+        const x = Math.floor(lx) + dx;
+        const z = Math.floor(lz) + dz;
+        const top = columnTop(x, z);
+        cands.push({ x: x + 0.5, z: z + 0.5, top, conductor: blockAt(x, top - 1, z) === B.gold });
+      }
+    cands.push({ x: p.x, z: p.z, top: p.y + 1.8, player: true });
+    const hit = cands[Math.max(0, rollingSphereTarget(cands, lx, lz))];
+    const at = new THREE.Vector3(hit.x, hit.top, hit.z);
     addFx("bolt", at.clone().setY(at.y + 34), { to: at.clone(), color: "#c8dcff" });
     addFx("bolt", at.clone().add(new THREE.Vector3(2, 30, -1)), { to: at.clone(), color: "#ffffff" });
-    addFx("ring", at.clone().setY(at.y + 0.05), { color: "#c8dcff", size: 2.2 });
+    // sét đánh đất: vết cháy phân nhánh Lichtenberg (khác đứt gãy của đòn tròn)
+    strike("scorch", at.x, at.y + 0.05, at.z, { r: 2.2, n: 5, color: "#c8dcff" });
     useWorld.getState().addShake(0.35);
     useWorld.getState().burst([at.x, at.y + 0.3, at.z], "#c8dcff", 30);
     sfx.shatter();
-    // Trúng người chơi khi người là điểm cao nhất trong bán kính sét đánh
-    if (Math.hypot(at.x - p.x, at.z - p.z) < 3.2) {
+    // Sét xuống cát: nung chảy thành ống thuỷ tinh (fulgurite) — đổi khối tại máy (không gửi mạng)
+    if (!hit.player) {
+      const bx = Math.floor(hit.x);
+      const bz = Math.floor(hit.z);
+      const ys = fulgurite(hit.top, (y) => blockAt(bx, y, bz) === B.sand);
+      ys.forEach((y) => setBlock(bx, y, bz, B.glass, true));
+      if (ys.length) floatText(at.clone().setY(at.y + 1.2), "Fulgurite · cát → thuỷ tinh", "info");
+      // cột thu lôi: người đứng gần chân cột mà sét vào cột → an toàn
+      if (hit.conductor && Math.hypot(at.x - p.x, at.z - p.z) < ROLL_R && hit.top > p.y + 2) floatText(p.clone().setY(p.y + 2.2), "Cột thu lôi che chở ✓", "info");
+    }
+    // Trúng người chơi khi chính người là điểm quả cầu chạm trước (hoặc sét rơi sát chân)
+    if (hit.player || Math.hypot(at.x - p.x, at.z - p.z) < 1.2) {
       if (inFaradayCage(p.x, p.y, p.z)) {
         floatText(p.clone().setY(p.y + 2.2), "Faraday ✓", "info");
         unlockNote("faraday");

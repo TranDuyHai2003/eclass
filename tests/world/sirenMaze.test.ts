@@ -28,6 +28,7 @@ import {
   mapPoint,
   mazeBlocked,
   mazeGround,
+  surfTop,
   nearestLanding,
   signedDist,
   simulateExit,
@@ -264,7 +265,7 @@ function walkGraph(): Map<string, Set<string>> {
         if (!inFootprint(t, px, pz) || inFloorHole(px, pz, t.y)) continue;
         if (mazeBlocked(px, pz, Math.max(s.y, t.y))) continue;
         // nhảy xuống: phải là mặt cao nhất ngay dưới điểm bước ra
-        if (mazeGround(px, pz, s.y) !== t.y) continue;
+        if (mazeGround(px, pz, s.y) !== surfTop(t, px, pz)) continue;
         add(s.id, t.id);
         // mặt nhô thấp nằm giữa mặt khác (đệm nảy, bậc): từ t bước lên s được
         if (s.y <= t.y + STEP_UP && !mazeBlocked(x, z, t.y)) add(t.id, s.id);

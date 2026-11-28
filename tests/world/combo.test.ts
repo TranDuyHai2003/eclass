@@ -7,7 +7,7 @@ import { WEAPON_DEFS } from "../../components/world/combat/items";
 const CLIPS: Record<string, number> = {
   Sword_Attack: 1.53, Punch_Jab: 0.87, Punch_Cross: 1.0, Spell_Simple_Shoot: 0.5, Roll: 1.47,
   Sword_Regular_A: 0.43, Sword_Regular_B: 0.53, Sword_Regular_C: 2.0, Sword_Regular_Combo: 3.0, Sword_Heavy_Combo: 4.33,
-  Sword_Dash: 1.57, Shield_Dash: 1.1, Melee_Hook: 0.47, OverhandThrow: 1.33,
+  Sword_Dash: 1.57, Shield_Dash: 1.1, Melee_Hook: 0.47, OverhandThrow: 1.33, Shield_OneShot: 0.83,
 };
 
 test("mọi vũ khí đều có thế võ: chuỗi ≥ 3 nhát + tụ lực + kỹ năng", () => {

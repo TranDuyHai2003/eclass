@@ -3,7 +3,9 @@
  * Bầu trời Mê cung Hoạ âm — shader thủ tục (không dùng ảnh toàn cảnh):
  *  - nền chàm → tím hồng ở chân trời → lục thẫm phía dưới
  *  - ba lớp "đồi giấy" răng cưa hình sin trôi chậm ở chân trời (mỗi lớp có bóng đổ lệch), mây vỏ sò phía trên
- *  - chấm bán sắc, sao lấp lánh, dải nốt sóng chạy ngang trời
+ *  - chấm bán sắc, sao lấp lánh, dải nốt sóng chạy ngang trời (sóng vuông Fourier theo số hoạ âm còn sống)
+ *  - nhánh W: đọc HARMONIC (thời gian, phân rã → bớt răng / màu / chi tiết, bất hoà → lệch lớp in) và SIREN_W.rest (Dấu lặng → giấy phẳng);
+ *    trời cắt dán nhiều lớp + đĩa than + thác ký hiệu nằm ở SirenCollage / SirenVinyl, gom trong SirenWorld
  * Lỗ hổng vòng lặp: xoáy lục axit ở đáy (WRAP_BOT) và trên trần (WRAP_TOP) — rơi qua xoáy đáy thì rơi ra từ xoáy trời.
  * Màn sân khấu tại WRAP_R: hiện rõ khi người chơi tới gần (đi xuyên → bước ra ở màn đối tâm).
  */
@@ -12,6 +14,8 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useWorld } from "../../store";
 import { WRAP_BOT, WRAP_R, WRAP_TOP } from "@/lib/world/sirenMaze";
+import { HARMONIC } from "@/lib/world/harmonicState";
+import { SIREN_W } from "@/lib/world/sirenWorld";
 
 /** màu sương / chân trời dùng chung (Siren.tsx đặt cho scene.fog) */
 export const SIREN_FOG = "#6a3f8f";
@@ -24,7 +28,7 @@ void main(){
   gl_Position = p.xyww;
 }`;
 const SKY_FRAG = /* glsl */ `
-uniform float uTime;
+uniform float uTime, uDecomp, uDiss, uRest, uHarm;
 varying vec3 vDir;
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float aa(float x, float e){ float w = fwidth(x) + 1e-4; return smoothstep(e - w, e + w, x); }
@@ -41,13 +45,20 @@ void main(){
   // chấm bán sắc theo độ sáng (in giấy)
   vec2 g = vec2(th * 40.0, y * 40.0);
   float dots = 1.0 - aa(length(fract(g) - 0.5), 0.12 + 0.25 * smoothstep(0.5, 0.0, abs(y)));
-  col = mix(col, col * 1.25 + 0.03, dots * 0.35);
+  float detail = (1.0 - uDecomp) * (1.0 - uRest);
+  col = mix(col, col * 1.25 + 0.03, dots * 0.35 * detail);
   // sao
   vec2 sc = floor(vec2(th * 90.0, y * 90.0));
-  float st = step(0.985, hash(sc)) * smoothstep(0.08, 0.4, y);
+  float st = step(0.985, hash(sc)) * smoothstep(0.08, 0.4, y) * detail;
   col += st * (0.6 + 0.4 * sin(uTime * 3.0 + hash(sc + 3.0) * 30.0)) * vec3(1.0, 0.92, 0.8);
-  // dải nốt sóng chạy ngang trời
-  float wave = y - (0.32 + 0.05 * sin(th * 5.0 + uTime * 0.15));
+  // dải nốt sóng chạy ngang trời: sóng vuông Fourier rút gọn theo số hoạ âm còn sống (phân rã → mòn thành sin)
+  float sq = 0.0;
+  for (int k = 0; k < 8; k++) {
+    if (float(k) >= uHarm) break;
+    float n = float(2 * k + 1);
+    sq += sin(n * (th * 5.0 + uTime * 0.15)) / n;
+  }
+  float wave = y - (0.32 + 0.04 * sq);
   col = mix(col, vec3(1.0, 0.82, 0.45), (1.0 - aa(abs(wave), 0.004)) * 0.8);
   col = mix(col, vec3(1.0, 0.82, 0.45), (1.0 - aa(abs(wave - 0.025), 0.002)) * 0.5);
   // ba lớp đồi giấy ở chân trời (xa → gần), răng sin + bóng đổ
@@ -58,8 +69,10 @@ void main(){
   for (int i = 0; i < 3; i++) {
     float fi = float(i);
     float k = 3.0 + fi * 2.0;
-    float h = 0.12 - fi * 0.05 + 0.035 * sin(th * k + uTime * (0.02 + fi * 0.015) + fi * 1.7) + 0.012 * sin(th * k * 3.1 + fi);
-    float scal = 0.012 * pow(abs(sin(th * k * 6.0)), 0.5);
+    // bất hoà: các lớp lệch pha nhau (lệch lớp in); phân rã: mất răng / gợn bậc cao
+    float tk = th + uDiss * 0.03 * sin(uTime * 0.7 + fi * 2.1);
+    float h = 0.12 - fi * 0.05 + 0.035 * sin(tk * k + uTime * (0.02 + fi * 0.015) + fi * 1.7) + 0.012 * sin(tk * k * 3.1 + fi) * (1.0 - uDecomp);
+    float scal = 0.012 * pow(abs(sin(tk * k * 6.0)), 0.5) * (1.0 - uDecomp);
     float edge = h + scal;
     float shadow = 1.0 - aa(y, edge - 0.012);
     col = mix(col, col * 0.55, shadow * 0.6);
@@ -78,12 +91,29 @@ void main(){
   float pole = smoothstep(0.82, 0.98, abs(y));
   float sw = sin(th * 3.0 + (1.0 - abs(y)) * 60.0 - uTime * 2.0);
   col = mix(col, mix(vec3(0.08, 0.3, 0.2), vec3(0.66, 1.0, 0.33), aa(sw, 0.3)), pole * 0.8);
+  // phân rã: bớt màu → cuối cùng chỉ còn giấy ngà / mực (cao trào bằng sự biến mất)
+  float l = dot(col, vec3(0.299, 0.587, 0.114));
+  col = mix(col, vec3(l), clamp(uDecomp * 1.05, 0.0, 1.0));
+  col = mix(col, mix(vec3(0.094, 0.082, 0.122), vec3(0.875, 0.831, 0.71), smoothstep(0.25, 0.55, l)), smoothstep(0.6, 1.0, uDecomp) * 0.8);
+  // Dấu lặng: trời thành tờ giấy trắng phẳng
+  col = mix(col, vec3(0.86, 0.83, 0.74) * (0.9 + 0.1 * smoothstep(-0.2, 0.4, y)), uRest * 0.82);
   gl_FragColor = vec4(col, 1.0);
 }`;
 
 export function SirenSky() {
   const mesh = useRef<THREE.Mesh>(null);
-  const mat = useMemo(() => new THREE.ShaderMaterial({ vertexShader: SKY_VERT, fragmentShader: SKY_FRAG, uniforms: { uTime: { value: 0 } }, side: THREE.BackSide, depthWrite: false, fog: false }), []);
+  const mat = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        vertexShader: SKY_VERT,
+        fragmentShader: SKY_FRAG,
+        uniforms: { uTime: { value: 0 }, uDecomp: { value: 0 }, uDiss: { value: 0 }, uRest: { value: 0 }, uHarm: { value: 8 } },
+        side: THREE.BackSide,
+        depthWrite: false,
+        fog: false,
+      }),
+    [],
+  );
   useEffect(() => () => mat.dispose(), [mat]);
   // vẽ SAU mọi vật đục (renderOrder 1, độ sâu = 1) → chỉ tô phần nền trống, che luôn bầu trời ảnh chung của WorldClient
   // bám theo máy quay đang vẽ (cả máy quay ảo của cổng) → không bao giờ ra khỏi bầu trời
@@ -95,8 +125,14 @@ export function SirenSky() {
       m.updateMatrixWorld();
     };
   }, []);
-  useFrame((_, dt) => {
-    mat.uniforms.uTime.value += dt;
+  // mọi chuyển động đọc HARMONIC (nhánh W: không đồng hồ riêng)
+  useFrame(() => {
+    const u = mat.uniforms;
+    u.uTime.value = HARMONIC.time;
+    u.uDecomp.value = HARMONIC.decomposition;
+    u.uDiss.value = HARMONIC.dissonance;
+    u.uRest.value = SIREN_W.rest;
+    u.uHarm.value = 1 + 7 * (1 - HARMONIC.decomposition);
   });
   return (
     <mesh ref={mesh} material={mat} renderOrder={1} frustumCulled={false} name="perf:sky">
@@ -138,8 +174,8 @@ export function LoopVortices() {
     [],
   );
   useEffect(() => () => mat.dispose(), [mat]);
-  useFrame((_, dt) => {
-    mat.uniforms.uTime.value += dt;
+  useFrame(() => {
+    mat.uniforms.uTime.value = HARMONIC.time;
   });
   return (
     <group name="perf:vortex">
@@ -179,9 +215,9 @@ export function StageCurtain() {
     [],
   );
   useEffect(() => () => mat.dispose(), [mat]);
-  useFrame((_, dt) => {
+  useFrame(() => {
     mat.uniforms.uPlayer.value.copy(useWorld.getState().player);
-    mat.uniforms.uTime.value += dt;
+    mat.uniforms.uTime.value = HARMONIC.time;
   });
   return (
     <mesh material={mat} position-y={(WRAP_BOT + WRAP_TOP) / 2} frustumCulled={false} name="perf:curtain">

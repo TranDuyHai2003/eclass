@@ -10,7 +10,8 @@ import { Label3D } from "../ui/Labels";
 import * as THREE from "three";
 import { useWorld } from "../store";
 import { Avatar, type Pose } from "../player/Avatar";
-import { netPeers, onNet, samplePeer, type Peer } from "../net";
+import { netPeers, netZone, onNet, samplePeer, type Peer } from "../net";
+import { sameZone } from "@/lib/world/zoneId";
 import { AVATAR_BY_ID, worldAsset } from "@/lib/world/avatars";
 
 let version = 0;
@@ -51,6 +52,10 @@ function RemotePeer({ peer, vrm }: { peer: Peer; vrm: boolean }) {
   useFrame(() => {
     const s = samplePeer(peer, performance.now());
     if (!s || !g.current) return;
+    // đồ thị khu (Mê cung Hoạ âm): người ở khu khác không hiện avatar / nhãn (dấu ở cửa do cảnh vẽ)
+    const here = sameZone(netZone(), s.zone);
+    g.current.visible = here;
+    if (!here) return;
     g.current.position.set(s.x, s.y, s.z);
     if (s.tilt) TQ.set(s.tilt[0], s.tilt[1], s.tilt[2], s.tilt[3]).normalize();
     else TQ.identity();

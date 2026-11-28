@@ -16,6 +16,8 @@ import * as THREE from "three";
 import { useWorld } from "../../store";
 import { CAM, addFx, air, motion } from "../../combat/combat";
 import { LENS, impact } from "../../fx/Lensing";
+import { REDUCE_MOTION_KEY, reduceMotion } from "../../fx/fxClock";
+import { strike } from "../../fx/StrikeFx";
 import type { PlayerField } from "../Hub";
 import { sfx } from "@/lib/world/sfx";
 import { BODY, surfAt } from "@/lib/world/sirenMaze";
@@ -63,16 +65,9 @@ export const GF = {
  * Giảm chuyển động: máy quay giữ chân trời thế giới (không lật / nghiêng theo hành tinh, tường), chỉ nhân vật xoay.
  * Mặc định theo cài đặt hệ điều hành (prefers-reduced-motion); bật / tắt bằng setReduceMotion (lưu localStorage).
  */
-const KEY_RM = "world.reduceMotion";
-export function reduceMotion(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    const v = localStorage.getItem(KEY_RM);
-    if (v === "on") return true;
-    if (v === "off") return false;
-  } catch {}
-  return !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-}
+// (đọc tuỳ chọn ở fx/fxClock.ts — dùng chung cho hiệu ứng hậu kỳ / khói / phép; giữ export cũ cho các module Siren)
+const KEY_RM = REDUCE_MOTION_KEY;
+export { reduceMotion };
 export function setReduceMotion(on: boolean) {
   try {
     localStorage.setItem(KEY_RM, on ? "on" : "off");
@@ -208,7 +203,7 @@ export const sirenField: PlayerField = {
       leaveTo([0, -2, 0]);
       impact(1.2);
       sfx.shatter();
-      addFx("nova", p.clone(), { color: "#a8ff54", size: 3 });
+      strike("tendril", p.x, p.y, p.z, { r: 3, color: "#a8ff54" });
     }
     updateFrame(dt, upOf(GF.st));
     return true;
@@ -251,7 +246,7 @@ export function gravityAfterPlayer(dt: number, prev: THREE.Vector3, cur: THREE.V
       if (v) {
         motion.vy = v;
         motion.grounded = false;
-        addFx("ring", p.clone().setY(p.y + 0.1), { color: s.bounce > 1 ? "#a8ff54" : "#ffba35", size: 1.4 });
+        strike("spring", p.x, p.y + 0.05, p.z, { r: 1, yaw: useWorld.getState().camYaw, color: s.bounce > 1 ? "#a8ff54" : "#ffba35" });
         // cao độ nốt theo vận tốc bật (nảy cao dần → nốt lên dần)
         synth.bounce(v);
       }
@@ -287,7 +282,7 @@ export function gravityAfterPlayer(dt: number, prev: THREE.Vector3, cur: THREE.V
     w.addShake(0.2);
     // Doppler: lao vào miệng (tần số vọt lên) rồi rời miệng kia (trầm xuống)
     synth.whoosh(220, 1400, 0.9, 0.9);
-    addFx("nova", new THREE.Vector3(...o), { color: "#a8ff54", size: 2.4 });
+    strike("spokes", o[0], o[1], o[2], { r: 2.4, color: "#a8ff54" });
     break;
   }
 }

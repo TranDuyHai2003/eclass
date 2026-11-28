@@ -26,13 +26,16 @@ import { ZOOM_MAX, ZOOM_MIN, toggleScope, useScope, zoomBy } from "../scope";
 import { useFlight, useRings } from "../flight";
 import { LabCard } from "./LabCard";
 import { WEAPON_DEFS, useBag, type WeaponId } from "../combat/items";
+import { WaveWeaponHud } from "./WaveWeaponHud";
 import { BagButton, BagOverlay, PickupFeed, WeaponReveal } from "./Bag";
 import { SigilButton, SigilOverlay } from "./Sigil";
 import { ArchiveOverlay, QuestTracker } from "./Story";
 import { useBossUi } from "../scene/Siren";
+import { ExpanseBossHud } from "../bosses/BossHud";
 import { netPeers, netStatus, onNet, samplePeer } from "../net";
 import { SPOTS } from "../scene/Hub";
 import { isSfxEnabled, setSfxEnabled } from "@/lib/world/sfx";
+import { AudioSettings } from "../audio/AudioSettings";
 import { AVATAR_BY_ID } from "@/lib/world/avatars";
 import type { Lang } from "@/lib/world/i18n";
 
@@ -94,6 +97,15 @@ export function Hud({ onInteract, readOnly, rootRef, onFullscreen }: { onInterac
         {scene !== "valley" && scene !== "babel" && <RoundBtn icon={Binoculars} label={vi ? "Ống nhòm (Z)" : "Binoculars (Z)"} onClick={() => toggleScope()} />}
         <RoundBtn icon={Menu} label={t("menu")} onClick={() => setMenu(true)} />
         <RoundBtn icon={fs ? Minimize2 : Maximize2} label={t("fullscreen")} onClick={onFullscreen} />
+        {/* thoát game về trang chủ: tải lại trang đầy đủ để giải phóng WebGL / âm thanh */}
+        <RoundBtn
+          icon={Home}
+          label={vi ? "Thoát về trang chủ" : "Exit to home"}
+          onClick={() => {
+            if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+            window.location.assign("/home");
+          }}
+        />
       </div>
 
       <AnimatePresence>
@@ -109,6 +121,7 @@ export function Hud({ onInteract, readOnly, rootRef, onFullscreen }: { onInterac
       {scene === "impossible" && !overlay && !scopeOn && <LabCard />}
       {armed && !overlay && !scopeOn && <HpBar raised={scene === "expanse"} />}
       {armed && !overlay && !scopeOn && <CombatFeedback />}
+      {armed && !overlay && !scopeOn && <WaveWeaponHud />}
       {armed && !overlay && !scopeOn && <ActionPad blocks={scene === "expanse"} onSigil={() => setSigil(true)} />}
       <AnimatePresence>{scopeOn && <ScopeOverlay />}</AnimatePresence>
       {(scene === "paradox" || scene === "impossible") && !overlay && <PdxStyleToggle />}
@@ -122,6 +135,7 @@ export function Hud({ onInteract, readOnly, rootRef, onFullscreen }: { onInterac
 
       {!hidden && <PickupFeed />}
       {scene === "siren" && <BossBar />}
+      {scene === "expanse" && !overlay && <ExpanseBossHud />}
       <Crosshair />
       <WeaponReveal />
       <AnimatePresence>{bag && <BagOverlay onClose={() => setBag(false)} />}</AnimatePresence>
@@ -268,7 +282,7 @@ function RealmChip({ readOnly }: { readOnly: boolean }) {
   const [, setV] = useState(0);
   useEffect(() => onNet(() => setV((v) => v + 1)), []);
   const st = netStatus();
-  const name = scene === "hub" ? t("plazaName") : scene === "expanse" ? t("expanseName") : scene === "impossible" ? t("impossibleName") : scene === "siren" ? t("sirenName") : scene === "babel" ? t("babelName") : scene === "paradox" ? t("paradoxName") : scene === "study" ? t("studyName") : t("title");
+  const name = scene === "hub" ? t("plazaName") : scene === "expanse" ? t("expanseName") : scene === "impossible" ? t("impossibleName") : scene === "siren" ? t("sirenName") : scene === "babel" ? t("babelName") : scene === "paradox" ? t("paradoxName") : scene === "study" ? t("studyName") : scene === "vault" ? t("vaultName") : scene === "torus" ? t("torusName") : scene === "coast" ? t("coastName") : scene === "bazaar" ? t("bazaarName") : scene === "archive" ? t("archiveName") : t("title");
   return (
     <div className="flex items-center gap-[calc(var(--u)*6px)]">
       <span className="w-chip w-chip--gold">
@@ -568,7 +582,7 @@ function ActionPad({ blocks, onSigil }: { blocks: boolean; onSigil: () => void }
   const wp = WEAPON_DEFS[curId];
   const [touch, setTouch] = useState(false);
   useEffect(() => setTouch(window.matchMedia("(pointer: coarse)").matches), []);
-  const fire = (d: "break" | "place") => window.dispatchEvent(new CustomEvent("world-block", { detail: d }));
+  const fire = (d: "mine-start" | "mine-stop" | "place") => window.dispatchEvent(new CustomEvent("world-block", { detail: d }));
   const [moves, setMoves] = useState(false);
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -621,7 +635,7 @@ function ActionPad({ blocks, onSigil }: { blocks: boolean; onSigil: () => void }
             <SkillBtn icon={Box} size={46} label={t("place")} onPress={() => fire("place")} />
           </div>
           <div className="w-pad__slot" style={{ right: "calc(var(--u) * 112px)", bottom: "calc(var(--u) * 146px)" }}>
-            <SkillBtn icon={Pickaxe} size={46} label={t("break")} onPress={() => fire("break")} />
+            <SkillBtn icon={Pickaxe} size={46} label={t("break")} onPress={() => fire("mine-start")} onRelease={() => fire("mine-stop")} />
           </div>
         </>
       )}
@@ -982,6 +996,7 @@ function MenuSheet({ onClose, onArchive, onGraphics }: { onClose: () => void; on
             <span>{t("sound")}</span>
             <span className={`w-switch ${sound ? "is-on" : ""}`} />
           </button>
+          <AudioSettings />
           {/* đổi tên hiện trên đầu ngay trong game (gửi cho người khác qua net) */}
           <div className="w-row w-row--col">
             <NameField />
@@ -1055,8 +1070,10 @@ function Crosshair() {
     if (!aiming) return;
     let raf = 0;
     const tick = () => {
-      setK(Math.min(1, (performance.now() - aimAt) / CHARGE_MS));
-      raf = requestAnimationFrame(tick);
+      const v = Math.min(1, (performance.now() - aimAt) / CHARGE_MS);
+      setK(v);
+      // vòng đã đầy: thôi chạy rAF + setState mỗi khung trong lúc giữ ngắm
+      if (v < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);

@@ -76,4 +76,15 @@ docs/ai-reviews/**/.review-stderr.log
 /realtime/node_modules/
 /realtime/assets/
 /realtime/cloudflared.yml
+
+# File nguồn Blender (nặng, lưu tại máy)
+/blender-src/
+
+# Bản nén KTX2 của VRM (scripts/ktx2-convert.mjs) — cũng ở kho asset nặng
+/public/world/avatars/ktx2/
+
+# Python cache
 __pycache__/
+
+# Nhạc render offline — chưa nối vào game, vượt ngân sách dung lượng (để sau)
+/public/world/audio/

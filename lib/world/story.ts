@@ -25,7 +25,7 @@ export const NPCS: Record<NpcId, { name: L; title: L; color: string; portrait: s
 
 // ───────────── Thư khố (Codex): định lý + nhà toán học ─────────────
 
-export type CodexId = "vector" | "taxicab" | "sierpinski" | "mobius" | "phase" | "parabola" | "golden" | "euler" | "noether" | "turing" | "zeno" | "knight" | "interference" | "fourier" | "faraday" | "penrose" | "babel" | "hilbert" | "plato" | "monty" | "theseus" | "maxwell" | "chineseroom" | "paradoxes";
+export type CodexId = "vector" | "taxicab" | "sierpinski" | "mobius" | "phase" | "parabola" | "golden" | "euler" | "noether" | "turing" | "zeno" | "knight" | "interference" | "fourier" | "faraday" | "penrose" | "babel" | "hilbert" | "plato" | "monty" | "theseus" | "maxwell" | "chineseroom" | "paradoxes" | "greedy" | "prime" | "galton" | "torus" | "torusbow" | "tide" | "resonance" | "snell" | "birthday" | "bayes" | "clt" | "gambler" | "colorlight" | "colorsub" | "colorspace" | "colorwheel" | "colorperception" | "colorcie" | "standingwave";
 export const CODEX: Record<CodexId, { title: L; who: L; body: L }> = {
   vector: {
     title: { en: "Vectors", vi: "Vectơ" },
@@ -169,10 +169,163 @@ export const CODEX: Record<CodexId, { title: L; who: L; body: L }> = {
     who: { en: "Thomas Young, double slit (1801)", vi: "Thomas Young, thí nghiệm hai khe (1801)" },
     body: { en: "Two waves add up. Where the path difference is a whole wavelength they reinforce (bright fringes); half a wavelength, they cancel (dark fringes, shaped like hyperbolas). The Twins only break when struck together — in phase.", vi: "Hai sóng cộng vào nhau. Nơi hiệu đường đi bằng số nguyên bước sóng thì tăng cường (vân sáng); bằng nửa bước sóng thì triệt tiêu (vân tối, có dạng hyperbol). Song Sinh chỉ vỡ khi bị đánh cùng lúc — cùng pha." },
   },
+  greedy: {
+    title: { en: "Field note · Greedy search and local minima", vi: "Ghi chép · Thuật toán tham lam và cực tiểu địa phương" },
+    who: { en: "Greedy best-first search (Doran & Michie, 1966); A* (Hart, Nilsson & Raphael, 1968)", vi: "Tìm kiếm tham lam ưu tiên tốt nhất (Doran & Michie, 1966); A* (Hart, Nilsson & Raphael, 1968)" },
+    body: {
+      en: "A greedy algorithm always takes the step that looks best right now — for the Greedy Ghoul, the neighbouring square that is closest to you in a straight line. It never steps back to go around. Stand behind the back wall of a U-shaped fence and every square around it is farther from you than where it stands: a LOCAL MINIMUM. A path still exists, but greed can't see it. Smarter searches like A* remember the whole map and plan the detour.",
+      vi: "Thuật toán tham lam luôn chọn bước trông tốt nhất ngay lúc này — với Ma Tham Lam, đó là ô kề gần bạn nhất theo đường thẳng. Nó không bao giờ lùi một bước để đi vòng. Đứng sau lưng một bức rào chữ U, mọi ô quanh nó đều xa bạn hơn chỗ nó đang đứng: một CỰC TIỂU ĐỊA PHƯƠNG. Đường đi vẫn có, nhưng lòng tham không nhìn thấy. Các thuật toán khôn hơn như A* nhớ cả bản đồ và lên kế hoạch đi vòng.",
+    },
+  },
+  prime: {
+    title: { en: "Field note · Prime numbers and factorisation", vi: "Ghi chép · Số nguyên tố và phân tích thừa số" },
+    who: { en: "Euclid, Elements Book VII–IX (~300 BC)", vi: "Euclid, Cơ sở quyển VII–IX (~300 TCN)" },
+    body: {
+      en: "Every whole number above 1 is a product of primes in exactly one way: 12 = 2·2·3, 30 = 2·3·5 (the Fundamental Theorem of Arithmetic). The Prime Warden's shield n is divided by any burst of c hits when c divides n. A composite shield can be broken in small bites; tiles line up in an a×b rectangle. A prime p only lines up in one row — it is divisible by 1 and itself alone, so only one unbroken burst of exactly p hits can break it.",
+      vi: "Mọi số nguyên lớn hơn 1 đều là tích các số nguyên tố theo đúng một cách: 12 = 2·2·3, 30 = 2·3·5 (Định lý cơ bản của số học). Khiên n của Hộ Vệ Nguyên Tố bị chia bởi mỗi loạt c đòn khi c là ước của n. Khiên hợp số phá được từng miếng nhỏ; gạch của nó xếp thành hình chữ nhật a×b. Số nguyên tố p chỉ xếp được một hàng — nó chỉ chia hết cho 1 và chính nó, nên chỉ một loạt liền đúng p đòn mới phá nổi.",
+    },
+  },
+  torus: {
+    title: { en: "Field note · The flat torus: a square with glued edges", vi: "Ghi chép · Xuyến phẳng: ô vuông dán mép" },
+    who: { en: "Poincaré (1895); Jeff Weeks, The Shape of Space (1985); the screen of Asteroids (1979)", vi: "Poincaré (1895); Jeff Weeks, Hình dạng của không gian (1985); màn hình trò Asteroids (1979)" },
+    body: {
+      en: "Take a square and glue its right edge to its left edge: you get a tube. Glue the top to the bottom too and the tube closes into a doughnut — a torus. On the 'flat' torus nothing bends: angles and lengths are those of the square, but walking off one edge brings you back through the opposite one. The world is finite yet has no wall. That is why, in the Torus Archipelago, you can see copies of the islands — and of yourself — repeating every 48 m: light also leaves through one edge and comes back through the other. Distance means the SHORTEST way, which may cross an edge: two points 2 m apart across the seam are not 46 m apart.",
+      vi: "Lấy một ô vuông, dán mép phải vào mép trái: được một cái ống. Dán tiếp mép trên vào mép dưới, ống khép lại thành chiếc bánh vòng — một mặt xuyến. Trên xuyến \"phẳng\" không có gì bị uốn: góc và độ dài vẫn y như trên ô vuông, chỉ là đi ra khỏi một mép thì quay vào từ mép đối diện. Thế giới hữu hạn mà không có bức tường nào. Vì vậy ở Quần đảo Xuyến bạn thấy các hòn đảo — và chính mình — lặp lại sau mỗi 48 m: ánh sáng cũng đi ra một mép rồi quay vào từ mép kia. Khoảng cách là đường NGẮN NHẤT, có thể đi qua mép: hai điểm cách nhau 2 m qua đường khâu thì không hề cách nhau 46 m.",
+    },
+  },
+  torusbow: {
+    title: { en: "Field note · Shooting yourself in the back", vi: "Ghi chép · Bắn trúng lưng chính mình" },
+    who: { en: "Geodesics on the flat torus; lines of slope p/q close up after L·√(p²+q²)", vi: "Đường trắc địa trên xuyến phẳng; đường hệ số góc p/q khép lại sau L·√(p²+q²)" },
+    body: {
+      en: "Shoot straight ahead along the x-axis: the arrow leaves through the right edge, re-enters through the left — exactly behind you — and after one lap of length L it reaches your own back. 'In front of me' and 'behind me' are the same direction, just different distances. So a target has infinitely many straight-line routes to it: the short one, and the long ones that wrap. The Bell Box opens only towards the sea, and the Torus Warden always turns its shield along the SHORTEST route — so take a long one. A line with slope 1 closes after L·√2, slope 1/2 after L·√5; a line with an irrational slope never closes and passes arbitrarily close to every point.",
+      vi: "Bắn thẳng theo trục x: mũi tên ra khỏi mép phải, quay vào từ mép trái — đúng sau lưng bạn — và sau một vòng dài L thì chạm lưng chính bạn. \"Phía trước\" và \"phía sau\" là cùng một hướng, chỉ khác quãng đường. Vì thế tới một mục tiêu có vô số đường thẳng: đường ngắn, và những đường dài đi vòng qua mép. Hộp Chuông chỉ mở ra biển mây, còn Mắt Canh Xuyến luôn xoay khiên theo đường NGẮN NHẤT — hãy đi đường dài. Đường có hệ số góc 1 khép lại sau L·√2, hệ số góc 1/2 sau L·√5; đường có hệ số góc vô tỉ không bao giờ khép lại và đi qua sát mọi điểm tuỳ ý.",
+    },
+  },
+  tide: {
+    title: { en: "Field note · Tides are a slow sine", vi: "Ghi chép · Thuỷ triều là một hình sin chậm" },
+    who: { en: "Newton, Principia (1687); Laplace's tidal equations (1775); harmonic tide prediction (Kelvin, 1867)", vi: "Newton, Principia (1687); phương trình thuỷ triều Laplace (1775); dự báo triều bằng điều hoà (Kelvin, 1867)" },
+    body: {
+      en: "The Moon pulls the near side of the ocean a little more than the Earth's centre, and the far side a little less: two bulges. The Earth turns under them, so most coasts see high water about every 12 h 25 min. Sea level is then close to h(t) = A·sin(2πt/T) + c — and real tide tables are sums of dozens of such sines (Lord Kelvin built a brass machine that added them). If you know the phase you can predict exactly when a sandbar will be dry. At the Wave Coast the period is squeezed into 48 s.",
+      vi: "Mặt Trăng kéo phía đại dương gần nó mạnh hơn tâm Trái Đất một chút, phía xa thì yếu hơn một chút: thành hai chỗ phình. Trái Đất quay bên dưới, nên phần lớn bờ biển có nước lớn khoảng 12 giờ 25 phút một lần. Mực nước khi đó gần đúng h(t) = A·sin(2πt/T) + c — và bảng thuỷ triều thật là tổng của hàng chục hình sin như vậy (Lord Kelvin chế cả một cỗ máy đồng thau để cộng chúng). Biết pha là đoán chính xác lúc nào doi cát nổi lên. Ở Bờ Sóng, chu kỳ được nén còn 48 giây.",
+    },
+  },
+  resonance: {
+    title: { en: "Field note · The pendulum and resonance", vi: "Ghi chép · Con lắc và cộng hưởng" },
+    who: { en: "Galileo (~1602, the swinging lamp in Pisa); Huygens, Horologium Oscillatorium (1673)", vi: "Galileo (~1602, ngọn đèn đung đưa ở Pisa); Huygens, Horologium Oscillatorium (1673)" },
+    body: {
+      en: "For small swings a pendulum's period is T = 2π√(L/g): it depends on the length, not on the mass and hardly on the amplitude. Gravity pulls a heavy bob harder, but a heavy bob is equally harder to accelerate — the mass cancels (Galileo's insight, later Newton's F = ma). Push a swing once per period, at the same moment of each swing, and every push adds energy: the amplitude grows until friction eats as much as you add. That is resonance. A rope of 2.24 m has T ≈ 3.0 s, the beat of the swell, so the sea rings the bell for you.",
+      vi: "Với góc lắc nhỏ, chu kỳ con lắc là T = 2π√(L/g): phụ thuộc chiều dài, không phụ thuộc khối lượng và hầu như không phụ thuộc biên độ. Trọng lực kéo quả nặng mạnh hơn, nhưng quả nặng cũng khó tăng tốc hơn đúng bấy nhiêu — khối lượng triệt tiêu (ý của Galileo, sau này là F = ma của Newton). Đẩy xích đu mỗi chu kỳ một lần, đúng cùng một lúc trong mỗi lần lắc, thì cú đẩy nào cũng thêm năng lượng: biên độ lớn dần tới khi ma sát lấy đi đúng bằng phần bạn thêm. Đó là cộng hưởng. Dây 2,24 m có T ≈ 3,0 s, đúng nhịp sóng lừng, nên biển rung chuông hộ bạn.",
+    },
+  },
+  snell: {
+    title: { en: "Field note · Snell's law, total reflection and the rainbow", vi: "Ghi chép · Định luật Snell, phản xạ toàn phần và cầu vồng" },
+    who: { en: "Ibn Sahl (984), Snellius (1621), Descartes (1637); Newton's prism experiments (1666)", vi: "Ibn Sahl (984), Snellius (1621), Descartes (1637); thí nghiệm lăng kính của Newton (1666)" },
+    body: {
+      en: "Light is slower in glass than in air, so a ray that crosses the surface at an angle bends: n₁·sin θ₁ = n₂·sin θ₂, angles measured from the normal. Through a prism it bends twice, always towards the base; the total deviation is smallest when the ray passes symmetrically, and near that minimum two different turns of the prism give almost the same beam. Going from glass to air beyond the critical angle (sin θc = 1/n ≈ 41° for glass) the light cannot get out at all and is reflected completely — that is how optical fibres carry the internet. n is slightly larger for violet than for red, so a prism fans white light into a spectrum.",
+      vi: "Ánh sáng đi trong thuỷ tinh chậm hơn trong không khí, nên tia xiên qua mặt phân cách bị bẻ hướng: n₁·sin θ₁ = n₂·sin θ₂, góc đo từ pháp tuyến. Qua lăng kính tia bị bẻ hai lần, luôn lệch về phía đáy; góc lệch nhỏ nhất khi tia đi đối xứng, và gần mức nhỏ nhất đó hai góc xoay khác nhau của lăng kính cho tia gần như trùng nhau. Đi từ thuỷ tinh ra không khí mà góc tới vượt góc tới hạn (sin θc = 1/n ≈ 41° với thuỷ tinh) thì ánh sáng không ra được, bị phản xạ toàn bộ — cáp quang truyền Internet nhờ đúng điều này. Chiết suất với ánh sáng tím lớn hơn đỏ một chút, nên lăng kính xoè ánh sáng trắng thành dải màu.",
+    },
+  },
+  birthday: {
+    title: { en: "Field note · The birthday problem: count pairs, not people", vi: "Ghi chép · Bài toán ngày sinh: đếm cặp, đừng đếm người" },
+    who: { en: "Richard von Mises (1939); P(no match among n) = 365·364·…·(365 − n + 1) / 365ⁿ", vi: "Richard von Mises (1939); P(n người không ai trùng) = 365·364·…·(365 − n + 1) / 365ⁿ" },
+    body: {
+      en: "Release wisps one by one into 365 lanterns. Intuition says a match needs about half the lanterns (~183). In fact half of all jars match by the 23rd wisp, and 40 wisps match 89% of the time. The trick is that a match can happen between ANY two wisps: 23 wisps form 23·22/2 = 253 pairs, and each pair matches with chance 1/365. So the number of pairs grows like n², and collisions arrive after only about √365 · 1.2 ≈ 23 tries. The same arithmetic tells hash tables and cryptographers when 'random' IDs start colliding (the birthday attack).",
+      vi: "Thả từng đom đóm vào 365 đèn lồng. Trực giác bảo phải gần nửa số đèn (~183) mới trùng. Thật ra một nửa số vò đã trùng trước con thứ 23, và 40 con thì trùng 89% số lần. Bí mật: trùng có thể xảy ra giữa BẤT KÌ hai con nào — 23 con tạo 23·22/2 = 253 cặp, mỗi cặp trùng với xác suất 1/365. Số cặp tăng như n², nên trùng đến chỉ sau khoảng √365 · 1,2 ≈ 23 lần thử. Cùng phép tính này cho biết khi nào mã \"ngẫu nhiên\" bắt đầu đụng nhau trong bảng băm và mật mã (tấn công ngày sinh).",
+    },
+  },
+  bayes: {
+    title: { en: "Field note · Bayes' rule and the Mimic Lantern", vi: "Ghi chép · Định lý Bayes và Đèn Soi Mimic" },
+    who: { en: "Thomas Bayes (1763), Pierre-Simon Laplace (1774); natural frequencies: Gerd Gigerenzer (1995)", vi: "Thomas Bayes (1763), Pierre-Simon Laplace (1774); tần số tự nhiên: Gerd Gigerenzer (1995)" },
+    body: {
+      en: "10% of chests are mimics. The Lantern turns red for 90% of mimics but also for 20% of real chests. Picture 100 chests: 10 mimics → 9 red; 90 real chests → 18 red by mistake. Of the 27 red chests only 9 are mimics: P(mimic | red) = 1/3, not 90%. In odds form: prior odds 1 : 9, times the Bayes factor 0.9 / 0.2 = 4.5, gives 4.5 : 9 = 1 : 2. Ignoring how RARE mimics are (the base rate) is the classic mistake doctors and juries make with medical tests and forensic evidence. A second independent red lamp multiplies the odds by 4.5 again: 4.5 : 2 → about 69%.",
+      vi: "10% số rương là mimic. Đèn Soi bật đỏ với 90% mimic nhưng cũng đỏ nhầm 20% rương thật. Hình dung 100 rương: 10 mimic → 9 đỏ; 90 rương thật → 18 đỏ nhầm. Trong 27 rương đỏ chỉ có 9 mimic: P(mimic | đỏ) = 1/3, không phải 90%. Dạng tỉ số cược: cược trước 1 : 9, nhân hệ số Bayes 0,9 / 0,2 = 4,5 → 4,5 : 9 = 1 : 2. Quên mất mimic HIẾM thế nào (tỉ lệ nền) là lỗi kinh điển khi đọc xét nghiệm y khoa hay chứng cứ trước toà. Thêm một đèn đỏ độc lập nữa thì nhân tiếp 4,5: 4,5 : 2 → khoảng 69%.",
+    },
+  },
+  clt: {
+    title: { en: "Field note · Sums of dice and the central limit theorem", vi: "Ghi chép · Tổng xúc xắc và định lí giới hạn trung tâm" },
+    who: { en: "Abraham de Moivre (1733), Pierre-Simon Laplace (1810), Aleksandr Lyapunov (1901)", vi: "Abraham de Moivre (1733), Pierre-Simon Laplace (1810), Aleksandr Lyapunov (1901)" },
+    body: {
+      en: "One die is flat: every face 1/6. Two dice make a triangle: 7 can be made 6 ways (1+6 … 6+1) out of 36, while 2 and 12 only 1 way. Three dice already look like a bell: 10 and 11 have 27 ways each out of 216, 3 and 18 just one. Add more and more independent pieces and the sum's shape tends to the normal curve, centred at n·3.5 with spread √(n·35/12) — whatever the pieces looked like. That is why heights, measurement errors and exam averages so often look bell-shaped: each is a sum of many small independent effects.",
+      vi: "Một xúc xắc thì phẳng: mỗi mặt 1/6. Hai xúc xắc thành tam giác: 7 tạo được 6 cách (1+6 … 6+1) trên 36, còn 2 và 12 chỉ 1 cách. Ba xúc xắc đã ra hình chuông: 10 và 11 mỗi số 27 cách trên 216, 3 và 18 chỉ một. Cộng càng nhiều phần độc lập, hình dạng của tổng càng gần đường cong chuẩn, tâm ở n·3,5, độ rộng √(n·35/12) — dù từng phần có hình gì. Vì thế chiều cao, sai số đo, điểm trung bình thường có dạng chuông: mỗi thứ là tổng của nhiều tác động nhỏ độc lập.",
+    },
+  },
+  gambler: {
+    title: { en: "Field note · The wheel has no memory (and the law of large numbers)", vi: "Ghi chép · Bánh xe không có trí nhớ (và luật số lớn)" },
+    who: { en: "Monte Carlo Casino, 18 Aug 1913 (black 26 times in a row); Jacob Bernoulli, Ars Conjectandi (1713)", vi: "Sòng Monte Carlo, 18/8/1913 (Đen 26 lần liền); Jacob Bernoulli, Ars Conjectandi (1713)" },
+    body: {
+      en: "After five reds, black still comes up 18/37 of the time: spins are independent, the wheel does not remember. Believing black is 'due' is the gambler's fallacy — in Monte Carlo in 1913 players lost fortunes betting against a run of 26 blacks. Then why does the red share approach 18/37 over many spins? Not because the wheel corrects old streaks: the GAP between reds and blacks actually keeps wandering (about √n). The share settles because thousands of new spins swamp any early streak. And the green zero means every even-money bet loses 1/37 on average — whatever the streak. A positive expected value comes only from a better price, never from reading the past.",
+      vi: "Sau năm lần Đỏ, Đen vẫn ra 18/37 số lần: các lần quay độc lập, bánh xe không nhớ gì. Tin rằng Đen \"sắp về\" là ảo tưởng con bạc — ở Monte Carlo năm 1913 người ta mất cả gia tài khi cược ngược một chuỗi 26 lần Đen. Vậy sao tỉ lệ Đỏ lại tiến về 18/37 khi quay rất nhiều? Không phải vì bánh xe sửa chuỗi cũ: CHÊNH LỆCH Đỏ − Đen vẫn lang thang (cỡ √n). Tỉ lệ ổn định vì hàng nghìn lần quay mới nhấn chìm mọi chuỗi ban đầu. Còn ô Xanh số 0 khiến mọi cược ăn ×2 trung bình lỗ 1/37 — chuỗi thế nào cũng vậy. Kì vọng dương chỉ đến từ giá tốt hơn, không bao giờ từ việc đọc quá khứ.",
+    },
+  },
+  galton: {
+    title: { en: "Field note · The Galton board and the bell curve", vi: "Ghi chép · Bàn Galton và đường cong hình chuông" },
+    who: { en: "Francis Galton, 1889 · de Moivre & Laplace (normal approximation)", vi: "Francis Galton, 1889 · de Moivre & Laplace (xấp xỉ chuẩn)" },
+    body: {
+      en: "Each pebble meets 8 rows of pins and bounces left or right with probability ½. The bin it lands in counts its right-bounces k, so P(k) = C(8, k)/2⁸: 70/256 ≈ 27 % in the middle, 1/256 at each edge. Pile many pebbles and their columns trace a bell — the binomial distribution approaching the normal curve. The Bell Crab's middle lane is its peak; its flanks are the tails, where almost nothing falls… and where its shell doesn't cover it.",
+      vi: "Mỗi viên sỏi gặp 8 hàng đinh và nảy trái hoặc phải với xác suất ½. Máng nó rơi vào đếm số lần nảy phải k, nên P(k) = C(8, k)/2⁸: 70/256 ≈ 27 % ở giữa, 1/256 ở mỗi mép. Đổ thật nhiều sỏi, các cột vẽ nên một cái chuông — phân phối nhị thức tiến gần đường cong chuẩn. Máng giữa của Cua Chuông là đỉnh chuông; hai bên hông là hai đuôi, nơi gần như chẳng có viên nào rơi… và cũng là chỗ mai cua không che tới.",
+    },
+  },
   turing: {
     title: { en: "Turing machines", vi: "Máy Turing" },
     who: { en: "Alan Turing, 1936", vi: "Alan Turing, 1936" },
     body: { en: "A tape, a head and a table of rules can compute anything computable. And some questions — like whether a program will ever stop — no machine can always answer.", vi: "Một cuộn băng, một đầu đọc và một bảng luật có thể tính mọi thứ tính được. Và có những câu hỏi — như một chương trình có bao giờ dừng không — không cỗ máy nào luôn trả lời được." },
+  },
+  // ── Phòng Lăng kính (lý thuyết màu, docs/ai-reviews/color-theory/PLAN.md) ──
+  colorlight: {
+    title: { en: "Field note · Light adds: RGB and coloured shadows", vi: "Ghi chép · Ánh sáng cộng: RGB và bóng màu" },
+    who: { en: "Thomas Young (1802), James Clerk Maxwell (1855, first colour photograph 1861); Exploratorium “Colored Shadows”", vi: "Thomas Young (1802), James Clerk Maxwell (1855, bức ảnh màu đầu tiên 1861); triển lãm “Colored Shadows” của Exploratorium" },
+    body: {
+      en: "Your eye has three kinds of cones, so three lamps — red, green, blue — can imitate almost any colour. Light from several lamps simply ADDS, like vectors: red (1,0,0) + green (0,1,0) = (1,1,0), which you see as yellow; all three give white. Screens work exactly this way. Stand in front of the lamps: where your body blocks the red lamp, only green + blue reach the floor, so that shadow is cyan. One object, three lamps, three coloured shadows. Careful with numbers: the code 128 on a screen is only about 21% of the light, and half the light is code 188 — sRGB codes are gamma-encoded. Always mix in linear light, then encode.",
+      vi: "Mắt có ba loại tế bào nón, nên ba đèn đỏ, lục, lam bắt chước được gần như mọi màu. Ánh sáng từ nhiều đèn CỘNG lại như vectơ: đỏ (1,0,0) + lục (0,1,0) = (1,1,0), mắt thấy là vàng; cả ba thành trắng. Màn hình làm đúng như vậy. Đứng trước các đèn: chỗ người bạn chắn đèn đỏ chỉ còn lục + lam rọi tới, nên bóng đó có màu lam lục (cyan). Một vật, ba đèn, ba cái bóng màu. Cẩn thận với con số: mã 128 trên màn hình chỉ là khoảng 21% ánh sáng, còn một nửa ánh sáng là mã 188 — mã sRGB đã được mã hoá gamma. Luôn trộn trên ánh sáng tuyến tính rồi mới mã hoá.",
+    },
+  },
+  colorsub: {
+    title: { en: "Field note · Filters and inks subtract", vi: "Ghi chép · Kính lọc và mực in trừ ánh sáng" },
+    who: { en: "Louis Ducos du Hauron (1868, subtractive colour photography); Kubelka & Munk (1931, paint layers)", vi: "Louis Ducos du Hauron (1868, ảnh màu trừ); Kubelka & Munk (1931, lớp sơn)" },
+    body: {
+      en: "A filter cannot add colour; it can only remove some wavelengths. Light through two filters is the product S(λ)·T₁(λ)·T₂(λ). Cyan removes red, magenta removes green, yellow removes blue. So cyan + yellow lets only green through, magenta + yellow gives red, cyan + magenta gives blue, and all three give (almost) black — that is CMYK printing. Multiplying the RGB colours of the filters is only a shortcut: two filters can look the same yet pass different spectra, so the true answer needs the spectra. Paint is harder still, because pigments both absorb and scatter (Kubelka–Munk). That is why red + green paint gives a muddy brown, while red + green LIGHT gives yellow. “Red, yellow, blue” is a painters' tradition, not a law of nature.",
+      vi: "Kính lọc không thêm được màu, chỉ chặn bớt một số bước sóng. Ánh sáng qua hai kính là tích S(λ)·T₁(λ)·T₂(λ). Cyan chặn đỏ, magenta chặn lục, vàng chặn lam. Vì thế cyan + vàng chỉ để lục đi qua, magenta + vàng ra đỏ, cyan + magenta ra lam, cả ba ra (gần) đen — đó là in CMYK. Nhân màu RGB của từng kính chỉ là lối tắt: hai kính trông giống nhau vẫn có thể cho qua những phổ khác nhau, nên muốn đúng phải nhân phổ. Sơn còn khó hơn vì hạt màu vừa hấp thụ vừa tán xạ (Kubelka–Munk). Vì thế sơn đỏ + sơn lục ra nâu xỉn, còn ÁNH SÁNG đỏ + lục ra vàng. “Đỏ, vàng, lam là ba màu cơ bản” chỉ là truyền thống của hoạ sĩ, không phải định luật tự nhiên.",
+    },
+  },
+  colorspace: {
+    title: { en: "Field note · Colour is a point in space: the RGB cube and the HSV cylinder", vi: "Ghi chép · Màu là một điểm trong không gian: khối RGB và trụ HSV" },
+    who: { en: "Alvy Ray Smith (HSV, 1978); Björn Ottosson (OKLab, 2020)", vi: "Alvy Ray Smith (HSV, 1978); Björn Ottosson (OKLab, 2020)" },
+    body: {
+      en: "Three numbers (R, G, B) between 0 and 1 are coordinates, so every screen colour is a point of a cube: black and white at opposite corners, the grey axis along the diagonal R = G = B, and red, green, blue, cyan, magenta, yellow at the other six corners. HSV is the same cube in different coordinates: stand the cube on its black corner and look down the grey axis — you see a hexagon. The angle around it is hue H, the distance from the axis is saturation S, and the height is value V = max(R, G, B). HSV is handy but not fair to the eye: at the same V, yellow looks far brighter than blue. Perceptual spaces like OKLab fix that, and the game measures how close two colours are there (ΔE).",
+      vi: "Ba số (R, G, B) từ 0 tới 1 là toạ độ, nên mỗi màu trên màn hình là một điểm trong khối lập phương: đen và trắng ở hai góc đối nhau, trục xám là đường chéo R = G = B, còn đỏ, lục, lam, cyan, magenta, vàng ở sáu góc kia. HSV là chính khối đó trong hệ toạ độ khác: dựng khối đứng trên góc đen rồi nhìn dọc trục xám sẽ thấy một lục giác. Góc quanh trục là sắc độ H, khoảng cách tới trục là độ bão hoà S, chiều cao là V = max(R, G, B). HSV tiện nhưng không công bằng với mắt: cùng V mà vàng trông sáng hơn lam rất nhiều. Các không gian cảm nhận như OKLab sửa điều đó, và game đo hai màu gần nhau tới đâu trong OKLab (ΔE).",
+    },
+  },
+  colorwheel: {
+    title: { en: "Field note · Which colour wheel? Complements and harmonies", vi: "Ghi chép · Vòng màu nào? Màu bù và phối màu" },
+    who: { en: "Isaac Newton (first colour circle, 1704); Johannes Itten (RYB wheel, 1961); CSS Color 4 (OKLCH)", vi: "Isaac Newton (vòng màu đầu tiên, 1704); Johannes Itten (vòng RYB, 1961); CSS Color 4 (OKLCH)" },
+    body: {
+      en: "A harmony is a pattern of angles on a colour wheel: complementary H and H + 180°, triad H ± 120°, analogous H ± 30°, split-complementary H + 150° and H + 210°. But the answer depends on the wheel. On the light (HSV) wheel the complement of red is cyan, and the two lights add to white. On the painters' RYB wheel the complement of red is green. On the perceptual OKLCH wheel every hue has the same lightness, so palettes look balanced. None of these is the one true wheel: each is a model built for a purpose. Think about it: why do traffic lights not rely on red versus green alone?",
+      vi: "Phối màu là một mẫu góc trên vòng màu: bù là H và H + 180°, bộ ba là H ± 120°, tương đồng là H ± 30°, bù chia là H + 150° và H + 210°. Nhưng đáp án tuỳ vòng. Trên vòng ánh sáng (HSV), màu bù của đỏ là cyan, và hai ánh sáng đó cộng lại thành trắng. Trên vòng RYB của hoạ sĩ, bù của đỏ là lục. Trên vòng cảm nhận OKLCH, mọi sắc độ có cùng độ sáng nên bảng màu trông cân đối. Không vòng nào là vòng đúng duy nhất: mỗi vòng là một mô hình cho một mục đích. Thử nghĩ: vì sao đèn giao thông không chỉ dựa vào khác biệt đỏ – lục?",
+    },
+  },
+  colorperception: {
+    title: { en: "Field note · Your eye is not a light meter", vi: "Ghi chép · Mắt không phải máy đo ánh sáng" },
+    who: { en: "Ewald Hering (opponent colours, 1878); Michel Chevreul (simultaneous contrast, 1839); Edward Adelson (checker shadow, 1995)", vi: "Ewald Hering (màu đối lập, 1878); Michel Chevreul (tương phản đồng thời, 1839); Edward Adelson (bóng bàn cờ, 1995)" },
+    body: {
+      en: "After the cones, the brain compares signals in opposing pairs: red against green, blue against yellow, light against dark. Stare at cyan for 15–30 seconds and the cyan channel tires; on a white wall the opposite side wins and you see red — the cyan flag with a blue star turns into a red flag with a yellow star for a few seconds. Not everyone sees it equally, and a screen cannot show it to you: it happens in your own eyes. Your brain also judges a colour by its neighbours. Two identical #808080 squares look different on yellow and on blue (simultaneous contrast), and the same pixel can look light or dark depending on the shadow your brain thinks it is in. Pixel values and what you see are different things.",
+      vi: "Sau tế bào nón, não so tín hiệu theo từng cặp đối lập: đỏ với lục, lam với vàng, sáng với tối. Nhìn cyan 15–30 giây thì kênh cyan mỏi; nhìn sang tường trắng thì bên đối lập thắng và bạn thấy đỏ — lá cờ cyan sao lam biến thành cờ đỏ sao vàng trong vài giây. Không phải ai cũng thấy như nhau, và màn hình không thể hiện nó ra cho bạn: nó xảy ra trong chính mắt bạn. Não còn đánh giá màu theo màu xung quanh. Hai ô #808080 giống hệt nhau trông khác nhau trên nền vàng và nền lam (tương phản đồng thời), và cùng một điểm ảnh có thể trông sáng hay tối tuỳ cái bóng mà não nghĩ nó đang nằm trong. Giá trị điểm ảnh và thứ bạn nhìn thấy là hai chuyện khác nhau.",
+    },
+  },
+  colorcie: {
+    title: { en: "Field note · Spectrum, the CIE horseshoe and colour blindness", vi: "Ghi chép · Quang phổ, móng ngựa CIE và mù màu" },
+    who: { en: "Newton's prism (1666); CIE 1931 standard observer (Wright & Guild); Machado, Oliveira & Fernandes (2009)", vi: "Lăng kính của Newton (1666); người quan sát chuẩn CIE 1931 (Wright & Guild); Machado, Oliveira & Fernandes (2009)" },
+    body: {
+      en: "Sunlight already contains every wavelength; a prism only separates them, because glass bends violet (larger n) more than red. In 1931 the CIE measured how an average eye matches each wavelength and defined X, Y, Z; dividing gives the chromaticity x = X/(X+Y+Z), y = Y/(X+Y+Z). The pure spectral colours trace a horseshoe; the straight bottom edge (purples) has no wavelength at all — purple is a mixture. A screen's three primaries span only a triangle inside it, so many real colours are out of reach. Two different spectra can land on the same point (metamers): 580 nm yellow looks identical to the right mix of 630 nm red and 532 nm green. About 8% of boys have red–green colour vision deficiency; the simulation glasses use Machado's matrices on linear RGB to show which colours merge.",
+      vi: "Ánh nắng vốn chứa mọi bước sóng; lăng kính chỉ tách chúng ra, vì thuỷ tinh bẻ tia tím (n lớn hơn) mạnh hơn tia đỏ. Năm 1931, CIE đo cách một con mắt trung bình ghép màu từng bước sóng và định nghĩa X, Y, Z; chia ra được sắc độ x = X/(X+Y+Z), y = Y/(X+Y+Z). Các màu phổ thuần vẽ thành hình móng ngựa; cạnh thẳng ở đáy (các màu tía) không ứng với bước sóng nào — màu tía là màu hỗn hợp. Ba màu cơ bản của màn hình chỉ phủ một tam giác bên trong, nên nhiều màu thật nằm ngoài tầm. Hai phổ khác nhau có thể rơi vào cùng một điểm (đồng sắc): vàng 580 nm trông y hệt hỗn hợp đúng tỉ lệ của đỏ 630 nm và lục 532 nm. Khoảng 8% nam giới có tật nhìn màu đỏ – lục; kính mô phỏng dùng ma trận của Machado trên RGB tuyến tính để cho thấy những màu nào bị nhập làm một.",
+    },
+  },
+  standingwave: {
+    title: { en: "Field note · Standing waves (the Hushed Pleat)", vi: "Ghi chép · Sóng dừng (Gối Xếp Im)" },
+    who: { en: "Franz Melde's vibrating string (1859); Lagrange and d'Alembert on the wave equation (1740s–1750s)", vi: "Dây rung của Franz Melde (1859); Lagrange và d'Alembert với phương trình sóng (thập niên 1740–1750)" },
+    body: {
+      en: "Pin a string (or a cloth wall) at both ends and shake it: two waves running opposite ways add up to y(x, t) = 2A·sin(kx)·cos(ωt). The shape sin(kx) never travels; the whole string just breathes in and out. Because both ends are fixed, a whole number of half-waves must fit: L = n·λ/2, with n loops (antinodes). Points with sin(kx) = 0 never move — the nodes — at x = k·L/n (k = 0…n): one node in the middle at L/2 for n = 2, two at L/3 and 2L/3 for n = 3. Even at the instant the whole wall is flat, the nodes are the stitches that did not move in any frame. The n-th mode vibrates n times as fast as the first, f_n = n·f₁ — the harmonics of a string (here n·110 Hz). The Hushed Pleat only listens to a strike from a node.",
+      vi: "Ghim một sợi dây (hay một vách vải) ở hai đầu rồi rung: hai sóng chạy ngược chiều cộng lại thành y(x, t) = 2A·sin(kx)·cos(ωt). Dáng sin(kx) không hề chạy đi; cả sợi dây chỉ phồng lên rồi xẹp xuống. Vì hai đầu cố định, phải vừa khít một số nguyên nửa bước sóng: L = n·λ/2, với n bụng sóng. Những điểm có sin(kx) = 0 không bao giờ chuyển động — đó là nút — ở x = k·L/n (k = 0…n): một nút giữa L/2 khi n = 2, hai nút L/3 và 2L/3 khi n = 3. Kể cả đúng lúc cả vách phẳng lì, nút vẫn là những mũi chỉ không nhúc nhích ở mọi khung hình. Mode thứ n rung nhanh gấp n lần mode đầu, f_n = n·f₁ — chính là các hoạ âm của dây đàn (ở đây n·110 Hz). Gối Xếp Im chỉ chịu nghe một đòn đánh từ nút.",
+    },
   },
 };
 

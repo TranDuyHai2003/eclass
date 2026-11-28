@@ -49,14 +49,13 @@ export function fxMask(name: string): THREE.Texture {
   return t;
 }
 
-export type FxMode = 0 | 1 | 2; // 0 vệt chém, 1 vòng sóng (polar), 2 sprite có mặt nạ
+export type FxMode = 0 | 1 | 2 | 3; // 0 vệt chém, 1 vòng sóng (polar), 2 sprite có mặt nạ, 3 cột sáng (đồ rơi)
 
 const VERT = /* glsl */ `
 varying vec2 vUv;
 void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 
 const FRAG = /* glsl */ `
-precision mediump float;
 uniform sampler2D uNoise; uniform sampler2D uRamp; uniform sampler2D uRing; uniform sampler2D uMask;
 uniform float uAge;      // 0..1 tuổi đời
 uniform float uProg;     // tiến trình riêng (đầu vệt chém / bán kính vòng)
@@ -95,6 +94,15 @@ void main(){
     core = smoothstep(0.75, 0.95, bv) * step(bv, 1.0);
     float n = texture2D(uNoise, vec2(ang / 6.2832 * 3.0, r * 1.5 - uTime * 0.6)).r;
     val = clamp(band - (1.0 - n) * uNoiseAmt, 0.0, 1.0);
+  } else if (uMode > 2.5) {
+    // Cột sáng đồ rơi: lõi dọc (R của beam_core) × vân G trôi lên; mọc từ đất theo uProg, mờ dần về đỉnh
+    float prof = texture2D(uMask, vec2(vUv.x, vUv.y * 0.5 - uTime * 0.35)).r;
+    float stri = texture2D(uMask, vec2(vUv.x * 0.6 + 0.2, vUv.y * 0.9 - uTime * 1.1)).g;
+    float grow = 1.0 - smoothstep(uProg * 0.62, uProg, vUv.y);
+    float foot = smoothstep(0.0, 0.05, vUv.y) * (1.0 - smoothstep(0.55, 1.0, vUv.y));
+    float n = texture2D(uNoise, vec2(vUv.x * 1.3, vUv.y * 2.0 - uTime * 0.8)).r;
+    core = smoothstep(0.72, 1.0, prof) * (1.0 - vUv.y * 0.6);
+    val = clamp(prof * (0.55 + 0.45 * stri) * grow * (foot + 0.25 * grow * (1.0 - vUv.y)) * 1.25 - (1.0 - n) * uNoiseAmt, 0.0, 1.0);
   } else {
     float m = texture2D(uMask, vUv * uMaskRect.zw + uMaskRect.xy).r;
     float n = texture2D(uNoise, vUv * 1.3 + vec2(uTime * 0.3, -uTime * 0.5)).r;

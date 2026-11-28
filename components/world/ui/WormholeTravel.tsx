@@ -5,8 +5,13 @@
  *  an Einstein ring where light bends round the throat, slight chromatic split at the rim, palette shifts from the
  *  source realm to the destination) → exit (the white mouth swells and floods the screen, then reveals the new realm).
  * The realm swap happens mid-flight (onSwap), hidden inside the tunnel.
+ * Màn trung gian "giữa hai thế giới": nhãn điểm đến hiện giữa đường hầm; báo useTransit để màn chờ nối tiếp liền mạch.
  */
 import { useEffect, useRef } from "react";
+import type React from "react";
+import { useWorld } from "../store";
+import { TITLES } from "./AreaTitle";
+import { useTransit } from "./transit";
 
 const VERT = `attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
 const FRAG = `precision mediump float;
@@ -50,6 +55,11 @@ export type RealmPalette = [string, string];
 export const REALM_PALETTE: Record<string, RealmPalette> = {
   hub: ["#7fb6ff", "#ffd27a"],
   study: ["#e9ad62", "#46576c"],
+  vault: ["#ffd27a", "#3b2d8a"],
+  torus: ["#ff8a6a", "#5fe0d0"],
+  coast: ["#5fd0ff", "#ffe2a8"],
+  bazaar: ["#ffb347", "#7a3cc8"],
+  archive: ["#d8c9a0", "#1c2230"],
   expanse: ["#5fd07a", "#7fd8ff"],
   valley: ["#ff9ecb", "#9fe6ff"],
   impossible: ["#b48cff", "#4b4dff"],
@@ -60,10 +70,18 @@ export const REALM_PALETTE: Record<string, RealmPalette> = {
 const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255) as [number, number, number];
 
 export const TRAVEL_MS = 2000;
+/** DEV: window.__warpSlow = 4 → đường hầm chậm 4 lần (chụp ảnh / soát nhãn giữa hai thế giới) */
+const warpSlow = () => (process.env.NODE_ENV !== "production" ? Math.max(1, Number((window as unknown as { __warpSlow?: number }).__warpSlow) || 1) : 1);
 
 export function WormholeTravel({ from, to, onSwap, onDone }: { from: string; to: string; onSwap: () => void; onDone: () => void }) {
   const cv = useRef<HTMLCanvasElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
+  const card = useRef<HTMLDivElement>(null);
+  const lang = useWorld((s) => (s.lang === "vi" ? "vi" : "en"));
+  useEffect(() => {
+    useTransit.setState({ travelTo: to, travelEnd: performance.now() + TRAVEL_MS * warpSlow() });
+    return () => useTransit.setState({ travelTo: null, travelEnd: 0 });
+  }, [to]);
   useEffect(() => {
     const c = cv.current;
     const gl = c?.getContext("webgl", { antialias: false, alpha: false, premultipliedAlpha: false });
@@ -104,10 +122,11 @@ export function WormholeTravel({ from, to, onSwap, onDone }: { from: string; to:
     };
     resize();
     const t0 = performance.now();
+    const slow = warpSlow();
     let swapped = false;
     let raf = 0;
     const frame = () => {
-      const ms = performance.now() - t0;
+      const ms = (performance.now() - t0) / slow;
       const k = Math.min(1, ms / TRAVEL_MS);
       gl.uniform1f(uT, ms / 1000);
       gl.uniform1f(uK, k);
@@ -117,6 +136,12 @@ export function WormholeTravel({ from, to, onSwap, onDone }: { from: string; to:
         const open = Math.min(1, ms / 350);
         wrap.current.style.clipPath = `circle(${(open * open * 75).toFixed(1)}% at 50% 50%)`;
         wrap.current.style.opacity = String(k > 0.88 ? Math.max(0, 1 - (k - 0.88) / 0.12) : 1);
+      }
+      // nhãn điểm đến: hiện khi đã vào ống (k 0,2 → 0,34), tan trước cửa ra (0,74 → 0,86); trôi nhẹ về phía người xem
+      if (card.current) {
+        const a = Math.min(1, Math.max(0, (k - 0.2) / 0.14)) * Math.min(1, Math.max(0, (0.86 - k) / 0.12));
+        card.current.style.opacity = a.toFixed(3);
+        card.current.style.transform = `translate(-50%, -50%) scale(${(0.94 + k * 0.1).toFixed(3)})`;
       }
       if (!swapped && ms > TRAVEL_MS * 0.45) {
         swapped = true;
@@ -133,9 +158,22 @@ export function WormholeTravel({ from, to, onSwap, onDone }: { from: string; to:
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const dst = TITLES[to];
+  const src = TITLES[from];
   return (
     <div ref={wrap} className="pointer-events-none absolute inset-0 z-[60]" style={{ clipPath: "circle(0% at 50% 50%)" }}>
       <canvas ref={cv} className="h-full w-full" />
+      {dst && (
+        <div ref={card} className="w-warp" style={{ opacity: 0, "--ra": (REALM_PALETTE[to] ?? REALM_PALETTE.hub)[0] } as React.CSSProperties}>
+          <small>{lang === "vi" ? "Đang du hành giữa hai thế giới" : "Travelling between realms"}</small>
+          <b>{dst.name[lang]}</b>
+          {src && (
+            <span>
+              {src.name[lang]} <i aria-hidden>⟶</i> {dst.name[lang]}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

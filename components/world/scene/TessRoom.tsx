@@ -23,22 +23,23 @@ import { useWorld } from "../store";
 import { CAM } from "../combat/combat";
 import { bakedMaterial } from "../fx/baked";
 import { Label3D } from "../ui/Labels";
+import { MandelPortal } from "./MandelPortal";
+import { PendulumWave } from "./PendulumWave";
+import { GaltonBoard } from "./GaltonBoard";
+import { DoubleSlit } from "./DoubleSlit";
+import { LissajousHarp } from "./LissajousHarp";
+import { HypercubeHolo } from "./HypercubeHolo";
+import { OrreryRoom } from "./OrreryRoom";
+import { EscherStair } from "./EscherStair";
+import { PrismHall } from "./PrismHall";
+import { ROOM_U } from "./roomUniforms";
+import { shown } from "./shown";
+export { ROOM_U } from "./roomUniforms";
 
 const ROOM_GLB = worldAsset("props/tess_room.glb");
 useGLTF.preload(ROOM_GLB);
 const PHI = (1 + Math.sqrt(5)) / 2;
 
-/** Đồng phục chia sẻ cho mọi shader của phòng (cập nhật 1 lần / khung) */
-export const ROOM_U = {
-  uT: { value: 0 },
-  uTravel: { value: 0 }, // 0..1 cường độ du hành (lên rồi xuống)
-  uIris: { value: 0 },
-  uPlayer: { value: new THREE.Vector3() }, // toạ độ cục bộ của người chơi trong phòng
-  uExposure: { value: 1.15 },
-  uFloor: { value: 0.32 }, // sàn tối thiểu (bóng không đen kịt)
-  uTint: { value: new THREE.Color(1, 1, 1) }, // nhuốm màu phòng khi du hành
-  uScale: { value: 7.0 },
-};
 const WHITE = new THREE.Color(1, 1, 1);
 const FOLD_TINT = new THREE.Color(1.0, 0.55, 1.05);
 
@@ -359,6 +360,8 @@ function Hypercore({ lite }: { lite?: boolean }) {
     [res],
   );
   useFrame(() => {
+    // đại sảnh / phòng thu nhỏ sau cửa stencil đang ẩn: khỏi chiếu lại siêu khối + tải buffer động
+    if (!shown(inner.current)) return;
     const t = ROOM_U.uT.value;
     const k = ROOM_U.uTravel.value;
     if (inner.current) {
@@ -645,6 +648,17 @@ export function TessRoom({ cx, cz, lite = false }: { cx: number; cz: number; lit
       <WindowHud />
       {!lite && <Atmosphere />}
       {!lite && <BabelGate />}
+      {!lite && <MandelPortal cx={cx} cz={cz} />}
+      {!lite && <PendulumWave />}
+      {!lite && <GaltonBoard />}
+      {!lite && <DoubleSlit />}
+      {!lite && <LissajousHarp />}
+      {!lite && <HypercubeHolo />}
+      {/* phòng phụ gắn liền: Thiên văn đồ (hành lang đông) + Chiếu nghỉ Escher / cầu thang Penrose (tầng lửng 270°) */}
+      {!lite && <OrreryRoom />}
+      {!lite && <EscherStair cx={cx} cz={cz} />}
+      {/* Phòng Lăng kính — lý thuyết màu (vòm tầng lửng 90°) */}
+      {!lite && <PrismHall cx={cx} cz={cz} />}
     </group>
   );
 }

@@ -54,7 +54,7 @@ export function WeaponTrail({ edge, active, color, gold }: { edge: (base: THREE.
           float v = vUv.y;              // 0 = gốc, 1 = mũi
           // thân vệt: dày ở phía mũi, mỏng dần về gốc; đuôi tắt theo tuổi
           float body = smoothstep(0.0, 0.3, v) * (1.0 - smoothstep(0.94, 1.0, v));
-          float tail = pow(1.0 - age, 1.25);
+          float tail = pow(max(1e-4, 1.0 - age), 1.25);
           // vân năng lượng chảy ngược chiều chém
           float streak = 0.65 + 0.35 * sin(age * 34.0 - uT * 26.0 + v * 7.0);
           vec3 base = mix(uColor, vec3(1.0, 0.86, 0.45), uGold);

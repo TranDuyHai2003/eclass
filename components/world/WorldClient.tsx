@@ -10,7 +10,9 @@ import { Canvas } from "@react-three/fiber";
 import { PerformanceMonitor } from "@react-three/drei";
 import { EffectComposer, Bloom, BrightnessContrast, ChromaticAberration, DepthOfField, GodRays, HueSaturation, N8AO, Noise, SMAA, ToneMapping, Vignette } from "@react-three/postprocessing";
 import { useGodSun, usePdxStyle } from "./scene/VoidHybrid";
-import { useGfx } from "./gfx";
+import { autoDowngrade, autoLowered, autoRaise, useGfx } from "./gfx";
+import { newQualityGate, qualityStep, renderDpr } from "@/lib/world/perfGate";
+import { useTransit } from "./ui/transit";
 import { toggleScope } from "./scope";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
@@ -35,6 +37,20 @@ import { ParadoxHall } from "./scene/ParadoxHall";
 import { Study } from "./scene/study/StudyRoom";
 import { studyInteract } from "./scene/study/studyState";
 import { StudyPanel } from "./ui/StudyPanel";
+import { Vault } from "./vault/VaultScene";
+import { VaultUi } from "./vault/VaultUi";
+import { Torus } from "./scene/torus/TorusScene";
+import { TorusUi } from "./scene/torus/TorusUi";
+import { SPAWN as TORUS_SPAWN } from "@/lib/world/torusWorld";
+import { Coast } from "./scene/coast/CoastScene";
+import { CoastUi } from "./scene/coast/CoastUi";
+import { SPAWN as COAST_SPAWN } from "@/lib/world/coastWorld";
+import { Bazaar } from "./scene/bazaar/BazaarScene";
+import { Archive } from "./scene/archive/ArchiveScene";
+import { ArchivePost } from "./scene/archive/ArchivePost";
+import { SPAWN as ARCHIVE_SPAWN, GATE_FRONT as ARCHIVE_GATE } from "@/lib/world/archiveLayout";
+import { BazaarUi } from "./scene/bazaar/BazaarUi";
+import { SPAWN as BAZAAR_SPAWN } from "@/lib/world/bazaarWorld";
 import { usePdx } from "./scene/paradoxData";
 import { penroseEye } from "./scene/ParadoxVoidFx";
 import { anamorphView } from "./scene/anamorphView";
@@ -55,6 +71,7 @@ import { SPAWN as HUB_SPAWN } from "@/lib/world/hubLayout";
 import { STUDY_SPAWN } from "@/lib/world/studyRoom";
 const HUB_SUN_POS = HUB_SUN.clone().multiplyScalar(40).toArray() as [number, number, number];
 import { AreaTitle } from "./ui/AreaTitle";
+import { ZoneMusic } from "./audio/ZoneMusic";
 import { CameraShake, MagicCircle, Shield } from "./fx/Effects";
 import { BattleOverlay, CharacterOverlay, EmoteOverlay, MuseumOverlay, WonderOverlay } from "./ui/Overlays";
 import { ValleyPanel } from "./ui/ValleyPanel";
@@ -64,23 +81,29 @@ import type { WorldState } from "@/lib/world/service";
 import type { KcId } from "@/lib/world/kcs";
 import { sfx } from "@/lib/world/sfx";
 import { Sparkles } from "lucide-react";
-import { BLOCK_RGB, PLACEABLE } from "@/lib/world/voxels";
+import { CraftPanel, VoxelHud } from "./craft/VoxelHud";
 import { SceneWipe, motion } from "./ui/kit";
 import { Ink } from "./fx/Ink";
 import { HeightFog } from "./fx/HeightFog";
+import { HubAtmos } from "./fx/HubAtmos";
 import { InkMask } from "./fx/InkMask";
 import { Ward } from "./fx/Ward";
 import { Sparks } from "./fx/Sparks";
+import { Puffs } from "./fx/Puffs";
 import { CastAura } from "./fx/CastAura";
+import { SpellFx } from "./fx/SpellFx";
 import { RENDER_STYLE } from "./fx/renderStyle";
 import { Hud } from "./ui/Hud";
-import { attackDown, attackUp, burst, curWeapon, cycleWeapon, dodge, endAim, jump, skill, startAim } from "./combat/combat";
+import { attackDown, attackUp, burst, curWeapon, cycleWeapon, dodge, endAim, jump, skill, startAim, weaponAlt, weaponTune } from "./combat/combat";
 import { LabelLayer, LabelProjector } from "./ui/Labels";
 import { netConnect, netDisconnect, netEdit, netJoin } from "./net";
 import { NameField } from "./ui/NameField";
+import { PrewarmShaders } from "./fx/PrewarmShaders";
+import { LoadProbe } from "./ui/LoadProbe";
 import { Credit } from "./ui/Credit";
 import { cleanName } from "@/lib/world/playerName";
 import { onLocalEdit } from "@/lib/world/voxels";
+import { installKtx2 } from "./fx/ktx2";
 import { beVietnam, chakra, mplus, nunito } from "@/lib/fonts";
 import { DialogueOverlay, QuestDone } from "./ui/Story";
 import { questEvent, talkTo } from "./story/quest";
@@ -94,6 +117,11 @@ const QUALITY: Record<Quality, { dpr: [number, number]; post: boolean }> = {
   high: { dpr: [1.5, 2], post: true },
 };
 
+/** độ phân giải động (PerformanceMonitor) — nhân với DPR của mức chất lượng */
+function useDrs() {
+  return useState(1);
+}
+
 export function WorldClient({ initialState, api: rawApi, readOnly = false, defaultName = "" }: { initialState: WorldState; api: WorldApi; readOnly?: boolean; defaultName?: string }) {
   const scene = useWorld((s) => s.scene);
   const avatarId = useWorld((s) => s.avatar);
@@ -105,6 +133,7 @@ export function WorldClient({ initialState, api: rawApi, readOnly = false, defau
   const pdxReal = usePdxStyle((s) => s.real) && (scene === "paradox" || scene === "impossible");
   RENDER_STYLE.real = pdxReal;
   const gfx = useGfx();
+  const [drs, setDrs] = useDrs();
   const godSun = useGodSun((s) => s.sun);
   const camDist = useWorld((s) => Math.round(s.camDist * 2) / 2);
   const t = useT();
@@ -114,9 +143,18 @@ export function WorldClient({ initialState, api: rawApi, readOnly = false, defau
   const [title, setTitle] = useState<{ id: string; at: number } | null>(null);
   const [wipeKind, setWipeKind] = useState<"stripes" | "wormhole">("stripes");
   const [started, setStarted] = useState(false);
-  const sceneSince = useRef(0);
+  // lúc cảnh sẵn sàng (màn chờ / lỗ sâu đã tắt) — mốc ân hạn cho tự hạ chất lượng (lib/world/perfGate.qualityStep); 0 = đang tải
+  const readyAt = useRef(0);
+  const qGate = useRef(newQualityGate());
   useEffect(() => {
-    sceneSince.current = performance.now();
+    readyAt.current = 0;
+    const upd = () => {
+      const t = useTransit.getState();
+      if (t.load !== "idle" || t.travelTo) readyAt.current = 0;
+      else if (!readyAt.current) readyAt.current = performance.now();
+    };
+    upd();
+    return useTransit.subscribe(upd);
   }, [scene, started]);
   const root = useRef<HTMLDivElement>(null);
 
@@ -165,7 +203,7 @@ export function WorldClient({ initialState, api: rawApi, readOnly = false, defau
 
   useKeyboard();
 
-  function go(next: "hub" | "valley" | "expanse" | "impossible" | "siren" | "babel" | "paradox" | "study") {
+  function go(next: SceneId) {
     if (travel) return;
     sfx.circle();
     setTravel({ from: useWorld.getState().scene, to: next });
@@ -176,17 +214,19 @@ export function WorldClient({ initialState, api: rawApi, readOnly = false, defau
   });
   /** Giữa đường hầm: đổi thế giới + chỗ xuất hiện + góc máy nhìn ra khoảng trống đẹp */
   function arrive(next: SceneId) {
-    const spawn = next === "expanse" ? new THREE.Vector3(0, 0, 0) : next === "impossible" ? new THREE.Vector3(0, 0, 7) : next === "siren" ? new THREE.Vector3(0, 0, 10) : next === "babel" ? new THREE.Vector3(1.2, 0, 2.7) : next === "paradox" ? new THREE.Vector3(0, 0, 6.5) : next === "study" ? new THREE.Vector3(STUDY_SPAWN.x, 0, STUDY_SPAWN.z) : new THREE.Vector3(HUB_SPAWN.x, 0, HUB_SPAWN.z);
+    // từ Thư khố về: đứng trước cửa hầm ở mép đông sân, quay lưng vào cửa
+    const fromArchive = next === "impossible" && useWorld.getState().scene === "archive";
+    const spawn = next === "archive" ? new THREE.Vector3(ARCHIVE_SPAWN.x, 0, ARCHIVE_SPAWN.z) : fromArchive ? new THREE.Vector3(ARCHIVE_GATE.x - 0.6, 0, ARCHIVE_GATE.z) : next === "expanse" ? new THREE.Vector3(0, 0, 0) : next === "impossible" ? new THREE.Vector3(0, 0, 7) : next === "siren" ? new THREE.Vector3(0, 0, 10) : next === "babel" ? new THREE.Vector3(1.2, 0, 2.7) : next === "paradox" ? new THREE.Vector3(0, 0, 6.5) : next === "study" ? new THREE.Vector3(STUDY_SPAWN.x, 0, STUDY_SPAWN.z) : next === "torus" ? new THREE.Vector3(TORUS_SPAWN.x, 0.6, TORUS_SPAWN.z) : next === "coast" ? new THREE.Vector3(COAST_SPAWN.x, 1.3, COAST_SPAWN.z) : next === "bazaar" ? new THREE.Vector3(BAZAAR_SPAWN.x, 0, BAZAAR_SPAWN.z) : new THREE.Vector3(HUB_SPAWN.x, 0, HUB_SPAWN.z);
     // Babel: quay về phía Thủ thư (tây) — máy quay phía sau thấy cả lan can giếng và giá sách
-    const yaw = next === "expanse" ? Math.atan2(6, -10) : next === "babel" ? -Math.PI / 2 - 0.35 : Math.PI;
-    useWorld.setState({ scene: next, overlay: null, challengeCubic: null, anchors: [], input: { x: 0, y: 0, run: false }, player: spawn, playerYaw: yaw, camYaw: yaw + Math.PI, camPitch: next === "babel" ? 0.18 : 0.28, camDist: next === "babel" ? 3.4 : next === "study" ? 3.6 : 4.6 });
+    const yaw = next === "expanse" ? Math.atan2(6, -10) : next === "babel" ? -Math.PI / 2 - 0.35 : fromArchive ? -Math.PI / 2 : Math.PI;
+    useWorld.setState({ scene: next, overlay: null, challengeCubic: null, anchors: [], input: { x: 0, y: 0, run: false }, player: spawn, playerYaw: yaw, camYaw: yaw + Math.PI, camPitch: next === "babel" ? 0.18 : next === "archive" ? 0.12 : 0.28, camDist: next === "babel" ? 3.4 : next === "study" ? 3.6 : next === "archive" ? 3.4 : 4.6 });
   }
 
   function interact() {
     const n = useWorld.getState().nearby;
     if (!n || useWorld.getState().overlay) return;
     sfx.click();
-    if (n.kind === "portal") go(n.id === "expanse" ? "expanse" : n.id === "impossible" ? "impossible" : n.id === "siren" ? "siren" : n.id === "babel" ? "babel" : n.id === "paradox" ? "paradox" : n.id === "study" ? "study" : n.id === "hub" ? "hub" : "valley");
+    if (n.kind === "portal") go(n.id === "expanse" ? "expanse" : n.id === "impossible" ? "impossible" : n.id === "siren" ? "siren" : n.id === "babel" ? "babel" : n.id === "paradox" ? "paradox" : n.id === "study" ? "study" : n.id === "torus" ? "torus" : n.id === "coast" ? "coast" : n.id === "bazaar" ? "bazaar" : n.id === "archive" ? "archive" : n.id === "hub" ? "hub" : "valley");
     else if (n.kind === "shelf") openBabelUi(n.id === "desk" ? { mode: "desk" } : { mode: "shelf", wall: Number(n.id) || 0 });
     else if (n.kind === "stair") openBabelUi({ mode: "stair" });
     else if (n.kind === "study") studyInteract(n.id);
@@ -212,7 +252,7 @@ export function WorldClient({ initialState, api: rawApi, readOnly = false, defau
   useEffect(() => {
     const h = (e: Event) => {
       const id = (e as CustomEvent<string>).detail;
-      if (id === "impossible" || id === "hub" || id === "study") go(id);
+      if (id === "impossible" || id === "hub" || id === "study" || id === "vault") go(id);
     };
     window.addEventListener("world:portal", h);
     return () => window.removeEventListener("world:portal", h);
@@ -229,6 +269,8 @@ export function WorldClient({ initialState, api: rawApi, readOnly = false, defau
       if (k === "e") skill();
       if (k === "q") burst();
       if (k === "r" && !e.repeat) cycleWeapon(1);
+      // X: chỉnh tham số vũ khí (λ của Giáo Sin, dây L của Khiên Con lắc)
+      if (k === "x" && !e.repeat) weaponTune();
       // Z: ống nhòm (bật / tắt)
       if (k === "z" && !e.repeat) toggleScope();
       if (e.key === "Escape") toggleScope(false);
@@ -256,12 +298,15 @@ export function WorldClient({ initialState, api: rawApi, readOnly = false, defau
       if (!document.pointerLockElement && !(e.target instanceof HTMLCanvasElement)) return;
       if (e.button === 2) {
         if (curWeapon().id === "bow") startAim();
-        else dodge();
+        else if (!weaponAlt(true)) dodge();
       }
       if (e.button === 0) attackDown();
     };
     const release = (e: MouseEvent) => {
-      if (e.button === 2) endAim(true);
+      if (e.button === 2) {
+        endAim(true);
+        weaponAlt(false);
+      }
       if (e.button === 0) attackUp();
     };
     const noMenu = (e: MouseEvent) => {
@@ -303,6 +348,8 @@ export function WorldClient({ initialState, api: rawApi, readOnly = false, defau
   async function start() {
     sfx.chime(0);
     setStarted(true);
+    // thẻ chương của thế giới đầu tiên — tự chờ màn chờ tắt rồi mới hiện
+    setTitle({ id: useWorld.getState().scene, at: performance.now() });
     await enterFullscreen(root.current);
   }
 
@@ -325,55 +372,76 @@ export function WorldClient({ initialState, api: rawApi, readOnly = false, defau
     <WorldApiContext.Provider value={api}>
       <div ref={root} className={`w-root relative h-dvh w-full touch-none select-none overflow-hidden bg-sky-200 ${nunito.variable} ${beVietnam.variable} ${chakra.variable} ${mplus.variable}`}>
         <Canvas
-          dpr={[q.dpr[0] * gfx.scale, q.dpr[1] * gfx.scale]}
+          // DPR dễ đoán (lib/world/perfGate.renderDpr): kẹp DPR thiết bị rồi mới nhân scale × độ phân giải động
+          dpr={renderDpr(typeof window === "undefined" ? 1 : window.devicePixelRatio, q.dpr, gfx.scale, drs, quality === "high")}
           camera={{ fov: 45, near: 0.1, far: 1000, position: [0, 4, 14] }}
           gl={{ antialias: false, powerPreference: "high-performance", stencil: true }}
           onCreated={({ gl }) => {
             // Tone map do hiệu ứng ToneMapping (Neutral) đảm nhận ở cuối chuỗi hậu kỳ
+            // Texture nén KTX2: một KTX2Loader dùng chung cho mọi GLTF / VRM (fx/ktx2.ts)
+            installKtx2(gl);
           }}
         >
           <PerformanceMonitor
-            flipflops={2}
-            onDecline={() => {
-              // Bỏ qua khựng lúc vừa tải / đổi cảnh; chỉ HẠ chất lượng (không tự nâng → tránh lật qua lật lại)
-              if (performance.now() - sceneSince.current < 8000) return;
+            // không dùng onFallback của drei (đếm mọi lần lên / xuống, flipflops nhỏ → hạ thẳng xuống "thấp" ~7 s sau khi vào,
+            // rồi tắt luôn bộ theo dõi): hạ / nâng do qualityStep quyết, có ân hạn sau màn chờ + trễ
+            factor={1}
+            // Độ phân giải động (rẻ nhất, GPU đang nghẽn ở tô điểm ảnh): hệ số 1 → 0,65 theo FPS, tăng lại khi máy khoẻ
+            onChange={({ factor }) => setDrs(Math.round((0.65 + 0.35 * factor) * 20) / 20)}
+            onDecline={({ factor }) => {
+              // Bỏ qua khựng lúc vừa tải / đổi cảnh (9 s sau màn chờ); chỉ HẠ khi chậm liên tục ≥ 5 s và độ phân giải động đã xuống đáy
+              if (qualityStep(qGate.current, "decline", performance.now(), readyAt.current, factor <= 0.05, autoLowered()) !== "down") return;
               const cur = useWorld.getState().quality;
-              if (cur !== "low") useWorld.setState({ quality: cur === "high" ? "mid" : "low" });
+              // hạ cả các cờ đắt (phản chiếu, bóng, AO, mật độ hiệu ứng) — gfx.autoDowngrade
+              if (cur !== "low") autoDowngrade(cur === "high" ? "mid" : "low");
             }}
-            onFallback={() => useWorld.getState().quality !== "low" && useWorld.setState({ quality: "low" })}
+            // máy khoẻ lại liên tục ≥ 15 s → nâng lại một bậc (không vượt mức người dùng chọn)
+            onIncline={({ factor }) => qualityStep(qGate.current, "incline", performance.now(), readyAt.current, factor <= 0.05, autoLowered()) === "up" && autoRaise()}
           />
           <Suspense fallback={null}>
-            {scene !== "babel" && scene !== "paradox" && scene !== "impossible" && scene !== "hub" && scene !== "siren" && scene !== "study" && <Sky panorama={worldAsset("art/sky_panorama.webp")} />}
+            {scene !== "babel" && scene !== "paradox" && scene !== "impossible" && scene !== "hub" && scene !== "siren" && scene !== "study" && scene !== "vault" && scene !== "torus" && scene !== "bazaar" && scene !== "coast" && scene !== "expanse" && scene !== "archive" && <Sky panorama={worldAsset("art/sky_panorama.webp")} />}
             {process.env.NODE_ENV !== "production" && <PerfProbe />}
             {/* tán lá kiểu Genshin ở Quảng trường: mặt nạ để viền mực không vẽ bên trong tán */}
             {scene === "hub" && <InkMask />}
             {/* Bất Khả siêu thực tự đặt đèn (một mặt trời) — đèn chung thêm mặt trời thứ hai lệch hướng làm khối phẳng lỳ */}
-            {!(scene === "impossible" && pdxReal) && scene !== "study" && <Lights fog={scene === "valley" || scene === "siren"} sun={scene === "hub" ? HUB_SUN_POS : undefined} warm={scene === "hub"} />}
-            {scene === "hub" ? <Hub /> : scene === "valley" ? <Valley /> : scene === "expanse" ? <Expanse /> : scene === "siren" ? <Siren /> : scene === "babel" ? <Babel /> : scene === "paradox" ? <ParadoxHall /> : scene === "study" ? <Study /> : <Impossible />}
+            {!(scene === "impossible" && pdxReal) && scene !== "study" && scene !== "vault" && scene !== "torus" && scene !== "bazaar" && scene !== "coast" && scene !== "archive" && <Lights fog={scene === "valley" || scene === "siren"} sun={scene === "hub" ? HUB_SUN_POS : undefined} warm={scene === "hub"} />}
+            {scene === "hub" ? <Hub /> : scene === "valley" ? <Valley /> : scene === "expanse" ? <Expanse /> : scene === "siren" ? <Siren /> : scene === "babel" ? <Babel /> : scene === "paradox" ? <ParadoxHall /> : scene === "study" ? <Study /> : scene === "vault" ? <Vault /> : scene === "torus" ? <Torus /> : scene === "coast" ? <Coast /> : scene === "bazaar" ? <Bazaar /> : scene === "archive" ? <Archive /> : <Impossible />}
             {scene === "hub" && overlay === "battle" && <BattleCircle />}
             <PlayerShield />
             {/* khiên phép (vẽ vòng tròn): bong bóng hiện suốt thời gian hiệu lực, mọi cảnh */}
             <Ward />
             {/* hạt kiểu HoYo: tia mềm kéo dài theo vận tốc + glint (thay khối sao / pha lê / lục giác) */}
             <Sparks />
+            {/* VFX-AAA: khói / bụi cel (dư âm va chạm, đập đất, quái gục) — 1 lệnh vẽ, texture thủ tục 128² nướng một lần */}
+            <Puffs />
             {/* hào quang khi đang vẽ phép */}
             <CastAura />
+            {/* T24: hiệu ứng 5 phép vẽ — 3 pool dùng chung (vòng / mảnh / dải) = 3 lệnh vẽ */}
+            <SpellFx />
             <CameraShake />
             <LabelProjector />
+            {/* biên dịch trước shader của cảnh (song song, không chặn) → bớt khựng lần đầu thấy vật / hiệu ứng */}
+            <PrewarmShaders key={scene} />
+            {/* màn chờ: cảnh đã gắn + khung mượt (tiến độ thật theo giai đoạn) */}
+            <LoadProbe key={`probe-${scene}`} scene={scene} />
           </Suspense>
-          {!q.post && (
+          {/* Thư khố: chuỗi hậu kỳ tả thực riêng (AO, AgX, hạt phim, không viền mực) */}
+          {scene === "archive" && <ArchivePost quality={quality} />}
+          {scene !== "archive" && !q.post && (
             <EffectComposer multisampling={0} stencilBuffer>
               {/* thấu kính hố đen / nhoè khi qua lỗ sâu (tự thoát sớm khi không dùng) */}
               <Lensing />
               {/* máy yếu: hoạt hình = 1 lượt viền mực; siêu thực = không viền, chỉ sương độ cao (1 lần đọc depth) */}
-              {pdxReal ? scene === "impossible" ? <HeightFog /> : <></> : <Ink width={1.6} far={55} />}
+              {pdxReal ? scene === "impossible" ? <HeightFog /> : <></> : <Ink width={1.6} far={55} tone={scene === "hub" ? 0.5 : 0.16} strength={scene === "hub" ? 0.85 : 1} dedither={scene === "hub"} />}
+              {/* Quảng trường: sương độ cao + phối cảnh khí quyển + chỉnh màu (cùng EffectPass, 0 lệnh vẽ) */}
+              {scene === "hub" ? <HubAtmos /> : <></>}
               <ToneMapping mode={pdxReal ? ToneMappingMode.AGX : ToneMappingMode.NEUTRAL} />
               {/* AgX làm nhạt màu → bù bão hoà / tương phản SAU tone mapping (trên ảnh LDR: đèn HDR không bị đẩy âm → NaN ô đen) */}
               {pdxReal ? <HueSaturation saturation={0.16} /> : <></>}
               {pdxReal ? <BrightnessContrast brightness={0.01} contrast={0.1} /> : <></>}
             </EffectComposer>
           )}
-          {q.post && (
+          {scene !== "archive" && q.post && (
             <EffectComposer multisampling={0} stencilBuffer>
               {/* che khuất môi trường thời gian thực (N8AO: SSAO bán cầu + khử nhiễu) — trước mọi hiệu ứng màu */}
               {/* siêu thực (Endfield): AO chỉ cho tiếp xúc gần (0,5 m) — không quầng tối quanh mép đảo */}
@@ -381,11 +449,13 @@ export function WorldClient({ initialState, api: rawApi, readOnly = false, defau
               {/* thấu kính hấp dẫn + chấn màn hình phải đứng đầu chuỗi hiệu ứng (đọc thẳng ảnh cảnh) */}
               <Lensing />
               {/* hoạt hình: viền mực; siêu thực (kiểu Endfield): KHÔNG viền, thay bằng sương theo độ cao (tách sân / đảo / trời) */}
-              {pdxReal ? scene === "impossible" ? <HeightFog /> : <></> : <Ink width={quality === "high" ? 2.4 : 2} far={quality === "high" ? 95 : 75} />}
+              {/* Quảng trường kiểu Genshin: nét MÀU (sắc tối của chính bề mặt) thay nét gần đen trên cỏ / đèn / tán */}
+              {pdxReal ? scene === "impossible" ? <HeightFog /> : <></> : <Ink width={quality === "high" ? 2.4 : 2} far={quality === "high" ? 95 : 75} tone={scene === "hub" ? 0.5 : 0.16} strength={scene === "hub" ? 0.85 : 1} dedither={scene === "hub"} />}
+              {scene === "hub" ? <HubAtmos /> : <></>}
               {/* tia sáng thể tích từ hố đen (god rays, tán xạ hướng tâm) */}
               {gfx.godrays && pdxReal && godSun ? <GodRays sun={godSun} samples={36} density={0.86} decay={0.9} weight={0.22} exposure={0.16} clampMax={0.6} blur /> : <></>}
               {/* Chỉ vật phát sáng HDR (vòng phép, pha lê) mới loé — không làm chói cả cảnh */}
-              {gfx.bloom ? <Bloom intensity={pdxReal ? 0.55 : 0.6} luminanceThreshold={pdxReal ? 1.2 : 1} luminanceSmoothing={0.15} mipmapBlur /> : <></>}
+              {gfx.bloom ? <Bloom intensity={pdxReal ? 0.55 : scene === "hub" ? 0.5 : 0.6} luminanceThreshold={pdxReal || scene === "hub" ? 1.2 : 1.05} luminanceSmoothing={0.15} mipmapBlur /> : <></>}
               {/* bokeh: nhân vật nét, nền nhoà theo khoảng cách thật (đơn vị thế giới) */}
               {gfx.dof ? <DepthOfField worldFocusDistance={camDist + 0.4} worldFocusRange={Math.max(6, camDist * 2.2)} bokehScale={pdxReal ? 3.2 : 2.2} /> : <></>}
               {/* siêu thực sạch kiểu Endfield: bỏ tách màu, hạt phim rất nhẹ */}
@@ -408,6 +478,10 @@ export function WorldClient({ initialState, api: rawApi, readOnly = false, defau
         <Hud onInteract={interact} readOnly={readOnly} rootRef={root} onFullscreen={() => (document.fullscreenElement ? document.exitFullscreen().catch(() => {}) : enterFullscreen(root.current))} />
         {scene === "valley" && <ValleyPanel onExit={() => go("hub")} />}
         {scene === "study" && <StudyPanel />}
+        <VaultUi />
+        {scene === "torus" && <TorusUi />}
+        {scene === "coast" && <CoastUi />}
+        {scene === "bazaar" && <BazaarUi />}
         {overlay === "museum" && <MuseumOverlay onClose={() => useWorld.setState({ overlay: null })} />}
         {overlay === "characters" && <CharacterOverlay onClose={() => useWorld.setState({ overlay: null })} />}
         {overlay === "wonder" && <WonderOverlay onClose={() => useWorld.setState({ overlay: null })} />}
@@ -439,64 +513,14 @@ export function WorldClient({ initialState, api: rawApi, readOnly = false, defau
           />
         )}
         {started && <LoadingScreen armKey={`${scene}|${avatarId}`} scene={scene} />}
+        {started && <ZoneMusic />}
         <AreaTitle title={title} />
         <Joystick />
-        {scene === "expanse" && !overlay && <BlockHud />}
+        {scene === "expanse" && !overlay && <VoxelHud />}
+        {scene === "expanse" && overlay === "craft" && <CraftPanel />}
         {!started && <StartScreen onStart={start} />}
       </div>
     </WorldApiContext.Provider>
-  );
-}
-
-// ───────────── Thanh khối (Vùng Kỳ quan voxel) ─────────────
-
-function BlockHud() {
-  const t = useT();
-  const hotbar = useWorld((s) => s.hotbar);
-  const [touch, setTouch] = useState(false);
-  useEffect(() => {
-    setTouch(window.matchMedia("(pointer: coarse)").matches);
-    const key = (e: KeyboardEvent) => {
-      const n = Number(e.key);
-      if (n >= 1 && n <= PLACEABLE.length) useWorld.setState({ hotbar: n - 1 });
-    };
-    const wheel = (e: WheelEvent) => {
-      if (!e.shiftKey) return;
-      useWorld.setState((s) => ({ hotbar: (s.hotbar + (e.deltaY > 0 ? 1 : PLACEABLE.length - 1)) % PLACEABLE.length }));
-    };
-    window.addEventListener("keydown", key);
-    window.addEventListener("wheel", wheel, { passive: true });
-    return () => {
-      window.removeEventListener("keydown", key);
-      window.removeEventListener("wheel", wheel);
-    };
-  }, []);
-  const rgb = (id: number) => `rgb(${BLOCK_RGB[id][0].map((v) => Math.round(v * 255)).join(",")})`;
-  return (
-    <>
-      {/* Tâm ngắm */}
-      <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-5 w-5 -translate-x-1/2 -translate-y-1/2">
-        <div className="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-white/90 shadow" />
-        <div className="absolute left-0 top-1/2 h-[2px] w-full -translate-y-1/2 bg-white/90 shadow" />
-      </div>
-      <div className="w-hotbar pointer-events-auto absolute left-1/2 z-20 flex -translate-x-1/2 gap-1.5 rounded-xl bg-[#12162b]/70 p-1.5 ring-1 ring-[#ecd7a9]/50 backdrop-blur">
-        {PLACEABLE.map((id, i) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => useWorld.setState({ hotbar: i })}
-            className={`relative h-[calc(var(--u,1)*42px)] w-[calc(var(--u,1)*42px)] rounded-lg transition ${i === hotbar ? "scale-110 ring-2 ring-[#ecd7a9]" : "ring-1 ring-white/20"}`}
-            style={{ background: `linear-gradient(160deg, ${rgb(id)}, rgba(0,0,0,.35))` }}
-            aria-label={t("blockSlot", { n: i + 1 })}
-          >
-            <span className="absolute bottom-0.5 right-1 text-[10px] font-black text-white drop-shadow">{i + 1}</span>
-          </button>
-        ))}
-      </div>
-      {!touch && (
-        <div className="pointer-events-none absolute bottom-[calc(var(--u,1)*104px)] left-1/2 z-10 -translate-x-1/2 rounded-full bg-[#12162b]/55 px-3 py-0.5 text-[11px] text-white/85">{t("blockHint")}</div>
-      )}
-    </>
   );
 }
 

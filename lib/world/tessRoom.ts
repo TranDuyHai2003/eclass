@@ -3,7 +3,12 @@
  * Local frame: origin at the Hypercore on the main floor; x = east, z = south (+z = toward the entry door).
  * Bearing b (degrees): 0° = north = −z (great window), 90° = east (+x), 180° = south (+z, entry).
  * Mirrors the Blender generator (docs/ai-reviews/game-3d/TESSERACT_BOOTH.md §4).
+ * Phòng phụ gắn liền (cùng khung toạ độ): Thiên văn đồ cuối hành lang đông (ORR), Chiếu nghỉ Escher / cầu thang Penrose
+ * sau vòm tầng lửng 270° (lib/world/penroseStair.ts).
  */
+import { ESC, inShaft, inWell, LAP_H, stairBase, stairGround } from "./penroseStair";
+import { inPrismArch, inPrismHall, onPrismFloor, PH, prismHallBlocked } from "./colorTheory";
+
 export const TR = {
   R: 14,
   HW: 12.5,
@@ -35,6 +40,13 @@ export const MEZ_ARCS: [number, number][] = [
 ];
 export const COLUMNS = [40, 72, 104, 256, 288, 320];
 export const CORRIDORS = [90, 270];
+/**
+ * Phòng Thiên văn đồ (cuối hành lang đông): tròn bán kính r, tâm (cx, 0); tường cao wallH + vòm cao dome (đỉnh 8 m).
+ * Hành lang GLB kết thúc ở x = R + L = 22 → tường phòng (x = cx − r = 21,6) chồng 0,4 m lên đầu hành lang (khít mép).
+ * Máy Ø6 (bán kính quỹ đạo ngoài 3 m) giữa phòng sau lan can đồng bán kính rail; cần gạt thời gian + núm tâm sai ở hai bên lối vào.
+ */
+export const ORR = { cx: 28.6, r: 7, wallH: 5, dome: 3, rail: 3.35, lever: [-4.4, -3.3] as const, dial: [-4.4, 3.3] as const, pedR: 0.4 } as const;
+export const inOrrery = (x: number, z: number, m = 0) => Math.hypot(x - ORR.cx, z) < ORR.r - m;
 const RAD = Math.PI / 180;
 
 export const bearing = (x: number, z: number) => ((Math.atan2(x, -z) / RAD) % 360 + 360) % 360;
@@ -68,7 +80,10 @@ export function onBridge(x: number, z: number): boolean {
   const rc = TR.MZ_R0 + 0.9 + 1.1 * Math.sin(Math.PI * t);
   return Math.abs(Math.hypot(x, z) - rc) < 0.9;
 }
-const onUpper = (x: number, z: number) => onMezzanine(x, z) || onBridge(x, z);
+/** Hành lang chiếu nghỉ Escher (tầng lửng 270° → cửa giếng thang Penrose), sàn ở y = ZM */
+export const onEscherPassage = (x: number, z: number, m = 0) => x > ESC.X1 - 0.05 && x < ESC.PX1 && Math.abs(z) < ESC.PW / 2 - m;
+// Phòng Lăng kính (lý thuyết màu, lib/world/colorTheory.ts): sau vòm tầng lửng 90°, sàn ở y = ZM
+const onUpper = (x: number, z: number) => onMezzanine(x, z) || onBridge(x, z) || onEscherPassage(x, z) || (x > TR.R - 1 && onPrismFloor(x, z));
 
 /** Mặt đất cao nhất mà người chơi ở độ cao y có thể đứng (bệ 3 bậc, cầu thang, tầng lửng, cầu kính) */
 export function roomGround(x: number, z: number, y: number): number {
@@ -78,14 +93,42 @@ export function roomGround(x: number, z: number, y: number): number {
   const sh = stairHeight(x, z);
   if (sh !== null && sh <= y + 0.55) g = Math.max(g, sh);
   if (onUpper(x, z) && y > TR.ZM - 0.6) g = TR.ZM;
+  // giếng thang Penrose (chỉ ở trên cao: mọi vòng nằm trên y ≈ 5 − 0,4)
+  if (y > TR.ZM - 1.2) {
+    const eg = stairGround(x, z, y);
+    if (eg !== null) g = Math.max(g, eg);
+  }
   return g;
 }
 
-/** Trạng thái do cảnh cập nhật mỗi khung: người chơi đang ở trên cao (cầu thang / tầng lửng) → lan can chặn */
-export const roomNav = { elevated: false };
+/**
+ * Trạng thái do cảnh cập nhật mỗi khung: người chơi đang ở trên cao (cầu thang / tầng lửng) → lan can chặn;
+ * escherSealed: cửa giếng thang Penrose đã thành tường (vừa leo lên tới chiếu nghỉ cửa — xem penroseStair.doorOpen).
+ */
+export const roomNav = { elevated: false, escherSealed: false };
 export function updateRoomNav(x: number, z: number, y: number) {
   const g = roomGround(x, z, y);
+  // giếng thang Penrose / hành lang Escher: luôn là "trên cao" (kể cả lúc đang rơi giữa hai vòng, trước khi được quấn lại)
+  if (y > TR.ZM - 1.2 && (inShaft(x, z) || onEscherPassage(x, z) || (x > TR.R - 0.6 && onPrismFloor(x, z)))) {
+    roomNav.elevated = true;
+    return;
+  }
   roomNav.elevated = g > 0.5 && (stairHeight(x, z) !== null || onUpper(x, z));
+}
+
+/** Va chạm trong giếng thang Penrose + hành lang chiếu nghỉ (đang ở trên cao) */
+function escherBlocked(x: number, z: number): boolean {
+  if (inShaft(x, z)) {
+    if (x > ESC.X1 - 0.3) return !(Math.abs(z) < ESC.DOOR / 2 - 0.25 && !roomNav.escherSealed); // tường đông, trừ cửa
+    if (x < ESC.X0 + 0.3 || z < ESC.Z0 + 0.3 || z > ESC.Z1 - 0.3) return true; // tường
+    return inWell(x, z, 0.3); // lan can quanh giếng giữa
+  }
+  // hành lang: sát cửa thì hẹp theo khung cửa; cửa đã thành tường thì chặn
+  if (onEscherPassage(x, z)) {
+    if (x < ESC.X1 + 0.3) return roomNav.escherSealed || Math.abs(z) > ESC.DOOR / 2 - 0.25;
+    return Math.abs(z) > ESC.PW / 2 - 0.45;
+  }
+  return true;
 }
 
 /** Vị trí trong tiền sảnh / hành lang (các lối ra khỏi vòng tường) */
@@ -97,7 +140,9 @@ function inPassage(x: number, z: number, margin: number): boolean {
     const [dx, dz] = dirOf(cb);
     const along = x * dx + z * dz;
     const lat = Math.abs(-x * dz + z * dx);
-    if (along > 0 && lat < TR.CORR.w / 2 - margin && along < TR.R + TR.CORR.L - 0.4) return true;
+    // hành lang đông thông vào Thiên văn đồ (chồng qua tường phòng); hành lang tây dừng trước cổng Babel
+    const end = cb === 90 ? ORR.cx - ORR.r + 1 : TR.R + TR.CORR.L - 0.4;
+    if (along > 0 && lat < TR.CORR.w / 2 - margin && along < end) return true;
   }
   return false;
 }
@@ -107,8 +152,21 @@ export function roomBlocked(x: number, z: number, y: number): boolean {
   const r = Math.hypot(x, z);
   if (roomNav.elevated) {
     // Trên cao: chỉ đi trên bậc / tầng lửng / cầu kính; lan can và tường chặn
+    // vòm tầng lửng 270° → hành lang chiếu nghỉ Escher → giếng thang Penrose
+    if (x < -(TR.R - 0.6) && (onEscherPassage(x, z) || inShaft(x, z))) return escherBlocked(x, z);
+    // vòm tầng lửng 90° → Phòng Lăng kính
+    if (x > TR.R - 0.6 && onPrismFloor(x, z)) return prismHallBlocked(x, z);
     if (r > TR.R - 0.4) return true;
     return !(stairHeight(x, z) !== null || onUpper(x, z));
+  }
+  // Thiên văn đồ: tường tròn (trừ miệng hành lang), lan can quanh máy, bệ cần gạt / núm tâm sai
+  if (x > TR.R + TR.CORR.L - 1 && inOrrery(x, z)) {
+    const ox = x - ORR.cx;
+    if (Math.hypot(ox, z) < ORR.rail + 0.3) return true;
+    if (Math.hypot(ox - ORR.lever[0], z - ORR.lever[1]) < ORR.pedR + 0.3) return true;
+    if (Math.hypot(ox - ORR.dial[0], z - ORR.dial[1]) < ORR.pedR + 0.3) return true;
+    if (!inOrrery(x, z, 0.45)) return !inPassage(x, z, 0.3);
+    return false;
   }
   if (r < TR.CONSOLE_R + 0.35) return true;
   for (const c of COLUMNS) {
@@ -130,6 +188,22 @@ export function insideRoomVolume(x: number, y: number, z: number): boolean {
   if (r < TR.R - 0.7 && y > 0.25 && y < TR.HW + TR.DOME - 1) return true;
   if (y > 0.2 && y < TR.VEST.h - 0.25 && inPassage(x, z, 0.25)) return true;
   if (y > 0.2 && y < TR.CORR.h && r > TR.R - 1 && inPassage(x, z, 0.3) && Math.abs(z) < TR.CORR.w) return true;
+  // Thiên văn đồ (tường 5 m + vòm)
+  if (x > TR.R && inOrrery(x, z, 0.4) && y > 0.25 && y < ORR.wallH + ORR.dome - 0.6) return true;
+  // Phòng Lăng kính + khe vòm tầng lửng 90°
+  if (x > TR.R - 1 && y > PH.y + 0.2 && ((inPrismHall(x, z, 0.15) && y < PH.y + PH.H - 0.15) || (inPrismArch(x, z, 0.15) && y < PH.y + PH.AH - 0.15))) return true;
+  // hành lang chiếu nghỉ Escher
+  if (x < -(TR.R - 1) && onEscherPassage(x, z, 0.15) && y > TR.ZM + 0.2 && y < TR.ZM + ESC.PH - 0.15) return true;
+  // khung cửa giếng thang (nối hành lang ↔ chiếu nghỉ L0), trừ khi cửa đã thành tường
+  if (!roomNav.escherSealed && Math.abs(x - ESC.X1) < 0.35 && Math.abs(z) < ESC.DOOR / 2 - 0.1 && y > ESC.y0 + 0.15 && y < ESC.y0 + ESC.DOOR_H - 0.1) return true;
+  // giếng thang Penrose: giếng giữa thông suốt; trên lối đi thì nằm giữa mặt bậc và đáy tấm sàn của vòng trên
+  if (inShaft(x, z, 0.15)) {
+    if (inWell(x, z)) return true;
+    const b = stairBase(x, z);
+    if (b === null) return false;
+    const rel = ((((y - ESC.y0 - b) % LAP_H) + LAP_H) % LAP_H);
+    return rel > 0.15 && rel < LAP_H - ESC.SLAB - 0.1;
+  }
   return false;
 }
 

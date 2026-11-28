@@ -85,7 +85,11 @@ function useShip() {
       root.traverse((o) => {
         const m = o as THREE.Mesh;
         if (!m.isMesh) return;
-        if (isPlank(m.name)) planks[plankIdx(m.name)] = m;
+        if (isPlank(m.name)) {
+          planks[plankIdx(m.name)] = m;
+          // màu / ánh vàng đổi mỗi khung → chế độ Siêu thực phải đồng bộ bản PBR (fx/realify)
+          (m.material as THREE.Material).userData.live = true;
+        }
         else if (!isStatic(m.name)) parts.push(m);
       });
       return { root, planks, parts };

@@ -16,6 +16,8 @@ uniform vec3 uInk;
 uniform float uWidth;
 uniform float uFar;
 uniform float uStrength;
+uniform float uTone;
+uniform float uDedither;
 uniform sampler2D uMask;
 uniform float uMaskOn;
 
@@ -53,14 +55,23 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
   edge *= 1.0 - sup;
   float dist = 1.0 / max(near, 1e-5);
   edge *= 1.0 - smoothstep(uFar * 0.45, uFar, dist);
+  if (uDedither > 0.5) {
+    // vật đang tan dither (fx/nearFade: thân / tán chắn máy quay) không bị kẻ thành lưới chấm:
+    // sát máy quay (< 3 m) không kẻ; điểm ảnh "cô lập" (cả 2 trục cùng lệch một phía = lỗ dither / điểm dither) bỏ nét
+    edge *= smoothstep(2.6, 3.6, dist);
+    float isoX = step(0.0, (l - c) * (r - c)) * step(0.08 * near, abs(l - c));
+    float isoY = step(0.0, (t - c) * (b - c)) * step(0.08 * near, abs(t - c));
+    edge *= 1.0 - 0.85 * isoX * isoY;
+  }
   vec3 col = inputColor.rgb;
-  vec3 inked = col * 0.16 + uInk * 0.12;
+  // uTone 0,16 = nét gần đen (mặc định); cao hơn = nét MÀU (sắc tối hơn của chính bề mặt — kiểu nền Genshin, không kẻ đen)
+  vec3 inked = col * uTone + uInk * 0.12 * (1.0 - uTone);
   outputColor = vec4(mix(col, inked, edge * uStrength), inputColor.a);
 }
 `;
 
 class InkEffect extends Effect {
-  constructor({ width = 1, far = 80, strength = 1, color = "#3a2440" }: InkProps) {
+  constructor({ width = 1, far = 80, strength = 1, color = "#3a2440", tone = 0.16, dedither = false }: InkProps) {
     super("InkEffect", FRAG, {
       attributes: EffectAttribute.DEPTH,
       uniforms: new Map<string, THREE.Uniform>([
@@ -68,6 +79,8 @@ class InkEffect extends Effect {
         ["uWidth", new THREE.Uniform(width)],
         ["uFar", new THREE.Uniform(far)],
         ["uStrength", new THREE.Uniform(strength)],
+        ["uTone", new THREE.Uniform(tone)],
+        ["uDedither", new THREE.Uniform(dedither ? 1 : 0)],
         ["uMask", new THREE.Uniform(null)],
         ["uMaskOn", new THREE.Uniform(0)],
       ]),
@@ -79,9 +92,9 @@ class InkEffect extends Effect {
   }
 }
 
-type InkProps = { width?: number; far?: number; strength?: number; color?: string };
+type InkProps = { width?: number; far?: number; strength?: number; color?: string; tone?: number; dedither?: boolean };
 
-export const Ink = forwardRef<InkEffect, InkProps>(function Ink({ width = 1, far = 80, strength = 1, color = "#3a2440" }, ref) {
-  const effect = useMemo(() => new InkEffect({ width, far, strength, color }), [width, far, strength, color]);
+export const Ink = forwardRef<InkEffect, InkProps>(function Ink({ width = 1, far = 80, strength = 1, color = "#3a2440", tone = 0.16, dedither = false }, ref) {
+  const effect = useMemo(() => new InkEffect({ width, far, strength, color, tone, dedither }), [width, far, strength, color, tone, dedither]);
   return <primitive ref={ref} object={effect} dispose={null} />;
 });

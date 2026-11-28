@@ -11,12 +11,13 @@ import * as THREE from "three";
 import { useWorld } from "../store";
 import { B, blockAt, setBlock } from "@/lib/world/voxels";
 import { blockTop } from "@/lib/world/terrain";
-import { CARDS, det3, transformCells, type Cell } from "@/lib/world/matrixForge";
+import { CARDS, det3, encodeForge, expandForge, forgePivot, FORGE_AT, FORGE_H, FORGE_SIZE, type Cell } from "@/lib/world/matrixForge";
+import { netForge } from "../net";
 import { MagicCircle } from "../fx/Effects";
 import { sfx } from "@/lib/world/sfx";
 
-export const FORGE = { x: -10, z: 9 };
-const SIZE = 7;
+export const FORGE = FORGE_AT;
+const SIZE = FORGE_SIZE;
 export function forgeBase() {
   return blockTop(FORGE.x + 3, FORGE.z + 3);
 }
@@ -43,7 +44,7 @@ function collect(): Cell[] {
   const out: Cell[] = [];
   for (let x = FORGE.x; x < FORGE.x + SIZE; x++)
     for (let z = FORGE.z; z < FORGE.z + SIZE; z++)
-      for (let y = y0; y < y0 + 9; y++) {
+      for (let y = y0; y < y0 + FORGE_H; y++) {
         const id = blockAt(x, y, z);
         if (id !== B.air) out.push({ x, y, z, id });
       }
@@ -62,11 +63,14 @@ export function ForgeOverlay({ onClose }: { onClose: () => void }) {
       return;
     }
     const y0 = forgeBase();
-    const pivot = { x: FORGE.x + SIZE / 2, y: y0, z: FORGE.z + SIZE / 2 };
-    const out = transformCells(cells, card.m, pivot);
-    for (const c of cells) setBlock(c.x, c.y, c.z, B.air);
-    for (const c of out) if (c.y >= y0 - 2 && c.y < y0 + 40) setBlock(c.x, c.y, c.z, c.id);
-    setLast({ before: cells.length, after: out.length, det: det3(card.m) });
+    const pivot = forgePivot(y0);
+    // MỘT thông điệp mạng cho cả phép biến đổi: áp dụng tại chỗ với remote = true (không gửi từng khối), rồi gửi op —
+    // server và máy khác khai triển y hệt (lib/world/matrixForge: expandForge)
+    const op = encodeForge(cells, card.m, y0);
+    const edits = expandForge(op);
+    for (const [x, y, z, id] of edits) setBlock(x, y, z, id, true);
+    netForge(op);
+    setLast({ before: cells.length, after: edits.length - cells.length, det: det3(card.m) });
     setLog((l) => [...l.slice(-4), card.name[lang]]);
     useWorld.getState().burst([pivot.x, y0 + 2, pivot.z], "#ffd27a", 40);
     sfx.chime(2);

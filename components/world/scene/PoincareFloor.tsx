@@ -13,6 +13,7 @@ import * as THREE from "three";
 import { DISK, PILLARS, fromDisk, geodesicPoints, tilingCircle, toDisk, triangleAngles, type P2 } from "@/lib/world/hyperbolic";
 import { useWorld } from "../store";
 import { Label3D } from "../ui/Labels";
+import { shown } from "./shown";
 
 const TC = tilingCircle(7, 3);
 
@@ -105,7 +106,15 @@ export function PoincareFloor() {
   );
   const [label, setLabel] = useState("");
   const last = useRef({ t: 0, key: "" });
+  const root = useRef<THREE.Group>(null);
+  /** đỉnh A lần dựng cung gần nhất — đứng yên (hoặc ngoài đĩa: điểm mặc định) thì khỏi dựng lại 3 cung trắc địa */
+  const lastA = useRef<P2 | null>(null);
   useFrame((state) => {
+    // sân bị ẩn (đang trong đại sảnh của bốt): bỏ qua
+    if (!shown(root.current)) {
+      lastA.current = null;
+      return;
+    }
     mat.uniforms.uT.value = state.clock.elapsedTime;
     const p = useWorld.getState().player;
     let a: P2 = toDisk(p.x, p.z);
@@ -113,10 +122,13 @@ export function PoincareFloor() {
     const on = r < 1 && p.y < 1;
     if (!on) a = [0.05, 0.55];
     else if (r > 0.97) a = [(a[0] / r) * 0.97, (a[1] / r) * 0.97];
+    const la = lastA.current;
+    const changed = !la || Math.abs(la[0] - a[0]) > 1e-5 || Math.abs(la[1] - a[1]) > 1e-5;
+    lastA.current = a;
     const pos = tri.geometry.attributes.position as THREE.BufferAttribute;
     const [b, c] = PILLARS;
     let k = 0;
-    for (const [u, v] of [
+    if (changed) for (const [u, v] of [
       [a, b],
       [b, c],
       [c, a],
@@ -135,7 +147,7 @@ export function PoincareFloor() {
         pos.setXYZ(k++, x - nx, 0.045, z - nz);
       }
     }
-    pos.needsUpdate = true;
+    if (changed) pos.needsUpdate = true;
     // bảng số liệu ~5 lần / giây
     const now = state.clock.elapsedTime;
     if (now - last.current.t < 0.2) return;
@@ -152,7 +164,7 @@ export function PoincareFloor() {
   });
   const pillars = useMemo(() => PILLARS.map((q) => fromDisk(q)), []);
   return (
-    <group name="poincare">
+    <group name="poincare" ref={root}>
       <mesh rotation-x={-Math.PI / 2} position={[DISK.x, 0.02, DISK.z]} scale={DISK.R} material={mat}>
         <circleGeometry args={[1, 128]} />
       </mesh>

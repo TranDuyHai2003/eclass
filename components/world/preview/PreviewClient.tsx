@@ -14,7 +14,19 @@ export function PreviewClient() {
     // DEV: mở store cho script kiểm thử trình duyệt
     import("../store").then(({ useWorld }) => ((window as unknown as { __world: unknown }).__world = useWorld));
     import("../combat/combat").then((c) => ((window as unknown as { __combat: unknown }).__combat = c));
-    import("../combat/items").then((m) => ((window as unknown as { __items: unknown }).__items = m));
+    import("../combat/items").then((m) => {
+      (window as unknown as { __items: unknown }).__items = m;
+      // DEV: Giáo Sin + Khiên Con lắc có sẵn trong túi để thử (ngoài game chỉ nhận qua câu đố Bờ Sóng);
+      // /world/preview#waves → đưa luôn vào ô 2 và 3 của bộ trang bị
+      m.initBag();
+      m.grantWeapon("lance");
+      m.grantWeapon("shield");
+      if (location.hash.includes("waves")) {
+        m.equip(1, "lance");
+        m.equip(2, "shield");
+      }
+    });
+    import("../combat/waveWeapons").then((m) => ((window as unknown as { __waves: unknown }).__waves = m));
     import("../gfx").then((m) => ((window as unknown as { __gfx: unknown }).__gfx = m));
     import("./mockApi").then(({ createMockApi }) => setReady(createMockApi(location.hash === "#fresh" ? "fresh" : "demo")));
   }, []);

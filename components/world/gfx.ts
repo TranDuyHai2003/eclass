@@ -15,6 +15,7 @@
  */
 import { create } from "zustand";
 import { useWorld, type Quality } from "./store";
+import { capGfx } from "@/lib/world/perfGate";
 
 export type Preset = "low" | "medium" | "high" | "ultra" | "custom";
 export interface Gfx {
@@ -58,19 +59,52 @@ function initial(): Gfx {
 
 export const useGfx = create<Gfx>(() => initial());
 
+/** Lựa chọn của người dùng trước khi máy TỰ hạ chất lượng (autoDowngrade) — thứ được lưu, không lưu giá trị đã bị hạ */
+let chosen: Gfx | null = null;
+/** mức chất lượng trước lần tự hạ đầu tiên (trần để tự nâng lại) */
+let chosenQ: Quality | null = null;
+const Q_ORDER: Quality[] = ["low", "mid", "high"];
 function save() {
   try {
-    localStorage.setItem(KEY, JSON.stringify(useGfx.getState()));
+    localStorage.setItem(KEY, JSON.stringify(chosen ?? useGfx.getState()));
   } catch {}
 }
 export function applyPreset(p: Exclude<Preset, "custom">) {
+  chosen = null; // người dùng chọn mức → bỏ trần tự động
+  chosenQ = null;
   useGfx.setState({ preset: p, ...PRESETS[p] });
   useWorld.setState({ quality: PRESET_QUALITY[p] });
   save();
 }
 export function setGfx(patch: Partial<Gfx>) {
-  useGfx.setState({ ...patch, preset: patch.preset ?? (Object.keys(patch).every((k) => k === "fps") ? useGfx.getState().preset : "custom") });
+  const full = { ...patch, preset: patch.preset ?? (Object.keys(patch).every((k) => k === "fps") ? useGfx.getState().preset : "custom") };
+  useGfx.setState(full);
+  if (chosen) chosen = { ...chosen, ...full };
   save();
+}
+/**
+ * PerformanceMonitor hạ chất lượng (FPS thấp kéo dài): hạ luôn các cờ đắt (phản chiếu, bóng, AO, DOF, tia thể tích, mật độ hiệu ứng)
+ * theo lib/world/perfGate.capGfx — trước đây chỉ `quality` đổi. Chỉ trong phiên này: localStorage vẫn giữ lựa chọn của người dùng.
+ */
+export function autoDowngrade(q: Quality) {
+  chosenQ ??= useWorld.getState().quality;
+  chosen ??= useGfx.getState();
+  useWorld.setState({ quality: q });
+  useGfx.setState(capGfx(chosen, q));
+}
+/** đang chạy dưới mức người dùng chọn do tự hạ */
+export const autoLowered = () => chosen !== null;
+/** Máy khoẻ lại lâu (lib/world/perfGate.qualityStep → "up"): nâng một bậc, không vượt mức người dùng đã chọn */
+export function autoRaise() {
+  if (!chosen || !chosenQ) return;
+  const cur = useWorld.getState().quality;
+  const next = Q_ORDER[Math.min(Q_ORDER.indexOf(cur) + 1, Q_ORDER.indexOf(chosenQ))];
+  if (next === cur) return;
+  useWorld.setState({ quality: next });
+  if (next === chosenQ) {
+    useGfx.setState(chosen);
+    chosen = chosenQ = null;
+  } else useGfx.setState(capGfx(chosen, next));
 }
 /** Hệ số mật độ hiệu ứng hạt theo cài đặt */
 export function vfxScale(): number {

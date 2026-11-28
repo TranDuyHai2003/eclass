@@ -28,7 +28,17 @@ export type Shape =
   /** sóng tròn đồng tâm (Fourier): `rings` vòng nở dần */
   | { k: "wave"; fwd: number; r: number; rings: number }
   /** hút quái về tâm rồi nổ */
-  | { k: "pull"; r: number };
+  | { k: "pull"; r: number }
+  /** Giáo Sin: đâm theo sóng y = A·sin(k·s) (đỉnh ×1,5, nút ×0,7) + phóng bó sóng chạy (lib/world/sineLance.ts) */
+  | { k: "sine"; len: number; packet: "chain" | "charged" }
+  /** Giáo Sin — Sóng dừng: bó sóng đi + bó phản xạ về từ vách cách 2λ */
+  | { k: "standing" }
+  /** Khiên Con lắc: đập quả lắc, sát thương theo động năng lúc chạm (lib/world/pendShield.ts) */
+  | { k: "bob"; range: number; arc: number }
+  /** Khiên Con lắc — giải phóng năng lượng cộng hưởng đã tích */
+  | { k: "release" }
+  /** Khiên Con lắc — dao động cưỡng bức: `pulses` nhịp sóng, mỗi nhịp cách nhau đúng chu kỳ T */
+  | { k: "drive"; pulses: number };
 
 export interface Hit {
   /** giây trong clip */
@@ -176,6 +186,37 @@ export const MOVESETS: Record<string, Moveset> = {
     charged: { name: S("Hội tụ", "Focus"), clip: "Spell_Simple_Shoot", from: 0, to: 0.5, speed: 0.8, pose: "cast", hits: [{ t: 0.12, mul: 2.6, shape: { k: "beams", n: 1, spread: 0, len: 16 }, shake: 0.15 }] },
     skill: { name: S("Cầu vồng", "Rainbow"), clip: "Sword_Regular_C", from: 0.3, to: 1.1, speed: 1.0, pose: "cast", hits: [{ t: 0.63, mul: 1.1, shape: { k: "beams", n: 12, spread: Math.PI * 2, len: 9 }, shake: 0.2 }] },
   },
+};
+
+MOVESETS.lance = {
+  style: S("Giáo Sin — đâm phóng sóng, đỉnh sóng ×1,5", "Sine lance — wave thrusts, crests hit ×1.5"),
+  tip: S(
+    "Đỉnh sóng nằm ở s = λ/4, 3λ/4… (chấm sáng trên đất): đổi λ (X) cho đỉnh rơi đúng quái. Giữ chuột để tăng biên độ A rồi thả. Thả sóng thứ hai đúng sau một chu kỳ T (kim pha ở đỉnh) → hai sóng cùng pha cộng lại; lệch nửa chu kỳ → triệt tiêu.",
+    "Crests sit at s = λ/4, 3λ/4… (glowing dots on the ground): change λ (X) so a crest lands on the foe. Hold to raise the amplitude A, then release. Release a second wave exactly one period T later (phase needle at the top) → in phase, they add up; half a period off → they cancel.",
+  ),
+  chain: [
+    { name: S("Đâm sin", "Sine thrust"), clip: "Punch_Jab", from: 0, to: 0.5, speed: 1.2, lunge: 0.4, pose: "slash", hits: [{ t: 0.13, mul: 1.0, shape: { k: "sine", len: 3.6, packet: "chain" } }] },
+    { name: S("Đâm chéo", "Cross thrust"), clip: "Punch_Cross", from: 0.02, to: 0.55, speed: 1.2, lunge: 0.4, pose: "slash", hits: [{ t: 0.17, mul: 1.05, shape: { k: "sine", len: 3.6, packet: "chain" } }] },
+    { name: S("Quét pha", "Phase sweep"), clip: "Sword_Regular_B", from: 0, to: 0.53, speed: 1.2, lunge: 0.3, pose: "slash", hits: [{ t: 0.25, mul: 0.9, shape: { k: "arc", range: 3.0, arc: 2.2 }, fx: "slashFlip" }] },
+    { name: S("Đâm cộng hưởng", "Resonant lunge"), clip: "Sword_Dash", from: 0, to: 0.9, speed: 1.1, lunge: 1.2, pose: "slash", hits: [{ t: 0.32, mul: 1.7, shape: { k: "sine", len: 4.2, packet: "chain" }, shake: 0.2, launch: 4 }] },
+  ],
+  charged: { name: S("Sóng tụ", "Charged wave"), clip: "Punch_Cross", from: 0.02, to: 0.6, speed: 0.9, lunge: 0.3, pose: "slash", hits: [{ t: 0.17, mul: 1.3, shape: { k: "sine", len: 4.2, packet: "charged" }, shake: 0.18 }] },
+  skill: { name: S("Sóng dừng", "Standing wave"), clip: "Sword_Regular_C", from: 0.3, to: 1.1, speed: 1.0, pose: "slash", hits: [{ t: 0.63, mul: 1.0, shape: { k: "standing" }, shake: 0.2 }] },
+};
+
+MOVESETS.shield = {
+  style: S("Khiên Con lắc — đập theo động năng, đỡ ở đáy để phản đòn", "Pendulum shield — bash by kinetic energy, parry at the bottom"),
+  tip: S(
+    "Chuột phải buông quả lắc từ đỉnh: nó qua đáy sau T/4 rồi cứ mỗi T/2. Thấy quái vung đòn thì buông sao cho đòn tới đúng lúc quả lắc ở đáy → đỡ hoàn hảo, hất trả ½mv². Đỡ hoàn hảo liên tiếp = cộng hưởng, biên độ lớn dần. Đổi dây L (X): dây dài chậm nhưng mạnh. Giữ chuột trái: giải phóng năng lượng.",
+    "Right mouse releases the bob from the top: it passes the bottom after T/4, then every T/2. When a foe winds up, release so the hit lands while the bob is at the bottom → perfect parry, ½mv² thrown back. Chain perfect parries = resonance, the swing grows. Change the chain L (X): longer is slower but stronger. Hold left mouse: release the stored energy.",
+  ),
+  chain: [
+    { name: S("Đập lắc", "Bob bash"), clip: "Shield_OneShot", from: 0, to: 0.83, speed: 1.25, lunge: 0.4, pose: "slash", hits: [{ t: 0.3, mul: 1.0, shape: { k: "bob", range: 2.4, arc: 2.0 }, fx: "slash" }] },
+    { name: S("Vung ngược", "Back swing"), clip: "Melee_Hook", from: 0, to: 0.47, speed: 1.2, lunge: 0.3, pose: "slash", hits: [{ t: 0.23, mul: 1.05, shape: { k: "bob", range: 2.6, arc: 2.2 }, fx: "slashFlip" }] },
+    { name: S("Con lắc nện", "Pendulum slam"), clip: "Sword_Regular_C", from: 0.3, to: 1.0, speed: 1.1, lunge: 0.4, pose: "slash", hits: [{ t: 0.63, mul: 1.6, shape: { k: "bob", range: 2.9, arc: 2.6 }, fx: "nova", shake: 0.25, push: 7, launch: 5 }] },
+  ],
+  charged: { name: S("Giải phóng cộng hưởng", "Resonance release"), clip: "Shield_Dash", from: 0, to: 0.8, speed: 1.1, lunge: 1.5, pose: "slash", hits: [{ t: 0.3, mul: 1.0, shape: { k: "release" }, shake: 0.35 }] },
+  skill: { name: S("Dao động cưỡng bức", "Driven oscillation"), clip: "Spell_Simple_Shoot", from: 0, to: 0.5, speed: 0.8, pose: "cast", hits: [{ t: 0.15, mul: 0.9, shape: { k: "drive", pulses: 3 } }] },
 };
 
 // ───────────── Chấm nhịp ─────────────

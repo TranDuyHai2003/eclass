@@ -1,85 +1,52 @@
 "use client";
 /**
- * Âm thanh tổng hợp bằng WebAudio (không file, không bản quyền): chuông phép, vút, trúng đòn, khiên, vỡ khiên, thất bại, bước chân.
- * Tắt được (localStorage "world.sfx" = "off").
+ * Âm thanh tổng hợp bằng WebAudio (không file, không bản quyền) — API dùng khắp thế giới (sfx.*).
+ * Từ T14 mọi tiếng đi qua lõi âm thanh dùng chung components/world/audio/engine.ts (một AudioContext, bus Hiệu ứng có
+ * âm lượng riêng, vang chung, giới hạn giọng, chỉ phát sau thao tác người dùng). Tiếng chiến đấu theo NGUYÊN TỐ
+ * (components/world/audio/sfxKit.ts): nguyên tố lấy từ vũ khí đang cầm (elementSource) hoặc phép vừa niệm (element()).
+ * Tắt được (localStorage "world.sfx" = "off") — công tắc chung, tắt cả nhạc nền.
  */
-let ctx: AudioContext | null = null;
-let master: GainNode | null = null;
+import { audioCore, duckMusic, sfxVoice, type Voice } from "@/components/world/audio/engine";
+import * as kit from "@/components/world/audio/sfxKit";
+import { noiseHit, osc } from "@/components/world/audio/synth";
+import { bumpCombat } from "@/components/world/audio/combatLayer";
+import { spellElement, type Element, type VoiceCat } from "./musicVoices";
 
-function ac(): AudioContext | null {
-  if (typeof window === "undefined") return null;
-  try {
-    if (localStorage.getItem("world.sfx") === "off") return null;
-  } catch {}
-  if (!ctx) {
-    const C = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!C) return null;
-    ctx = new C();
-    master = ctx.createGain();
-    master.gain.value = 0.5;
-    // Vang nhẹ cho cảm giác "phép thuật"
-    const delay = ctx.createDelay();
-    delay.delayTime.value = 0.18;
-    const fb = ctx.createGain();
-    fb.gain.value = 0.25;
-    master.connect(ctx.destination);
-    master.connect(delay);
-    delay.connect(fb);
-    fb.connect(delay);
-    delay.connect(ctx.destination);
-  }
-  if (ctx.state === "suspended") ctx.resume().catch(() => {});
-  return ctx;
+type Cat = Exclude<VoiceCat, "music">;
+
+/** mọi tiếng "cổ điển" dưới đây: một giọng (giới hạn theo nhóm), tone / noise nối vào giọng đó */
+function voice(cat: Cat, dur: number, prio = 2, send = 0.25): Voice | null {
+  return sfxVoice(cat, prio, dur, send);
 }
-
-function tone(freq: number, t0: number, dur: number, type: OscillatorType = "sine", vol = 0.2, glideTo?: number) {
-  const c = ac();
-  if (!c || !master) return;
-  const o = c.createOscillator();
-  const g = c.createGain();
-  o.type = type;
-  o.frequency.setValueAtTime(freq, c.currentTime + t0);
-  if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, c.currentTime + t0 + dur);
-  g.gain.setValueAtTime(0, c.currentTime + t0);
-  g.gain.linearRampToValueAtTime(vol, c.currentTime + t0 + 0.01);
-  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + t0 + dur);
-  o.connect(g);
-  g.connect(master);
-  o.start(c.currentTime + t0);
-  o.stop(c.currentTime + t0 + dur + 0.05);
+const LEG = 0.8;
+function tone(v: Voice, freq: number, t0: number, dur: number, type: OscillatorType = "sine", vol = 0.2, glideTo?: number) {
+  osc(v.c, v.out, { type, f0: freq, f1: glideTo, t: v.t + t0, a: 0.01, d: dur, gain: vol * LEG });
 }
-
-function noise(t0: number, dur: number, vol = 0.2, from = 4000, to = 300, q = 1) {
-  const c = ac();
-  if (!c || !master) return;
-  const len = Math.floor(c.sampleRate * dur);
-  const buf = c.createBuffer(1, len, c.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-  const src = c.createBufferSource();
-  src.buffer = buf;
-  const f = c.createBiquadFilter();
-  f.type = "bandpass";
-  f.Q.value = q;
-  f.frequency.setValueAtTime(from, c.currentTime + t0);
-  f.frequency.exponentialRampToValueAtTime(to, c.currentTime + t0 + dur);
-  const g = c.createGain();
-  g.gain.setValueAtTime(vol, c.currentTime + t0);
-  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + t0 + dur);
-  src.connect(f);
-  f.connect(g);
-  g.connect(master);
-  src.start(c.currentTime + t0);
+function noise(v: Voice, t0: number, dur: number, vol = 0.2, from = 4000, to = 300, q = 1) {
+  noiseHit(v.core, v.out, { t: v.t + t0, dur, f0: from, f1: to, q, gain: vol * LEG });
 }
 
 const PENTA = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51];
 
+// ───────────── Nguyên tố hiện tại ─────────────
+
+let baseElement: () => Element = () => "steel";
+const override = { el: "steel" as Element, until: 0 };
+/** combat đăng ký: nguyên tố của vũ khí đang cầm */
+export function elementSource(fn: () => Element) {
+  baseElement = fn;
+}
+function elementNow(): Element {
+  return performance.now() < override.until ? override.el : baseElement();
+}
+
 /** Tiếng hát cá voi: sóng sin trầm lượn lên xuống + rung (vibrato) + bồi âm mờ */
 function whaleSong(vol: number) {
-  const c = ac();
-  if (!c || !master) return;
-  const now = c.currentTime;
-  const mk = (f0: number, f1: number, f2: number, t0: number, dur: number, v: number) => {
+  const v = voice("ambient", 5, 1, 0.6);
+  if (!v) return;
+  const { c, out } = v;
+  const now = v.t;
+  const mk = (f0: number, f1: number, f2: number, t0: number, dur: number, vv: number) => {
     const o = c.createOscillator();
     const lfo = c.createOscillator();
     const lg = c.createGain();
@@ -93,10 +60,16 @@ function whaleSong(vol: number) {
     lfo.connect(lg);
     lg.connect(o.frequency);
     g.gain.setValueAtTime(0.0001, now + t0);
-    g.gain.exponentialRampToValueAtTime(v, now + t0 + dur * 0.3);
+    g.gain.exponentialRampToValueAtTime(vv * LEG, now + t0 + dur * 0.3);
     g.gain.exponentialRampToValueAtTime(0.0001, now + t0 + dur);
     o.connect(g);
-    g.connect(master!);
+    g.connect(out);
+    o.onended = () => {
+      o.disconnect();
+      lfo.disconnect();
+      lg.disconnect();
+      g.disconnect();
+    };
     o.start(now + t0);
     lfo.start(now + t0);
     o.stop(now + t0 + dur + 0.1);
@@ -108,20 +81,39 @@ function whaleSong(vol: number) {
 }
 
 export const sfx = {
-  /** Vút gió khi vung vũ khí (heavy: trầm, dài hơn) */
-  swing(heavy = false) {
-    noise(0, heavy ? 0.34 : 0.2, heavy ? 0.2 : 0.13, heavy ? 1500 : 3600, heavy ? 260 : 800, 0.9);
+  /** Đặt nguyên tố tạm (phép vừa niệm) trong ms — các đòn trúng sau đó mang lớp âm của nguyên tố này */
+  element(el: Element, ms = 1800) {
+    override.el = el;
+    override.until = performance.now() + ms;
   },
-  /** Tiếng đập khi trúng đòn nặng: thump trầm + vỡ giòn */
+  /** Vút gió khi vung vũ khí (heavy: trầm, dài hơn) — theo nguyên tố vũ khí */
+  swing(heavy = false) {
+    kit.elementSwing(elementNow(), heavy);
+  },
+  /** Vung hụt (không trúng ai) */
+  whiff() {
+    kit.whiff();
+  },
+  /** Tiếng đập khi trúng đòn nặng: thump trầm + vỡ giòn + giảm nhạc */
   impact(power = 1) {
-    tone(95, 0, 0.28, "sine", 0.4 * power, 42);
-    noise(0, 0.14, 0.28 * power, 1400, 180, 1.1);
-    tone(PENTA[2] * 2, 0.01, 0.35, "triangle", 0.08 * power);
+    bumpCombat(0.3 * power);
+    const v = voice("impact", 0.6, 3, 0.2);
+    if (!v) return;
+    tone(v, 95, 0, 0.28, "sine", 0.4 * power, 42);
+    noise(v, 0, 0.14, 0.28 * power, 1400, 180, 1.1);
+    if (power >= 1.2) kit.explode(elementNow(), power - 0.4);
+    else duckMusic(power);
+  },
+  /** Nổ diện rộng (thiên thạch, lỗ đen sập, tuyệt kỹ) */
+  explode(el?: Element, power = 1) {
+    kit.explode(el ?? elementNow(), power);
   },
   /** Chuỗi hoà âm: hoạ âm bậc n của nốt gốc 110 Hz (f, 2f, 3f… — Pythagoras: tỉ số nguyên nghe "thuận tai") */
   harmonic(n: number) {
-    tone(110 * n, 0, 1.6, "sine", 0.2);
-    tone(110 * n * 2, 0, 0.9, "triangle", 0.05);
+    const v = voice("ui", 1.7, 2, 0.4);
+    if (!v) return;
+    tone(v, 110 * n, 0, 1.6, "sine", 0.2);
+    tone(v, 110 * n * 2, 0, 0.9, "triangle", 0.05);
   },
   /** Cá voi sao cất tiếng (vol theo khoảng cách) */
   whale(vol = 0.12) {
@@ -129,73 +121,195 @@ export const sfx = {
   },
   /** Chòm sao hoàn thành: chuỗi chuông ngũ cung dài đi lên + nền trầm */
   constellation() {
-    for (let i = 0; i < 10; i++) tone(PENTA[i % PENTA.length] * (i >= 8 ? 2 : 1), i * 0.11, 1.2, "triangle", 0.13);
-    tone(130.81, 0, 3.5, "sine", 0.18);
-    tone(196, 0.4, 3.2, "sine", 0.1);
+    const v = voice("ui", 3.6, 3, 0.4);
+    if (!v) return;
+    for (let i = 0; i < 10; i++) tone(v, PENTA[i % PENTA.length] * (i >= 8 ? 2 : 1), i * 0.11, 1.2, "triangle", 0.13);
+    tone(v, 130.81, 0, 3.5, "sine", 0.18);
+    tone(v, 196, 0.4, 3.2, "sine", 0.1);
   },
   /** Mở khoá / đúng: chuỗi chuông ngũ cung đi lên */
   chime(level = 0) {
-    for (let i = 0; i < 4; i++) tone(PENTA[(i + level) % PENTA.length] * (i > 3 ? 2 : 1), i * 0.07, 0.6, "triangle", 0.16);
-    tone(PENTA[(level + 4) % PENTA.length] * 2, 0.3, 1.2, "sine", 0.08);
+    const v = voice("ui", 1.6, 2, 0.35);
+    if (!v) return;
+    for (let i = 0; i < 4; i++) tone(v, PENTA[(i + level) % PENTA.length] * (i > 3 ? 2 : 1), i * 0.07, 0.6, "triangle", 0.16);
+    tone(v, PENTA[(level + 4) % PENTA.length] * 2, 0.3, 1.2, "sine", 0.08);
   },
   /** Vòng phép hiện lên */
   circle() {
-    tone(220, 0, 0.9, "sawtooth", 0.04, 440);
-    tone(330, 0.05, 0.9, "triangle", 0.06, 660);
-    noise(0, 0.6, 0.06, 800, 6000, 3);
+    const v = voice("spell", 1, 2, 0.35);
+    if (!v) return;
+    tone(v, 220, 0, 0.9, "sawtooth", 0.04, 440);
+    tone(v, 330, 0.05, 0.9, "triangle", 0.06, 660);
+    noise(v, 0, 0.6, 0.06, 800, 6000, 3);
   },
-  /** Tung phép (vút) */
+  /** Tung phép / bắn (vút) — theo nguyên tố: cung = dây bật, điện = xẹt, còn lại = vút sáng */
   cast() {
-    noise(0, 0.25, 0.25, 6000, 600, 0.8);
-    tone(880, 0, 0.25, "square", 0.05, 1760);
+    const el = elementNow();
+    const v = voice("spell", 0.5, 2, 0.25);
+    if (!v) return;
+    if (el === "wind") {
+      // dây cung bật: gảy trầm + nhiễu ngắn
+      osc(v.c, v.out, { type: "triangle", f0: 118 * (0.95 + Math.random() * 0.1), f1: 105, t: v.t, a: 0.002, d: 0.18, gain: 0.22 });
+      noise(v, 0, 0.12, 0.18, 4500, 1200, 0.9);
+    } else if (el === "lightning") {
+      noise(v, 0, 0.012, 0.3, 6000, 4000, 0.7);
+      osc(v.c, v.out, { type: "square", f0: 1100, f1: 180, t: v.t + 0.01, d: 0.16, gain: 0.05, lp: 3500 });
+    } else {
+      noise(v, 0, 0.25, 0.25, 6000, 600, 0.8);
+      tone(v, 880 * (0.94 + Math.random() * 0.12), 0, 0.25, "square", 0.05, 1760);
+    }
   },
-  /** Trúng đòn — kèm "khựng hình" phía hình ảnh */
+  /** Phép vẽ (đúng khung castSpell) — đặt nguyên tố cho các đòn trúng tiếp theo */
+  spell(id: string) {
+    sfx.element(spellElement(id), id === "vortex" ? 2400 : 1600);
+    kit.spellCast(id);
+  },
+  /** Trúng đòn — kèm "khựng hình" phía hình ảnh. combo/power: 0 thường · 1 nặng · 2 chí mạng */
   hit(combo = 0) {
-    noise(0, 0.18, 0.4, 2500, 200, 0.7);
-    tone(110 + combo * 20, 0, 0.2, "square", 0.12, 55);
-    tone(PENTA[combo % PENTA.length] * 2, 0.02, 0.25, "triangle", 0.1);
+    kit.elementHit(elementNow(), (Math.max(0, Math.min(2, combo)) as 0 | 1 | 2));
+    bumpCombat(0.22 + combo * 0.08);
+  },
+  /** Báo trước đòn quái (lúc nó bắt đầu vung, ~0,45 s trước khi trúng): tiếng rít lên + tích nhỏ, nhỏ dần theo khoảng cách */
+  telegraph(dist = 0) {
+    if (dist > 22) return;
+    const k = 1 / (1 + dist / 5);
+    const v = voice("ui", 0.5, 1, 0.1);
+    if (!v) return;
+    tone(v, 520, 0, 0.32, "triangle", 0.09 * k, 1180);
+    noise(v, 0, 0.3, 0.05 * k, 2600, 5200, 2.2);
+    tone(v, 1560, 0.3, 0.05, "square", 0.05 * k);
+  },
+  /** Người chơi bị đánh */
+  hurt() {
+    kit.hurt();
+    bumpCombat(0.5);
   },
   /** Khiên đỡ đòn */
   shield() {
-    tone(1200, 0, 0.35, "sine", 0.12, 900);
-    tone(1800, 0, 0.3, "sine", 0.06, 1400);
-    noise(0, 0.2, 0.08, 7000, 3000, 6);
+    kit.wardBlock();
   },
-  /** Khiên vỡ / thuần hoá thành công */
+  /** Giáo Sin — đỉnh sóng đi qua quái: "bloop" sin, cao độ theo biên độ (to → trầm, đầy); tăng cường thêm bồi âm quãng tám */
+  waveCrest(amp = 1, constructive = false) {
+    const v = voice("impact", 0.45, 2, 0.35);
+    if (!v) return;
+    const a = Math.max(0.2, Math.min(2.6, amp));
+    tone(v, 760 / Math.sqrt(a), 0, 0.22, "sine", 0.1 + 0.05 * a, 300 / Math.sqrt(a));
+    noise(v, 0, 0.08, 0.05 + 0.03 * a, 2600, 900, 1.6);
+    if (constructive) tone(v, 1520 / Math.sqrt(a), 0.02, 0.3, "triangle", 0.08, 1180);
+  },
+  /** Hai sóng gặp nhau: tăng cường = hợp âm quãng 5 sáng; triệt tiêu = hai nốt lệch nhau rồi tắt lịm (phách) */
+  interfere(constructive: boolean) {
+    const v = voice("ui", 0.9, 2, 0.4);
+    if (!v) return;
+    if (constructive) {
+      tone(v, 440, 0, 0.6, "sine", 0.14);
+      tone(v, 660, 0.03, 0.6, "sine", 0.1);
+      tone(v, 880, 0.06, 0.5, "triangle", 0.06);
+    } else {
+      tone(v, 440, 0, 0.5, "sine", 0.1, 300);
+      tone(v, 446, 0, 0.5, "sine", 0.1, 296);
+    }
+  },
+  /** Khiên Con lắc đỡ đòn: hoàn hảo = gong kim loại + chuông thời gian; tốt = keng; yếu = đục */
+  parry(grade: "perfect" | "good" | "weak") {
+    if (grade === "perfect") {
+      sfx.element("time", 900);
+      kit.elementHit("time", 2);
+      const v = voice("impact", 1.4, 3, 0.45);
+      if (v) {
+        tone(v, 196, 0, 1.2, "triangle", 0.2, 188);
+        tone(v, 196 * 2.76, 0, 0.8, "sine", 0.08);
+        tone(v, 1175, 0.05, 0.9, "sine", 0.07);
+      }
+      duckMusic(0.8);
+      return;
+    }
+    kit.wardBlock();
+    const v = voice("impact", 0.4, 2, 0.2);
+    if (!v) return;
+    if (grade === "good") tone(v, 520, 0, 0.18, "triangle", 0.12, 480);
+    else noise(v, 0, 0.12, 0.16, 900, 200, 0.8);
+  },
+  /** Tích tắc khi quả lắc qua đáy trong thế đỡ (nhịp để canh đòn) */
+  pendTick(strong = false) {
+    const v = voice("ui", 0.12, 1, 0.1);
+    if (!v) return;
+    tone(v, strong ? 1760 : 1320, 0, 0.05, "square", strong ? 0.05 : 0.03);
+  },
+  /** Khiên vỡ / quái tan / thuần hoá thành công: mảnh pha lê theo hợp âm + nhiễu vỡ */
   shatter() {
-    for (let i = 0; i < 6; i++) tone(1500 + Math.random() * 2500, i * 0.025, 0.25, "triangle", 0.06);
-    noise(0, 0.5, 0.25, 8000, 500, 0.5);
+    const v = voice("impact", 1.2, 2, 0.35);
+    if (!v) return;
+    for (let i = 0; i < 6; i++) tone(v, 1500 + Math.random() * 2500, i * 0.025, 0.25, "triangle", 0.06);
+    noise(v, 0, 0.5, 0.25, 8000, 500, 0.5);
     setTimeout(() => sfx.chime(2), 250);
   },
   /** Sai */
   miss() {
-    tone(330, 0, 0.25, "triangle", 0.12, 220);
-    tone(247, 0.12, 0.35, "triangle", 0.1, 165);
+    const v = voice("ui", 0.6, 1, 0.1);
+    if (!v) return;
+    tone(v, 330, 0, 0.25, "triangle", 0.12, 220);
+    tone(v, 247, 0.12, 0.35, "triangle", 0.1, 165);
   },
   step() {
-    noise(0, 0.06, 0.05, 1200, 400, 2);
+    const v = voice("move", 0.1, 1, 0);
+    if (!v) return;
+    noise(v, 0, 0.06, 0.05, 1200, 400, 2);
+  },
+  /** Lướt / né */
+  dash() {
+    kit.dash();
+  },
+  /** Nhặt đồ (rare: vũ khí / đồ hiếm) */
+  pickup(rare = false) {
+    kit.pickup(rare);
+  },
+  /** Mở rương */
+  chest() {
+    kit.chest();
+  },
+  /** Thăng cấp / hoàn thành nhiệm vụ (theo khoá nhạc vùng) */
+  levelUp() {
+    kit.levelUp();
+  },
+  /** Vẽ ký hiệu: bắt đầu / nhận ra (khoá) / không nhận ra */
+  sigilStart() {
+    kit.sigilStart();
+  },
+  sigilLock(id: string) {
+    kit.sigilLock(id);
+  },
+  sigilFail() {
+    kit.sigilFail();
   },
   click() {
-    tone(1320, 0, 0.06, "sine", 0.08);
+    const v = voice("ui", 0.1, 1, 0);
+    if (!v) return;
+    tone(v, 1320, 0, 0.06, "sine", 0.08);
   },
   /** Trống dồn (game show): các nhịp nhiễu dày dần + mạnh dần, kết bằng một cú chũm choẹ */
   drumroll(dur = 1.2) {
+    const v = voice("ui", dur + 0.8, 2, 0.2);
+    if (!v) return;
     const n = Math.round(dur * 26);
-    for (let i = 0; i < n; i++) noise(i * (dur / n), 0.05, 0.05 + 0.18 * (i / n), 1800, 500, 1.5);
-    noise(dur, 0.7, 0.28, 9000, 2500, 0.6);
+    for (let i = 0; i < n; i++) noise(v, i * (dur / n), 0.05, 0.05 + 0.18 * (i / n), 1800, 500, 1.5);
+    noise(v, dur, 0.7, 0.28, 9000, 2500, 0.6);
   },
   /** Kèn chiến thắng: hợp âm rải trưởng đi lên + hợp âm ngân */
   fanfare() {
+    const v = voice("ui", 1.9, 3, 0.35);
+    if (!v) return;
     const n = [523.25, 659.25, 783.99, 1046.5];
-    n.forEach((f, i) => tone(f, i * 0.11, 0.3, "square", 0.06));
-    [523.25, 659.25, 783.99, 1046.5].forEach((f) => tone(f, 0.48, 1.3, "sawtooth", 0.035));
-    tone(1318.51, 0.48, 1.3, "triangle", 0.07);
+    n.forEach((f, i) => tone(v, f, i * 0.11, 0.3, "square", 0.06));
+    n.forEach((f) => tone(v, f, 0.48, 1.3, "sawtooth", 0.035));
+    tone(v, 1318.51, 0.48, 1.3, "triangle", 0.07);
   },
   /** Tiếng dê "be-e-e": răng cưa có rung tần số, lọc formant */
   baa() {
-    const c = ac();
-    if (!c || !master) return;
-    const t0 = c.currentTime;
+    const v = voice("ui", 0.9, 2, 0.15);
+    if (!v) return;
+    const { c, out } = v;
+    const t0 = v.t;
     const o = c.createOscillator();
     o.type = "sawtooth";
     o.frequency.setValueAtTime(420, t0);
@@ -212,12 +326,19 @@ export const sfx = {
     f.Q.value = 2.5;
     const g = c.createGain();
     g.gain.setValueAtTime(0, t0);
-    g.gain.linearRampToValueAtTime(0.22, t0 + 0.05);
-    g.gain.setValueAtTime(0.22, t0 + 0.5);
+    g.gain.linearRampToValueAtTime(0.22 * LEG, t0 + 0.05);
+    g.gain.setValueAtTime(0.22 * LEG, t0 + 0.5);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.8);
     o.connect(f);
     f.connect(g);
-    g.connect(master);
+    g.connect(out);
+    o.onended = () => {
+      o.disconnect();
+      lfo.disconnect();
+      lg.disconnect();
+      f.disconnect();
+      g.disconnect();
+    };
     o.start(t0);
     lfo.start(t0);
     o.stop(t0 + 0.85);
@@ -225,24 +346,29 @@ export const sfx = {
   },
   /** Búa gõ gỗ (đóng ván): hai nhịp gỗ khô */
   knock() {
+    const v = voice("ui", 0.4, 1, 0.15);
+    if (!v) return;
     for (let i = 0; i < 2; i++) {
-      tone(190 - i * 30, i * 0.14, 0.09, "square", 0.09, 120);
-      noise(i * 0.14, 0.07, 0.18, 2600, 900, 2);
+      tone(v, 190 - i * 30, i * 0.14, 0.09, "square", 0.09, 120);
+      noise(v, i * 0.14, 0.07, 0.18, 2600, 900, 2);
     }
   },
   /** Cửa sân khấu kẽo kẹt mở */
   creak() {
-    tone(140, 0, 0.5, "sawtooth", 0.04, 95);
-    noise(0, 0.45, 0.06, 900, 300, 6);
+    const v = voice("ui", 0.6, 1, 0.15);
+    if (!v) return;
+    tone(v, 140, 0, 0.5, "sawtooth", 0.04, 95);
+    noise(v, 0, 0.45, 0.06, 900, 300, 6);
   },
   /**
    * "The Fold" — glissando Shepard–Risset: 7 sóng sin cách nhau một quãng tám cùng trượt lên; biên độ theo hình chuông
    * trên trục log-tần số nên âm thanh như đi lên mãi mà không bao giờ cao hơn (ảo giác thính giác). + tiếng ầm gió nền.
    */
   fold(dur = 4.8) {
-    const c = ac();
-    if (!c || !master) return;
-    const t0 = c.currentTime;
+    const v = voice("ambient", dur + 0.6, 4, 0.3);
+    if (!v) return;
+    const { c, out } = v;
+    const t0 = v.t;
     const N = 7;
     const base = 55;
     const steps = 48;
@@ -258,18 +384,24 @@ export const sfx = {
         o.frequency.setValueAtTime(base * Math.pow(2, pos), t0 + tt);
         const bell = Math.exp(-Math.pow((pos - N / 2) / 1.3, 2));
         const env = Math.min(1, tt / 0.4, (dur - tt) / 0.6);
-        g.gain.linearRampToValueAtTime(0.05 * bell * Math.max(0, env), t0 + tt);
+        g.gain.linearRampToValueAtTime(0.05 * LEG * bell * Math.max(0, env), t0 + tt);
       }
       o.connect(g);
-      g.connect(master);
+      g.connect(out);
+      o.onended = () => {
+        o.disconnect();
+        g.disconnect();
+      };
       o.start(t0);
       o.stop(t0 + dur + 0.1);
     }
-    noise(0, dur, 0.09, 200, 2400, 0.6);
+    noise(v, 0, dur, 0.09, 200, 2400, 0.6);
     // cửa chớp đóng sập giữa chuyến
     setTimeout(() => {
-      tone(70, 0, 0.5, "square", 0.12, 40);
-      noise(0, 0.3, 0.3, 3000, 200, 0.8);
+      const w = voice("impact", 0.6, 3, 0.2);
+      if (!w) return;
+      tone(w, 70, 0, 0.5, "square", 0.12, 40);
+      noise(w, 0, 0.3, 0.3, 3000, 200, 0.8);
     }, dur * 470);
   },
 };
@@ -277,6 +409,10 @@ export const sfx = {
 export function setSfxEnabled(on: boolean) {
   try {
     localStorage.setItem("world.sfx", on ? "on" : "off");
+  } catch {}
+  // lõi âm thanh nghe sự kiện này: tắt → im + tạm dừng ngữ cảnh (cả nhạc nền); bật → tiếp tục
+  try {
+    window.dispatchEvent(new Event("world:sound"));
   } catch {}
 }
 export function isSfxEnabled(): boolean {
@@ -291,11 +427,12 @@ export function isSfxEnabled(): boolean {
  * Gió khi bay: một vòng nhiễu → lọc dải (tần số tăng theo tốc độ) → âm lượng theo tốc độ.
  * level 0…1 (0 = tắt dần). Gọi mỗi khung hình cũng được — chỉ đặt mục tiêu (setTargetAtTime), không tạo nút mới.
  */
-let wind: { src: AudioBufferSourceNode; bp: BiquadFilterNode; g: GainNode } | null = null;
+let wind: { src: AudioBufferSourceNode; bp: BiquadFilterNode; g: GainNode; ctx: AudioContext } | null = null;
 export function setWind(level: number) {
-  const c = level > 0.01 || wind ? ac() : null;
-  if (!c || !master) return;
-  if (!wind) {
+  const k = level > 0.01 || wind ? audioCore() : null;
+  if (!k || k.ctx.state !== "running") return;
+  const c = k.ctx;
+  if (!wind || wind.ctx !== c) {
     const len = c.sampleRate * 2;
     const buf = c.createBuffer(1, len, c.sampleRate);
     const d = buf.getChannelData(0);
@@ -312,11 +449,11 @@ export function setWind(level: number) {
     g.gain.value = 0;
     src.connect(bp);
     bp.connect(g);
-    g.connect(master);
+    g.connect(k.sfx);
     src.start();
-    wind = { src, bp, g };
+    wind = { src, bp, g, ctx: c };
   }
   const L = Math.max(0, Math.min(1, level));
-  wind.g.gain.setTargetAtTime(L * 0.55, c.currentTime, 0.25);
+  wind.g.gain.setTargetAtTime(L * 0.45, c.currentTime, 0.25);
   wind.bp.frequency.setTargetAtTime(260 + L * 1500, c.currentTime, 0.3);
 }

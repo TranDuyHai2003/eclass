@@ -133,8 +133,9 @@ export function createMockApi(preset: "fresh" | "demo"): { api: WorldApi; initia
       const url = process.env.NEXT_PUBLIC_WORLD_RT_URL;
       let id = "";
       try {
-        id = localStorage.getItem("world.anon") || "";
-        if (!id) localStorage.setItem("world.anon", (id = crypto.randomUUID()));
+        // mỗi TAB là một khách riêng (sessionStorage) — mở 2 tab để thử tổ đội (Hầm Bổ đề xếp ghế theo uid)
+        id = sessionStorage.getItem("world.anon") || "";
+        if (!id) sessionStorage.setItem("world.anon", (id = crypto.randomUUID()));
       } catch {
         id = crypto.randomUUID();
       }

@@ -20,7 +20,11 @@ export function toonize(src: THREE.Object3D): THREE.Object3D {
     const vc = !!(m.geometry as THREE.BufferGeometry).attributes.color;
     const conv = (mat: THREE.Material) => {
       const std = mat as THREE.MeshStandardMaterial;
-      if (std.name.startsWith("glow_")) return new THREE.MeshBasicMaterial({ color: std.color.clone().multiplyScalar(2.2), toneMapped: false, vertexColors: vc });
+      if (std.name.startsWith("glow_")) {
+        const g = new THREE.MeshBasicMaterial({ color: std.color.clone().multiplyScalar(2.2), toneMapped: false, vertexColors: vc });
+        g.name = std.name; // giữ tên (hoạt hoạ tra theo tên, vd. "glow_peg" của Cua Chuông)
+        return g;
+      }
       const t = new THREE.MeshToonMaterial({ color: std.color, gradientMap: GRADIENT, vertexColors: vc, map: std.map ?? null });
       t.name = std.name;
       return t;

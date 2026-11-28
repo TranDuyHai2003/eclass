@@ -131,7 +131,8 @@ export const PROPS: Prop[] = (() => {
       const x = Math.cos(a + da) * rr;
       const z = Math.sin(a + da) * rr;
       if (!isBed(x, z) || Math.hypot(x - SPAWN.x, z - SPAWN.z) < 4) continue;
-      out.push({ kind: (k + (rr > 20 ? 1 : 0)) % 2 ? "blossom" : "tree", x, z, yaw: R() * 6.28, s: 0.85 + R() * 0.35 });
+      // cây to (1,1–1,45×): tán khung tượng đài, che bớt sân trống (Genshin: cây là khối chính của bố cục, không phải điểm nhấn nhỏ)
+      out.push({ kind: (k + (rr > 20 ? 1 : 0)) % 2 ? "blossom" : "tree", x, z, yaw: R() * 6.28, s: 1.1 + R() * 0.35 });
     }
   }
   // đèn dọc vòng dạo + hai bên lối toả tia
@@ -141,7 +142,8 @@ export const PROPS: Prop[] = (() => {
     const z = Math.sin(a) * 30;
     if (!inFeature(x, z, 0.8)) out.push({ kind: "lamp", x, z, yaw: 0, s: 1 });
   }
-  for (const [ax, az] of AXES)
+  // cặp đèn ở NGƯỠNG 4 lối chính (cổng Bất Khả, đình Gương, cổng Hoạ âm, bảo tàng) — bỏ ở 4 lối chéo: hết "hàng rào cọc" quanh hồ
+  for (const [ax, az] of AXES.filter((_, k) => k % 2 === 0))
     for (const sd of [-1, 1]) {
       const x = ax * 13 + -az * sd * (PATH_HALF + 0.4);
       const z = az * 13 + ax * sd * (PATH_HALF + 0.4);
@@ -170,6 +172,62 @@ export const STUDY_DOOR = {
   dx: Math.cos(STUDY_A) * 34.6,
   dz: Math.sin(STUDY_A) * 34.6,
   yaw: Math.atan2(-Math.cos(STUDY_A), -Math.sin(STUDY_A)),
+};
+
+/**
+ * Cửa Hầm Bổ đề (giải đố tổ đội): cửa đá tròn bốn lỗ khoá ● ▲ ■ ◆ ở mép vòng dạo phía nam – đông nam (giữa lối N và ĐN),
+ * quay vào tâm sân. (x, z) = chỗ đứng bấm F; (dx, dz) = khung cửa sát lan can (ngoài bán kính đi được → không cần vật cản).
+ */
+const VAULT_A = 1.14; // giữa đèn (56°) và ghế đá (74°) trên vòng dạo
+export const VAULT_DOOR = {
+  x: Math.cos(VAULT_A) * 32.2,
+  z: Math.sin(VAULT_A) * 32.2,
+  r: 2.2,
+  dx: Math.cos(VAULT_A) * 34.8,
+  dz: Math.sin(VAULT_A) * 34.8,
+  yaw: Math.atan2(-Math.cos(VAULT_A), -Math.sin(VAULT_A)),
+};
+
+/**
+ * Cổng Quần đảo Xuyến (vùng xuyến phẳng): khung đá + xuyến vàng ở mép vòng dạo phía bắc – đông bắc (giữa cổng Sảnh Bất Khả
+ * và cổng Vùng Kỳ quan, giữa đèn 281° và ghế đá 299°), quay vào tâm sân. (x, z) = chỗ đứng bấm F; (dx, dz) = khung cổng.
+ */
+const TORUS_A = (290 * Math.PI) / 180;
+export const TORUS_DOOR = {
+  x: Math.cos(TORUS_A) * 32.4,
+  z: Math.sin(TORUS_A) * 32.4,
+  r: 2,
+  dx: Math.cos(TORUS_A) * 34.6,
+  dz: Math.sin(TORUS_A) * 34.6,
+  yaw: Math.atan2(-Math.cos(TORUS_A), -Math.sin(TORUS_A)),
+};
+
+/**
+ * Cổng Bờ Sóng (Wave Coast): vòm đá có mặt sóng giao thoa ở mép vòng dạo phía tây – tây nam (giữa bảo tàng 180° và vườn
+ * sinh vật 135°, giữa đèn 146° và ghế đá 164°; thác nước gần nhất ở 112° / 248°), quay vào tâm sân. (x, z) = chỗ đứng bấm F.
+ */
+const COAST_A = (157.5 * Math.PI) / 180;
+export const COAST_DOOR = {
+  x: Math.cos(COAST_A) * 32.4,
+  z: Math.sin(COAST_A) * 32.4,
+  r: 2,
+  dx: Math.cos(COAST_A) * 34.6,
+  dz: Math.sin(COAST_A) * 34.6,
+  yaw: Math.atan2(-Math.cos(COAST_A), -Math.sin(COAST_A)),
+};
+
+/**
+ * Cổng Chợ Xác Suất (Chance Bazaar): cổng chợ đêm treo đèn lồng ở mép vòng dạo phía tây bắc (giữa cổng Thung lũng 225° và
+ * cổng Sảnh Bất Khả 270°; giữa đèn 236° và thác 248°), quay vào tâm sân. (x, z) = chỗ đứng bấm F; (dx, dz) = khung cổng.
+ */
+const BAZAAR_A = (242 * Math.PI) / 180;
+export const BAZAAR_DOOR = {
+  x: Math.cos(BAZAAR_A) * 32.4,
+  z: Math.sin(BAZAAR_A) * 32.4,
+  r: 2,
+  dx: Math.cos(BAZAAR_A) * 34.6,
+  dz: Math.sin(BAZAAR_A) * 34.6,
+  yaw: Math.atan2(-Math.cos(BAZAAR_A), -Math.sin(BAZAAR_A)),
 };
 
 /** lửa trại trên vòng dạo phía đông nam (giữa đèn và ghế, xa lối toả tia / đình) */
@@ -244,4 +302,8 @@ export const INTERACT = {
   museum: { x: MUSEUM.x + 1.6, z: MUSEUM.z },
   mirror: { x: PAVILION.x - 1.6, z: PAVILION.z },
   study: { x: STUDY_DOOR.x, z: STUDY_DOOR.z },
+  vault: { x: VAULT_DOOR.x, z: VAULT_DOOR.z },
+  torus: { x: TORUS_DOOR.x, z: TORUS_DOOR.z },
+  coast: { x: COAST_DOOR.x, z: COAST_DOOR.z },
+  bazaar: { x: BAZAAR_DOOR.x, z: BAZAAR_DOOR.z },
 };

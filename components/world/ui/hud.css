@@ -375,7 +375,8 @@
 
 /* ══════════════ Phép vẽ (Sigil) ══════════════ */
 .w-skill--sigil { box-shadow: inset 0 0 0 2px #fff, inset 0 0 16px rgba(180,140,255,.5), 0 4px 14px rgba(8,10,30,.4); }
-.w-sigil { position: absolute; inset: 0; z-index: 42; background: radial-gradient(circle at 50% 45%, rgba(40,20,80,.35), rgba(8,6,24,.72)); backdrop-filter: blur(2px) saturate(1.2); }
+/* T24: bỏ backdrop-filter (làm mờ toàn màn hình mỗi khung khi đang vẽ — đắt) → nền tối hơn một chút thay thế */
+.w-sigil { position: absolute; inset: 0; z-index: 42; background: radial-gradient(circle at 50% 45%, rgba(40,20,80,.42), rgba(8,6,24,.78)); }
 .w-sigil__ring { position: absolute; left: 50%; top: 45%; width: min(70vh, 70vw); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50% !important; pointer-events: none; border: 1.5px dashed rgba(200,170,255,.35) !important; box-shadow: 0 0 60px rgba(150,110,255,.25) inset; animation: w-spin 40s linear infinite; }
 .w-sigil__hint { position: absolute; left: 50%; top: calc(var(--pt, 12px) + 18px); transform: translateX(-50%); pointer-events: none; font-weight: 800; font-size: 14px; color: rgba(255,255,255,.85); text-shadow: 0 1px 4px #000; white-space: nowrap; }
 .w-sigil__result { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; text-align: center; width: min(90vw, 460px); }
@@ -386,6 +387,10 @@
 .w-sigil__guide { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 72px; font-size: 10px; font-weight: 800; color: rgba(255,255,255,.75); text-align: center; line-height: 1.2; }
 .w-sigil__guide svg { width: 38px; height: 38px; }
 .w-sigil__guide path { fill: none; stroke: var(--sc); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 4px var(--sc)); }
+.w-sigil__guide { transition: transform .12s, opacity .12s; }
+.w-sigil__guides:has(.is-likely) .w-sigil__guide:not(.is-likely) { opacity: .45; }
+.w-sigil__guide.is-likely { transform: scale(1.18); color: #fff; }
+.w-sigil__guide.is-likely path { stroke-width: 3.2; }
 .w-sigil__close { position: absolute; right: max(12px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top)); }
 @media (max-height: 430px) { .w-sigil__guide { width: 56px; font-size: 9px; } .w-sigil__guide svg { width: 28px; height: 28px; } .w-sigil__name { font-size: 22px; } }
 
@@ -534,36 +539,4 @@
 .w-lab__table td:last-child { text-align: right; font-family: ui-monospace, Consolas, monospace; }
 .w-lab__think { padding: 8px 10px !important; border-radius: 10px !important; background: rgba(255, 210, 122, 0.09); border-left: 3px solid #ffd27a !important; font-style: italic; color: #fff1cf; }
 
-/* Màn chờ toán – vật lý */
-.w-load { position: absolute; inset: 0; z-index: 58; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px !important; overflow: hidden;
-  background: radial-gradient(ellipse at 50% 40%, #241650 0%, #120b30 45%, #07051a 100%); color: #ece4ff; pointer-events: auto; }
-.w-load__stars { position: absolute; inset: 0; pointer-events: none; opacity: 0.7;
-  background-image: radial-gradient(1px 1px at 10% 20%, #fff, transparent), radial-gradient(1px 1px at 30% 80%, #cfe, transparent), radial-gradient(1.5px 1.5px at 70% 30%, #ffe, transparent),
-    radial-gradient(1px 1px at 85% 65%, #fff, transparent), radial-gradient(1px 1px at 50% 50%, #ddf, transparent), radial-gradient(1.2px 1.2px at 20% 60%, #fff, transparent);
-  background-size: 240px 240px; animation: w-load-drift 60s linear infinite; }
-@keyframes w-load-drift { to { background-position: 240px 480px; } }
-.w-load__head { position: relative; text-align: center; display: flex; flex-direction: column; }
-.w-load__head small { font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: #a99be0; font-weight: 800; }
-.w-load__head b { font-size: clamp(18px, 3vw, 26px); font-weight: 900; color: #ffe3a6; text-shadow: 0 0 18px rgba(255, 190, 90, 0.5); }
-.w-load__stage { position: relative; display: flex; align-items: center; gap: 22px; max-width: 980px; width: 100%; justify-content: center; }
-.w-load__toy { width: min(52vh, 46vw, 460px); aspect-ratio: 1; border-radius: 22px !important; cursor: pointer; touch-action: manipulation;
-  background: #080616; box-shadow: 0 0 0 1px rgba(190, 160, 255, 0.28), 0 18px 60px rgba(40, 10, 100, 0.55), inset 0 0 40px rgba(90, 60, 200, 0.25); }
-.w-load__cap { max-width: 340px; display: flex; flex-direction: column; gap: 8px; }
-.w-load__cap h3 { margin: 0 !important; font-size: 18px; font-weight: 900; color: #fff; display: flex; flex-direction: column; gap: 4px; }
-.w-load__stat { font: 800 13px/1.2 ui-monospace, Consolas, monospace; color: #ffd27a; }
-.w-load__cap p { margin: 0 !important; font-size: 13px; line-height: 1.6; color: #d8ceff; }
-.w-load__cap em { font-size: 12px; color: #8dffd2; font-weight: 700; }
-.w-load__fact { position: relative; margin: 0 !important; max-width: 760px; text-align: center; font-size: 13px; line-height: 1.55; color: #e6defc; padding: 8px 16px !important;
-  border-radius: 12px !important; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(190, 160, 255, 0.2) !important; }
-.w-load__fact span { color: #ffd27a; font-weight: 900; margin-right: 4px; }
-.w-load__bar { position: relative; width: min(560px, 86vw); height: 22px; border-radius: 99px !important; background: rgba(255, 255, 255, 0.06); overflow: hidden; border: 1px solid rgba(190, 160, 255, 0.25) !important; }
-.w-load__bar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #7a5cff, #ffd27a); transition: width 0.3s; box-shadow: 0 0 16px rgba(255, 200, 110, 0.6); }
-.w-load__bar span { position: relative; display: block; text-align: center; font: 800 11px/22px ui-monospace, Consolas, monospace; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
-@media (max-width: 760px), (max-height: 480px) {
-  .w-load { gap: 6px; }
-  .w-load__stage { gap: 12px; }
-  .w-load__toy { width: min(58vh, 44vw); }
-  .w-load__cap p { font-size: 11.5px; line-height: 1.45; }
-  .w-load__cap h3 { font-size: 15px; }
-  .w-load__fact { font-size: 11.5px; padding: 6px 12px !important; }
-}
+/* Màn chờ toán – vật lý: xem interstitial.css */

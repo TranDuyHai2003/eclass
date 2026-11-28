@@ -2,31 +2,51 @@
 import { RemotePlayers } from "./RemotePlayers";
 /**
  * Wonder Expanse — an infinite, seeded, chunk-streamed world (Minecraft-like): cel-shaded terrain with biomes,
- * water, instanced trees, and Mathematical Wonders hidden in chunks. Chunks load/unload around the player.
+ * water, caves / overhangs, voxel L-system trees, structures (Phyllotaxis Isles, Graph Forest, WFC ruins — lib/world/worldgen)
+ * and Mathematical Wonders hidden in chunks. Chunks load/unload around the player.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { attack, enemyInFront } from "../combat/combat";
 import { groundColor } from "@/lib/world/terrain";
 import { CombatFx, Enemies } from "../combat/CombatScene";
 import { Ouroboros, Sunflowers } from "./Props";
 import { Storm } from "./Storm";
 import { FORGE, ForgeAnvil } from "./Forge";
+import { SymmetryTotem, totemNearby } from "./SymmetryTotem";
 import { useWorld } from "../store";
-import { GRADIENT } from "../fx/shaders";
 import { MagicCircle } from "../fx/Effects";
 import { Player, type Nearby } from "./Hub";
 import { WonderAt } from "./Wonders";
 import { AVATAR_BY_ID } from "@/lib/world/avatars";
-import { CHUNK, WATER_LEVEL, biome, blockTop, chunkTrees, chunkWonder } from "@/lib/world/terrain";
-import { B, BLOCK_RGB, EMISSIVE, PLACEABLE, blockAt, columnRange, loadEdits, onChunkDirty, raycastVoxel, setBlock, surfaceAt } from "@/lib/world/voxels";
-import { sfx } from "@/lib/world/sfx";
+import { ChunkManager } from "../voxel/chunkManager";
+import { VOXEL_U, WATER_BLOCK_U, voxelMaterial, voxelWaterMaterial } from "../voxel/voxelMaterial";
+import { waterNormalTex } from "../fx/proceduralTex";
+import { HubDayCycle } from "./HubNight";
+import { VoxelWater } from "../voxel/VoxelWater";
+import { TorchSprites } from "../voxel/TorchSprites";
+import { HubSky } from "./HubPlaza";
+import { DAY } from "../fx/dayState";
+import { FarTerrain } from "../voxel/farTerrain";
+import { CHUNK, MATH_BIOME_INFO, WATER_LEVEL, biome, blockTop, chunkWonder, nearbyMathCells, type MathBiome } from "@/lib/world/terrain";
+import { STRUCT_INFO, structureSigns } from "@/lib/world/structures";
+import { Label3D } from "../ui/Labels";
+import { B, BLOCK_RGB, EMISSIVE, blockAt, columnRange, isSolidBlock, loadEdits, onChunkDirty, surfaceAt } from "@/lib/world/voxels";
+import { BlockInteractor } from "../craft/BlockInteractor";
+import { ExpanseBosses } from "../bosses/ExpanseBosses";
 import { WONDERS } from "@/lib/world/wonders";
 import { t as tt, tr } from "@/lib/world/i18n";
+import { LOAD_SIG } from "@/lib/world/loadSignals";
+import { genStats } from "@/lib/world/worldgen";
 
-const RADIUS = { low: 1, mid: 2, high: 3 } as const;
-const TMP_DIR = new THREE.Vector3();
+/** bán kính tầm nhìn voxel (chunk 32 m) — dựng trong Web Worker nên nới rộng được */
+const RADIUS = { low: 2, mid: 3, high: 4 } as const;
+/** chân trời địa hình xa (LOD, m) */
+const FAR_R = { low: 170, mid: 280, high: 420 } as const;
+/** bộ chạy ngày đêm cần một bộ uniform "nướng" + danh sách đèn — Vùng Kỳ quan không dùng (giá trị bỏ qua) */
+const DAY_U = { uExposure: { value: 1 }, uFloor: { value: 0.3 }, uTint: { value: new THREE.Color(1, 1, 1) }, uScale: { value: 1 } };
+const NO_LAMPS: { mat: THREE.MeshBasicMaterial; base: THREE.Color }[] = [];
+const FOG_DAY = new THREE.Color("#d2def2");
 // Nạp các khối người chơi đã sửa (chỉ trên trình duyệt)
 if (typeof window !== "undefined") loadEdits();
 const SEGMENTS = { low: 16, mid: 28, high: 40 } as const;
@@ -40,6 +60,8 @@ export function expanseNearby(p: THREE.Vector3): Nearby | null {
   let bd = 3;
   // Lò rèn Ma trận: đứng cạnh / trên đế 7×7
   if (Math.hypot(FORGE.x + 3.5 - p.x, FORGE.z + 3.5 - p.z) < 5.5) return { kind: "forge", label: lang === "vi" ? "Mở Lò rèn Ma trận" : "Open the Matrix Forge" };
+  const totem = totemNearby(p, lang);
+  if (totem) return totem;
   for (const it of interactables) {
     const d = Math.hypot(it.x - p.x, it.z - p.z);
     if (d < bd) {
@@ -70,32 +92,75 @@ export function Expanse() {
     // Gần trước, xa sau
     return out.sort((a, b) => Math.hypot(a[0] - center[0], a[1] - center[1]) - Math.hypot(b[0] - center[0], b[1] - center[1]));
   }, [center, R]);
-  // Streaming: sinh tối đa 2 chunk mỗi khung hình để không khựng; bỏ chunk ra khỏi bán kính
-  const [chunks, setChunks] = useState<[number, number][]>([]);
+  // Địa hình: ChunkManager mệnh lệnh + Web Worker (sinh + ánh sáng + lưới tham lam) — React không dựng lại theo chunk
+  const mat = useMemo(() => voxelMaterial(), []);
+  const glowMat = useMemo(() => voxelMaterial({ emissive: "#9fe6ff", emissiveIntensity: 0.9 }), []);
+  const waterMat = useMemo(() => voxelWaterMaterial(waterNormalTex()), []);
+  // tạo / huỷ trong effect (StrictMode gắn – gỡ – gắn lại: mỗi lần gắn có bộ quản lý + worker riêng)
+  const [manager, setManager] = useState<ChunkManager | null>(null);
+  useEffect(() => {
+    const cores = typeof navigator !== "undefined" ? navigator.hardwareConcurrency || 4 : 4;
+    const q = useWorld.getState().quality;
+    const workers = q === "low" ? 1 : Math.max(1, Math.min(3, cores - 2));
+    const m = new ChunkManager(mat, glowMat, RADIUS[q], workers, waterMat);
+    setManager(m);
+    if (process.env.NODE_ENV !== "production") Object.assign(window, { __voxel: m.stats, __voxelMgr: m, __voxGen: genStats });
+    // màn chờ: tiến độ "dựng thế giới" = chunk gần đã có lưới
+    const near = () => m.nearProgress();
+    LOAD_SIG.build = near;
+    return () => {
+      if (LOAD_SIG.build === near) LOAD_SIG.build = null;
+      m.dispose();
+    };
+  }, [mat, glowMat, waterMat]);
+  useEffect(() => manager?.setRadius(R), [manager, R]);
+  useEffect(() => () => waterMat.dispose(), [waterMat]);
+  // địa hình xa (LOD) — worker riêng
+  const farMat = useMemo(() => voxelMaterial({ far: true }), []);
+  const [far, setFar] = useState<FarTerrain | null>(null);
+  useEffect(() => {
+    const q = useWorld.getState().quality;
+    const f = new FarTerrain(farMat, FAR_R[q], RADIUS[q] * CHUNK);
+    setFar(f);
+    if (process.env.NODE_ENV !== "production") Object.assign(window, { __far: f.stats, __farMgr: f });
+    return () => f.dispose();
+  }, [farMat]);
+  useEffect(() => far?.setRadius(FAR_R[quality], R * CHUNK), [far, quality, R]);
+  useEffect(() => () => farMat.dispose(), [farMat]);
+  useEffect(() => () => (mat.dispose(), glowMat.dispose()), [mat, glowMat]);
+  const { camera } = useThree();
+  const fogRef = useRef<THREE.Fog>(null);
   useFrame(() => {
-    const keys = new Set(wanted.map(([x, z]) => `${x},${z}`));
-    const kept = chunks.filter(([x, z]) => keys.has(`${x},${z}`));
-    const have = new Set(kept.map(([x, z]) => `${x},${z}`));
-    const missing = wanted.filter(([x, z]) => !have.has(`${x},${z}`)).slice(0, 2);
-    if (missing.length || kept.length !== chunks.length) setChunks([...kept, ...missing]);
+    if (!manager) return;
+    const p = useWorld.getState().player;
+    manager.update(camera, p.x, p.z);
+    WATER_BLOCK_U.uT.value = performance.now() / 1000;
+    far?.update(p.x, p.z);
+    // ánh trời của khối theo độ sáng ban ngày; sương nhuộm màu chân trời
+    // đêm: ánh trăng lam (không tối đen như Minecraft — người chơi là học sinh); đuốc / pha lê vẫn nổi bật nhờ ánh khối ấm
+    const night = DAY.night.value;
+    VOXEL_U.uDay.value = Math.max(0.2 + 0.2 * night, DAY.level.value);
+    VOXEL_U.uSkyTint.value.setRGB(1 - 0.38 * night, 1 - 0.26 * night, 1 + 0.08 * night);
+    fogRef.current?.color.copy(DAY.hor.value).lerp(FOG_DAY, 0.35 * DAY.level.value);
   });
-  const wonders = useMemo(() => chunks.map(([cx, cz]) => chunkWonder(cx, cz)).filter(Boolean) as NonNullable<ReturnType<typeof chunkWonder>>[], [chunks]);
+  const wonders = useMemo(() => wanted.map(([cx, cz]) => chunkWonder(cx, cz)).filter(Boolean) as NonNullable<ReturnType<typeof chunkWonder>>[], [wanted]);
   useEffect(() => {
     interactables = [{ kind: "portal", id: "hub", x: 0, z: -6 }, ...wonders.map((w) => ({ kind: "wonder" as const, id: w.id, x: w.x, z: w.z }))];
   }, [wonders]);
 
-  const mat = useMemo(() => new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: GRADIENT }), []);
-  const glowMat = useMemo(() => new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: GRADIENT, emissive: "#9fe6ff", emissiveIntensity: 0.9 }), []);
-  const fogFar = (R + 0.6) * CHUNK;
+  const fogFar = FAR_R[quality];
+  const fogNear = Math.min(fogFar * 0.55, (R + 0.5) * CHUNK);
 
   return (
     <group>
-      <fog attach="fog" args={["#d2def2", fogFar * 0.45, fogFar]} />
-      {chunks.map(([cx, cz]) => (
-        <Chunk key={`${cx},${cz}`} cx={cx} cz={cz} material={mat} glow={glowMat} />
-      ))}
-      <Water />
-      <Trees chunks={chunks} />
+      <fog ref={fogRef} attach="fog" args={["#d2def2", fogNear, fogFar]} />
+      {/* ngày đêm theo giờ thật (dùng chung bộ chạy của Quảng trường): trời shader, mặt trời / trăng, ánh trời voxel */}
+      <HubDayCycle U={DAY_U} lampMats={NO_LAMPS} />
+      <HubSky />
+      {manager && <primitive object={manager.group} />}
+      {far && <primitive object={far.group} />}
+      <VoxelWater far={far} />
+      <TorchSprites />
       <Ouroboros position={[6, blockTop(6, -10) + 4, -10]} scale={1.4} />
       <Sunflowers spots={[[3, 4], [-4, 6], [7, 9], [-8, -3], [9, -2]]} ground={(x, z) => blockTop(x, z)} />
       {wonders.map((w) => (
@@ -107,8 +172,11 @@ export function Expanse() {
         <MagicCircle radius={2.4} position={[0, 0.05, 0]} intensity={0.6} spin={-0.6} />
       </group>
       <RemotePlayers />
+      <BiomeSigns />
+      <SymmetryTotem />
       <BlockInteractor />
-      <Enemies ground={(x, z) => Math.max(blockTop(x, z), WATER_LEVEL - 0.6)} spawner={{ kind: "ring", count: 7, min: 12, max: 26, kinds: ["slime", "knight", "wisp", "zeno", "mite"], extra: [{ kind: "twinA", at: [10, 0, -12] }, { kind: "twinB", at: [14, 0, -12] }] }} />
+      <ExpanseBosses />
+      <Enemies ground={enemyGround} spawner={{ kind: "ring", count: 10, min: 12, max: 26, kinds: ["slime", "knight", "wisp", "zeno", "mite", "ghoul", "warden", "crab"], extra: [{ kind: "twinA", at: [10, 0, -12] }, { kind: "twinB", at: [14, 0, -12] }] }} />
       <CombatFx />
       <Storm />
       <ForgeAnvil />
@@ -116,145 +184,11 @@ export function Expanse() {
         armed
         avatarFile={AVATAR_BY_ID[avatar]?.file}
         blocked={voxelBlocked}
-        ground={(x, z, y) => Math.max(y === undefined ? blockTop(x, z) : surfaceAt(x, z, y), WATER_LEVEL - 0.6)} findNearby={expanseNearby} />
+        ground={expanseGround} findNearby={expanseNearby} field={EXPANSE_FIELD} />
     </group>
   );
 }
 
-const FACES: { n: [number, number, number]; v: number[][]; shade: number }[] = [
-  { n: [0, 1, 0], v: [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]], shade: 1 },
-  { n: [0, -1, 0], v: [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]], shade: 0.55 },
-  { n: [1, 0, 0], v: [[1, 0, 1], [1, 0, 0], [1, 1, 0], [1, 1, 1]], shade: 0.82 },
-  { n: [-1, 0, 0], v: [[0, 0, 0], [0, 0, 1], [0, 1, 1], [0, 1, 0]], shade: 0.82 },
-  { n: [0, 0, 1], v: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]], shade: 0.72 },
-  { n: [0, 0, -1], v: [[1, 0, 0], [0, 0, 0], [0, 1, 0], [1, 1, 0]], shade: 0.72 },
-];
-
-/** Một chunk voxel: duyệt các cột, chỉ sinh mặt giáp không khí → một mesh (dựng lại khi có khối bị sửa) */
-function Chunk({ cx, cz, material, glow }: { cx: number; cz: number; seg?: number; material: THREE.Material; glow: THREE.Material }) {
-  const [version, setVersion] = useState(0);
-  useEffect(() => onChunkDirty((x, z) => x === cx && z === cz && setVersion((v) => v + 1)), [cx, cz]);
-  const geos = useMemo(() => {
-    void version;
-    const out = { solid: { p: [] as number[], n: [] as number[], c: [] as number[] }, glow: { p: [] as number[], n: [] as number[], c: [] as number[] } };
-    const col = new THREE.Color();
-    for (let i = 0; i < CHUNK; i++) {
-      for (let j = 0; j < CHUNK; j++) {
-        const x = cx * CHUNK + i;
-        const z = cz * CHUNK + j;
-        const [lo, hi] = columnRange(x, z);
-        const bi = biome(x, z);
-        const vary = 0.93 + (((Math.imul(x, 73856093) ^ Math.imul(z, 19349663)) >>> 0) % 100) / 100 * 0.12;
-        for (let y = lo; y < hi; y++) {
-          const id = blockAt(x, y, z);
-          if (id === B.air) continue;
-          const tgt = EMISSIVE.has(id) ? out.glow : out.solid;
-          for (const f of FACES) {
-            if (blockAt(x + f.n[0], y + f.n[1], z + f.n[2]) !== B.air) continue;
-            let rgb = BLOCK_RGB[id][f.n[1] === 1 ? 0 : 1];
-            if (id === B.grass && f.n[1] === 1 && bi !== "meadow") {
-              if (bi === "crystal") rgb = [0.36, 0.66, 0.68];
-              else if (bi === "dusk") rgb = [0.72, 0.5, 0.66];
-              else rgb = groundColor(x, z, y + 1) as [number, number, number]; // biome toán học: giấy kẻ ô, Sierpiński, fractal, yên ngựa
-            }
-            const k = f.shade * vary;
-            col.setRGB(rgb[0] * k, rgb[1] * k, rgb[2] * k, THREE.SRGBColorSpace);
-            for (const q of [0, 1, 2, 0, 2, 3]) {
-              const v = f.v[q];
-              tgt.p.push(x + v[0], y + v[1], z + v[2]);
-              tgt.n.push(...f.n);
-              tgt.c.push(col.r, col.g, col.b);
-            }
-          }
-        }
-      }
-    }
-    const make = (d: typeof out.solid) => {
-      const g = new THREE.BufferGeometry();
-      g.setAttribute("position", new THREE.Float32BufferAttribute(d.p, 3));
-      g.setAttribute("normal", new THREE.Float32BufferAttribute(d.n, 3));
-      g.setAttribute("color", new THREE.Float32BufferAttribute(d.c, 3));
-      g.computeBoundingSphere();
-      return g;
-    };
-    return { solid: make(out.solid), glow: out.glow.p.length ? make(out.glow) : null };
-  }, [cx, cz, version]);
-  useEffect(
-    () => () => {
-      geos.solid.dispose();
-      geos.glow?.dispose();
-    },
-    [geos],
-  );
-  return (
-    <>
-      <mesh geometry={geos.solid} material={material} />
-      {geos.glow && <mesh geometry={geos.glow} material={glow} />}
-    </>
-  );
-}
-
-/** Nhắm khối ở giữa màn hình (dò tia voxel), đánh dấu bằng khung; chuột trái phá, chuột phải đặt */
-function BlockInteractor() {
-  const box = useRef<THREE.LineSegments>(null);
-  const target = useRef<ReturnType<typeof raycastVoxel>>(null);
-  const { camera, gl } = useThree();
-  const edges = useMemo(() => new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02, 1.02, 1.02)), []);
-  useEffect(() => {
-    const act = (place: boolean) => {
-      const t = target.current;
-      if (!t || useWorld.getState().overlay) return;
-      if (place) {
-        const [px, py, pz] = [t.x + t.n[0], t.y + t.n[1], t.z + t.n[2]];
-        const p = useWorld.getState().player;
-        // Không đặt khối vào chỗ nhân vật đang đứng
-        if (Math.floor(p.x) === px && Math.floor(p.z) === pz && (py === Math.floor(p.y) || py === Math.floor(p.y) + 1)) return;
-        setBlock(px, py, pz, PLACEABLE[useWorld.getState().hotbar] ?? B.stone);
-        sfx.click();
-      } else {
-        setBlock(t.x, t.y, t.z, B.air);
-        sfx.hit(0);
-        useWorld.getState().burst([t.x + 0.5, t.y + 0.5, t.z + 0.5], "#e8dcc0", 18);
-      }
-    };
-    const down = (e: MouseEvent) => {
-      if (document.pointerLockElement !== gl.domElement) return;
-      if (e.button === 0) {
-        const w = useWorld.getState();
-        if (enemyInFront(w.player, w.playerYaw)) attack();
-        else act(false);
-      }
-      if (e.button === 2) act(true);
-    };
-    const ctx = (e: MouseEvent) => e.preventDefault();
-    const ui = (e: Event) => act((e as CustomEvent).detail === "place");
-    window.addEventListener("mousedown", down);
-    gl.domElement.addEventListener("contextmenu", ctx);
-    window.addEventListener("world-block", ui);
-    return () => {
-      window.removeEventListener("mousedown", down);
-      gl.domElement.removeEventListener("contextmenu", ctx);
-      window.removeEventListener("world-block", ui);
-    };
-  }, [gl]);
-  useFrame(() => {
-    camera.getWorldDirection(TMP_DIR);
-    const o = camera.position;
-    // Tầm với tính từ nhân vật: dò xa hơn khoảng cách máy quay
-    const reach = useWorld.getState().camDist + 6;
-    const t = raycastVoxel(o.x, o.y, o.z, TMP_DIR.x, TMP_DIR.y, TMP_DIR.z, reach);
-    target.current = t;
-    if (box.current) {
-      box.current.visible = !!t;
-      if (t) box.current.position.set(t.x + 0.5, t.y + 0.5, t.z + 0.5);
-    }
-  });
-  return (
-    <lineSegments ref={box} geometry={edges}>
-      <lineBasicMaterial color="#ffffff" transparent opacity={0.85} />
-    </lineSegments>
-  );
-}
 
 /** Thân nhân vật chiếm ô (y+1): có khối ở đó là tường (ô y có khối = bậc 1 khối → leo được) */
 function voxelBlocked(x: number, z: number, y: number) {
@@ -262,74 +196,79 @@ function voxelBlocked(x: number, z: number, y: number) {
   for (const [ox, oz] of [[0, 0], [0.28, 0], [-0.28, 0], [0, 0.28], [0, -0.28]]) {
     const ix = Math.floor(x + ox);
     const iz = Math.floor(z + oz);
-    if (blockAt(ix, iy + 1, iz) !== B.air) return true;
+    if (isSolidBlock(blockAt(ix, iy + 1, iz))) return true;
   }
   return false;
 }
 
-function Water() {
-  const ref = useRef<THREE.Mesh>(null);
-  useFrame(() => {
+/**
+ * Mặt đất cho Player. Có y → mặt đất thật dưới chân (hang, đảo nổi, khối tự xây). Không có y (máy quay) → mặt cột như cũ;
+ * riêng khi nhân vật đang Ở TRONG HANG thì lấy sàn hang dưới máy quay và không cao quá đầu nhân vật (máy quay khỏi bật lên mặt đất).
+ * Mức nước chỉ chặn khi cột mở ra trời (hang luôn cao hơn mặt nước, xem density.CAVE_FLOOR).
+ */
+function expanseGround(x: number, z: number, y?: number): number {
+  if (y === undefined) {
     const p = useWorld.getState().player;
-    ref.current?.position.set(p.x, WATER_LEVEL, p.z);
-  });
-  return (
-    <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[400, 400]} />
-      <meshToonMaterial color="#5fb7e6" gradientMap={GRADIENT} transparent opacity={0.78} />
-    </mesh>
-  );
+    if (p.y < blockTop(p.x, p.z) - 2.5) return Math.min(surfaceAt(x, z, p.y + 1), p.y + 0.6);
+    return Math.max(blockTop(x, z), WATER_LEVEL - 0.6);
+  }
+  // người chơi (có y): đáy thật — biển / hồ nước khối thì BƠI (expanseWater), không còn "sàn" ở mực nước
+  return surfaceAt(x, z, y);
 }
 
-/** Cây kiểu toon: hai InstancedMesh (thân + tán) cho mọi chunk → 2 draw call */
-function Trees({ chunks }: { chunks: [number, number][] }) {
-  const MAX = 1400;
-  const trunk = useRef<THREE.InstancedMesh>(null);
-  const crown = useRef<THREE.InstancedMesh>(null);
-  const mats = useMemo(
-    () => ({
-      trunk: new THREE.MeshToonMaterial({ color: "#7a5a43", gradientMap: GRADIENT }),
-      crown: new THREE.MeshToonMaterial({ color: "#4f9e5a", gradientMap: GRADIENT }),
-    }),
-    [],
-  );
-  useEffect(() => {
-    const o = new THREE.Object3D();
-    const col = new THREE.Color();
-    let n = 0;
-    for (const [cx, cz] of chunks) {
-      for (const t of chunkTrees(cx, cz)) {
-        if (n >= MAX) break;
-        const h = blockTop(t.x, t.z);
-        o.position.set(t.x, h + 0.9 * t.s, t.z);
-        o.scale.setScalar(t.s);
-        o.rotation.set(0, (t.x * 13 + t.z) % 6.28, 0);
-        o.updateMatrix();
-        trunk.current?.setMatrixAt(n, o.matrix);
-        o.position.y = h + 2.6 * t.s;
-        o.updateMatrix();
-        crown.current?.setMatrixAt(n, o.matrix);
-        col.setHSL(0.28 + ((t.x * 7 + t.z) % 10) * 0.006, 0.45, 0.42 + (t.s - 0.8) * 0.1);
-        crown.current?.setColorAt(n, col);
-        n++;
-      }
+/**
+ * Mặt nước tại chỗ người chơi: cột nước nguồn (khối water quanh thân → mặt = đỉnh cột + 0,875) hoặc biển (cột mở ra trời
+ * có mặt đất dưới mực nước). null = không ở trong nước. Dòng chảy (tính trong worker) chỉ nông — lội, không bơi.
+ */
+function expanseWater(p: THREE.Vector3): number | null {
+  const ix = Math.floor(p.x);
+  const iz = Math.floor(p.z);
+  const iy = Math.floor(p.y + 0.3);
+  for (let y = iy; y <= iy + 1; y++)
+    if (blockAt(ix, y, iz) === B.water) {
+      let t = y;
+      while (t < y + 64 && blockAt(ix, t + 1, iz) === B.water) t++;
+      return t + 0.875;
     }
-    for (const m of [trunk.current, crown.current]) {
-      if (!m) continue;
-      m.count = n;
-      m.instanceMatrix.needsUpdate = true;
-      if (m.instanceColor) m.instanceColor.needsUpdate = true;
-      m.computeBoundingSphere();
-    }
-  }, [chunks]);
+  if (p.y < WATER_LEVEL + 0.5 && blockTop(ix, iz) < WATER_LEVEL) return WATER_LEVEL;
+  return null;
+}
+const EXPANSE_FIELD = { water: expanseWater };
+
+/** Mặt đất cho quái: có y → sàn thật dưới chân (hang, phần nhô, đảo); không có y (chỗ xuất hiện) → mặt cột */
+function enemyGround(x: number, z: number, y?: number): number {
+  return Math.max(y === undefined ? blockTop(x, z) : surfaceAt(x, z, y), WATER_LEVEL - 0.6);
+}
+
+/** Biển báo biome toán học: tên + công thức nổi trên tâm mỗi vùng trong bán kính 220 m (quét lại mỗi giây) */
+function BiomeSigns() {
+  const lang = useWorld((st) => st.lang);
+  const [cells, setCells] = useState<{ kind: MathBiome; cx: number; cz: number; y: number }[]>([]);
+  // công trình (W5/W6): Đảo Phyllotaxis, Rừng Đồ thị, Tàn tích WFC, miệng hang
+  const [structs, setStructs] = useState<ReturnType<typeof structureSigns>>([]);
+  const last = useRef({ x: 1e9, z: 1e9, t: 0 });
+  useFrame((st) => {
+    const p = useWorld.getState().player;
+    const L = last.current;
+    if (st.clock.elapsedTime - L.t < 1 || Math.hypot(p.x - L.x, p.z - L.z) < 20) return;
+    L.t = st.clock.elapsedTime;
+    L.x = p.x;
+    L.z = p.z;
+    const next = nearbyMathCells(p.x, p.z, 220).map((c) => ({ ...c, y: blockTop(Math.round(c.cx), Math.round(c.cz)) + 9 }));
+    setCells((prev) => (prev.length === next.length && prev.every((c, i) => c.cx === next[i].cx && c.cz === next[i].cz) ? prev : next));
+    const ss = structureSigns(p.x, p.z, 220);
+    setStructs((prev) => (prev.length === ss.length && prev.every((c, i) => c.x === ss[i].x && c.z === ss[i].z) ? prev : ss));
+  });
   return (
     <>
-      <instancedMesh ref={trunk} args={[undefined, mats.trunk, MAX]} frustumCulled={false}>
-        <cylinderGeometry args={[0.18, 0.26, 1.8, 6]} />
-      </instancedMesh>
-      <instancedMesh ref={crown} args={[undefined, mats.crown, MAX]} frustumCulled={false}>
-        <icosahedronGeometry args={[1.4, 0]} />
-      </instancedMesh>
+      {cells.map((c) => {
+        const info = MATH_BIOME_INFO[c.kind];
+        return <Label3D key={`${c.cx},${c.cz}`} text={`${lang === "vi" ? info.vi : info.en} · ${info.formula}`} position={[c.cx, c.y, c.cz]} variant="math" maxDist={200} />;
+      })}
+      {structs.map((c) => {
+        const info = STRUCT_INFO[c.kind];
+        return <Label3D key={`s${c.kind}${c.x},${c.z}`} text={`${lang === "vi" ? info.vi : info.en} · ${info.formula}`} position={[c.x, c.y, c.z]} variant="math" maxDist={c.kind === "grotto" ? 60 : 200} />;
+      })}
     </>
   );
 }

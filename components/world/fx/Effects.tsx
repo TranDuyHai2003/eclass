@@ -8,6 +8,8 @@ import * as THREE from "three";
 import { glyphRingTexture, magicCircleShader, shieldShader } from "./shaders";
 import { useWorld, timeScale } from "../store";
 import { useFxKit } from "./FxKit";
+import { fxReducedMotion } from "./fxClock";
+import { vfxRand } from "@/lib/world/vfxRng";
 
 let glyphTex: THREE.CanvasTexture | null = null;
 const glyphs = () => (glyphTex ??= glyphRingTexture());
@@ -236,8 +238,9 @@ export function CameraShake() {
     const s = useWorld.getState();
     camera.position.sub(offset.current);
     if (s.shake > 0.001) {
-      const a = s.shake * s.shake * 0.35;
-      offset.current.set((Math.random() - 0.5) * a, (Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
+      // giảm chuyển động: rung còn 25 % biên độ (vẫn có phản hồi đòn nặng, không gây chóng mặt)
+      const a = s.shake * s.shake * 0.35 * (fxReducedMotion() ? 0.25 : 1);
+      offset.current.set((vfxRand() - 0.5) * a, (vfxRand() - 0.5) * a, (vfxRand() - 0.5) * a);
       camera.position.add(offset.current);
       useWorld.setState({ shake: Math.max(0, s.shake - dt * 2.2) });
     } else offset.current.set(0, 0, 0);

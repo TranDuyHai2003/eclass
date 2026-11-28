@@ -9,27 +9,37 @@
  */
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { useGLTF, useTexture } from "@react-three/drei";
+import { useTexture } from "@react-three/drei";
 import { Label3D } from "../ui/Labels";
-import { ARENA_PLATFORMS, MAZE_UPDRAFTS, ZONE_LABEL, mazeBlocked, mazeCamFloor, mazeGround } from "@/lib/world/sirenMaze";
+import { MAZE_UPDRAFTS, ZONE_LABEL } from "@/lib/world/sirenMaze";
 import { CollageFlats, MathRoses, MazeGeometry } from "./siren/SirenMaze";
 import { LoopVortices, SirenFog, SirenSky, StageCurtain } from "./siren/SirenSky";
+import { SirenDirector } from "./siren/SirenDirector";
+import { SirenWorld } from "./siren/SirenWorld";
 import { PortalSurfaces, usePortalDriver } from "./siren/SirenPortals";
-import { GravityZones, gravityCamClamp, sirenField } from "./siren/SirenGravity";
+import { GravityZones, gravityCamClamp, reduceMotion, sirenField } from "./siren/SirenGravity";
+import { BossBody, BossEpicycles, CometRibbons, createStandingMat, standingMode } from "./siren/SirenBossFx";
+import { HARMONIC } from "@/lib/world/harmonicState";
 import { MazeMonsters, mazeMonsterHit } from "./siren/SirenMonsters";
 import { SirenPlay, playNearby } from "./siren/SirenPlay";
+import { HarmonicPlatforms, StaffBridge } from "./siren/SirenFloor";
+import { SirenPuppets } from "./siren/SirenPuppets";
+// giai đoạn 2: đồ thị khu (Biển Phím, Phòng Chờ, Sa Mạc) — docs/ai-reviews/siren-witch/PHASE2_PLAN.md
+import { HubOnly, SirenZones, zoneNearby } from "./siren/zones/SirenZones";
+import { ZONE_RT, worldBlocked, worldCamFloor, worldGround } from "./siren/zones/zoneRuntime";
 import * as THREE from "three";
 import { create } from "zustand";
 import { useWorld } from "../store";
 import { worldAsset, AVATAR_BY_ID } from "@/lib/world/avatars";
-import { toonize, cloneWithOwnMaterials } from "../fx/glbToon";
 import { createFxMat, rampRow } from "../fx/fxmat";
 import { Player } from "./Hub";
 import { MagicCircle } from "../fx/Effects";
 import { Updrafts } from "./Props";
 import { RemotePlayers } from "./RemotePlayers";
 import { CombatFx, Enemies } from "../combat/CombatScene";
-import { ENV, addFx, enemies, playerHurt, motion, setBossHandler, type Enemy } from "../combat/combat";
+import { CAM, ENV, addFx, enemies, playerHurt, motion, setBossHandler, type Enemy } from "../combat/combat";
+import { impact, shockwave } from "../fx/Lensing";
+import { strike } from "../fx/StrikeFx";
 import { floatText } from "../ui/Labels";
 import { ARENA_R, ATK, BOSS_DMG, LAMBDA, NODE_POS, beatRadius, hitBoss, hitNode, inPhase, lissajous, newBoss, standingDanger, tickBoss, unpackBoss, type BossSim } from "@/lib/world/boss";
 import { netBoss, netBossHit, netPeers, netStatus } from "../net";
@@ -42,9 +52,9 @@ export const useBossUi = create<{ on: boolean; hp: number; maxHp: number; coh: n
   on: false, hp: 1, maxHp: 1, coh: 1, cohMax: 1, broken: false, phase: 1, shield: false, atk: null, dead: false, nodes: [0, 0],
 }));
 
-const SIREN_GLB = worldAsset("boss/siren.glb");
-useGLTF.preload(SIREN_GLB);
 const UP = new THREE.Vector3(0, 2.2, 0);
+/** B1: boss cao ~5 m ở tâm đấu trường → đứng trong 13 m thì máy quay bắt đầu lùi xa + hạ góc, sát 5 m thì tối đa */
+const SIREN_FOCUS = { x: 0, z: 0, near: 5, far: 13 };
 
 /** Dịch chuyển / vòng lặp / bay: đặt SAU Player (chạy sau khi Player di chuyển trong khung) */
 function PortalDriver() {
@@ -54,7 +64,7 @@ function PortalDriver() {
 function camClamp(pos: THREE.Vector3, target: THREE.Vector3) {
   // trong vùng trọng lực kỳ dị: máy quay theo hệ "lên" riêng (Lồng Escher: giữ trong lòng lồng)
   if (gravityCamClamp(pos, target)) return;
-  const f = mazeCamFloor(pos.x, pos.z, pos.y, target.y);
+  const f = worldCamFloor(pos.x, pos.z, pos.y, target.y);
   if (f !== null) pos.y = f;
 }
 
@@ -66,6 +76,7 @@ export function Siren() {
   const hurtAt = useRef<Record<string, number>>({});
   const lastUi = useRef(0);
   const wasDead = useRef(false);
+  const wasBroken = useRef(false);
   // Đòn đánh của người chơi vào boss / nút giao thoa đi qua đây
   useEffect(() => {
     setBossHandler((e: Enemy, amount: number) => {
@@ -98,6 +109,7 @@ export function Siren() {
     return () => {
       setBossHandler(null);
       useBossUi.setState({ on: false });
+      CAM.focus = null;
     };
   }, []);
 
@@ -125,14 +137,30 @@ export function Siren() {
     const p = useWorld.getState().player;
     const r = Math.hypot(p.x, p.z);
     const since = now - b.atkAt;
+    // B1: chỉ khi đứng trên tầng đấu trường (tầng Đáy ở ngay bên dưới) và boss còn sống
+    const inHub = ZONE_RT.id === "hub";
+    CAM.focus = inHub && !b.deadAt && p.y > -1.5 && r < ARENA_R + 3 ? SIREN_FOCUS : null;
+    // BREAK (cả một mình lẫn tổ đội — server gửi brokenUntil): sóng xung kích hậu kỳ + vòng sáng lớn
+    const broken = now < b.brokenUntil && !b.deadAt;
+    if (broken && !wasBroken.current) {
+      impact(1.0);
+      shockwave(new THREE.Vector3(0, 2, 0), 1.4);
+      // BREAK: đứt gãy toả khắp sàn đấu trường (12 nhánh, 9 m) + phiến trồi
+      strike("rupture", 0, 0.1, 0, { r: 9, n: 12, color: "#ffd27a" });
+      useWorld.getState().hitstop(90);
+    }
+    wasBroken.current = broken;
     // chỉ người đang ở tầng đấu trường mới trúng đòn (tầng Đáy nằm ngay bên dưới)
-    if (b.atk && !b.deadAt && p.y > -1.5) {
+    if (inHub && b.atk && !b.deadAt && p.y > -1.5) {
       const tele = ATK[b.atk].tele;
       const key = `${b.atk}@${b.atkAt}`;
       if (b.atk === "standing" && since >= tele && since < tele + 120 && !hurtAt.current[key]) {
         hurtAt.current[key] = 1;
         if (standingDanger(r) && p.y < 1.2) playerHurt(BOSS_DMG.standing);
         useWorld.getState().addShake(0.3);
+        // đòn lớn: sóng dừng đập xuống → sóng xung kích hậu kỳ (zoom blur + tách màu) + vòng sóng
+        impact(0.55);
+        strike("crest", 0, 0.08, 0, { r: 5, color: "#ff9ecb" });
       } else if (b.atk === "beat") {
         for (let i = 0; i < 3; i++) {
           const br = beatRadius(since - tele, i);
@@ -161,22 +189,31 @@ export function Siren() {
       for (let i = 0; i < 3; i++) rollDrops("mite", new THREE.Vector3(Math.cos(i * 2.1) * 2, 1.5, Math.sin(i * 2.1) * 2));
       useWorld.getState().burst([0, 3, 0], "#ffd27a", 120);
       useWorld.getState().addShake(0.6);
+      impact(1.2);
     }
     if (!b.deadAt) wasDead.current = false;
     if (now - lastUi.current > 100) {
       lastUi.current = now;
-      useBossUi.setState({ hp: b.hp, maxHp: b.maxHp, coh: b.coh, cohMax: b.cohMax, broken: now < b.brokenUntil, phase: b.phase, shield: b.shield, atk: b.atk, dead: !!b.deadAt, nodes: [...b.nodes] as [number, number] });
+      useBossUi.setState({ on: inHub, hp: b.hp, maxHp: b.maxHp, coh: b.coh, cohMax: b.cohMax, broken: now < b.brokenUntil, phase: b.phase, shield: b.shield, atk: b.atk, dead: !!b.deadAt, nodes: [...b.nodes] as [number, number] });
     }
   });
 
   const lang = useWorld((st) => (st.lang === "vi" ? "vi" : "en"));
   return (
     <group>
+      <SirenDirector boss={useBossUi.getState} />
+      {/* hình của mê cung hub: ẩn khi đang ở khu khác của đồ thị khu (0 lệnh vẽ) */}
+      <HubOnly>
       <SirenSky />
+      {/* nhánh W: trời cắt dán nhiều lớp, đĩa than, thác ký hiệu, Dấu lặng, kết giới */}
+      <SirenWorld />
       <SirenFog />
       <LoopVortices />
       <StageCurtain />
       <MazeGeometry />
+      {/* nhánh P: cầu khuông nhạc uốn Fourier + đoàn con rối giấy */}
+      <StaffBridge />
+      <SirenPuppets />
       <CollageFlats />
       <MathRoses />
       <PortalSurfaces group={portals} />
@@ -186,8 +223,11 @@ export function Siren() {
         <Label3D key={z.zone} text={z[lang]} position={z.at} maxDist={60} />
       ))}
       <ArenaFloor />
-      <BossModel boss={boss} />
+      {/* nhánh B (siren-witch): thân boss lò xo + mực in lệch; epicycle tự dựng / phân rã; vệt Lissajous; Chladni */}
+      <BossBody boss={boss} />
+      <BossEpicycles />
       <Telegraphs boss={boss} />
+      <CometRibbons boss={boss} />
       <MagicCircle radius={3.2} position={[0, 0.04, 0]} color="#ff9ecb" color2="#9fe6ff" intensity={0.8} spin={0.4} />
       <Enemies
         ground={() => 0}
@@ -198,83 +238,30 @@ export function Siren() {
       {/* sau <Enemies> (nó xoá danh sách quái khi gắn): quái hoạ âm + câu đố toán – nhạc */}
       <MazeMonsters />
       <SirenPlay />
+      <HarmonicPlatforms />
+      <Updrafts list={UPDRAFTS} />
+      </HubOnly>
       <CombatFx />
       <RemotePlayers />
-      <Platforms />
-      <Updrafts list={UPDRAFTS} />
-      <Player armed avatarFile={AVATAR_BY_ID[avatar]?.file} ground={mazeGround} blocked={mazeBlocked} camClamp={camClamp} field={sirenField} findNearby={sirenNearby} />
+      <Player armed avatarFile={AVATAR_BY_ID[avatar]?.file} ground={worldGround} blocked={worldBlocked} camClamp={camClamp} field={sirenField} findNearby={sirenNearby} />
       <PortalDriver />
+      {/* đồ thị khu: cửa, streaming, khu mới, trời khu, màn che, bản đồ (chạy sau Player + cổng) */}
+      <SirenZones />
     </group>
   );
 }
 
-/** Đài nổi nhiều tầng: tránh sóng dưới đất, nhưng sao chổi thứ hai bay ở tầm cao (va chạm ở lib/world/sirenMaze) */
-const PLATFORMS = ARENA_PLATFORMS;
+/** Cột gió lên đài nổi nhiều tầng (đài nhấp nhô 2 : 3 : 5: siren/SirenFloor.tsx; va chạm ở lib/world/sirenMaze) */
 const UPDRAFTS = [0, 1, 2, 3].map((i) => {
   const a = (i / 4) * Math.PI * 2;
   return { x: Math.cos(a) * 11.5, z: Math.sin(a) * 11.5, r: 1.3, top: 9 };
 });
 
-function Platforms() {
-  const tex = useTexture(worldAsset("dungeon/lab_floor.webp"));
-  return (
-    <>
-      {PLATFORMS.map((p, i) => (
-        <group key={i} position={[p.x, p.top, p.z]}>
-          <mesh rotation-x={-Math.PI / 2}>
-            <circleGeometry args={[p.r, 40]} />
-            <meshToonMaterial map={tex} />
-          </mesh>
-          <mesh position-y={-0.45}>
-            <cylinderGeometry args={[p.r, p.r * 0.35, 0.9, 32, 1, true]} />
-            <meshToonMaterial color="#3a2a66" side={THREE.DoubleSide} />
-          </mesh>
-          <MagicCircle radius={p.r * 0.9} position={[0, 0.03, 0]} color="#ffd27a" color2="#ff9ecb" intensity={0.5} spin={0.3} />
-        </group>
-      ))}
-    </>
-  );
-}
-
 function sirenNearby(p: THREE.Vector3) {
   // Cổng về sảnh ở rìa phía nam đấu trường
   if (Math.hypot(p.x, p.z - 13) < 2.2) return { kind: "portal" as const, id: "hub", label: useWorld.getState().lang === "vi" ? "Rời Mê cung" : "Leave the Labyrinth" };
-  // đàn một dây, ống Fourier, con lắc, rương (registerAction → WorldClient gọi runAction)
-  return playNearby(p);
-}
-
-function BossModel({ boss }: { boss: React.RefObject<BossSim> }) {
-  const gltf = useGLTF(SIREN_GLB);
-  const model = useMemo(() => {
-    const src = gltf.scene.getObjectByName("b_siren");
-    return src ? cloneWithOwnMaterials(toonize(src)) : null;
-  }, [gltf]);
-  const g = useRef<THREE.Group>(null);
-  useFrame(() => {
-    const b = boss.current;
-    if (!g.current || !model || !b) return;
-    const now = Date.now();
-    const t = now / 1000;
-    const broken = now < b.brokenUntil;
-    // Lơ lửng + xoay chậm; bị phá thế thì rũ xuống; chết thì tan biến
-    g.current.position.y = broken ? 0.1 : 0.6 + Math.sin(t * 1.3) * 0.25;
-    g.current.rotation.y = Math.sin(t * 0.25) * 0.6;
-    g.current.rotation.z = broken ? 0.25 : 0;
-    const phaseOn = inPhase(now);
-    for (const m of model.glow) m.color.copy(m.userData.base as THREE.Color).multiplyScalar(phaseOn ? 1.6 : 0.6);
-    const k = b.deadAt ? Math.min(1, (now - b.deadAt) / 1500) : 0;
-    for (const m of model.toon) {
-      (m.userData.dissolve as { value: number }).value = k > 0 ? k : 0;
-      m.emissive.setScalar(b.shield ? 0.25 : 0);
-    }
-    g.current.visible = k < 1;
-  });
-  if (!model) return null;
-  return (
-    <group ref={g} scale={1.6}>
-      <primitive object={model.obj} />
-    </group>
-  );
+  // khu mới (đồ thị khu) trước; rồi đàn một dây, ống Fourier, con lắc, rương (registerAction → WorldClient gọi runAction)
+  return zoneNearby(p) ?? playNearby(p);
 }
 
 /** Báo trước đòn: dải sóng dừng, vòng nhịp, quỹ đạo Lissajous, nút giao thoa */
@@ -284,28 +271,9 @@ function Telegraphs({ boss }: { boss: React.RefObject<BossSim> }) {
   const comets = useRef<(THREE.Mesh | null)[]>([]);
   const path = useRef<THREE.Line>(null);
   const nodes = useRef<(THREE.Group | null)[]>([]);
-  const bandMat = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        uniforms: { uK: { value: 0 }, uLam: { value: LAMBDA }, uR: { value: ARENA_R } },
-        vertexShader: "varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
-        fragmentShader: `uniform float uK; uniform float uLam; uniform float uR; varying vec2 vP;
-          void main(){
-            float r = length(vP);
-            if (r < 2.0 || r > uR - 0.5) discard;
-            float s = abs(sin(6.2831853 * r / uLam));
-            float danger = step(0.5, s);
-            // Bụng sóng: đỏ đậm dần theo thời gian báo trước; nút sóng: vệt xanh an toàn
-            vec3 col = mix(vec3(0.4, 1.0, 0.85), vec3(1.0, 0.23, 0.19), danger);
-            float a = danger * (0.18 + 0.5 * uK) + (1.0 - danger) * 0.22 * step(s, 0.12);
-            gl_FragColor = vec4(col * (1.0 + uK), a);
-          }`,
-        transparent: true,
-        depthWrite: false,
-        toneMapped: false,
-      }),
-    [],
-  );
+  // Sóng dừng → tấm Chladni (vùng nguy hiểm dùng chung biểu thức với luật — lib/world/epicycle.ts, có test)
+  const bandMat = useMemo(() => createStandingMat(LAMBDA, ARENA_R - 0.5), []);
+  const rm = useMemo(() => reduceMotion(), []);
   const beatMats = useMemo(() => [0, 1, 2].map(() => createFxMat(1)), []);
   const cometMat = useMemo(() => new THREE.MeshBasicMaterial({ color: new THREE.Color("#ff9ecb").multiplyScalar(2.6), toneMapped: false }), []);
   const lineMat = useMemo(() => new THREE.LineDashedMaterial({ color: "#ffb3d6", dashSize: 0.4, gapSize: 0.3, transparent: true, opacity: 0.8 }), []);
@@ -320,6 +288,14 @@ function Telegraphs({ boss }: { boss: React.RefObject<BossSim> }) {
     if (bands.current) {
       bands.current.visible = b.atk === "standing" && since < tele + 300;
       bandMat.uniforms.uK.value = Math.min(1, since / tele);
+      if (bands.current.visible) {
+        bandMat.uniforms.uTime.value = rm ? 0 : HARMONIC.time;
+        // chớp khi sóng đập xuống (giảm chuyển động: không chớp)
+        bandMat.uniforms.uFlash.value = rm || since < tele ? 0 : Math.max(0, 1 - (since - tele) / 300);
+        bandMat.uniforms.uMis.value = HARMONIC.dissonance * 0.09;
+        bandMat.uniforms.uDec.value = HARMONIC.decomposition;
+        standingMode(b.atkAt, HARMONIC.harmonics, bandMat.uniforms.uMN.value as THREE.Vector2);
+      }
     }
     beatMats.forEach((m, i) => {
       const mesh = beats.current[i];
@@ -337,7 +313,8 @@ function Telegraphs({ boss }: { boss: React.RefObject<BossSim> }) {
     const onLiss = b.atk === "lissajous";
     if (path.current) {
       path.current.visible = onLiss && since < tele + 600;
-      if (onLiss && since < 60) {
+      // đường bay cố định (lib/world/boss.lissajous chỉ phụ thuộc k, t) → dựng MỘT lần (trước đây 322 Vector3 mỗi khung đầu đòn)
+      if (onLiss && !lineGeo.getAttribute("position")) {
         const pts: THREE.Vector3[] = [];
         for (const k of [0, 1] as const) for (let i = 0; i <= 160; i++) {
           const c = lissajous(k, (i / 160) * ATK.lissajous.dur);

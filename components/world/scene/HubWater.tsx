@@ -2,7 +2,8 @@
 /**
  * Nước ở Quảng trường Khởi nguyên — công thức "layered" của nước anime (xem fx/water.ts, docs/ai-reviews/game-3d/WATER.md):
  *  • Hồ: mô phỏng sóng GPU 128² (tia rơi + người lội đánh vào trường sóng) + shader mặt nước 4 lớp pháp tuyến, LUT độ sâu,
- *    phản chiếu mặt phẳng 384² cập nhật 20 Hz (chỉ layer 0 — bỏ cỏ / cây / hạt), caustics chiếu theo tia nắng khúc xạ.
+ *    phản chiếu mặt phẳng 384² cập nhật 20 Hz ở mức cao / 10 Hz ở laptop, tắt ở máy yếu (nhánh Fresnel + trời; lib/world/perfGate)
+ *    (chỉ layer 0 — bỏ cỏ / cây / hạt), caustics chiếu theo tia nắng khúc xạ.
  *  • Tia phun / màn nước tràn: MESH (ống theo quỹ đạo parabol, vành loe) + vệt chảy trôi theo dòng; hạt chỉ cho giọt tách ra / văng.
  *  • Tương tác (v2, số liệu Codex + Jeschke/Yuksel/Enshrouded): bộ đệm BỌT GPU 256² (trôi theo sóng + dòng xoáy, nửa đời 1,1 s)
  *    nhận dấu từ bước lội / cú đáp / tia rơi / nhát chém; 8 vòng gợn giải tích lan 2 m/s (chuỗi vòng từ người chạy tự thành wake chữ V);
@@ -23,6 +24,7 @@ import { SplashFX, splashStrength } from "../fx/splash";
 import { DAY } from "../fx/dayState";
 import { causticTex, noiseTex, streakTex, waterLUT, waterNormalTex } from "../fx/proceduralTex";
 import { sfx } from "@/lib/world/sfx";
+import { printsAlive, reflectionPlan, waterMaxSteps } from "@/lib/world/perfGate";
 
 const G = 9.81;
 /** layer chỉ camera chính thấy (phản chiếu bỏ qua): cỏ, cây, hạt, tia phun… */
@@ -184,6 +186,10 @@ const mistMat = (sun: THREE.Vector3, noise: THREE.Texture) =>
   });
 
 const MAXF = 40;
+const PR_M = new THREE.Matrix4();
+const PR_P = new THREE.Vector3();
+const PR_Q = new THREE.Quaternion();
+const PR_S = new THREE.Vector3();
 /** cập nhật ảnh phản chiếu tối đa 1 lần / ms mili giây (giữ ảnh cũ giữa các lần) */
 /**
  * Cập nhật ảnh phản chiếu tối đa 1 lần / ms mili giây; khi MÁY QUAY ĐỨNG YÊN chỉ làm mới ~2 lần / giây
@@ -212,7 +218,12 @@ const L1 = (o: THREE.Object3D | null) => {
 
 export function HubWater({ sun }: { sun: THREE.Vector3 }) {
   const { gl } = useThree();
-  const refl = useGfx((s) => s.reflections);
+  const quality = useWorld((s) => s.quality);
+  // phản chiếu động: tắt ở máy yếu, 10 Hz laptop, 20 Hz máy mạnh (đo: bật phản chiếu lúc lia máy quay +19 ms CPU / khung)
+  const reflPlan = reflectionPlan(quality, useGfx((s) => s.reflections));
+  const refl = reflPlan.on;
+  const reflMs = reflPlan.periodMs;
+  const maxSteps = waterMaxSteps(quality);
   const preset = useGfx((s) => s.preset);
   const vfx = useGfx((s) => s.vfx);
   const sim = useMemo(() => new RippleSim(128), []);
@@ -248,7 +259,7 @@ export function HubWater({ sun }: { sun: THREE.Vector3 }) {
         c.layers.set(0);
         return c;
       };
-      throttleRender(r, 50);
+      throttleRender(r, reflMs);
       mesh = r;
     } else mesh = new THREE.Mesh(geo, new THREE.ShaderMaterial({ ...shader }));
     mesh.rotation.x = -Math.PI / 2;
@@ -269,7 +280,7 @@ export function HubWater({ sun }: { sun: THREE.Vector3 }) {
     // ghi độ sâu: viền mực hậu kỳ chỉ còn ở mép nước (không vẽ xuyên qua nước quanh đế tượng), giọt dưới nước bị che đúng
     mat.depthWrite = true;
     return mesh;
-  }, [refl, preset, sun, depth, tex]);
+  }, [refl, reflMs, preset, sun, depth, tex]);
   useEffect(
     () => () => {
       water.geometry.dispose();
@@ -582,11 +593,13 @@ export function HubWater({ sun }: { sun: THREE.Vector3 }) {
         S.lastPrint.copy(p);
       }
     } else S.lastPrint.copy(p);
+    // vết chân: dấu mới nhất đã tan hẳn → thôi vẽ / thôi tải lại ma trận mỗi khung
+    if (prints.count && !printsAlive(S.printAt[(S.printK - 1) % MAXF], now, 9000)) prints.count = 0;
     if (prints.count) {
-      const m4 = new THREE.Matrix4();
-      const pos = new THREE.Vector3();
-      const q = new THREE.Quaternion();
-      const sc = new THREE.Vector3();
+      const m4 = PR_M;
+      const pos = PR_P;
+      const q = PR_Q;
+      const sc = PR_S;
       for (let i = 0; i < prints.count; i++) {
         prints.getMatrixAt(i, m4);
         m4.decompose(pos, q, sc);
@@ -596,8 +609,8 @@ export function HubWater({ sun }: { sun: THREE.Vector3 }) {
       prints.instanceMatrix.needsUpdate = true;
     }
     drops.step(dt, (x, z) => (Math.hypot(x, z) < POOL.r ? POOL.water : 0));
-    sim.step(gl, dt);
-    foamSim.step(gl, dt, sim.texture);
+    sim.step(gl, dt, maxSteps);
+    foamSim.step(gl, dt, sim.texture, maxSteps);
     const wu = (water.material as THREE.ShaderMaterial).uniforms;
     wu.tHeight.value = sim.texture;
     wu.uFoamTex.value = foamSim.texture;

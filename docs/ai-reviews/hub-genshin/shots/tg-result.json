@@ -1,0 +1,127 @@
+{
+  "info": {
+    "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "w": 1094,
+    "h": 615,
+    "scene": "hub",
+    "q": "mid"
+  },
+  "tg": {
+    "base": {
+      "fps": 0.7,
+      "frameMs": 1360.87,
+      "gpuMs": 16.08,
+      "cpuMs": 24.3,
+      "cpuP95": 26.3,
+      "gapP95": 41,
+      "renders": 25,
+      "calls": 467,
+      "tris": 916273,
+      "programs": 51,
+      "geometries": 6,
+      "textures": 1
+    },
+    "-flowers": {
+      "fps": 22.8,
+      "frameMs": 43.93,
+      "gpuMs": 14.46,
+      "cpuMs": 33.8,
+      "cpuP95": 47,
+      "gapP95": 59.3,
+      "renders": 24.89,
+      "calls": 466,
+      "tris": 915060,
+      "programs": 184,
+      "geometries": 310,
+      "textures": 134
+    },
+    "-motes": {
+      "fps": 21.2,
+      "frameMs": 47.15,
+      "gpuMs": 12.3,
+      "cpuMs": 40.3,
+      "cpuP95": 65.1,
+      "gapP95": 72.1,
+      "renders": 24.75,
+      "calls": 466,
+      "tris": 916228,
+      "programs": 184,
+      "geometries": 310,
+      "textures": 134
+    },
+    "-clouds": {
+      "fps": 25.7,
+      "frameMs": 38.85,
+      "gpuMs": 13.5,
+      "cpuMs": 27.8,
+      "cpuP95": 53.4,
+      "gapP95": 63.9,
+      "renders": 24.28,
+      "calls": 466,
+      "tris": 916360,
+      "programs": 184,
+      "geometries": 310,
+      "textures": 134
+    },
+    "-grass": {
+      "fps": 25,
+      "frameMs": 40.05,
+      "gpuMs": 10.33,
+      "cpuMs": 33.1,
+      "cpuP95": 64.7,
+      "gapP95": 67.5,
+      "renders": 24.66,
+      "calls": 455,
+      "tris": 692420,
+      "programs": 184,
+      "geometries": 310,
+      "textures": 134
+    },
+    "-props": {
+      "fps": 23.5,
+      "frameMs": 42.58,
+      "gpuMs": 10.08,
+      "cpuMs": 34.8,
+      "cpuP95": 56.6,
+      "gapP95": 63.3,
+      "renders": 24.64,
+      "calls": 447,
+      "tris": 689940,
+      "programs": 184,
+      "geometries": 310,
+      "textures": 134
+    },
+    "-model": {
+      "fps": 21.1,
+      "frameMs": 47.35,
+      "gpuMs": 8.23,
+      "cpuMs": 38.1,
+      "cpuP95": 64.3,
+      "gapP95": 81.5,
+      "renders": 24.59,
+      "calls": 416,
+      "tris": 784656,
+      "programs": 184,
+      "geometries": 310,
+      "textures": 134
+    },
+    "base2": {
+      "fps": 31.8,
+      "frameMs": 31.42,
+      "gpuMs": 11.34,
+      "cpuMs": 25.1,
+      "cpuP95": 45.2,
+      "gapP95": 53.4,
+      "renders": 24.11,
+      "calls": 467,
+      "tris": 916430,
+      "programs": 184,
+      "geometries": 310,
+      "textures": 134
+    }
+  },
+  "errors": [
+    "warning: THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.",
+    "warning: THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+  ]
+}

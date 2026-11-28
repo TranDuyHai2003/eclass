@@ -19,6 +19,8 @@
  *  ("vật nhanh đi vào, vật nhanh đi ra"): cổng sàn → cổng tường biến rơi thành bay ngang, v.v.
  */
 
+import { KEYS, KEY_MAX, STAFF, dynOffset, type DynKind } from "./sirenFloor";
+
 export type V3 = [number, number, number];
 export type Zone = "arena" | "sine" | "over" | "inter" | "spec" | "void" | "crown" | "moon" | "cone" | "escher";
 export const ZONES: Zone[] = ["arena", "sine", "over", "inter", "spec", "void", "crown", "moon", "cone", "escher"];
@@ -44,6 +46,9 @@ export interface Surf {
   reach?: boolean;
   /** đệm nảy: hệ số đàn hồi e (vận tốc bật = e · vận tốc chạm) */
   bounce?: number;
+  /** mặt ĐỘNG (lib/world/sirenFloor.ts): đài nổi nhấp nhô · cầu khuông nhạc uốn sóng · phím sàn lò xo; di = chỉ số đài / phím */
+  dyn?: DynKind;
+  di?: number;
 }
 
 /** Tường dựng đứng (tấm hộp) — có thể mang cổng */
@@ -194,7 +199,7 @@ const SP_END = (() => {
 export const SURFS: Surf[] = [
   // Đấu trường + đài nổi (đài chỉ lên được bằng cột gió / tàu lượn)
   disc("arena", 0, 0, 0, 15.6, "arena", 1.2),
-  ...ARENA_PLATFORMS.map((p, i) => disc(`plat${i}`, p.x, p.top, p.z, p.r, "arena", 0.9, false)),
+  ...ARENA_PLATFORMS.map((p, i): Surf => ({ ...disc(`plat${i}`, p.x, p.top, p.z, p.r, "arena", 0.9, false), dyn: "plat", di: i })),
   // Bốn cầu chính
   bridge("brS", 0, 14, 0, 35, 0, 4, "sine"),
   bridge("brE", 14, 0, 35, 0, 0, 4, "over"),
@@ -257,6 +262,29 @@ export const SURFS: Surf[] = [
   }),
   disc("summit", -24, 53, 52, 6.5, "moon", 1.2),
 ];
+// Mặt động: cầu Nam thành cầu khuông nhạc; mọi bậc cầu thang thành phím sàn (frac = vị trí bậc trong cầu thang)
+{
+  const staff = SURFS.find((s) => s.id === STAFF.id)!;
+  staff.dyn = "staff";
+  const groups = new Map<string, Surf[]>();
+  for (const s of SURFS) if (s.step) {
+    const g = s.id.split(".")[0];
+    groups.set(g, [...(groups.get(g) ?? []), s]);
+  }
+  let k = 0;
+  for (const st of groups.values())
+    st.forEach((s, i) => {
+      if (k >= KEY_MAX) return;
+      s.dyn = "key";
+      s.di = k;
+      KEYS.frac[k++] = st.length > 1 ? i / (st.length - 1) : 0;
+    });
+  KEYS.n = k;
+}
+/** cao độ mặt trên của s tại (x, z) lúc này (mặt tĩnh: s.y) — va chạm CPU dùng CÙNG hàm với hình (sirenFloor) */
+export function surfTop(s: Surf, x: number, z: number): number {
+  return s.dyn ? s.y + dynOffset(s.dyn, s.di ?? 0, s.x, s.z, s.yaw ?? 0, x, z) : s.y;
+}
 export const SURF_BY_ID: Record<string, Surf> = Object.fromEntries(SURFS.map((s) => [s.id, s]));
 
 export const WALLS: Wall[] = [
@@ -529,9 +557,16 @@ export function inFloorHole(x: number, z: number, top: number): Portal | null {
 /** Mặt đang đứng (mặt trên trùng cao độ y) tại (x, z) — dùng để nhận ra đệm nảy */
 export function surfAt(x: number, z: number, y: number): Surf | null {
   let best: Surf | null = null;
+  let bestY = -Infinity;
   for (const s of SURFS) {
-    if (Math.abs(s.y - y) > 0.06 || !inFootprint(s, x, z)) continue;
-    if (!best || s.y > best.y) best = s;
+    if (!inFootprint(s, x, z)) continue;
+    // mặt động: chân bám theo bằng lò xo / lerp nên cho dung sai rộng hơn
+    const top = surfTop(s, x, z);
+    if (Math.abs(top - y) > (s.dyn ? 0.3 : 0.06)) continue;
+    if (!best || top > bestY) {
+      best = s;
+      bestY = top;
+    }
   }
   return best;
 }
@@ -540,10 +575,12 @@ export function mazeGround(x: number, z: number, y?: number): number {
   if (y === undefined) return VOID;
   let best = VOID;
   for (const s of SURFS) {
-    if (s.y > y + STEP_UP || s.y <= best) continue;
+    if (!s.dyn && (s.y > y + STEP_UP || s.y <= best)) continue;
     if (!inFootprint(s, x, z)) continue;
+    const top = s.dyn ? surfTop(s, x, z) : s.y;
+    if (top > y + STEP_UP || top <= best) continue;
     if (inFloorHole(x, z, s.y)) continue;
-    best = s.y;
+    best = top;
   }
   return best;
 }
@@ -576,7 +613,8 @@ export function mazeBlocked(x: number, z: number, y: number): boolean {
     if ((x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + 0.35) ** 2) return true;
   }
   for (const s of SURFS) {
-    if (y >= s.y - 0.95 || y + HEAD <= s.y - s.thick) continue;
+    const top = s.dyn ? surfTop(s, x, z) : s.y;
+    if (y >= top - 0.95 || y + HEAD <= top - s.thick) continue;
     // chỉ chặn ở dải mép 0,6 m: đi ngang luôn chạm mép trước; ở sâu bên trong là đang bay / nảy XUYÊN lên khối
     // (khối một chiều) → không chặn, kẻo Player đẩy người chơi ra khỏi mép rồi rơi luôn
     if (inFootprint(s, x, z) && !inSlabHole(s, x, z) && !inFootprint(s, x, z, -0.6)) return true;

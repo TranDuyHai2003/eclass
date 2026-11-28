@@ -85,6 +85,8 @@ function copyCommon(src: THREE.Material, dst: THREE.Material) {
   dst.polygonOffset = src.polygonOffset;
   dst.polygonOffsetFactor = src.polygonOffsetFactor;
   dst.polygonOffsetUnits = src.polygonOffsetUnits;
+  dst.clippingPlanes = src.clippingPlanes;
+  dst.clipShadows = src.clipShadows;
 }
 
 /** GI nướng → lightmap + IBL. flat = lưới không có pháp tuyến (GLB nướng bỏ NORMAL) → pháp tuyến từ đạo hàm màn hình */
@@ -197,6 +199,17 @@ export function Realify({ root, on }: { root: RefObject<THREE.Object3D | null>; 
         m.userData.__orig = cur;
         m.material = Array.isArray(cur) ? cur.map((x) => conv(x, flat)) : conv(cur, flat);
         touched.add(m);
+        // vật liệu "sống" (cảnh đổi màu / phát sáng mỗi khung, vd. ván tàu Theseus): bản PBR chép lại từ bản gốc trước khi vẽ
+        const src = !Array.isArray(cur) && cur.userData.live ? (cur as THREE.MeshToonMaterial) : null;
+        const dst = src ? (m.material as THREE.MeshStandardMaterial) : null;
+        if (src && dst && (dst as THREE.Material) !== src) {
+          m.userData.__liveCb = m.onBeforeRender;
+          m.onBeforeRender = () => {
+            dst.color.copy(src.color);
+            realColor(dst.color);
+            dst.emissive.copy(src.emissive);
+          };
+        }
       });
     apply();
     const id = window.setInterval(apply, 1500);
@@ -206,6 +219,10 @@ export function Realify({ root, on }: { root: RefObject<THREE.Object3D | null>; 
         const list = Array.isArray(m.material) ? m.material : [m.material];
         if (list.some((x) => ours.has(x)) && m.userData.__orig) m.material = m.userData.__orig;
         delete m.userData.__orig;
+        if (m.userData.__liveCb) {
+          m.onBeforeRender = m.userData.__liveCb;
+          delete m.userData.__liveCb;
+        }
       }
       ours.forEach((x) => x.dispose());
     };

@@ -154,7 +154,7 @@ export function questEvent(ev: QuestEvent) {
     freshCodex: [...s.freshCodex, ...newCodex],
     done: { title: q.id, at: performance.now() },
   });
-  sfx.chime(4);
+  sfx.levelUp();
   const next = allQuests()[s.qi + 1];
   if (next?.intro && !useQuest.getState().seenIntro.includes(next.id)) {
     window.setTimeout(() => {

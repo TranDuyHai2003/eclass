@@ -77,9 +77,9 @@ export class RippleSim {
   drop(u: number, v: number, r: number, s: number) {
     if (this.drops.length < 8) this.drops.push(new THREE.Vector4(u, v, r, s));
   }
-  /** bước cố định 60 Hz (tối đa 2 bước / khung để không "đuổi" khi tụt FPS) */
-  step(gl: THREE.WebGLRenderer, dt: number) {
-    this.acc = Math.min(this.acc + dt, 2 / 60);
+  /** bước cố định 60 Hz (tối đa 2 bước / khung để không "đuổi" khi tụt FPS; máy yếu 1 bước — lib/world/perfGate.waterMaxSteps) */
+  step(gl: THREE.WebGLRenderer, dt: number, maxSteps = 2) {
+    this.acc = Math.min(this.acc + dt, maxSteps / 60);
     const prev = gl.getRenderTarget();
     while (this.acc >= 1 / 60) {
       this.acc -= 1 / 60;
@@ -163,8 +163,8 @@ export class FoamSim {
   stamp(u: number, v: number, r: number, k: number) {
     if (this.stamps.length < 16) this.stamps.push(new THREE.Vector4(u, v, r, k));
   }
-  step(gl: THREE.WebGLRenderer, dt: number, wave: THREE.Texture) {
-    this.acc = Math.min(this.acc + dt, 2 / 60);
+  step(gl: THREE.WebGLRenderer, dt: number, wave: THREE.Texture, maxSteps = 2) {
+    this.acc = Math.min(this.acc + dt, maxSteps / 60);
     const prev = gl.getRenderTarget();
     while (this.acc >= 1 / 60) {
       this.acc -= 1 / 60;

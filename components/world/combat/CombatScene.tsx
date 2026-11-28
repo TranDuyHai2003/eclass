@@ -7,9 +7,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { emitSpark } from "../fx/Sparks";
 import { useGLTF } from "@react-three/drei";
 import { useWorld } from "../store";
+// T24: lỗ đen của phép Chân trời Sự kiện theo bảng màu dừa cạn / cà tím
+import { SPELL_PALETTE } from "@/lib/world/spellFx";
 import { worldAsset } from "@/lib/world/avatars";
 import { sfx } from "@/lib/world/sfx";
 import { MAT_DEFS, RARITY_COLOR, WEAPON_DEFS, addMat, drops, grantWeapon, pushPickup, useBag, usePickups, type DropItem, type WeaponId } from "./items";
@@ -19,7 +20,31 @@ import { useFxKit } from "../fx/FxKit";
 import { createFxMat, ease, fxMask, rampRow } from "../fx/fxmat";
 import { questEvent, unlockNote } from "../story/quest";
 import { updateVortices, vortices } from "./spells";
+import { RuleWorldFx, ruleAnimate, ruleModelBase, ruleMove, ruleTick } from "./RuleMonsters";
+import { isRuleKind } from "./ruleHit";
+import { RibbonTrails } from "../fx/Ribbons";
+import { DashGhosts } from "../fx/DashGhosts";
+import { PUFF, emitDustRing } from "../fx/Puffs";
+import { StrikeFx, strike } from "../fx/StrikeFx";
+import { fxNow } from "../fx/fxClock";
+import { fxLevel } from "../fx/SpellFx";
+import { puffCount } from "@/lib/world/vfxBeats";
+import { vfxRand } from "@/lib/world/vfxRng";
+import { WaveWeaponsFx } from "./WaveWeaponsFx";
+import { buildPlaceholder } from "./wavePlaceholders";
+import { registerPendRig } from "./waveWeapons";
 import { addFx, hitRadius, wispPhase, guard, ENEMY, ENV, GRAVITY, orbiters, damageEnemy, enemies, enemyScale, fxs, motion, playerHurt, projectiles, respawn, spawnEnemy, useCombat, clearEnemies, type Enemy, type EnemyKind } from "./combat";
+
+// DEV: dọn quái để chụp / đo hiệu ứng phép ở chỗ trống (window.__clearEnemies())
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+  const w = window as unknown as Record<string, unknown>;
+  w.__clearEnemies = () => clearEnemies();
+  // DEV: hiệu ứng CŨ (vòng / nova / vòng đứng) tại chỗ người chơi — để chụp so sánh trước / sau
+  w.__addFx = (kind: "ring" | "nova" | "vring", size = 2, color = "#ffd27a") => {
+    const p = useWorld.getState().player;
+    addFx(kind, new THREE.Vector3(p.x, p.y + (kind === "vring" ? 1.2 : 0.05), p.z), { color, size, yaw: useWorld.getState().playerYaw });
+  };
+}
 
 // ───────────── Hình học quái (dựng một lần) ─────────────
 
@@ -35,7 +60,8 @@ const GEO = typeof document !== "undefined"
 
 type Spawner = { kind: "fixed"; points: { kind: EnemyKind; at: [number, number, number] }[] } | { kind: "ring"; count: number; min: number; max: number; kinds: EnemyKind[]; extra?: { kind: EnemyKind; at: [number, number, number] }[] };
 
-export function Enemies({ ground, spawner, clampR, aggro = 10 }: { ground: (x: number, z: number) => number; spawner: Spawner; clampR?: number; aggro?: number }) {
+/** ground(x, z, y?): có y → mặt đất thật dưới độ cao đó (hang / phần nhô / đảo nổi trong thế giới voxel); không có y → mặt cột */
+export function Enemies({ ground, spawner, clampR, aggro = 10 }: { ground: (x: number, z: number, y?: number) => number; spawner: Spawner; clampR?: number; aggro?: number }) {
   const [list, setList] = useState<Enemy[]>([]);
   useEffect(() => {
     ENV.ground = ground;
@@ -82,7 +108,7 @@ export function Enemies({ ground, spawner, clampR, aggro = 10 }: { ground: (x: n
     }
     for (const e of enemies) {
       const k = ENEMY[e.kind];
-      if (e.kind === "siren" || e.kind === "node") continue; // boss do đấu trường điều khiển
+      if (e.kind === "siren" || e.kind === "node" || e.ext) continue; // boss do đấu trường / module ngoài (bosses/*) điều khiển
       // Bị hất lên không: rơi theo trọng lực, chạm đất nảy nhẹ + bụi; trên không thì không vung đòn được
       if (e.air > 0 || e.airV > 0) {
         e.airV -= 24 * dt;
@@ -90,7 +116,8 @@ export function Enemies({ ground, spawner, clampR, aggro = 10 }: { ground: (x: n
         e.windup = 0;
         if (e.air <= 0) {
           if (e.airV < -6) {
-            addFx("ring", new THREE.Vector3(e.pos.x, e.pos.y + 0.05, e.pos.z), { color: "#fff6dc", size: 1.1 });
+            // VFX-AAA: đập đất = vành BỤI thấp toả ra (dáng riêng, có dư âm) thay vòng tròn sáng dùng chung cho mọi sự kiện
+            emitDustRing(e.pos.x, e.pos.y, e.pos.z, 0.35, puffCount(6, fxLevel(), 3), 2.6, 0.6, 0.8, PUFF.dust, PUFF.spark, 0);
             e.airV = -e.airV * 0.25;
             e.air = 0.001;
           } else {
@@ -115,7 +142,15 @@ export function Enemies({ ground, spawner, clampR, aggro = 10 }: { ground: (x: n
       const chasing = (d < aggro || (provoked && d < 18)) && c.hp > 0;
       let mvx = 0;
       let mvz = 0;
+      const rule = isRuleKind(e.kind);
+      // quái quy luật: đồng hồ riêng (sỏi đang bay, chốt loạt đòn của khiên) chạy cả khi bị khựng / đang vung
+      if (rule) ruleTick(e, p, now);
       if (e.windup) {
+        // âm báo trước (một lần mỗi lần vung): người chơi nghe kịp mà né trong 0,45 s
+        if (e.tellAt !== e.windup) {
+          e.tellAt = e.windup;
+          sfx.telegraph(d);
+        }
         // Đang vung đòn: đứng yên; hết 0,45 s mới gây sát thương nếu còn trong tầm
         if (now - e.windup > 450) {
           const crossHit = e.kind !== "mite" || Math.abs(dx) < 0.7 || Math.abs(dz) < 0.7;
@@ -123,6 +158,10 @@ export function Enemies({ ground, spawner, clampR, aggro = 10 }: { ground: (x: n
           e.windup = 0;
           e.atkAt = now;
         }
+      } else if (rule) {
+        ruleMove(e, p, now, chasing, stunned, RULE_MV);
+        mvx = RULE_MV.x;
+        mvz = RULE_MV.z;
       } else if (!stunned && e.kind === "knight") {
         // Quỷ mã: cứ 0,9 s nhảy một nước mã (±1,±2)·1,2 m về phía người chơi; tiếp đất thì đánh 8 ô mã
         if (!e.hopAt && chasing && now - e.atkAt > 900) {
@@ -201,7 +240,8 @@ export function Enemies({ ground, spawner, clampR, aggro = 10 }: { ground: (x: n
             const knightSq = (Math.abs(cx) === 1 && Math.abs(cz) === 2) || (Math.abs(cx) === 2 && Math.abs(cz) === 1);
             if (knightSq) playerHurt(k.dmg, e.pos);
             else if (Math.abs(cx) + Math.abs(cz) === 1) unlockNote("knight");
-            addFx("ring", e.pos.clone().setY(e.pos.y + 0.05), { color: "#ff3d6e", size: 2.7 });
+            // bàn cờ 5×5 ô 1,2 m: sáng đúng 8 ô nước Mã (đúng luật knightSq ở trên)
+            strike("knight", e.pos.x, e.pos.y + 0.05, e.pos.z, { r: 3, color: "#ff3d6e" });
           }
         }
       }
@@ -212,7 +252,8 @@ export function Enemies({ ground, spawner, clampR, aggro = 10 }: { ground: (x: n
         const r = Math.hypot(e.pos.x, e.pos.z);
         if (r > clampR) e.pos.multiplyScalar(clampR / r);
       }
-      const gy = ground(e.pos.x, e.pos.z);
+      // dò từ ngang hông quái trở xuống: đi dưới phần nhô / trong hang không bị kéo lên nóc (bước lên bậc ≤ 1 khối vẫn được)
+      const gy = ground(e.pos.x, e.pos.z, e.pos.y + 1.1);
       e.pos.y += (gy - e.pos.y) * Math.min(1, dt * 10);
     }
     // Quái không chồng lên nhau
@@ -239,9 +280,12 @@ export function Enemies({ ground, spawner, clampR, aggro = 10 }: { ground: (x: n
       {list.map((e) => (
         <EnemyView key={e.id} e={e} />
       ))}
+      {list.map((e) => (isRuleKind(e.kind) ? <RuleWorldFx key={`rule${e.id}`} e={e} /> : null))}
     </>
   );
 }
+
+const RULE_MV = { x: 0, z: 0 };
 
 function ringPoint(p: THREE.Vector3, min: number, max: number, ground: (x: number, z: number) => number) {
   const a = Math.random() * Math.PI * 2;
@@ -253,15 +297,24 @@ function ringPoint(p: THREE.Vector3, min: number, max: number, ground: (x: numbe
 
 const MONSTERS_GLB = worldAsset("monsters/monsters.glb");
 const MONSTERS2_GLB = worldAsset("monsters/monsters2.glb");
+/** quái quy luật (Ma Tham Lam, Hộ Vệ Nguyên Tố, Cua Chuông) — Blender, cùng tên khớp với bản ghép khối */
+const MONSTERS3_GLB = worldAsset("monsters/rule_monsters.glb"); // bản Blender T23 (thay monsters3.glb)
 useGLTF.preload(MONSTERS2_GLB);
 const IN_GLB2 = new Set<EnemyKind>(["knight", "zeno", "twinA", "twinB"]);
 const monsterBase = new Map<EnemyKind, THREE.Object3D>();
 function useMonsterModel(kind: EnemyKind) {
   const gltf1 = useGLTF(MONSTERS_GLB);
   const gltf2 = useGLTF(MONSTERS2_GLB);
+  const gltf3 = useGLTF(MONSTERS3_GLB);
   const gltf = IN_GLB2.has(kind) ? gltf2 : gltf1;
   return useMemo(() => {
     let base = monsterBase.get(kind);
+    // quái quy luật: model Blender (monsters3.glb); thiếu node thì dùng bản ghép khối cơ bản
+    if (!base && isRuleKind(kind)) {
+      const src3 = gltf3.scene.getObjectByName(`m_${kind}`);
+      base = src3 ? toonize(src3) : ruleModelBase(kind);
+      monsterBase.set(kind, base);
+    }
     if (!base) {
       const src = gltf.scene.getObjectByName(kind === "knight" ? "m_knight" : kind === "zeno" ? "m_zeno" : `m_${kind}`);
       if (!src) return null;
@@ -269,7 +322,7 @@ function useMonsterModel(kind: EnemyKind) {
       monsterBase.set(kind, base);
     }
     return cloneWithOwnMaterials(base);
-  }, [gltf, kind]);
+  }, [gltf, gltf3, kind]);
 }
 useGLTF.preload(MONSTERS_GLB);
 
@@ -369,6 +422,8 @@ function EnemyBody({ e }: { e: Enemy }) {
       b.rotation.z = Math.sin(t) * 0.18;
       b.rotation.y = Math.sin(t * 0.7) * 0.3;
       b.scale.setScalar(1 + wind * 0.3 + punch);
+    } else if (isRuleKind(e.kind)) {
+      ruleAnimate(e, b, model, now, punch, wind);
     } else {
       // Bọ nhảy ô: cung parabol h(1−h) + bẹp khi chạm đất
       const hopMs = e.kind === "knight" ? 380 : 260;
@@ -401,7 +456,7 @@ function EnemyBody({ e }: { e: Enemy }) {
         <mesh ref={tele} rotation-x={-Math.PI / 2} position-y={0.04} geometry={GEO.ring} material={mats.teleM} />
       )}
       <group ref={body}>{model && <primitive object={model.obj} />}</group>
-      <group ref={bar} position={[0, e.kind === "wisp" ? 1.85 : 1.45, 0]}>
+      <group ref={bar} position={[0, e.kind === "wisp" ? 1.85 : e.kind === "ghoul" || e.kind === "warden" ? 2.25 : 1.45, 0]}>
         <mesh geometry={GEO.bar} material={mats.bg} renderOrder={20} scale={[1.06, 1.6, 1]} />
         <mesh ref={fill} geometry={GEO.bar} material={mats.fillM} renderOrder={21} />
       </group>
@@ -412,25 +467,36 @@ function EnemyBody({ e }: { e: Enemy }) {
 // ───────────── Mô hình vũ khí (GLB dựng trong Blender) ─────────────
 
 const WEAPONS_GLB = worldAsset("weapons/weapons.glb");
+/** vũ khí dựng sau (Giáo Sin, Khiên Con lắc) — Blender, đúng mét (metric) */
+const WEAPONS2_GLB = worldAsset("weapons/weapons2.glb");
 const modelCache = new Map<WeaponId, THREE.Object3D>();
 /** Bản sao mô hình vũ khí: vật liệu toon (cel 2 tông) + phần phát sáng HDR (loé bloom), kích thước chuẩn theo size */
 export function useWeaponModel(id: WeaponId): THREE.Object3D | null {
   const gltf = useGLTF(WEAPONS_GLB);
-  return useMemo(() => {
+  const gltf2 = useGLTF(WEAPONS2_GLB);
+  const obj = useMemo(() => {
     let base = modelCache.get(id);
     if (!base) {
-      const src = gltf.scene.getObjectByName(`w_${id}`);
+      // chưa có trong weapons.glb (Giáo Sin / Khiên Con lắc) → mô hình tạm thủ tục cùng quy ước node
+      const src = gltf.scene.getObjectByName(`w_${id}`) ?? gltf2.scene.getObjectByName(`w_${id}`) ?? buildPlaceholder(id);
       if (!src) return null;
       base = toonize(src);
-      const box = new THREE.Box3().setFromObject(base);
-      const dim = box.getSize(new THREE.Vector3());
-      base.scale.setScalar(WEAPON_DEFS[id].size / Math.max(dim.x, dim.y, dim.z, 1e-3));
+      // userData.metric: mô hình dựng đúng mét (có node hoạt hoạ theo chiều dài thật) → không chuẩn hoá
+      if (!src.userData.metric) {
+        const box = new THREE.Box3().setFromObject(base);
+        const dim = box.getSize(new THREE.Vector3());
+        base.scale.setScalar(WEAPON_DEFS[id].size / Math.max(dim.x, dim.y, dim.z, 1e-3));
+      }
       modelCache.set(id, base);
     }
     return base.clone(true);
-  }, [gltf, id]);
+  }, [gltf, gltf2, id]);
+  // khiên con lắc: đăng ký `pend_pivot` để xoay theo trọng lực mỗi khung
+  useEffect(() => (obj ? registerPendRig(obj) : undefined), [obj]);
+  return obj;
 }
 useGLTF.preload(WEAPONS_GLB);
+useGLTF.preload(WEAPONS2_GLB);
 
 // ───────────── Vũ khí bay cạnh nhân vật ─────────────
 
@@ -441,7 +507,7 @@ export function WeaponFamiliar() {
   const list = loadout.filter(Boolean) as WeaponId[];
   const id = list[weapon % Math.max(1, list.length)] ?? "blade";
   const model = useWeaponModel(id);
-  const inHand = id === "blade" || id === "lever" || id === "staff" || id === "bow";
+  const inHand = id === "blade" || id === "lever" || id === "staff" || id === "bow" || id === "lance" || id === "shield";
   useFrame(() => {
     const grp = g.current;
     if (!grp) return;
@@ -462,18 +528,8 @@ export function WeaponFamiliar() {
 
 // ───────────── Đồ rơi: viên đá + cột sáng theo độ hiếm, tự hút về người chơi ─────────────
 
-const beamShader = {
-  uniforms: { uColor: { value: new THREE.Color() }, uTime: { value: 0 } },
-  vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-  fragmentShader: /* glsl */ `
-    uniform vec3 uColor; uniform float uTime; varying vec2 vUv;
-    void main(){
-      float fade = 1.0 - smoothstep(0.05, 1.0, vUv.y);
-      float edge = 1.0 - abs(vUv.x - 0.5) * 2.0;
-      float stripes = 0.75 + 0.25 * sin(vUv.y * 30.0 - uTime * 6.0);
-      gl_FragColor = vec4(uColor * 1.8, fade * edge * edge * stripes * 0.65);
-    }`,
-};
+/** Cột sáng đồ rơi (V1): FxMat chế độ 3 + mặt nạ beam_core; hàng ramp theo độ hiếm (xanh / tím / vàng) */
+const RARITY_ROW: Record<number, number> = { 3: 5, 4: 4, 5: 1 };
 const DROP_POOL = 24;
 
 function DropsView() {
@@ -481,7 +537,18 @@ function DropsView() {
   const gems = useRef<(THREE.Mesh | null)[]>([]);
   const beams = useRef<(THREE.Mesh | null)[]>([]);
   const gemMats = useMemo(() => Array.from({ length: DROP_POOL }, () => new THREE.MeshToonMaterial({ color: "#ffffff", gradientMap: GRADIENT, emissive: "#000000" })), []);
-  const beamMats = useMemo(() => Array.from({ length: DROP_POOL }, () => new THREE.ShaderMaterial({ ...beamShader, uniforms: THREE.UniformsUtils.clone(beamShader.uniforms), transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, toneMapped: false })), []);
+  const beamMats = useMemo(
+    () =>
+      Array.from({ length: DROP_POOL }, () => {
+        const m = createFxMat(3, fxMask("beam_core"));
+        m.uniforms.uAdd.value = 0.85;
+        m.uniforms.uNoiseAmt.value = 0.18;
+        m.uniforms.uErode.value = 0;
+        return m;
+      }),
+    [],
+  );
+  const beamCam = useThree((st) => st.camera);
   useEffect(() => () => [...gemMats, ...beamMats].forEach((m) => m.dispose()), [gemMats, beamMats]);
   useFrame((_, rawDt) => {
     const dt = Math.min(0.05, rawDt);
@@ -531,9 +598,15 @@ function DropsView() {
       }
       if (beam) {
         beam.visible = d.rarity >= 4 || d.item.kind === "weapon";
-        beam.position.set(d.pos.x, d.pos.y + 1.6, d.pos.z);
-        (beamMats[i].uniforms.uColor.value as THREE.Color).set(RARITY_COLOR[d.rarity]);
-        beamMats[i].uniforms.uTime.value = now / 1000;
+        // cột mọc từ đất (outBack 200 ms) rồi thở nhẹ chu kỳ 1,2 s; quay mặt về máy quay quanh trục đứng
+        const gy2 = ENV.ground(d.pos.x, d.pos.z);
+        beam.position.set(d.pos.x, gy2 + 1.6, d.pos.z);
+        beam.rotation.set(0, Math.atan2(beamCam.position.x - d.pos.x, beamCam.position.z - d.pos.z), 0);
+        const u = beamMats[i].uniforms;
+        u.uProg.value = Math.min(1.08, ease.outBack(Math.min(1, age / 260)));
+        u.uRow.value = d.item.kind === "weapon" ? (RARITY_ROW[d.rarity] ?? 1) : (RARITY_ROW[d.rarity] ?? rampRow(color));
+        u.uIntensity.value = (d.rarity >= 5 ? 2.1 : 1.6) * (0.85 + 0.15 * Math.sin((now / 1200) * Math.PI * 2));
+        u.uTime.value = now / 1000;
       }
       i++;
     }
@@ -550,7 +623,7 @@ function DropsView() {
       ))}
       {beamMats.map((m, i) => (
         <mesh key={`b${i}`} ref={(el) => void (beams.current[i] = el)} material={m} visible={false} renderOrder={9}>
-          <cylinderGeometry args={[0.22, 0.32, 3.2, 12, 1, true]} />
+          <planeGeometry args={[0.9, 3.2]} />
         </mesh>
       ))}
     </group>
@@ -562,7 +635,7 @@ function collect(item: DropItem) {
   if (item.kind === "mat") addMat(item.id, item.n);
   else if (grantWeapon(item.id)) usePickups.setState({ reveal: item.id });
   pushPickup(item);
-  sfx.chime(item.kind === "weapon" ? 3 : 1);
+  sfx.pickup(item.kind === "weapon" || (item.kind === "mat" && item.id === "golden"));
 }
 
 // ───────────── Vân giao thoa của Song Sinh (vẽ lên mặt đất) ─────────────
@@ -578,7 +651,8 @@ function InterferenceField() {
         fragmentShader: `uniform vec2 uA; uniform vec2 uB; uniform float uLam; uniform float uT; varying vec3 vW;
           void main(){
             float dr = distance(vW.xz, uA) - distance(vW.xz, uB);
-            float I = pow(cos(3.14159265 * dr / uLam), 2.0);
+            float cI = cos(3.14159265 * dr / max(uLam, 1e-3));
+            float I = cI * cI;
             float ra = distance(vW.xz, (uA + uB) * 0.5);
             float fade = 1.0 - smoothstep(9.0, 14.0, ra);
             float bright = step(0.7, I);
@@ -718,9 +792,9 @@ export function CombatFx() {
 
   const slashes = useRef<(THREE.Mesh | null)[]>([]);
   const bolts = useRef<(THREE.Mesh | null)[]>([]);
-  const holeCore = useMemo(() => new THREE.MeshBasicMaterial({ color: "#05020c" }), []);
-  const holeRing = useMemo(() => new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffd9a8").multiplyScalar(2.8), toneMapped: false }), []);
-  const holeDisk = useMemo(() => new THREE.MeshBasicMaterial({ color: new THREE.Color("#a070ff").multiplyScalar(2.2), toneMapped: false, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), []);
+  const holeCore = useMemo(() => new THREE.MeshBasicMaterial({ color: new THREE.Color(SPELL_PALETTE.vortex.ink).multiplyScalar(0.25) }), []);
+  const holeRing = useMemo(() => new THREE.MeshBasicMaterial({ color: new THREE.Color(SPELL_PALETTE.vortex.core).multiplyScalar(2.2), toneMapped: false }), []);
+  const holeDisk = useMemo(() => new THREE.MeshBasicMaterial({ color: new THREE.Color(SPELL_PALETTE.vortex.accent).lerp(new THREE.Color(SPELL_PALETTE.vortex.body), 0.35).multiplyScalar(1.6), toneMapped: false, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), []);
   useEffect(() => () => holeDisk.dispose(), [holeDisk]);
   useEffect(() => () => [holeCore, holeRing].forEach((m) => m.dispose()), [holeCore, holeRing]);
   const boltMats = useMemo(() => Array.from({ length: BOLTS }, () => new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })), []);
@@ -755,8 +829,10 @@ export function CombatFx() {
     let ai2 = 0;
     let ci = 0;
     let dashOn = false;
+    // hiệu ứng theo đồng hồ hiệu ứng chung (đóng băng được bằng __fxFreeze)
+    const fxT = fxNow();
     for (const f of fxs) {
-      const age = now - f.born;
+      const age = fxT - f.born;
       if (f.kind === "slash" && age < (f.size > 1.2 ? 340 : 280) && si < POOL) {
         const dur = f.size > 1.2 ? 340 : 280;
         const m = slashes.current[si];
@@ -888,8 +964,8 @@ export function CombatFx() {
       if (!pr.alive) continue;
       pr.vel.y -= GRAVITY * dt;
       pr.pos.addScaledVector(pr.vel, dt);
-      pr.trail.unshift(pr.pos.clone());
-      if (pr.trail.length > TRAIL) pr.trail.pop();
+      // tái dùng vectơ cũ nhất (không cấp phát mỗi khung)
+      pr.trail.unshift(pr.trail.length >= TRAIL ? pr.trail.pop()!.copy(pr.pos) : pr.pos.clone());
       for (const e of enemies) {
         if (e.deadAt) continue;
         const cy = e.pos.y + (e.kind === "wisp" ? 1 : 0.5);
@@ -998,7 +1074,12 @@ export function CombatFx() {
       </group>
       <DropsView />
       <OrbitersView />
+      <RibbonTrails />
+      {/* VFX-AAA luật 3: hình riêng từng loại đòn (thay vòng / nova dùng chung) — 3 pool = +3 lệnh vẽ */}
+      <StrikeFx />
+      <DashGhosts />
       <InterferenceField />
+      <WaveWeaponsFx />
       <instancedMesh ref={trails} args={[kit.geo.fx_star, trailMat, ARROWS * TRAIL]} frustumCulled={false} />
     </group>
   );
@@ -1007,21 +1088,12 @@ export function CombatFx() {
 function meteorImpact(pr: { pos: THREE.Vector3; dmg: number; color: string }) {
   const at = pr.pos.clone().setY(ENV.ground(pr.pos.x, pr.pos.z) + 0.06);
   hitRadius(at, 3.2, pr.dmg, 8);
-  addFx("nova", at, { color: pr.color, size: 3.4 });
-  addFx("crater", at.clone().setY(at.y + 0.03), { color: "#8b5cff", size: 2.2, yaw: Math.random() * 6 });
-  addFx("ring", at, { color: "#fff6dc", size: 3.8 });
+  // dư âm: vết cháy mờ trong dấu chân (lõi loé, vòng gãy nở tới mép 3,2 m, mảnh + tia theo ngân sách: fx/SpellFx.tsx — T24)
+  addFx("crater", at.clone().setY(at.y + 0.03), { color: "#ffb45a", size: 2.2, yaw: vfxRand() * 6 });
   const w = useWorld.getState();
   w.addShake(0.6);
   w.hitstop(80);
-  w.burst([at.x, at.y + 0.5, at.z], pr.color, 70);
-  // lõi loé 25–40 ms + tia lửa văng thấp theo mặt đất
-  emitSpark(at.x, at.y + 0.6, at.z, 0, 0, 0, "#FFF0BC", { kind: 1, size: 2.2, life: 0.09, bright: 3.5 });
-  for (let i = 0; i < 16; i++) {
-    const a = Math.random() * Math.PI * 2;
-    const s = 6 + Math.random() * 6;
-    emitSpark(at.x, at.y + 0.2, at.z, Math.cos(a) * s, 1 + Math.random() * 3, Math.sin(a) * s, i % 3 ? "#FF8138" : "#FFF0BC", { size: 0.06, life: 0.5, stretch: 0.05, drag: 3, gravity: 9 });
-  }
-  sfx.shatter();
+  sfx.explode("fire", 1.2);
 }
 
 /** Vận tốc lướt / nhảy dùng bởi Player */

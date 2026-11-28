@@ -1,0 +1,20 @@
+/* HUD phù thuỷ hoạ âm — cột phải dưới các nút tròn (không che giữa màn hình nơi đọc vạch nút / thanh máu Nàng Tiên Cá; kiểu .w-boss của story.css). Preflight Tailwind được tăng độ ưu tiên
+   → padding / margin / border / radius cần !important (xem memory art-asset-pipeline). */
+.w-witch { position: absolute; right: var(--pr); top: calc(var(--pt) + var(--u) * 62px); width: min(300px, 42vw); display: flex; flex-direction: column; align-items: stretch; gap: 4px; pointer-events: none; z-index: 21; }
+.w-witch .w-boss__name { justify-content: flex-end; font-size: calc(var(--u) * 14px); }
+.w-witch .w-boss__tag { align-self: flex-end; text-align: right; }
+.w-witch .w-boss__hp { height: calc(var(--u) * 7px); }
+.w-witch__hp { height: 100%; background: linear-gradient(90deg, #d9a2b4, #f4d9c1) !important; transition: width 0.2s; }
+.w-witch__card { margin-top: 2px !important; padding: 6px 10px 5px !important; background: rgba(48, 38, 60, 0.72); border-radius: 8px !important; box-shadow: 0 0 0 1px rgba(244, 217, 193, 0.35); display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.w-witch__card svg { display: block; width: calc(var(--u) * 240px); height: calc(var(--u) * 52px); }
+.w-witch__axis { stroke: rgba(244, 217, 193, 0.35); stroke-width: 1; stroke-dasharray: 3 3; }
+.w-witch__env { fill: none; stroke: #d9a2b4; stroke-width: 2; }
+.w-witch__env--old { stroke: rgba(217, 162, 180, 0.3); stroke-dasharray: 4 4; }
+.w-witch__clamp { fill: #677b83; }
+.w-witch__node { fill: rgba(48, 38, 60, 0.9); stroke: #f4d9c1; stroke-width: 2; }
+.w-witch__node.is-half { fill: #9fb4bb; }
+.w-witch__node.is-sewn { fill: #ffd27a; stroke: #fff; }
+.w-witch__q { fill: #ffd27a; font-weight: 800; font-size: 18px; letter-spacing: 6px; }
+.w-witch__row { font-size: calc(var(--u) * 12px); color: #f4d9c1; text-shadow: 0 1px 2px #000; text-align: center; }
+.w-witch__row--dim { color: rgba(244, 217, 193, 0.75); font-size: calc(var(--u) * 11px); }
+@media (max-height: 430px) { .w-witch { top: calc(var(--pt) + var(--u) * 52px); } .w-witch__card svg { height: calc(var(--u) * 40px); } }

@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { create } from "zustand";
 
-export type WeaponId = "blade" | "bow" | "staff" | "lever" | "pendulum" | "coil" | "spiral" | "prism";
+export type WeaponId = "blade" | "bow" | "staff" | "lever" | "pendulum" | "coil" | "spiral" | "prism" | "lance" | "shield";
 export type MatId = "pi" | "prime" | "mobius" | "fractal" | "golden";
 export type Rarity = 3 | 4 | 5;
 type L = { en: string; vi: string };
@@ -75,8 +75,20 @@ export const WEAPON_DEFS: Record<WeaponId, WeaponDef> = {
     idea: { en: "n₁·sin θ₁ = n₂·sin θ₂: light bends when it changes medium. One ray splits into three piercing beams.", vi: "n₁·sin θ₁ = n₂·sin θ₂: ánh sáng bẻ cong khi đổi môi trường. Một tia tách thành ba chùm xuyên thấu." },
     move: { en: "Three refracted beams", vi: "Ba chùm khúc xạ" },
   },
+  lance: {
+    id: "lance", rarity: 5, color: "#7ad8ff", atk: 14, cd: 420, size: 1.9,
+    name: { en: "Sine Lance", vi: "Giáo Sin" },
+    idea: { en: "Every thrust launches a wave y = A·sin(kx − ωt). Foes on a crest take ×1.5, on a node ×0.7 — change the wavelength λ (X) so a crest lands on them. Two waves add up: in phase they double, out of phase they cancel.", vi: "Mỗi nhát đâm phóng ra sóng y = A·sin(kx − ωt). Quái ở đỉnh sóng chịu ×1,5, ở nút chỉ ×0,7 — đổi bước sóng λ (phím X) cho đỉnh rơi đúng chỗ quái. Hai sóng cộng nhau: cùng pha thì gấp đôi, ngược pha thì triệt tiêu." },
+    move: { en: "Wave thrusts; hold to raise the amplitude A", vi: "Đâm phóng sóng; giữ để tăng biên độ A" },
+  },
+  shield: {
+    id: "shield", rarity: 5, color: "#ffc86b", atk: 12, cd: 560, size: 0.95,
+    name: { en: "Pendulum Shield", vi: "Khiên Con lắc" },
+    idea: { en: "The shield is a pendulum bob: T = 2π√(L/g). Guard (right mouse) releases it from the top — it reaches the bottom a quarter period T/4 later. A hit that lands at the bottom is a perfect parry: ½mv² is thrown back. Parry in rhythm and the swing grows: resonance.", vi: "Khiên là quả lắc: T = 2π√(L/g). Thế đỡ (chuột phải) buông nó từ đỉnh — tới đáy sau đúng một phần tư chu kỳ T/4. Đòn quái tới đúng lúc quả lắc ở đáy là đỡ hoàn hảo: hất trả ½mv². Đỡ đúng nhịp thì biên độ lớn dần: cộng hưởng." },
+    move: { en: "Bob bash; right mouse: pendulum guard", vi: "Đập quả lắc; chuột phải: thế đỡ con lắc" },
+  },
 };
-export const WEAPON_ORDER: WeaponId[] = ["blade", "bow", "staff", "lever", "pendulum", "coil", "spiral", "prism"];
+export const WEAPON_ORDER: WeaponId[] = ["blade", "bow", "staff", "lever", "pendulum", "coil", "spiral", "prism", "lance", "shield"];
 
 export const MAT_DEFS: Record<MatId, { name: L; rarity: Rarity; color: string; lore: L }> = {
   pi: { name: { en: "π Crystal", vi: "Tinh thể π" }, rarity: 3, color: "#7fc8ff", lore: { en: "Its facets never repeat — like the digits of π.", vi: "Các mặt cắt không bao giờ lặp lại — như chữ số của π." } },
@@ -173,16 +185,20 @@ export interface Drop {
 export const drops: Drop[] = [];
 let dropId = 1;
 
-const KIND_MATS: Record<string, MatId[]> = { slime: ["pi", "prime"], wisp: ["mobius", "pi"], mite: ["fractal", "prime"] };
+const KIND_MATS: Record<string, MatId[]> = { slime: ["pi", "prime"], wisp: ["mobius", "pi"], mite: ["fractal", "prime"], ghoul: ["mobius", "pi"], warden: ["prime", "prime"], crab: ["pi", "fractal"], moth: ["mobius", "pi"] };
+
+/** Vũ khí chỉ nhận được qua câu đố (Bờ Sóng), không rơi từ quái */
+export const REWARD_ONLY: WeaponId[] = ["lance", "shield"];
 
 /** Tung đồ ra khi quái gục: 1–2 nguyên liệu, đôi khi Hạt Vàng, hiếm khi một vũ khí chưa có */
 export function rollDrops(kind: string, at: THREE.Vector3) {
   const items: DropItem[] = [];
-  const pool = KIND_MATS[kind] ?? ["pi"];
+  // quái mới chưa khai báo → bể mặc định đủ 2 phần tử (pool[1] thiếu từng làm vỡ MAT_DEFS[undefined])
+  const pool = KIND_MATS[kind] ?? ["pi", "prime"];
   items.push({ kind: "mat", id: pool[0], n: 1 + (Math.random() < 0.4 ? 1 : 0) });
   if (Math.random() < 0.5) items.push({ kind: "mat", id: pool[1], n: 1 });
   if (Math.random() < 0.06) items.push({ kind: "mat", id: "golden", n: 1 });
-  const missing = WEAPON_ORDER.filter((w) => !useBag.getState().owned.includes(w) && !drops.some((d) => !d.taken && d.item.kind === "weapon" && d.item.id === w));
+  const missing = WEAPON_ORDER.filter((w) => !REWARD_ONLY.includes(w) && !useBag.getState().owned.includes(w) && !drops.some((d) => !d.taken && d.item.kind === "weapon" && d.item.id === w));
   // Lần đầu hạ quái luôn rơi một vũ khí mới (khơi tò mò), sau đó 14%
   const firstKill = useBag.getState().owned.length <= 3 && !drops.some((d) => d.item.kind === "weapon");
   if (missing.length && (firstKill || Math.random() < 0.14)) {

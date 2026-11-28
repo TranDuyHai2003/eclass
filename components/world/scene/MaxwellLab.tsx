@@ -16,6 +16,7 @@ import { BOX, chambers, closedPolicy, createGas, demonPolicy, gasEntropy, openPo
 import { toonize } from "../fx/glbToon";
 import { useWorld } from "../store";
 import { Label3D } from "../ui/Labels";
+import { shown } from "./shown";
 
 const GLB = worldAsset("props/maxwell.glb");
 useGLTF.preload(GLB);
@@ -100,7 +101,15 @@ export function MaxwellLab() {
   const doorAng = useRef(0);
   const statTick = useRef(0);
   const liqCol = useMemo(() => ({ cold: new THREE.Color("#4aa8ff"), warm: new THREE.Color("#f4f0e8"), hot: new THREE.Color("#ff5a4a"), t: new THREE.Color() }), []);
+  const rootRef = useRef<THREE.Group>(null);
+  /** khí lần cuối đã tải lên GPU (đổi khi đặt lại) + số liệu buồng tương ứng — khí đứng yên thì khỏi tải lại 140 phân tử */
+  const drawn = useRef<{ gas: Gas | null; c: ReturnType<typeof chambers> | null }>({ gas: null, c: null });
   useFrame((st, dtRaw) => {
+    // nhánh bị ẩn (người chơi trong đại sảnh của bốt): không mô phỏng, không cập nhật hình
+    if (!shown(rootRef.current)) {
+      drawn.current.gas = null;
+      return;
+    }
     const dt = Math.min(dtRaw, 1 / 30);
     const s = useMaxwell.getState();
     const p = useWorld.getState().player;
@@ -121,8 +130,10 @@ export function MaxwellLab() {
     doorAng.current += (target - doorAng.current) * Math.min(1, dt * (target > doorAng.current ? 30 : 6));
     if (door) door.rotation.z = doorAng.current;
     // phân tử: mô phỏng ngăn trái (x < 0) hiện bên TRÁI khán giả = +x game
+    // chỉ tải lại khi khí đổi: đang mô phỏng (gần), vừa hiện lại, hoặc vừa đặt lại khí
+    const fresh = near || drawn.current.gas !== g || !drawn.current.c;
     const im = molRef.current;
-    if (im) {
+    if (im && fresh) {
       for (let i = 0; i < N; i++) {
         tmp.m.makeTranslation(-g.px[i], BOX_Y + g.py[i], g.pz[i]); // toạ độ cục bộ của lab
         im.setMatrixAt(i, tmp.m);
@@ -135,7 +146,9 @@ export function MaxwellLab() {
       if (im.instanceColor) im.instanceColor.needsUpdate = true;
     }
     // nhiệt kế / áp kế / số liệu (5 lần mỗi giây)
-    const c = chambers(g);
+    const c = fresh ? chambers(g) : drawn.current.c!;
+    drawn.current.gas = g;
+    drawn.current.c = c;
     const liq = (o: THREE.Object3D | null, t: number) => {
       if (!o) return;
       const k = THREE.MathUtils.clamp(0.35 + 0.42 * t, 0.15, 1.05);
@@ -156,14 +169,14 @@ export function MaxwellLab() {
     // quỷ nhún nhảy; hào hứng hơn khi đang phân loại
     const bob = Math.sin(st.clock.elapsedTime * (s.mode === "auto" ? 7 : 2.2)) * (s.mode === "auto" ? 0.02 : 0.008);
     (demon.userData.parts as THREE.Object3D[]).forEach((o) => (o.position.y = bob));
-    if ((statTick.current += dt) > 0.2) {
+    if ((statTick.current += dt) > 0.2 && fresh) {
       statTick.current = 0;
       const prev = s.stats;
       useMaxwell.setState({ stats: { ...prev, tL: c.tL, tR: c.tR, nL: c.nL, nR: c.nR, bits: g.bits, dS: gasEntropy(g) - SIM.s0 } });
     }
   });
   return (
-    <group position={[LAB.x, 0, LAB.z]} rotation-y={LAB_ROT}>
+    <group ref={rootRef} position={[LAB.x, 0, LAB.z]} rotation-y={LAB_ROT}>
       <primitive object={root} />
       <instancedMesh ref={molRef} args={[mol.geo, mol.mat, N]} frustumCulled={false} />
       <Label3D text="Quỷ Maxwell · Maxwell's Demon" position={[0, 4.25, 0.6]} variant="name" />

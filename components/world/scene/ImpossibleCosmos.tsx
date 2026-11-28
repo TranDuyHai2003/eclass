@@ -15,7 +15,9 @@ import { worldAsset } from "@/lib/world/avatars";
 import { ISLE_BY_ID, RING_R, crossesRing, flightPath, flightRings } from "@/lib/world/impCosmos";
 import { sfx } from "@/lib/world/sfx";
 import { bakedMaterial } from "../fx/baked";
+import { BREATH, withBreath } from "../fx/breath";
 import { FLIGHT, saveBest, useRings } from "../flight";
+import { shockwave } from "../fx/Lensing";
 import { useGfx } from "../gfx";
 import { useWorld } from "../store";
 import { Label3D, floatText } from "../ui/Labels";
@@ -23,6 +25,8 @@ import { glowPulse } from "./ParadoxVfx";
 import { GodSun, VoidEnvironment, hybridMaterial } from "./VoidHybrid";
 import { COSMOS_NODES } from "../lab";
 import { CosmosLab } from "./CosmosLab";
+
+const SHOCK_AT = new THREE.Vector3();
 
 const COSMOS = worldAsset("props/imp_cosmos.glb");
 useGLTF.preload(COSMOS);
@@ -140,6 +144,8 @@ export function ImpSky() {
   );
 }
 
+const BREATHERS = /^(v_rock2?|v_earth|f_shell2?)$/;
+
 /** Quần đảo + kỳ quan (GLB nướng); kỳ quan lơ lửng xoay chậm quanh gốc của chính nó */
 function CosmosIsles({ real }: { real: boolean }) {
   const gltf = useGLTF(COSMOS);
@@ -158,6 +164,8 @@ function CosmosIsles({ real }: { real: boolean }) {
             glowPulse(g, s.name);
             mat = g;
           } else mat = real ? hybridMaterial(s, true, s.name) : bakedMaterial(s, U);
+          // kiến trúc "thở": đá, đất, vỏ ốc của quần đảo phồng – xẹp chậm (sàn / lát không đụng tới)
+          if (BREATHERS.test(s.name)) withBreath(mat);
           cache.set(s.name, mat);
         }
         return mat;
@@ -176,8 +184,16 @@ function CosmosIsles({ real }: { real: boolean }) {
       COSMOS_NODES.knot = COSMOS_NODES.lorenz = COSMOS_NODES.hopf = null;
     };
   }, [root]);
-  useFrame((_, dt) => {
+  const still = useRef(0);
+  useFrame((st, dt) => {
     for (const o of spin) o.rotation.y += dt * (o.name === "ic_hopf" ? 0.12 : o.name === "ic_lorenz" ? 0.08 : 0.18);
+    // đứng yên ≥ 2,5 s → thế giới thở sâu dần (3 s); đi lại → chỉ thở rất nhẹ
+    const w = useWorld.getState();
+    const moving = Math.hypot(w.input.x, w.input.y) > 0.05 || w.moving;
+    still.current = moving ? 0 : still.current + dt;
+    const target = 0.25 + 0.75 * Math.min(1, Math.max(0, (still.current - 2.5) / 3));
+    BREATH.amp.value += (target - BREATH.amp.value) * Math.min(1, dt * 1.2);
+    BREATH.t.value = st.clock.elapsedTime;
   });
   return <primitive object={root} />;
 }
@@ -279,6 +295,8 @@ function FlightCourse() {
         FLIGHT.boostUntil = now + 1800;
         st.setY(k, t);
         sfx.harmonic((R.passed % 8) + 1);
+        // xuyên qua vòng: sóng xung kích nở từ tâm vòng (vòng cuối mạnh hơn)
+        shockwave(SHOCK_AT.set(...rings[k].p), R.passed + 1 >= n ? 1.4 : 0.65);
         const startedAt = R.passed === 0 ? now : R.startedAt;
         const passed = R.passed + 1;
         if (passed >= n) {

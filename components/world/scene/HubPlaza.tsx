@@ -15,12 +15,13 @@ import { AXES, FOUNTAINS, GARDEN, GATES, GATE_BY_ID, MUSEUM, PATH_HALF, PAVILION
 import { BLADE_STRIDE, grassBlades } from "@/lib/world/hubGrass";
 import { canopyMaskMaterial, foliageMaskMaterial, foliageMaterial } from "../fx/foliage";
 import { FOCUS } from "../fx/nearFade";
+import { mergeStatic } from "../fx/mergeStatic";
 import { INK_MASK } from "../fx/InkMask";
 import { DAY } from "../fx/dayState";
 import { Campfire, HubDayCycle, LampGlow } from "./HubNight";
 import { BEAST_LOOKS, BEAST_PATHS, CosmicBeast } from "../fx/CosmicBeast";
 
-/** kính đèn đường (HubDayCycle sáng lên về đêm) */
+/** kính đèn đường (HubDayCycle sáng lên về đêm) — mỗi lần gắn Quảng trường tự gỡ phần của mình khi rời (useHubMats) */
 const LAMP_MATS: { mat: THREE.MeshBasicMaterial; base: THREE.Color }[] = [];
 import { BAKED_U, type BakedUniforms } from "../fx/baked";
 import { bakedPBR } from "../fx/realify";
@@ -31,10 +32,17 @@ import { HubWater, LAYER_NO_REFLECT } from "./HubWater";
 import { flowMaterial } from "../fx/water";
 import { StudyDoor } from "./study/StudyDoor";
 import { noiseTex, streakTex } from "../fx/proceduralTex";
+import { HUB_SHADE_GLSL, hubShadeUniforms, lawnPaintTex, stonePaintTex, updateHubShadow } from "../fx/hubShade";
 import { WIND } from "../fx/water";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { HubFlowers, HubMotes } from "./HubFlora";
+import { HubClouds } from "./HubClouds";
 
 const GLB = worldAsset("props/hub_plaza.glb");
 useGLTF.preload(GLB);
+/** đạo cụ dựng riêng sau (Blender, blender-src/hub_props.blend): ghế công viên hx_bench2, đèn đường hx_lamp2 (+ kính sáng) */
+const PROPS_GLB = worldAsset("props/hub_props2.glb");
+useGLTF.preload(PROPS_GLB);
 
 /** Mặt trời hoàng hôn (khớp đèn nướng trong Blender): thấp, phía tây bắc → tượng đài + cổng bắc viền sáng ngược khi vừa vào */
 export const HUB_SUN = new THREE.Vector3(-0.45, 0.38, -0.82).normalize();
@@ -49,27 +57,106 @@ const NOISE = /* glsl */ `
 `;
 
 // ───────────── Bầu trời (theo giờ thật: màu 9 mốc giờ, mặt trời / trăng, sao — fx/dayState.ts) ─────────────
-export function hubSky() {
+/**
+ * hub = true (Quảng trường): thêm các lớp chân trời kiểu Genshin (docs/ai-reviews/hub-genshin/RESEARCH.md §3) — VẪN 1 lệnh vẽ:
+ *  • đảo nổi xa 2 lớp (bóng phẳng, phối cảnh khí quyển: lớp xa nhạt / lam, lớp gần đậm hơn, viền nắng phía mặt trời, thác bạc);
+ *  • biển mây dưới đảo gộp vào vòm (giao tia với mặt phẳng y = −40 → toạ độ thế giới, trôi chậm, sáng theo hướng nắng thật)
+ *    thay tấm CloudSeaGold riêng (bớt 1 lệnh vẽ);
+ *  • quầng mặt trời 2 thuỳ (Mie) rộng hơn khi nắng thấp.
+ * hub = false (Expanse dùng chung): giữ như cũ.
+ */
+export function hubSky(hub = false) {
   return new THREE.ShaderMaterial({
-    uniforms: { uT: { value: 0 }, uSun: DAY.sun, uMoon: DAY.moon, uZen: DAY.zen, uHor: DAY.hor, uSunK: DAY.sunK, uNight: DAY.night },
+    uniforms: { uT: { value: 0 }, uSun: DAY.sun, uMoon: DAY.moon, uZen: DAY.zen, uHor: DAY.hor, uSunK: DAY.sunK, uNight: DAY.night, uLevel: DAY.level, uNoiseTex: { value: noiseTex() } },
+    defines: hub ? { HUB: 1 } : {},
     vertexShader: "varying vec3 vD; void main(){ vD = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
-    fragmentShader: /* glsl */ `uniform float uT; uniform vec3 uSun; uniform vec3 uMoon; uniform vec3 uZen; uniform vec3 uHor; uniform float uSunK; uniform float uNight; varying vec3 vD;
+    fragmentShader: /* glsl */ `uniform float uT; uniform vec3 uSun; uniform vec3 uMoon; uniform vec3 uZen; uniform vec3 uHor; uniform float uSunK; uniform float uNight; uniform float uLevel; uniform sampler2D uNoiseTex; varying vec3 vD;
       ${NOISE}
+      // đảo nổi xa: bóng theo phương vị a (rad), cao độ y. Trả về (che phủ, viền sáng, thác)
+      vec3 island(float a, float y, float ca, float w, float top, float tip, float seed, float aa){
+        float da = a - ca;
+        da -= 6.2832 * floor(da / 6.2832 + 0.5);
+        float u = da / w;
+        if (abs(u) > 1.0) return vec3(0.0);
+        float uu = u * u;
+        // mặt trên: phẳng hơi vồng + hàng cây (bướu nhỏ) ; mặt dưới: chóp ngược lởm chởm (đá rễ)
+        float crown = 0.010 * w * 6.0 * smoothstep(1.0, 0.2, abs(u)) * (0.55 + 0.45 * n2(vec2(u * 9.0 + seed * 7.0, seed)));
+        float t = top + 0.004 * (1.0 - uu) + crown;
+        float b = mix(top - 0.004, tip, pow(max(0.0, 1.0 - uu), 0.7)) + 0.006 * (n2(vec2(u * 14.0, seed * 3.0)) - 0.5);
+        float cov = smoothstep(-aa, aa, t - y) * smoothstep(-aa, aa, y - b) * smoothstep(1.0, 0.94, abs(u));
+        float rim = smoothstep(0.012, 0.0, t - y) * cov;
+        // thác: dải mảnh rơi từ mép đảo xuống
+        float fx = abs(u - (fract(seed * 7.13) - 0.5) * 0.9);
+        float fall = smoothstep(0.035, 0.0, fx) * step(y, b + 0.004) * smoothstep(b - 0.06, b, y);
+        return vec3(cov, rim, fall);
+      }
       void main(){
         vec3 d = normalize(vD);
         float y = d.y;
+        float yaa = fwidth(y) * 1.5 + 1e-4;
         float sd = max(dot(d, uSun), 0.0);
         float az = dot(normalize(vec2(d.x, d.z)), normalize(vec2(uSun.x, uSun.z) + 1e-4));
         float up = smoothstep(-0.12, 0.05, uSun.y);
+        float low = 1.0 - smoothstep(0.25, 0.7, uSun.y);
         // thiên đỉnh → chân trời; phía mặt trời ấm cam đào khi mặt trời thấp (bình minh / hoàng hôn)
         vec3 zen = uZen;
-        vec3 horSun = mix(uHor, vec3(1.0, 0.62, 0.36), 0.55 * up * (1.0 - smoothstep(0.25, 0.7, uSun.y)) + 0.25 * up);
+        vec3 horSun = mix(uHor, vec3(1.0, 0.62, 0.36), 0.55 * up * low + 0.25 * up);
         vec3 hor = mix(uHor, horSun, smoothstep(-0.4, 1.0, az));
         float hb = pow(1.0 - clamp(y, 0.0, 1.0), 4.0);
         vec3 c = mix(zen, hor, hb);
-        // dưới chân trời: biển mây (tối dần về đêm)
-        c = mix(c, mix(vec3(0.98, 0.82, 0.72), uHor * 0.6, uNight), smoothstep(0.02, -0.25, y));
-        c += (vec3(1.0, 0.7, 0.4) * pow(sd, 6.0) * 0.55 + vec3(1.0, 0.85, 0.6) * pow(sd, 60.0) * 0.8) * up;
+        vec3 haze = mix(hor, vec3(1.0, 0.86, 0.7), 0.25 * up);
+        #ifdef HUB
+          // biển mây (thế giới, y = −40 dưới mắt): mây cuộn trôi chậm, sáng phía mặt trời, xa hoà vào chân trời
+          if (y < 0.0) {
+            float tt = (cameraPosition.y + 40.0) / max(-y, 1e-3);
+            vec2 hp = cameraPosition.xz + d.xz * tt;
+            vec2 p = hp * 0.02 + vec2(uT * 0.008, uT * 0.004);
+            float cl = texture2D(uNoiseTex, p * 0.35 + texture2D(uNoiseTex, p * 0.12 - uT * 0.002).b * 0.25).r;
+            float puff = smoothstep(0.36, 0.68, cl);
+            float lit = dot(normalize(hp + 1e-4), normalize(uSun.xz + 1e-4)) * 0.5 + 0.5;
+            vec3 top = mix(vec3(1.0, 0.93, 0.9), vec3(1.0, 0.8, 0.6), lit * up * low);
+            vec3 sh = mix(vec3(0.6, 0.62, 0.86), mix(vec3(0.86, 0.66, 0.74), uHor, 0.4), lit);
+            vec3 sea = mix(sh, top, puff) + vec3(1.0, 0.75, 0.45) * smoothstep(0.66, 0.86, cl) * lit * 0.35 * up;
+            sea *= mix(1.0, 0.22, uNight);
+            sea = mix(sea, haze * mix(1.0, 0.4, uNight), smoothstep(150.0, 520.0, tt));
+            c = mix(haze, sea, smoothstep(0.0, -0.035, y));
+          }
+        #else
+          // dưới chân trời: biển mây (tối dần về đêm)
+          c = mix(c, mix(vec3(0.98, 0.82, 0.72), uHor * 0.6, uNight), smoothstep(0.02, -0.25, y));
+        #endif
+        // quầng mặt trời 2 thuỳ (Mie): rộng + mềm khi nắng thấp
+        c += (vec3(1.0, 0.7, 0.4) * pow(sd, 6.0) * (0.45 + 0.35 * low) + vec3(1.0, 0.85, 0.6) * pow(sd, 48.0) * 0.8) * up;
+        #ifdef HUB
+          // đảo nổi xa: lớp XA (nhạt, lam khói) rồi lớp GẦN (đậm hơn) — đọc được chiều sâu nhiều tầng
+          if (y > -0.07 && y < 0.16) {
+            float a = atan(d.z, d.x);
+            vec3 sunRim = vec3(1.0, 0.78, 0.5) * up + vec3(0.6, 0.7, 1.0) * uNight * 0.3;
+            vec3 farCol = mix(haze, uZen, 0.18) * 0.92;
+            vec3 nearCol = mix(vec3(0.42, 0.44, 0.62), haze, 0.48);
+            for (int i = 0; i < 9; i++) {
+              float fi = float(i);
+              float far = step(4.5, fi);
+              float ca = fi * 2.399 + 0.7;
+              // chừa khoảng trời sau tượng đài trên lối chính (nhìn từ điểm vào về phía bắc: a = −π/2)
+              float dn = ca + 1.5708; dn -= 6.2832 * floor(dn / 6.2832 + 0.5);
+              if (abs(dn) < 0.32) ca += 0.6 * sign(dn + 1e-3);
+              float w = mix(0.07, 0.035, far) * (0.7 + 0.6 * fract(fi * 0.618));
+              float top = mix(0.018, 0.006, far) + 0.02 * fract(fi * 0.371);
+              float tip = top - mix(0.05, 0.026, far) * (0.8 + 0.5 * fract(fi * 0.53));
+              vec3 isl = island(a, y, ca, w, top, tip, fi + 1.0, yaa);
+              if (isl.x <= 0.0 && isl.z <= 0.0) continue;
+              vec3 ic = mix(nearCol, farCol, far);
+              // phía mặt trời: viền nắng ấm trên đỉnh; ngược phía: lam
+              float sideSun = smoothstep(-0.2, 0.9, az);
+              ic = mix(ic * vec3(0.92, 0.95, 1.05), ic * vec3(1.08, 1.0, 0.92), sideSun);
+              ic += sunRim * isl.y * (0.35 + 0.65 * sideSun) * (1.0 - far * 0.5);
+              ic *= mix(1.0, 0.3, uNight);
+              c = mix(c, ic, isl.x * mix(0.95, 0.7, far));
+              c = mix(c, mix(vec3(0.95, 0.97, 1.0), haze, 0.35) * mix(1.0, 0.35, uNight), isl.z * 0.55 * (1.0 - far * 0.4));
+            }
+          }
+        #endif
         // mặt trời
         c += vec3(1.0, 0.95, 0.85) * smoothstep(0.9994, 0.9997, sd) * 6.0 * up;
         // ban đêm: sao (lấp lánh) + mặt trăng có vết sẫm
@@ -86,7 +173,7 @@ export function hubSky() {
           c = mix(c, vec3(1.0, 0.97, 0.9) * (1.6 - mare), disc * uNight);
           c += vec3(0.55, 0.65, 1.0) * pow(max(md, 0.0), 80.0) * 0.25 * uNight;
         }
-        // mây tích lớn gần chân trời — sáng ngày, xám lam về đêm
+        // mây tích lớn gần chân trời — sáng ngày, xám lam về đêm; viền bạc khi ngược nắng
         float lit0 = mix(1.0, 0.16, uNight);
         if (y > -0.05 && y < 0.5) {
           float a = atan(d.z, d.x);
@@ -98,6 +185,10 @@ export function hubSky() {
           vec3 sh = mix(vec3(0.62, 0.6, 0.85), mix(vec3(0.85, 0.62, 0.7), uHor, 0.4), smoothstep(-0.2, 1.0, az));
           vec3 cc = mix(sh, lit, smoothstep(0.35, 0.65, shade + (y * 1.5))) * lit0;
           cc += vec3(1.0, 0.75, 0.4) * pow(sd, 4.0) * smoothstep(0.55, 0.75, shade) * 0.9 * up;
+          #ifdef HUB
+            // viền bạc: mép mỏng của khối mây phía mặt trời
+            cc += vec3(1.0, 0.85, 0.62) * smoothstep(0.25, 0.05, tower) * smoothstep(0.0, 0.12, tower) * pow(sd, 3.0) * 1.2 * up;
+          #endif
           c = mix(c, cc, tower * 0.95);
         }
         // mây ti mảnh trên cao
@@ -115,8 +206,9 @@ export function hubSky() {
     fog: false,
   });
 }
-function HubSky() {
-  const mat = useMemo(() => hubSky(), []);
+const hubSkyHub = () => hubSky(true);
+export function HubSky({ hub = false }: { hub?: boolean }) {
+  const mat = useMemo(() => hubSky(hub), [hub]);
   useEffect(() => () => mat.dispose(), [mat]);
   const g = useRef<THREE.Mesh>(null);
   const { camera } = useThree();
@@ -131,12 +223,17 @@ function HubSky() {
   );
 }
 
-// ───────────── Sàn đá cẩm thạch (hoa văn theo toán bố cục) ─────────────
+// ───────────── Sàn đá sa thạch vẽ tay (hoa văn theo toán bố cục) ─────────────
+/**
+ * Làm lại kiểu Genshin (docs/ai-reviews/hub-genshin/PLAN.md §2): đá kem ấm #DCCBB0 × vân vẽ tay (Codex), phiến 2,6 × 1,5 m XẾP SO LE
+ * trên lối, ron nhẹ 6% (trước 26% → lưới "gạch nhà tắm"), mặt nhám 0,6 (hết bóng gương phản trời tím), viền lối bằng đá xám lam
+ * (vàng chỉ còn quanh hồ / vòng sân / sao / ngã ba), bồn cỏ = thảm cỏ vẽ tay, AO tiếp xúc + bóng tán cây theo nắng thật (fx/hubShade).
+ */
 function floorMaterial(): THREE.Material {
-  const m = new THREE.MeshStandardMaterial({ color: "#ffffff", vertexColors: true, roughness: 0.3, metalness: 0, envMapIntensity: 0.9 });
+  const m = new THREE.MeshStandardMaterial({ color: "#ffffff", vertexColors: true, roughness: 0.6, metalness: 0, envMapIntensity: 0.35 });
   const feats = [...GATES.map((g) => new THREE.Vector3(g.x, g.z, g.r)), new THREE.Vector3(MUSEUM.x, MUSEUM.z, MUSEUM.r), new THREE.Vector3(PAVILION.x, PAVILION.z, PAVILION.r), new THREE.Vector3(GARDEN.x, GARDEN.z, GARDEN.r), new THREE.Vector3(YARD.x, YARD.z, YARD.r)];
   m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, { uExposure: U.uExposure, uFloor: U.uFloor, uTint: U.uTint, uScale: U.uScale, uFeat: { value: feats }, uAxes: { value: AXES.map((a) => new THREE.Vector2(a[0], a[1])) }, uNoiseTex: { value: noiseTex() } });
+    Object.assign(sh.uniforms, { uExposure: U.uExposure, uFloor: U.uFloor, uTint: U.uTint, uScale: U.uScale, uFeat: { value: feats }, uAxes: { value: AXES.map((a) => new THREE.Vector2(a[0], a[1])) }, uNoiseTex: { value: noiseTex() }, uStone: { value: stonePaintTex() }, uLawn: { value: lawnPaintTex() }, ...hubShadeUniforms() });
     sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vW;").replace("#include <begin_vertex>", "#include <begin_vertex>\nvW = (modelMatrix * vec4(transformed, 1.0)).xyz;");
     sh.fragmentShader = sh.fragmentShader
       .replace(
@@ -144,9 +241,10 @@ function floorMaterial(): THREE.Material {
         `#include <common>
         varying vec3 vW;
         uniform float uExposure; uniform float uFloor; uniform vec3 uTint; uniform float uScale;
-        uniform vec3 uFeat[8]; uniform vec2 uAxes[8]; uniform sampler2D uNoiseTex;
-        vec3 gBaked = vec3(1.0); float gRough = 0.3; float gMetal = 0.0;
+        uniform vec3 uFeat[8]; uniform vec2 uAxes[8]; uniform sampler2D uNoiseTex; uniform sampler2D uStone; uniform sampler2D uLawn;
+        vec3 gBaked = vec3(1.0); float gRough = 0.6; float gMetal = 0.0; float gShade = 0.0; float gAO = 1.0;
         ${NOISE}
+        ${HUB_SHADE_GLSL}
         float aaLine(float d, float w){ float fw = fwidth(d) + 1e-4; return 1.0 - smoothstep(w - fw, w + fw, abs(d)); }`,
       )
       .replace(
@@ -156,80 +254,84 @@ function floorMaterial(): THREE.Material {
         // lối toả tia: khoảng cách ngang tới trục gần nhất + toạ độ dọc trục
         float pd = 1e9; float along = 0.0;
         for (int i = 0; i < 8; i++) { float al = dot(p, uAxes[i]); if (al < 0.0) continue; float dd = abs(p.x * uAxes[i].y - p.y * uAxes[i].x); if (dd < pd) { pd = dd; along = al; } }
-        float feat = 1e9; float featD = 0.0;
-        for (int i = 0; i < 8; i++) { float dd = length(p - uFeat[i].xy) - uFeat[i].z; if (dd < feat) { feat = dd; featD = length(p - uFeat[i].xy); } }
+        float feat = 1e9;
+        for (int i = 0; i < 8; i++) { float dd = length(p - uFeat[i].xy) - uFeat[i].z; feat = min(feat, dd); }
         float bed = (r > ${RING_IN.toFixed(1)} && r < ${RING_OUT.toFixed(1)} && pd > ${PATH_HALF.toFixed(1)} && feat > 0.6) ? 1.0 : 0.0;
-        // vân đá cẩm thạch (uốn miền) + mạch lát
-        vec4 nz = texture2D(uNoiseTex, p / 24.0);
-        float v1 = nz.r;
-        float vein = smoothstep(0.02, 0.0, abs(v1 - 0.52)) * 0.35 + smoothstep(0.012, 0.0, abs(texture2D(uNoiseTex, p / 12.0 + 0.37).g - 0.5)) * 0.2;
-        vec3 marble = mix(vec3(0.96, 0.93, 0.88), vec3(0.9, 0.86, 0.8), texture2D(uNoiseTex, p / 6.0).b);
-        marble -= vec3(0.12, 0.13, 0.12) * vein;
-        float grout = 0.0; float groutAO = 0.0; vec2 tid;
+        // đá sa thạch kem (tuyến tính) × vân vẽ tay (lưu 0,5 = 1) + mảng ấm / lạnh lớn vài chục mét
+        vec3 det = texture2D(uStone, p / 5.5).rgb * 2.0;
+        vec3 stone = vec3(0.86, 0.79, 0.66) * mix(vec3(1.0), det, 0.85);
+        stone *= mix(vec3(1.03, 1.0, 0.95), vec3(0.96, 0.97, 1.02), texture2D(uNoiseTex, p / 46.0 + 0.21).g);
+        float grout = 0.0; vec2 tid; vec2 tf;
         if (pd < ${PATH_HALF.toFixed(1)} && r > ${RING_IN.toFixed(1)} - 0.4) {
-          vec2 q = vec2(along / 1.5 + 0.5, pd / 1.5);
-          grout = max(aaLine(fract(q.x) - 0.5, 0.012), aaLine(fract(q.y) - 0.5, 0.012));
-          groutAO = max(aaLine(fract(q.x) - 0.5, 0.045), aaLine(fract(q.y) - 0.5, 0.045));
-          tid = floor(q);
+          // phiến chữ nhật 2,6 × 1,5 m xếp so le (running bond)
+          float row = floor(pd / 1.5);
+          vec2 q = vec2(along / 2.6 + 0.5 * mod(row, 2.0), pd / 1.5);
+          tf = fract(q); tid = floor(q);
+          grout = max(aaLine(fract(q.x + 0.5) - 0.5, 0.006), aaLine(fract(q.y + 0.5) - 0.5, 0.01));
         } else {
+          // vòng sân: phiến cong, mỗi vòng lệch nửa phiến
           float ang = atan(p.y, p.x);
-          vec2 q = vec2(r / 1.2, ang / 0.1309 + 0.5);
-          grout = max(aaLine(fract(q.x) - 0.5, 0.01 * 1.2), aaLine(fract(q.y) - 0.5, 0.012 * 7.0 / max(r, 1.0)));
-          groutAO = max(aaLine(fract(q.x) - 0.5, 0.04), aaLine(fract(q.y) - 0.5, 0.05 * 7.0 / max(r, 1.0)));
-          tid = floor(q) + 91.0;
+          float ring = floor(r / 1.6);
+          float seg = max(6.0, floor(r * 6.2832 / 2.4));
+          vec2 q = vec2(r / 1.6, ang / 6.2832 * seg + 0.5 * mod(ring, 2.0));
+          tf = fract(q); tid = floor(q) + 91.0;
+          grout = max(aaLine(fract(q.x + 0.5) - 0.5, 0.008), aaLine(fract(q.y + 0.5) - 0.5, 0.006 * seg / max(r, 1.0)));
         }
-        // mỗi viên một sắc (ấm / lạnh / sẫm nhẹ) + vài viên "thay mới" sáng hơn — phá lưới lặp (Blue Protocol / Insomniac trim)
+        // mỗi phiến một sắc nhẹ (ấm / lạnh / sẫm) — phá lưới lặp nhưng giữ mặt sân là MỘT khối lớn
         float th = h2(tid + 17.0);
-        marble *= 0.955 + 0.085 * th;
-        marble = mix(marble, marble * vec3(1.035, 0.995, 0.93), step(0.72, th) * 0.75);
-        marble = mix(marble, marble * vec3(0.95, 0.975, 1.03), step(th, 0.16) * 0.75);
-        marble = mix(marble, vec3(0.99, 0.97, 0.93), step(0.965, h2(tid + 3.3)) * 0.6);
-        // mảng màu lớn (vài chục mét) + mòn bóng giữa lối nơi chân bước nhiều
-        marble *= 0.955 + 0.09 * texture2D(uNoiseTex, p / 46.0 + 0.21).g;
-        vec3 col = marble * (1.0 - grout * 0.26 - groutAO * 0.07);
-        gRough = 0.2 + texture2D(uNoiseTex, p / 3.0).a * 0.12; gMetal = 0.0;
-        // dải đá xanh lam + sao 8 cánh quanh hồ
+        stone *= 0.965 + 0.06 * th;
+        stone = mix(stone, stone * vec3(1.03, 1.0, 0.94), step(0.78, th) * 0.6);
+        stone = mix(stone, stone * vec3(0.95, 0.98, 1.03), step(th, 0.14) * 0.6);
+        // mép phiến vẽ tay: tối nhẹ sát ron (vát) — 3,5%
+        float bevel = smoothstep(0.0, 0.07, tf.y) * (1.0 - smoothstep(0.93, 1.0, tf.y)) * smoothstep(0.0, 0.04, tf.x) * (1.0 - smoothstep(0.96, 1.0, tf.x));
+        vec3 col = stone * (0.95 + 0.05 * bevel) * (1.0 - grout * 0.1);
+        gRough = 0.55 + texture2D(uNoiseTex, p / 3.0).a * 0.15; gMetal = 0.0;
+        // sao 8 cánh quanh hồ: đá ngà sáng hơn (đọc như thảm đá quanh đài)
         float star = 0.0;
         { float ang = atan(p.y, p.x); float k = abs(fract(ang / 0.7854) - 0.5) * 2.0; float rr = mix(10.9, 8.9, k); star = step(r, rr) * step(${POOL.rim.toFixed(2)} + 0.5, r); }
-        // sao 8 cánh: nền đá kem ấm (chỉ đường viền vàng nổi), không mảng xanh như vũng nước
-        col = mix(col, vec3(0.93, 0.88, 0.8) * (0.95 + 0.1 * nz.b), star * 0.9);
+        col = mix(col, vec3(0.88, 0.8, 0.66) * mix(vec3(1.0), det, 0.6), star * 0.85);
+        // vòng dạo: dải đá xám lam (trim) — thay vạch vàng chạy dài
         float slateRing = step(30.2, r) * step(r, 30.9);
-        col = mix(col, vec3(0.24, 0.36, 0.48), slateRing);
-        // viền vàng (khảm kim loại): mép lối toả tia, các vòng, mép sao
+        col = mix(col, vec3(0.3, 0.36, 0.42) * mix(vec3(1.0), det, 0.5), slateRing);
+        // viền lối: đá xám lam 0,25 m (curb) thay vạch vàng dài
+        float curb = (r > ${RING_IN.toFixed(1)} && r < ${RING_OUT.toFixed(1)}) ? aaLine(pd - ${PATH_HALF.toFixed(1)} + 0.14, 0.12) : 0.0;
+        col = mix(col, vec3(0.36, 0.41, 0.46) * mix(vec3(1.0), det, 0.5), curb * 0.9);
+        // đồng thau (kim loại thật) chỉ ở chỗ hội tụ: vành sân trong, quanh hồ, mép sao, vòng ngã ba
         float gold = 0.0;
-        if (r > ${RING_IN.toFixed(1)} && r < ${RING_OUT.toFixed(1)}) gold = max(gold, aaLine(pd - ${PATH_HALF.toFixed(1)} + 0.18, 0.05));
-        gold = max(gold, aaLine(r - 11.85, 0.05)); gold = max(gold, aaLine(r - 29.45, 0.05)); gold = max(gold, aaLine(r - 30.05, 0.04)); gold = max(gold, aaLine(r - 31.05, 0.04)); gold = max(gold, aaLine(r - 34.9, 0.05));
+        gold = max(gold, aaLine(r - 11.85, 0.05)); gold = max(gold, aaLine(r - 29.45, 0.04));
         gold = max(gold, aaLine(r - ${(POOL.rim + 0.25).toFixed(2)}, 0.04));
-        { float ang = atan(p.y, p.x); float k = abs(fract(ang / 0.7854) - 0.5) * 2.0; float rr = mix(10.9, 8.9, k); gold = max(gold, aaLine(r - rr, 0.04) * step(${POOL.rim.toFixed(2)} + 0.5, r)); }
-        // tia la bàn mảnh giữa lối
-        if (pd < 0.05 && r > ${RING_IN.toFixed(1)}) gold = max(gold, aaLine(pd, 0.03));
-        col = mix(col, vec3(0.95, 0.72, 0.36), gold);
-        gMetal = mix(gMetal, 1.0, gold); gRough = mix(gRough, 0.25, gold);
-        // bồn cỏ: nền cỏ biến sắc + hoa nhỏ; viền đá thấp quanh bồn
+        { float ang = atan(p.y, p.x); float k = abs(fract(ang / 0.7854) - 0.5) * 2.0; float rr = mix(10.9, 8.9, k); gold = max(gold, aaLine(r - rr, 0.035) * step(${POOL.rim.toFixed(2)} + 0.5, r)); }
+        col = mix(col, vec3(0.74, 0.47, 0.22), gold);
+        gMetal = mix(gMetal, 1.0, gold); gRough = mix(gRough, 0.3, gold);
+        // bồn cỏ: thảm cỏ vẽ tay (cùng texture với gốc lá cỏ instanced → cỏ mọc ra từ đất); viền đá thấp quanh bồn
+        vec3 lawn = texture2D(uLawn, p / 6.0).rgb * vec3(1.0, 0.97, 0.9);
         if (bed > 0.5) {
-          float g = texture2D(uNoiseTex, p / 20.0).b;
-          vec3 grass = mix(vec3(0.24, 0.5, 0.18), vec3(0.46, 0.68, 0.26), g);
-          grass = mix(grass, vec3(0.62, 0.72, 0.3), smoothstep(0.6, 0.8, texture2D(uNoiseTex, p / 55.0 + 0.5).b) * 0.5);
-          vec2 cell = floor(p * 2.2); vec2 f = fract(p * 2.2) - 0.5; float hh = h2(cell);
-          float flower = step(0.9, hh) * smoothstep(0.17, 0.08, length(f - (vec2(h2(cell + 3.1), h2(cell + 7.7)) - 0.5) * 0.5));
-          vec3 fc = hh > 0.97 ? vec3(1.0, 0.95, 0.6) : hh > 0.935 ? vec3(1.0, 0.7, 0.82) : vec3(0.95, 0.95, 1.0);
-          grass = mix(grass, fc, flower);
           float edge = min(pd - ${PATH_HALF.toFixed(1)}, min(r - ${RING_IN.toFixed(1)}, ${RING_OUT.toFixed(1)} - r));
-          float curb = 1.0 - smoothstep(0.22, 0.26, edge);
-          col = mix(grass, vec3(0.88, 0.84, 0.78), curb);
-          gRough = mix(0.95, 0.4, curb); gMetal = 0.0;
+          float kerb = 1.0 - smoothstep(0.22, 0.26, edge);
+          col = mix(lawn, vec3(0.62, 0.6, 0.56) * mix(vec3(1.0), det, 0.6), kerb);
+          gRough = mix(0.95, 0.6, kerb); gMetal = 0.0;
         }
-        // vườn sinh vật: cỏ; bãi tập: vòng đá xanh
-        if (length(p - uFeat[6].xy) < uFeat[6].z) { col = mix(vec3(0.28, 0.55, 0.2), vec3(0.5, 0.72, 0.3), texture2D(uNoiseTex, p / 18.0).b); gRough = 0.95; }
-        if (length(p - uFeat[7].xy) < uFeat[7].z) { float rr = length(p - uFeat[7].xy); col = mix(col, vec3(0.3, 0.42, 0.55), step(rr, 3.6) * (0.55 + 0.1 * step(0.5, fract(atan(p.y - uFeat[7].y, p.x - uFeat[7].x) / 0.3927)))); }
+        // vườn sinh vật: cỏ; bãi tập: vòng đá xám lam
+        if (length(p - uFeat[6].xy) < uFeat[6].z) { col = lawn; gRough = 0.95; }
+        if (length(p - uFeat[7].xy) < uFeat[7].z) { float rr = length(p - uFeat[7].xy); col = mix(col, vec3(0.34, 0.42, 0.5) * mix(vec3(1.0), det, 0.5), step(rr, 3.6) * (0.55 + 0.1 * step(0.5, fract(atan(p.y - uFeat[7].y, p.x - uFeat[7].x) / 0.3927)))); }
         diffuseColor.rgb = col;
+        gAO = hubContact(p);
+        gShade = hubShadow(p, texture2D(uNoiseTex, p / 7.0).b);
         #if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA )
           vec3 irr = pow(max(vColor.rgb, vec3(0.0)), vec3(1.818)) * uScale;
           float lum = dot(irr, vec3(0.3, 0.59, 0.11));
-          vec3 tint = min((irr + 0.06) / (lum + 0.06), vec3(2.2));
+          // sắc nướng (Blender, trời hoàng hôn hồng) + nhuộm giờ: giảm độ rực một nửa rồi ngả kem ấm — sân đá đọc là ĐÁ KEM dưới nắng,
+          // không phải mặt hồng tím (ảnh trước)
+          vec3 tint = mix(vec3(1.0), min((irr + 0.06) / (lum + 0.06), vec3(2.2)), 0.5);
+          // (uTint đã bớt rực + ấm ở HubDayCycle warm)
           gBaked = tint * max(lum, uFloor) * uExposure * uTint;
-          gBaked *= mix(vec3(0.82, 0.87, 1.12), vec3(1.035, 1.0, 0.95), smoothstep(0.22, 0.85, lum));
-        #endif`,
+          // bóng nướng: lam nhạt (ánh trời) — vùng nắng: kem ấm
+          gBaked *= mix(vec3(0.86, 0.9, 1.08), vec3(1.06, 1.0, 0.92), smoothstep(0.22, 0.85, lum));
+        #endif
+        // bóng tán: mất phần nắng (còn ánh trời lam) — kiểu Genshin: bóng mát lạnh, rìa ấm
+        // giờ vàng: phần nắng ngả vàng ấm + sáng hơn (sân không xỉn nâu), bóng tán giữ lam mát
+        gBaked *= mix(vec3(1.0), vec3(1.32, 1.1, 0.84), hubGold() * (1.0 - gShade) * 0.85);
+        gBaked *= mix(vec3(1.0), vec3(0.56, 0.62, 0.8), gShade) * mix(0.62, 1.0, gAO);`,
       )
       .replace("#include <roughnessmap_fragment>", "float roughnessFactor = gRough;")
       .replace("#include <metalnessmap_fragment>", "float metalnessFactor = gMetal;")
@@ -238,26 +340,27 @@ function floorMaterial(): THREE.Material {
         `#include <aomap_fragment>
         reflectedLight.directDiffuse = vec3(0.0);
         reflectedLight.indirectDiffuse = material.diffuseColor * gBaked;
-        float specOcc = clamp(dot(gBaked, vec3(0.3, 0.59, 0.11)) * 1.1, 0.1, 1.0);
+        float specOcc = clamp(dot(gBaked, vec3(0.3, 0.59, 0.11)) * 1.1, 0.1, 1.0) * gAO;
         reflectedLight.indirectSpecular *= specOcc;
-        reflectedLight.directSpecular *= specOcc * 0.6;`,
+        reflectedLight.directSpecular *= specOcc * 0.6 * (1.0 - gShade);`,
       );
   };
-  m.customProgramCacheKey = () => "hub-floor";
+  m.customProgramCacheKey = () => "hub-floor-g2";
   return m;
 }
 
 // ───────────── Mô hình + vật liệu ─────────────
 function useHubMats() {
-  return useMemo(() => {
+  const conv = useMemo(() => {
     const cache = new Map<string, THREE.Material>();
-    return (s: THREE.MeshStandardMaterial, flat: boolean) => {
+    const lamps: typeof LAMP_MATS = [];
+    const fn = (s: THREE.MeshStandardMaterial, flat: boolean) => {
       const key = `${s.name}|${flat}`;
       let m = cache.get(key);
       if (m) return m;
       if (s.name.startsWith("glow_")) {
         const gm = new THREE.MeshBasicMaterial({ color: s.color.clone().multiplyScalar(s.name === "glow_lamp" ? 3.2 : 2.4), toneMapped: false });
-        if (s.name === "glow_lamp") LAMP_MATS.push({ mat: gm, base: s.color.clone() });
+        if (s.name === "glow_lamp") lamps.push({ mat: gm, base: s.color.clone() });
         m = gm;
       }
       else if (s.name === "hp_floor") m = floorMaterial();
@@ -265,8 +368,8 @@ function useHubMats() {
       else {
         // đáy hồ: gạch xanh ngọc nhạt (nước trong nhìn xuống thấy sáng như hồ anime, không xám)
         const base = new THREE.MeshBasicMaterial({ color: s.name === "hm_pool" ? new THREE.Color("#a6e2e0") : s.color.clone(), vertexColors: true });
-        if (/^h_leaf/.test(s.name)) base.color.multiply(new THREE.Color(0.58, 0.66, 0.66));
-        else if (/^h_blossom/.test(s.name)) base.color.multiply(new THREE.Color(0.7, 0.56, 0.72));
+        if (/^h_leaf/.test(s.name)) base.color.multiply(new THREE.Color(0.6, 0.74, 0.62));
+        else if (/^h_blossom/.test(s.name)) base.color.multiply(new THREE.Color(0.96, 0.7, 0.8));
         base.name = s.name;
         BAKED_U.set(base, U);
         // vàng: kim loại thật; đá: bóng nhẹ; lá / vỏ cây: nhám
@@ -277,12 +380,28 @@ function useHubMats() {
       cache.set(key, m);
       return m;
     };
+    return Object.assign(fn, { cache, lamps });
   }, []);
+  // kính đèn đăng ký khi gắn, gỡ khi rời + huỷ vật liệu tự tạo (trước đây đẩy thẳng vào danh sách module lúc render →
+  // mỗi lần quay lại Hub danh sách dài thêm, HubDayCycle duyệt cả đèn của các lần trước)
+  useEffect(() => {
+    for (const l of conv.lamps) if (!LAMP_MATS.includes(l)) LAMP_MATS.push(l);
+    return () => {
+      for (const l of conv.lamps) {
+        const i = LAMP_MATS.indexOf(l);
+        if (i >= 0) LAMP_MATS.splice(i, 1);
+      }
+      for (const m of conv.cache.values()) m.dispose();
+    };
+  }, [conv]);
+  return conv;
 }
 
 // thân cây làm lại (hub_props6: thân cong, rễ bạnh, cành vút) thay phần vỏ h_bark cũ trong hx_tree/hx_blossom; đài phun hx_fountain2 (bể 16 thùy, bát múi, vỏ sò)
-const PROP_NODES = { tree: ["hx_tree", "hx_tree_leaves", "hx_tree_trunk"], blossom: ["hx_blossom", "hx_blossom_leaves", "hx_blossom_trunk"], lamp: ["hx_lamp", "hx_lamp_glow"], bench: ["hx_bench"], fountain: ["hx_fountain2", "hx_fountain_glow"] } as const;
+const PROP_NODES = { tree: ["hx_tree", "hx_tree_leaves", "hx_tree_trunk"], blossom: ["hx_blossom", "hx_blossom_leaves", "hx_blossom_trunk"], lamp: ["hx_lamp2", "hx_lamp2_glow"], bench: ["hx_bench2"], fountain: ["hx_fountain2", "hx_fountain_glow"] } as const;
 const OLD_BARK = new Set(["hx_tree", "hx_blossom"]);
+/** bản cũ còn trong GLB sảnh (gốc toạ độ) — luôn ẩn */
+const RETIRED = ["hx_bench", "hx_lamp", "hx_lamp_glow"];
 const ALL_PROPS = [...PROPS, ...FOUNTAINS.map((f) => ({ kind: "fountain" as const, x: f.x, z: f.z, yaw: Math.PI / 8, s: 1 }))];
 
 function HubModel() {
@@ -290,7 +409,7 @@ function HubModel() {
   const conv = useHubMats();
   const { root, rings, core, vox } = useMemo(() => {
     const root = gltf.scene.clone(true);
-    const propNames = new Set(Object.values(PROP_NODES).flat() as string[]);
+    const propNames = new Set([...(Object.values(PROP_NODES).flat() as string[]), ...RETIRED]);
     root.traverse((o) => {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
@@ -303,8 +422,20 @@ function HubModel() {
       if (o) o.visible = false;
     }
     const rings = [0, 1, 2].flatMap((k) => [root.getObjectByName(`hx_ring${k}`), root.getObjectByName(`hx_ring${k}_glow`)]).filter(Boolean) as THREE.Object3D[];
-    return { root, rings, core: root.getObjectByName("hx_core") ?? null, vox: root.getObjectByName("hx_gate_expanse_vox") ?? null };
+    const core = root.getObjectByName("hx_core") ?? null;
+    const vox = root.getObjectByName("hx_gate_expanse_vox") ?? null;
+    // gộp mesh tĩnh cùng vật liệu theo góc phần tư (ô 60 m) (GLB sảnh ~86 lệnh vẽ riêng lẻ → CPU); vòng xoay / lõi / khối cổng giữ riêng
+    mergeStatic(root, [...rings, ...(core ? [core] : []), ...(vox ? [vox] : [])], 60);
+    return { root, rings, core, vox };
   }, [gltf, conv]);
+  // lưới gộp là hình học MỚI (mergeStatic) — huỷ khi rời; hình học gốc của GLB (useGLTF, dùng chung) giữ nguyên
+  useEffect(
+    () => () =>
+      root.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh && o.name.startsWith("merged:")) (o as THREE.Mesh).geometry.dispose();
+      }),
+    [root],
+  );
   const base = useMemo(() => rings.map((r) => r.quaternion.clone()), [rings]);
   useFrame((state) => {
     const t = state.clock.elapsedTime;
@@ -320,9 +451,20 @@ function HubModel() {
   return <primitive object={root} name="perf:model" />;
 }
 
+/**
+ * Khối bao thật của một lô instance (nới 1,5 m cho tán lay theo gió) thay cho frustumCulled = false: lô nằm hẳn ngoài khung
+ * nhìn (nhìn lên trời, nhìn ra biển mây, máy quay phản chiếu / mặt nạ Ink) không còn bị gửi lệnh vẽ.
+ */
+function boundInstances(im: THREE.InstancedMesh) {
+  im.computeBoundingSphere();
+  if (im.boundingSphere) im.boundingSphere.radius += 1.5;
+  im.frustumCulled = true;
+}
+
 /** Cây / cây hoa / đèn / ghế: nhân bản theo PROPS; tán cây đung đưa theo gió (đỉnh lay nhiều, gốc đứng yên) */
 function HubProps() {
   const gltf = useGLTF(GLB);
+  const extra = useGLTF(PROPS_GLB);
   const conv = useHubMats();
   const meshes = useMemo(() => {
     const out: THREE.InstancedMesh[] = [];
@@ -331,7 +473,7 @@ function HubProps() {
       const list = ALL_PROPS.filter((p) => p.kind === kind);
       if (!list.length) continue;
       for (const n of names) {
-        const node = gltf.scene.getObjectByName(n);
+        const node = gltf.scene.getObjectByName(n) ?? extra.scene.getObjectByName(n);
         node?.updateWorldMatrix(true, true);
         node?.traverse((o) => {
           const src = o as THREE.Mesh;
@@ -350,7 +492,7 @@ function HubProps() {
                 m4.makeRotationY(p.yaw).scale(new THREE.Vector3(p.s, p.s, p.s)).setPosition(p.x, 0, p.z);
                 im.setMatrixAt(i, m4.multiply(local));
               });
-              im.frustumCulled = false;
+              boundInstances(im);
               im.layers.set(layer);
               return im;
             };
@@ -394,7 +536,7 @@ function HubProps() {
             m4.makeRotationY(p.yaw).scale(new THREE.Vector3(p.s, p.s, p.s)).setPosition(p.x, 0, p.z);
             im.setMatrixAt(i, m4.multiply(local));
           });
-          im.frustumCulled = false;
+          boundInstances(im);
           // cây / đèn / ghế không cần trong ảnh phản chiếu mặt hồ (tiết kiệm nửa lượt vẽ)
           if (kind !== "fountain") im.layers.set(LAYER_NO_REFLECT);
           out.push(im);
@@ -405,20 +547,30 @@ function HubProps() {
               im.getMatrixAt(i, m4);
               mk.setMatrixAt(i, m4);
             }
-            mk.frustumCulled = false;
+            boundInstances(mk);
             masks.push(mk);
           }
         });
       }
     }
     return { out, masks };
-  }, [gltf, conv]);
+  }, [gltf, extra, conv]);
   useEffect(() => {
     INK_MASK.scene.add(...meshes.masks);
     return () => {
       INK_MASK.scene.remove(...meshes.masks);
+      // bộ đệm instance + vật liệu tự tạo (lá, mặt nạ, bản sao có gió); hình học nguồn của GLB dùng chung → không huỷ.
+      // vật liệu từ useHubMats do hook đó tự huỷ.
+      const shared = new Set(conv.cache.values());
+      const own = new Set<THREE.Material>();
+      for (const im of [...meshes.out, ...meshes.masks]) {
+        im.dispose();
+        const m = im.material as THREE.Material;
+        if (!shared.has(m)) own.add(m);
+      }
+      own.forEach((m) => m.dispose());
     };
-  }, [meshes]);
+  }, [meshes, conv]);
   useFrame((state) => {
     T.value = state.clock.elapsedTime;
     // đầu nhân vật: tán / thân cây nằm giữa camera và nhân vật thì tan dither (fx/nearFade)
@@ -452,8 +604,9 @@ function HubProps() {
  *  • xa 22–36 m: hoà về màu nền + thu thấp dần (không "bật / tắt").
  */
 const GRASS_VS = /* glsl */ `attribute float aY; attribute float aX; attribute vec4 aOff; attribute vec4 aB;
-  uniform float uT; uniform vec3 uP; uniform vec2 uWindDir; uniform float uGust; uniform sampler2D uNoiseTex;
-  varying float vY; varying vec3 vLeaf; varying vec3 vGround; varying float vShade; varying float vFade;
+  uniform float uT; uniform vec3 uP; uniform vec2 uWindDir; uniform float uGust; uniform sampler2D uNoiseTex; uniform sampler2D uLawn;
+  varying float vY; varying vec3 vLeaf; varying vec3 vGround; varying float vShade; varying float vFade; varying float vSun; varying float vAO; varying float vGold;
+  ${HUB_SHADE_GLSL}
   void main(){
     float t = aY, q = 1.0 - t, s = aX;
     float h = aB.x;
@@ -480,29 +633,32 @@ const GRASS_VS = /* glsl */ `attribute float aY; attribute float aX; attribute v
     vec3 w = vec3(base.x, 0.0, base.y) + (center + side * (0.5 * aB.y * s * q * (1.0 + t))) * shrink;
     vLeaf = normalize(cross(side, normalize(tangent + vec3(0.0, 1e-4, 0.0))) + 0.35 * s * side);
     vY = t; vShade = aB.w; vFade = fade;
-    // màu nền bồn tại gốc (khớp floorMaterial: bồn p/20 + mảng khô p/55; vườn p/18)
-    vec3 g;
-    if (aOff.z > 0.5) g = mix(vec3(0.28, 0.55, 0.2), vec3(0.5, 0.72, 0.3), texture2D(uNoiseTex, base / 18.0).b);
-    else {
-      g = mix(vec3(0.24, 0.5, 0.18), vec3(0.46, 0.68, 0.26), texture2D(uNoiseTex, base / 20.0).b);
-      g = mix(g, vec3(0.62, 0.72, 0.3), smoothstep(0.6, 0.8, texture2D(uNoiseTex, base / 55.0 + 0.5).b) * 0.5);
-    }
-    vGround = g;
+    // màu gốc = ĐÚNG màu thảm cỏ vẽ tay của sàn tại chỗ mọc (cùng texture, mip mờ → màu theo mảng 2–5 m, không lốm đốm từng lá)
+    vGround = textureLod(uLawn, base / 6.0, 3.5).rgb * vec3(1.0, 0.97, 0.9);
+    // bóng tán + AO tiếp xúc tại gốc (cả lá cùng một giá trị — rẻ, không lấm tấm)
+    vSun = 1.0 - hubShadow(base, texture2D(uNoiseTex, base / 7.0).b);
+    vAO = mix(0.62, 1.0, hubContact(base));
+    vGold = hubGold();
     gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
   }`;
 const GRASS_FS = /* glsl */ `uniform vec3 uSun; uniform vec3 uAmb; uniform vec3 uSunCol;
-  varying float vY; varying vec3 vLeaf; varying vec3 vGround; varying float vShade; varying float vFade;
+  varying float vY; varying vec3 vLeaf; varying vec3 vGround; varying float vShade; varying float vFade; varying float vSun; varying float vAO; varying float vGold;
   void main(){
     vec3 up = vec3(0.0, 1.0, 0.0);
     vec3 leaf = normalize(vLeaf) * (gl_FrontFacing ? 1.0 : -1.0);
     vec3 n = normalize(mix(leaf, up, mix(0.8, 0.92, vFade)));
     float top = smoothstep(0.05, 1.0, vY);
-    vec3 albedo = vGround * mix(vec3(1.0), vec3(1.16, 1.2, 1.01), top) * (1.0 + vShade * (0.4 + 0.6 * top));
-    float ao = mix(0.82, 1.0, smoothstep(0.0, 0.45, vY));
+    // ngọn ngả ô-liu / rơm nhẹ (Genshin: cỏ sáng, ấm ở ngọn — không tối bẩn), biến sắc từng lá nhỏ
+    vec3 albedo = vGround * mix(vec3(1.0), vec3(1.22, 1.18, 0.86), top) * (1.0 + vShade * (0.25 + 0.4 * top));
+    float ao = mix(0.88, 1.0, smoothstep(0.0, 0.4, vY)) * vAO;
     float diffuse = smoothstep(-0.15, 0.85, dot(n, uSun));
-    float trans = 0.12 * top * max(-dot(leaf, uSun), 0.0);
-    vec3 lit = albedo * (uAmb * ao + uSunCol * (diffuse + trans));
-    vec3 ground = vGround * (uAmb + uSunCol * smoothstep(-0.15, 0.85, uSun.y));
+    float trans = 0.22 * top * max(-dot(leaf, uSun), 0.0);
+    // trong bóng tán: chỉ còn ánh trời (lam mát) — cùng công thức với sàn
+    vec3 lit = albedo * (uAmb * ao * 1.12 + uSunCol * (diffuse + trans) * vSun * ao);
+    vec3 ground = vGround * (uAmb * 1.12 * vAO + uSunCol * smoothstep(-0.15, 0.85, uSun.y) * vSun * vAO);
+    // giờ vàng: chỗ có nắng ngả vàng ấm (cùng hệ số với sàn)
+    vec3 gold = mix(vec3(1.0), vec3(1.22, 1.07, 0.84), vGold * 0.75 * vSun);
+    lit *= gold; ground *= gold;
     gl_FragColor = vec4(mix(lit, ground, vFade), 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -559,6 +715,8 @@ function HubGrass() {
           uWindDir: WIND.dir,
           uGust: WIND.gust,
           uNoiseTex: { value: noiseTex() },
+          uLawn: { value: lawnPaintTex() },
+          ...hubShadeUniforms(),
         },
         vertexShader: GRASS_VS,
         fragmentShader: GRASS_FS,
@@ -765,7 +923,17 @@ function fallGeometry(w0: number, w1: number, h: number, seg = 6, vseg = 16) {
   return g;
 }
 function Falls() {
-  const { mat, geo } = useMemo(() => ({ mat: flowMaterial({ tex: streakTex(), speed: 7, width: 0.5, length: 3.5, alpha: 0.72 }), geo: fallGeometry(3.2, 5.2, 30) }), []);
+  // 4 thác cùng hình + vật liệu → GỘP thành một hình học (1 lệnh vẽ thay 4; flowMaterial không hỗ trợ instancing)
+  const { mat, geo } = useMemo(() => {
+    const one = fallGeometry(3.2, 5.2, 30);
+    const spots = [Math.PI * 0.62, Math.PI * 1.38, Math.PI * 1.85, Math.PI * 0.15];
+    const m4 = new THREE.Matrix4();
+    const parts = spots.map((a) => one.clone().applyMatrix4(m4.makeRotationY(Math.atan2(Math.cos(a), Math.sin(a))).setPosition(Math.cos(a) * 36.2, -0.6, Math.sin(a) * 36.2)));
+    const geo = mergeGeometries(parts, false)!;
+    parts.forEach((g) => g.dispose());
+    one.dispose();
+    return { mat: flowMaterial({ tex: streakTex(), speed: 7, width: 0.5, length: 3.5, alpha: 0.72 }), geo };
+  }, []);
   useEffect(
     () => () => {
       mat.dispose();
@@ -773,46 +941,19 @@ function Falls() {
     },
     [mat, geo],
   );
-  const spots = [Math.PI * 0.62, Math.PI * 1.38, Math.PI * 1.85, Math.PI * 0.15];
-  return (
-    <>
-      {spots.map((a) => (
-        <mesh key={a} ref={(o: THREE.Mesh | null) => void o?.layers.set(LAYER_NO_REFLECT)} geometry={geo} material={mat} position={[Math.cos(a) * 36.2, -0.6, Math.sin(a) * 36.2]} rotation-y={Math.atan2(Math.cos(a), Math.sin(a))} />
-      ))}
-    </>
-  );
+  return <mesh ref={(o: THREE.Mesh | null) => void o?.layers.set(LAYER_NO_REFLECT)} geometry={geo} material={mat} />;
 }
-function CloudSeaGold() {
-  const mat = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        uniforms: { uT: T, uSun: { value: HUB_SUN.clone() }, uNoiseTex: { value: noiseTex() } },
-        vertexShader: "varying vec2 vP; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vP = w.xz; gl_Position = projectionMatrix * viewMatrix * w; }",
-        fragmentShader: /* glsl */ `uniform float uT; uniform vec3 uSun; uniform sampler2D uNoiseTex; varying vec2 vP;
-          ${NOISE}
-          void main(){
-            vec2 p = vP * 0.02 + vec2(uT * 0.008, uT * 0.004);
-            float c = texture2D(uNoiseTex, p * 0.35 + texture2D(uNoiseTex, p * 0.12 - uT * 0.002).b * 0.25).r;
-            float puff = smoothstep(0.38, 0.66, c);
-            float lit = dot(normalize(vP + 1e-4), normalize(uSun.xz)) * 0.5 + 0.5;
-            vec3 top = mix(vec3(1.0, 0.92, 0.9), vec3(1.0, 0.8, 0.62), lit);
-            vec3 sh = mix(vec3(0.66, 0.64, 0.88), vec3(0.88, 0.66, 0.72), lit);
-            vec3 col = mix(sh, top, puff) + vec3(1.0, 0.75, 0.45) * smoothstep(0.66, 0.85, c) * lit * 0.35;
-            float far = smoothstep(120.0, 420.0, length(vP));
-            col = mix(col, vec3(0.98, 0.82, 0.72), far);
-            gl_FragColor = vec4(col, 1.0);
-            #include <colorspace_fragment>
-          }`,
-        fog: false,
-      }),
-    [],
-  );
-  useEffect(() => () => mat.dispose(), [mat]);
-  return (
-    <mesh rotation-x={-Math.PI / 2} position={[0, -40, 0]} material={mat}>
-      <circleGeometry args={[620, 64]} />
-    </mesh>
-  );
+
+/** bóng tán theo nắng thật: vẽ lại canvas khi mặt trời dịch (fx/hubShade) — kiểm tra 1 lần / giây */
+function HubShadeTicker() {
+  const acc = useRef(0);
+  useFrame((_, dt) => {
+    acc.current += dt;
+    if (acc.current < 1) return;
+    acc.current = 0;
+    updateHubShadow();
+  });
+  return null;
 }
 
 export function HubPlaza() {
@@ -823,15 +964,19 @@ export function HubPlaza() {
   }, [camera]);
   return (
     <>
-      <fog attach="fog" args={["#f2d2bd", 90, 460]} />
-      <HubSky />
-      <VoidEnvironment intensity={0.9} sky={hubSky} />
+      {/* sương: hiệu ứng hậu kỳ HubAtmos (sương độ cao + phối cảnh khí quyển theo DAY) thay <fog> màu đào cố định cả đêm */}
+      <HubSky hub />
+      <HubClouds />
+      <VoidEnvironment intensity={0.9} sky={hubSkyHub} />
       <HubModel />
       <HubProps />
       <HubGrass />
+      <HubFlowers />
+      <HubMotes />
+      <HubShadeTicker />
       <HubWater sun={HUB_SUN} />
       {/* ngày ↔ đêm theo giờ thật + đèn đường + lửa trại */}
-      <HubDayCycle U={U} lampMats={LAMP_MATS} />
+      <HubDayCycle U={U} lampMats={LAMP_MATS} warm />
       <LampGlow />
       <Campfire />
       {/* rồng ngọc bích bay xa trên biển mây */}
@@ -840,9 +985,9 @@ export function HubPlaza() {
       <GatePortals />
       <MuseumHolo />
       <MirrorSurface />
+      {/* biển mây đã gộp vào vòm trời (HubSky hub) */}
       <group name="perf:falls">
         <Falls />
-        <CloudSeaGold />
       </group>
     </>
   );

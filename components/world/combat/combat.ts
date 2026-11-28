@@ -12,16 +12,21 @@
 import * as THREE from "three";
 import { create } from "zustand";
 import { useWorld } from "../store";
-import { sfx } from "@/lib/world/sfx";
+import { elementSource, sfx } from "@/lib/world/sfx";
+import { weaponElement } from "@/lib/world/musicVoices";
 import { floatText } from "../ui/Labels";
 import { WEAPON_DEFS, loadoutList, rollDrops, type WeaponDef } from "./items";
 import { questEvent, unlockNote } from "../story/quest";
-import { impact } from "../fx/Lensing";
+import { impact, shockwave } from "../fx/Lensing";
 import { emitHit } from "../fx/Sparks";
+import { emitCollapse } from "../fx/Puffs";
+import { strike } from "../fx/StrikeFx";
 import { TRAIL_TIP } from "../fx/WeaponTrail";
+import { initRule, ruleHit, type RuleState } from "./ruleHit";
+import { BUFFER_MS, bufferPress, clearBuf, dashDecision, hasBuffered, newBuf, takeBuffered } from "@/lib/world/inputBuffer";
 /** (để công cụ kiểm thử đọc trạng thái vệt chém) */
 export { TRAIL_TIP };
-import { HOLD_MS, MASH_LIMIT, MOVESETS, judge, moveTimes, nextStep, rhythmMul, type Hit, type Move, type MoveTimes, type Moveset } from "@/lib/world/combo";
+import { HOLD_MS, MASH_LIMIT, MOVESETS, judge, moveTimes, nextStep, rhythmMul, type Hit, type Move, type MoveTimes, type Moveset, type Shape } from "@/lib/world/combo";
 
 /** Vũ khí đang cầm = ô thứ `weapon` trong bộ trang bị (tối đa 3) */
 export function curWeapon(): WeaponDef {
@@ -29,6 +34,7 @@ export function curWeapon(): WeaponDef {
   return WEAPON_DEFS[list[useCombat.getState().weapon % Math.max(1, list.length)] ?? "blade"];
 }
 export const SKILL_CD = 5000;
+elementSource(() => weaponElement(curWeapon().id));
 export const ENERGY_MAX = 100;
 
 export const useCombat = create<{
@@ -59,7 +65,8 @@ export const useCombat = create<{
 /** Camera hiện tại (Player đăng ký) — để bắn theo tâm ngắm */
 /** fovKick (độ) + dolly (hệ số khoảng cách) cho hiệu ứng điện ảnh, vd. dolly-zoom khi bốt du hành */
 /** shift: dịch chuyển tức thời cả máy quay (khi thế giới "quấn" người chơi về một ô giống hệt — vd. Thư viện Babel vô hạn) */
-export const CAM: { cam: THREE.Camera | null; fovKick: number; dolly: number; shift: THREE.Vector3 | null; hideSelf: boolean } = { cam: null, fovKick: 0, dolly: 1, shift: null, hideSelf: false };
+/** focus: boss to đang đối mặt (vd. Siren) → máy quay tự lùi xa + hạ góc khi đứng sát (B1); self: nhóm nhân vật của mình (bóng mờ khi lướt) */
+export const CAM: { cam: THREE.Camera | null; fovKick: number; dolly: number; shift: THREE.Vector3 | null; hideSelf: boolean; focus: { x: number; z: number; near: number; far: number } | null; self: THREE.Object3D | null } = { cam: null, fovKick: 0, dolly: 1, shift: null, hideSelf: false, focus: null, self: null };
 export const CHARGE_MS = 1000;
 export function startAim() {
   if (!ENV.armed || useWorld.getState().overlay) return;
@@ -94,21 +101,22 @@ export function shootAimed(charged: boolean) {
   w.act("cast", 380);
   useCombat.setState({ swingAt: now });
   if (charged) {
-    addFx("ring", from.clone(), { color: "#ffd27a", size: 0.9 });
+    strike("muzzle", from.x, from.y, from.z, { yaw: Math.atan2(vel.x, vel.z), color: "#ffd27a" });
     w.addShake(0.12);
   }
   sfx.cast();
 }
 
 /** Chuyển động đặc biệt của nhân vật (Player đọc mỗi khung hình) */
-export const motion = { wade: 1, vy: 0, grounded: true, dashUntil: 0, dashDir: new THREE.Vector3(0, 0, 1), dashSpeed: 22, dodgeAt: -1e9, landAt: -1e9, gliding: false, plunging: false, plungeFrom: 0 };
+export const motion = { wade: 1, swimming: false, vy: 0, grounded: true, dashUntil: 0, dashDir: new THREE.Vector3(0, 0, 1), dashSpeed: 22, dodgeAt: -1e9, landAt: -1e9, gliding: false, plunging: false, plungeFrom: 0 };
 /** Cột gió nâng tàu lượn (x, z, bán kính, độ cao đỉnh) — mỗi cảnh tự đăng ký */
 export const updrafts: { x: number; z: number; r: number; top: number }[] = [];
 /** Độ cao so với mặt đất hiện tại (để biết có đủ cao để lượn / bổ nhào) */
 export const air = { height: 0 };
 
 /** Môi trường hiện tại (mặt đất cho đạn / quái) */
-export const ENV = { ground: (_x: number, _z: number) => 0, armed: false };
+/** ground(x, z, y?): có y → mặt đất thật dưới độ cao đó (hang / phần nhô trong thế giới voxel) */
+export const ENV = { ground: (_x: number, _z: number, _y?: number) => 0, armed: false };
 /** Bất tử ngắn sau khi hồi phục */
 export const guard = { until: 0 };
 /** Khiên phép (vẽ vòng tròn): chặn đòn tới khi hết hạn; hitAt / hitDir cho gợn sóng trên bong bóng */
@@ -116,7 +124,7 @@ export const ward = { until: 0, born: -1e9, hitAt: -1e9, hitDir: new THREE.Vecto
 
 // ───────────── Quái ─────────────
 
-export type EnemyKind = "slime" | "wisp" | "mite" | "siren" | "node" | "knight" | "zeno" | "twinA" | "twinB";
+export type EnemyKind = "slime" | "wisp" | "mite" | "siren" | "node" | "knight" | "zeno" | "twinA" | "twinB" | "ghoul" | "warden" | "crab" | "surveyor" | "ledger" | "moth";
 export const ENEMY: Record<EnemyKind, { hp: number; speed: number; dmg: number; color: string; name: { en: string; vi: string } }> = {
   slime: { hp: 60, speed: 2.3, dmg: 8, color: "#7fd8c9", name: { en: "Noise Slime", vi: "Slime Nhiễu" } },
   wisp: { hp: 45, speed: 3.1, dmg: 6, color: "#c8a6ff", name: { en: "Möbius Wisp", vi: "Hồn Möbius" } },
@@ -127,10 +135,17 @@ export const ENEMY: Record<EnemyKind, { hp: number; speed: number; dmg: number; 
   twinA: { hp: 160, speed: 0, dmg: 10, color: "#9fe6ff", name: { en: "Interference Twin α", vi: "Song Sinh Giao Thoa α" } },
   twinB: { hp: 160, speed: 0, dmg: 10, color: "#ff9ecb", name: { en: "Interference Twin β", vi: "Song Sinh Giao Thoa β" } },
   mite: { hp: 80, speed: 2.8, dmg: 9, color: "#ffb46b", name: { en: "Sierpiński Mite", vi: "Bọ Sierpiński" } },
+  ghoul: { hp: 110, speed: 0, dmg: 14, color: "#b48cff", name: { en: "Greedy Ghoul", vi: "Ma Tham Lam" } },
+  warden: { hp: 90, speed: 0.9, dmg: 12, color: "#9ec8ff", name: { en: "Prime Warden", vi: "Hộ Vệ Nguyên Tố" } },
+  crab: { hp: 120, speed: 2.4, dmg: 9, color: "#ff9ecb", name: { en: "Bell Crab", vi: "Cua Chuông" } },
+  // Vùng Kỳ quan — boss + sự kiện (components/world/bosses/*): AI + hình vẽ riêng qua Enemy.ext
+  surveyor: { hp: 1e9, speed: 0, dmg: 0, color: "#f4ead2", name: { en: "Foldback Surveyor", vi: "Kẻ Khảo sát Gấp" } },
+  ledger: { hp: 1e9, speed: 0, dmg: 0, color: "#8fc8ff", name: { en: "Rain Ledger", vi: "Sổ Mưa" } },
+  moth: { hp: 40, speed: 0, dmg: 7, color: "#ffc86b", name: { en: "Period Moth", vi: "Bướm Chu kỳ" } },
 };
 
 /** Sát thương cần dồn để ngắt một đòn đang vung */
-const POISE: Record<EnemyKind, number> = { slime: 14, wisp: 10, mite: 30, siren: 1e9, node: 1e9, knight: 18, zeno: 40, twinA: 1e9, twinB: 1e9 };
+const POISE: Record<EnemyKind, number> = { slime: 14, wisp: 10, mite: 30, siren: 1e9, node: 1e9, knight: 18, zeno: 40, twinA: 1e9, twinB: 1e9, ghoul: 26, warden: 40, crab: 30, surveyor: 1e9, ledger: 1e9, moth: 1e9 };
 const twinHitAt: Record<string, number> = { twinA: -1e9, twinB: -1e9 };
 
 /** Boss phó bản nhận đòn qua handler (máu thật nằm ở BossSim / server) */
@@ -139,7 +154,17 @@ export function setBossHandler(h: ((e: Enemy, amount: number) => void) | null) {
   bossHandler = h;
 }
 export function isBossPart(e: Enemy) {
-  return e.kind === "siren" || e.kind === "node";
+  return e.kind === "siren" || e.kind === "node" || !!e.ext?.boss;
+}
+
+/**
+ * Quái do module ngoài điều khiển (boss / sự kiện Vùng Kỳ quan): CombatScene bỏ qua AI của chúng, combat chỉ gọi các móc:
+ *  mul: hệ số sát thương theo quy luật lúc này (âm = đòn bị nuốt, vd. bướm đang bay quá tầm với);
+ *  boss: nhận sát thương thực (máu nằm ở mô phỏng riêng — như bossHandler của Siren).
+ */
+export interface EnemyExt {
+  mul?: (e: Enemy, from: THREE.Vector3, now: number) => number;
+  boss?: (e: Enemy, amount: number) => void;
 }
 
 export interface Enemy {
@@ -155,6 +180,8 @@ export interface Enemy {
   deadAt: number;
   /** Bắt đầu vung đòn (báo trước ~0,45 s để người chơi kịp né) */
   windup: number;
+  /** mốc windup đã phát âm báo trước (tránh phát lặp mỗi khung) */
+  tellAt?: number;
   atkAt: number;
   seed: number;
   /** Bọ taxicab: trục đang đi (0 = x, 1 = z), lúc bắt đầu nhảy ô, điểm đi/đến */
@@ -170,6 +197,10 @@ export interface Enemy {
   /** Bị hất lên không: độ cao (m) + vận tốc đứng (m/s) — đánh tiếp khi còn trên không thì lơ lửng (juggle) */
   air: number;
   airV: number;
+  /** Trạng thái riêng của quái "quy luật" (Ma Tham Lam, Hộ Vệ Nguyên Tố, Cua Chuông) — xem ruleHit.ts */
+  rule: RuleState;
+  /** quái do module ngoài điều khiển (xem EnemyExt) */
+  ext?: EnemyExt;
 }
 
 /** Hồn Möbius chỉ "có thật" nửa chu kỳ: dễ tổn thương khi sin(2πt/T) > 0 (T = 3 s) */
@@ -181,7 +212,8 @@ export const enemies: Enemy[] = [];
 let enemyId = 1;
 
 export function spawnEnemy(kind: EnemyKind, at: THREE.Vector3): Enemy {
-  const e: Enemy = { id: enemyId++, kind, pos: at.clone(), home: at.clone(), vel: new THREE.Vector3(), hp: ENEMY[kind].hp, maxHp: ENEMY[kind].hp, yaw: 0, hitAt: -1e9, deadAt: 0, windup: 0, atkAt: 0, seed: Math.random() * 100, axis: 0, hopAt: 0, zk: 0, zAt: 0, poise: 0, poiseAt: 0, from: at.clone(), to: at.clone(), air: 0, airV: 0 };
+  const e: Enemy = { id: enemyId++, kind, pos: at.clone(), home: at.clone(), vel: new THREE.Vector3(), hp: ENEMY[kind].hp, maxHp: ENEMY[kind].hp, yaw: 0, hitAt: -1e9, deadAt: 0, windup: 0, atkAt: 0, seed: Math.random() * 100, axis: 0, hopAt: 0, zk: 0, zAt: 0, poise: 0, poiseAt: 0, from: at.clone(), to: at.clone(), air: 0, airV: 0, rule: {} };
+  e.rule = initRule(kind, e.seed);
   enemies.push(e);
   return e;
 }
@@ -195,6 +227,7 @@ export function respawn(e: Enemy, at: THREE.Vector3) {
   e.hopAt = 0;
   e.from.copy(at);
   e.to.copy(at);
+  e.rule = initRule(e.kind, e.seed);
 }
 export function clearEnemies() {
   enemies.length = 0;
@@ -288,6 +321,23 @@ export function damageEnemy(e: Enemy, dmg: number, from: THREE.Vector3, push = 4
     // Cùng pha: gây sát thương lên cả hai
     for (const o of enemies) if (o !== e && o.kind === other && !o.deadAt) o.hp -= dmg;
   }
+  // Quái quy luật (Ma Tham Lam / Hộ Vệ Nguyên Tố / Cua Chuông): hệ số theo quy luật; âm = khiên nuốt đòn (chỉ đếm)
+  if (e.ext?.mul) {
+    const m = e.ext.mul(e, from, now);
+    if (m < 0) {
+      emitHit(e.pos.x, e.pos.y + 1.2, e.pos.z, "#9ec8ff", e.pos.x - from.x, e.pos.z - from.z, 0.7);
+      return;
+    }
+    dmg *= m;
+  }
+  if (e.rule.ghoul || e.rule.warden || e.rule.crab) {
+    const m = ruleHit(e, from, now);
+    if (m < 0) {
+      emitHit(e.pos.x, e.pos.y + 1.2, e.pos.z, "#9ec8ff", e.pos.x - from.x, e.pos.z - from.z, 0.7);
+      return;
+    }
+    dmg *= m;
+  }
   // Mai Sierpiński đỡ đòn phía trước: chỉ 30% sát thương — đánh từ hai bên / sau lưng
   if (e.kind === "mite") {
     const a = Math.atan2(from.x - e.pos.x, from.z - e.pos.z) - e.yaw;
@@ -325,7 +375,8 @@ export function damageEnemy(e: Enemy, dmg: number, from: THREE.Vector3, push = 4
     useCombat.setState({ energy: Math.min(ENERGY_MAX, useCombat.getState().energy + (crit ? 7 : 4)) });
     addFx("hit", TMP.copy(e.pos).setY(e.pos.y + (e.kind === "siren" ? 2.6 : 1.3)), { color: crit ? "#ffd27a" : "#ffffff", size: crit ? 2.2 : 1.6, yaw: Math.random() * 6 });
     sfx.hit(crit ? 2 : 0);
-    bossHandler?.(e, amount);
+    if (e.ext?.boss) e.ext.boss(e, amount);
+    else bossHandler?.(e, amount);
     return;
   }
   floatText(TMP.copy(e.pos).add(UP), String(amount), crit ? "crit" : "dmg");
@@ -338,7 +389,9 @@ export function damageEnemy(e: Enemy, dmg: number, from: THREE.Vector3, push = 4
   if (e.hp <= 0) {
     e.deadAt = now;
     useCombat.setState({ energy: Math.min(ENERGY_MAX, useCombat.getState().energy + 10) });
-    useWorld.getState().burst([e.pos.x, e.pos.y + 0.6, e.pos.z], ENEMY[e.kind].color, 40);
+    // VFX-AAA: gục = sụp thành bụi + làn hơi màu quái (dư âm) và ít tia hơn (trước: 40 tia toả cầu đều)
+    useWorld.getState().burst([e.pos.x, e.pos.y + 0.6, e.pos.z], ENEMY[e.kind].color, 28);
+    emitCollapse(e.pos.x, e.pos.y, e.pos.z, ENEMY[e.kind].color);
     sfx.shatter();
     rollDrops(e.kind, e.pos);
     questEvent({ type: "kill", kind: e.kind });
@@ -455,13 +508,46 @@ export function enemyScale(now = performance.now()) {
 /** Sửa đổi cho nhát đang ra (chí mạng chắc chắn sau né hoàn hảo) */
 const HIT_MOD = { crit: false, launch: 0 };
 
+/** Ngữ cảnh một khung trúng cho vũ khí mở rộng */
+export type ExtHitCtx = { p: THREE.Vector3; yaw: number; dmg: number; color: string; perfect: boolean; kind: "chain" | "charged" | "skill"; finisher: boolean };
+/**
+ * Điểm nối cho vũ khí có cơ chế riêng (Giáo Sin, Khiên Con lắc — combat/waveWeapons.ts tự đăng ký khi nạp):
+ *  shape: thực thi các hình đòn mới (trả số quái trúng); guard: can thiệp khi người chơi bị đánh (trả sát thương còn lại, null = bỏ qua);
+ *  release: vũ khí tụ lực khi THẢ chuột (heldMs = thời gian giữ của lần vừa thả); alt: chuột phải; tune: phím X.
+ */
+export const WEAPON_EXT: {
+  shape: ((sh: Shape, ctx: ExtHitCtx) => number) | null;
+  guard: ((dmg: number, from?: THREE.Vector3) => number | null) | null;
+  release: Set<string>;
+  releaseFullMs: number;
+  heldMs: number;
+  alt: Partial<Record<string, (down: boolean) => void>>;
+  tune: Partial<Record<string, () => void>>;
+} = { shape: null, guard: null, release: new Set(), releaseFullMs: 1400, heldMs: 0, alt: {}, tune: {} };
+/** Chuột phải với vũ khí có thế riêng (vd. thế đỡ Khiên Con lắc); false = không có → dùng mặc định (né / ngắm) */
+export function weaponAlt(down: boolean): boolean {
+  const f = WEAPON_EXT.alt[curWeapon().id];
+  if (!f) return false;
+  if (down && !canAct()) return true;
+  f(down);
+  return true;
+}
+/** Phím X: chỉnh tham số vũ khí (λ của Giáo Sin, dây L của Khiên Con lắc) */
+export function weaponTune() {
+  if (!ENV.armed || useWorld.getState().overlay) return;
+  WEAPON_EXT.tune[curWeapon().id]?.();
+}
+
 type Cur = { move: Move; kind: "chain" | "charged" | "skill"; t0: number; tm: MoveTimes; next: number; perfect: boolean; yaw: number; finisher: boolean; crit: boolean; cued: boolean };
 const CB = {
   cur: null as Cur | null,
   step: 0,
   lastChainAt: -1e9,
   lastTm: null as MoveTimes | null,
-  buffered: false,
+  /** đệm phím 150 ms (lib/world/inputBuffer.ts) */
+  buf: newBuf(),
+  /** mốc hết bước lao của nhát đang vung (lướt huỷ được cả bước lao) */
+  lungeUntil: 0,
   presses: 0,
   mashed: false,
   streak: 0,
@@ -484,8 +570,12 @@ export function rhythmGold(): boolean {
 /** Mức tụ lực 0..1 khi đang giữ chuột (chỉ hiện sau ~0,13 s để bấm nhanh không loé vòng) */
 export function chargeLevel(): number {
   if (!CB.holding || CB.chargedFired) return 0;
-  const k = (performance.now() - CB.downAt) / HOLD_MS;
+  const k = (performance.now() - CB.downAt) / (WEAPON_EXT.release.has(curWeapon().id) ? WEAPON_EXT.releaseFullMs : HOLD_MS);
   return k < 0.35 ? 0 : Math.min(1, k);
+}
+/** Thời gian đang giữ chuột (ms; 0 = không giữ / đã ra đòn tụ lực) */
+export function holdMs(): number {
+  return CB.holding && !CB.chargedFired ? performance.now() - CB.downAt : 0;
 }
 /** Giật máy quay (dolly-in) rồi trả về: tuyệt kỹ, đòn kết */
 const PUNCH = { at: -1e9, amt: 0, dur: 600, live: false };
@@ -529,7 +619,8 @@ function startMove(move: Move, kind: Cur["kind"], perfect: boolean, finisher = f
   const crit = now < CB.counterUntil;
   if (crit) CB.counterUntil = 0;
   CB.cur = { move, kind, t0: now, tm, next: 0, perfect, yaw, finisher, crit, cued: false };
-  CB.buffered = false;
+  clearBuf(CB.buf);
+  CB.lungeUntil = 0;
   CB.presses = 0;
   CB.mashed = false;
   w.act(move.pose, tm.end + 40, { name: move.clip, from: move.from, speed: move.speed * speedMul });
@@ -541,6 +632,7 @@ function startMove(move: Move, kind: Cur["kind"], perfect: boolean, finisher = f
     motion.dashDir.set(Math.sin(yaw), 0, Math.cos(yaw));
     motion.dashSpeed = move.lunge / (until / 1000);
     motion.dashUntil = now + until;
+    CB.lungeUntil = motion.dashUntil;
   }
   if (move.iframe) guard.until = Math.max(guard.until, now + (tm.hits.length ? Math.max(...tm.hits) : 300) + 80);
 }
@@ -575,13 +667,18 @@ export function attackDown() {
       if (CB.streak > 0) judgeText("loạn nhịp", "miss");
       CB.streak = 0;
     }
+    // Tụ lực / kỹ năng: hết khung trúng (cancelFrom) thì bấm là vào chuỗi ngay; sớm hơn → đệm 150 ms
     if (cur.kind !== "chain") {
-      CB.buffered = true;
+      if (now - cur.t0 >= cur.tm.cancelFrom) {
+        CB.step = 0;
+        chainNext(set, false);
+      } else bufferPress(CB.buf, now);
       return;
     }
     const j = judge(now - cur.t0, cur.tm);
     if (j === "early") {
-      CB.buffered = true;
+      // H1 đệm phím: ghi nhớ lần bấm; tới linkOpen (≤ 150 ms sau) nhát kế ra ngay, không đợi hết hoạt ảnh
+      bufferPress(CB.buf, now);
       return;
     }
     chainNext(set, j === "perfect" && !CB.mashed);
@@ -617,6 +714,15 @@ function chainNext(set: Moveset, perfect: boolean) {
 
 /** Thả chuột */
 export function attackUp() {
+  // vũ khí tụ lực khi thả (Giáo Sin): giữ đủ HOLD_MS thì thả ra là đòn tụ lực, giữ càng lâu càng mạnh
+  if (CB.holding && !CB.chargedFired && WEAPON_EXT.release.has(curWeapon().id) && canAct()) {
+    const now = performance.now();
+    if (now - CB.downAt >= HOLD_MS) {
+      CB.chargedFired = true;
+      WEAPON_EXT.heldMs = now - CB.downAt;
+      fireCharged(now);
+    }
+  }
   CB.holding = false;
 }
 
@@ -629,12 +735,15 @@ export function dodge() {
     judgeText("hết thể lực", "info");
     return;
   }
-  const cur = CB.cur;
-  if (cur && now - cur.t0 < cur.tm.cancelFrom) return; // đang vào đòn: đã ra tay thì phải chịu
-  if (now < motion.dashUntil) return;
+  // H1 huỷ đòn bằng lướt: đang vung (kể cả pha vào đòn / bước lao của chính nhát đó) → huỷ ngay rồi lướt
+  const dd = dashDecision(!!CB.cur, now, motion.dashUntil, CB.lungeUntil);
+  if (dd === "busy") return;
+  const midSwing = !!CB.cur && now - CB.cur.t0 < CB.cur.tm.cancelFrom;
   CB.cur = null;
-  CB.buffered = false;
+  CB.lungeUntil = 0;
+  clearBuf(CB.buf);
   const w = useWorld.getState();
+  if (dd === "cancel" && midSwing) useCombat.setState({ judge: { text: "huỷ đòn", kind: "info", at: now } });
   const { x, y } = w.input;
   let yaw: number;
   if (Math.hypot(x, y) > 0.2) {
@@ -652,7 +761,7 @@ export function dodge() {
   w.act("roll", 560, { name: "Roll", from: 0.05, speed: 2.1 });
   const p = w.player;
   addFx("dash", TMP.set(p.x, p.y + 0.9, p.z), { to: new THREE.Vector3(p.x + Math.sin(yaw) * 4.2, p.y + 0.9, p.z + Math.cos(yaw) * 4.2), color: "#bfe8ff" });
-  sfx.step();
+  sfx.dash();
 }
 
 /** Né hoàn hảo: gọi khi đòn quái lẽ ra trúng trong khung bất tử ngay sau khi né */
@@ -669,8 +778,7 @@ function perfectDodge() {
   useCombat.setState({ slowAt: now });
   w.addShake(0.15);
   const p = w.player;
-  addFx("ring", TMP.set(p.x, p.y + 0.05, p.z), { color: "#9fe6ff", size: 4 });
-  addFx("nova", TMP.set(p.x, p.y + 0.05, p.z), { color: "#bfe8ff", size: 3 });
+  strike("dial", p.x, p.y + 0.05, p.z, { r: 4, color: "#9fe6ff", yaw: w.playerYaw });
   sfx.chime(5);
 }
 
@@ -688,6 +796,23 @@ export function skill() {
   CB.lastTm = null;
 }
 
+/** Ra đòn tụ lực (huỷ pha thu thế của nhát đang ra; còn đang vung thì bỏ) */
+function fireCharged(now: number) {
+  const cur = CB.cur;
+  const free = !cur || now - cur.t0 >= cur.tm.cancelFrom;
+  if (!free) return;
+  const c = useCombat.getState();
+  if (c.stamina >= CHARGED_COST) {
+    useCombat.setState({ stamina: c.stamina - CHARGED_COST });
+    CB.staminaAt = now;
+    startMove(moveset().charged, "charged", false);
+    CB.step = 0;
+    CB.lastTm = null;
+    const p = useWorld.getState().player;
+    strike("sigil", p.x, p.y + 0.05, p.z, { r: 1.2, n: 6, color: curWeapon().color });
+  } else judgeText("hết thể lực", "info");
+}
+
 /** Bước combat mỗi khung hình (Player gọi) */
 export function tickCombat(dt: number) {
   const now = performance.now();
@@ -695,21 +820,9 @@ export function tickCombat(dt: number) {
   // thể lực hồi sau 0,6 s không dùng
   if (c.stamina < STAMINA_MAX && now - CB.staminaAt > 600) useCombat.setState({ stamina: Math.min(STAMINA_MAX, c.stamina + 30 * dt) });
   // giữ chuột đủ lâu → đòn tụ lực (huỷ pha thu thế của nhát đang ra)
-  if (CB.holding && !CB.chargedFired && now - CB.downAt >= HOLD_MS && canAct()) {
+  if (CB.holding && !CB.chargedFired && now - CB.downAt >= HOLD_MS && canAct() && !WEAPON_EXT.release.has(curWeapon().id)) {
     CB.chargedFired = true;
-    const cur = CB.cur;
-    const free = !cur || now - cur.t0 >= cur.tm.cancelFrom;
-    if (free) {
-      if (c.stamina >= CHARGED_COST) {
-        useCombat.setState({ stamina: c.stamina - CHARGED_COST });
-        CB.staminaAt = now;
-        startMove(moveset().charged, "charged", false);
-        CB.step = 0;
-        CB.lastTm = null;
-        const p = useWorld.getState().player;
-        addFx("ring", TMP.set(p.x, p.y + 0.05, p.z), { color: curWeapon().color, size: 1.6 });
-      } else judgeText("hết thể lực", "info");
-    }
+    fireCharged(now);
   }
   if (PUNCH.live) {
     const k = (now - PUNCH.at) / PUNCH.dur;
@@ -730,13 +843,17 @@ export function tickCombat(dt: number) {
     const at = now - TRAIL_TIP.at < 120 ? TRAIL_TIP.pos : TMP.set(p.x + Math.sin(cur.yaw) * 0.55, p.y + 1.25, p.z + Math.cos(cur.yaw) * 0.55);
     addFx("spark", at, { color: "#fff6c8", size: 0.7 });
   }
-  if (el >= cur.tm.end) {
-    CB.cur = null;
-    if (CB.buffered) {
-      CB.buffered = false;
+  // H1 đệm phím: lần bấm sớm (≤ BUFFER_MS) ra đòn ngay khi được phép — chuỗi: linkOpen; tụ lực / kỹ năng: cancelFrom
+  if (hasBuffered(CB.buf)) {
+    const open = cur.t0 + (cur.kind === "chain" ? cur.tm.linkOpen : cur.tm.cancelFrom);
+    const r = takeBuffered(CB.buf, now, open, BUFFER_MS);
+    if (r === "fire") {
+      if (cur.kind !== "chain") CB.step = 0;
       chainNext(moveset(), false);
+      return;
     }
   }
+  if (el >= cur.tm.end) CB.cur = null;
 }
 
 /** Đang ở pha khởi động / ra đòn (chưa được di chuyển) */
@@ -747,7 +864,7 @@ export function attackLocked(): boolean {
 /** Di chuyển trong pha thu thế → huỷ đòn (như game hành động) */
 export function cancelRecovery() {
   const cur = CB.cur;
-  if (cur && performance.now() - cur.t0 >= cur.tm.cancelFrom && !CB.buffered) {
+  if (cur && performance.now() - cur.t0 >= cur.tm.cancelFrom && !hasBuffered(CB.buf)) {
     CB.cur = null;
     const w = useWorld.getState();
     if (w.action && (w.action.pose === "slash" || w.action.pose === "cast")) w.set({ action: null });
@@ -780,13 +897,13 @@ function execHit(cur: Cur, h: Hit) {
     }
     case "circle": {
       const at = p.clone().addScaledVector(fwd, sh.fwd).setY(p.y + 0.06);
-      addFx("ring", at, { color, size: sh.r });
+      strike("rupture", at.x, at.y, at.z, { r: sh.r, yaw, color });
       n = hitRadius(at, sh.r, dmg, h.push ?? 5);
       break;
     }
     case "torque":
       // Mô-men = lực × cánh tay đòn: quái càng xa (trong tầm) càng đau, bị hất càng mạnh
-      addFx("ring", p.clone().setY(p.y + 0.06), { color, size: 1.2 });
+      strike("wedge", p.x, p.y + 0.06, p.z, { r: sh.range, arc: 1.0, yaw, color });
       for (const e of enemies) {
         if (e.deadAt) continue;
         const dx = e.pos.x - p.x;
@@ -833,7 +950,7 @@ function execHit(cur: Cur, h: Hit) {
         const vel = new THREE.Vector3((land.x - from.x) / t, (land.y - from.y + 0.5 * GRAVITY * t * t) / t, (land.z - from.z) / t);
         projectiles.push({ pos: from, vel, born: performance.now(), dmg, color, alive: true, trail: [] });
       }
-      addFx("ring", c0.clone().setY(c0.y + 0.05), { color, size: sh.r });
+      strike("grid", c0.x, c0.y + 0.05, c0.z, { r: sh.r, yaw, color });
       sfx.cast();
       HIT_MOD.crit = false;
       return;
@@ -877,7 +994,7 @@ function execHit(cur: Cur, h: Hit) {
         curE = best;
       }
       if (!hit.size) addFx("bolt", from, { to: from.clone().addScaledVector(fwd, 4), color });
-      sfx.shield();
+      sfx.cast();
       break;
     }
     case "orbit": {
@@ -889,11 +1006,7 @@ function execHit(cur: Cur, h: Hit) {
     }
     case "wave": {
       const at = p.clone().addScaledVector(fwd, sh.fwd).setY(p.y + 0.06);
-      addFx("vring", new THREE.Vector3(p.x, p.y + 1.25, p.z).addScaledVector(fwd, 0.9), { yaw, color, size: 0.75 });
-      for (let i = 0; i < sh.rings; i++) {
-        const r = sh.r * ((i + 1) / sh.rings);
-        addFx("ring", at, { color, size: r });
-      }
+      strike("crest", at.x, at.y, at.z, { r: sh.r, yaw, color });
       addFx("spark", at, { color, size: 1 });
       n = hitRadius(at, sh.r, dmg * (sh.rings > 1 ? 1 : 1), h.push ?? 4);
       sfx.circle();
@@ -909,16 +1022,18 @@ function execHit(cur: Cur, h: Hit) {
         damageEnemy(e, dmg, p, -2);
         n++;
       }
-      addFx("vring", p.clone().setY(p.y + 0.6), { yaw, color, size: sh.r * 0.4 });
+      strike("tendril", p.x, p.y + 0.06, p.z, { r: sh.r, yaw, color });
       break;
     }
+    default:
+      n = WEAPON_EXT.shape?.(sh, { p, yaw, dmg, color, perfect: cur.perfect, kind: cur.kind, finisher: cur.finisher }) ?? 0;
   }
   HIT_MOD.crit = false;
   HIT_MOD.launch = 0;
   if (h.fx === "slash" || h.fx === "slashFlip") addFx("slash", TMP.copy(p).addScaledVector(fwd, 0.7).setY(p.y + 1.0), { yaw, color, size: cur.finisher ? 1.35 : 1.05, flip: h.fx === "slashFlip" });
   if (h.fx === "nova") {
     const at = p.clone().addScaledVector(fwd, sh.k === "circle" ? sh.fwd : 0).setY(p.y + 0.06);
-    addFx("nova", at, { color, size: sh.k === "circle" ? sh.r : 3 });
+    strike("star", at.x, at.y, at.z, { r: sh.k === "circle" ? sh.r : 3, yaw, color, n: 6 });
     if (cur.finisher && CB.streak >= 3) addFx("crater", at.clone().setY(p.y + 0.03), { color, size: 1.6, yaw: Math.random() * 6 });
   }
   if (h.shake) w.addShake(h.shake * (cur.finisher && CB.streak >= 3 ? 1.6 : 1));
@@ -936,12 +1051,18 @@ function execHit(cur: Cur, h: Hit) {
     const combo = now - CB.comboAt < 2600 ? useCombat.getState().combo + n : n;
     CB.comboAt = now;
     useCombat.setState({ combo, comboAt: now });
-  } else if (h.fx === "slash" || h.fx === "slashFlip") sfx.miss();
+  } else if (h.fx === "slash" || h.fx === "slashFlip") sfx.whiff();
 }
 
 export function jump() {
   if (!ENV.armed && useWorld.getState().scene === "valley") return;
   if (useWorld.getState().overlay) return;
+  // Đang bơi: nhảy = đạp nước nổi lên (sát bờ thì đủ đà trèo lên)
+  if (motion.swimming) {
+    motion.vy = Math.max(motion.vy, 5.6);
+    sfx.step();
+    return;
+  }
   // Trên không: bấm nhảy lần nữa = mở / gập tàu lượn (cần cao ≥ 1,2 m)
   if (!motion.grounded) {
     if (motion.gliding) motion.gliding = false;
@@ -965,7 +1086,7 @@ export function burst() {
   const w = useWorld.getState();
   const now = performance.now();
   useCombat.setState({ energy: 0, swingAt: now });
-  const melee = ["blade", "lever", "spiral"].includes(curWeapon().id);
+  const melee = ["blade", "lever", "spiral", "lance", "shield"].includes(curWeapon().id);
   w.act(melee ? "slash" : "cast", 1000, melee ? { name: "Sword_Heavy_Combo", from: 2.2, speed: 0.85 } : { name: "Spell_Simple_Shoot", from: 0, speed: 0.55 });
   CB.cur = null;
   // điện ảnh: thế giới gần như đứng hình 0,6 s, máy quay giật vào, màn hình chấn
@@ -977,16 +1098,14 @@ export function burst() {
   const color = curWeapon().color;
   const p0 = w.player;
   // pha tụ: vòng phép dựng đứng trước ngực + vòng thu lại dưới chân
-  addFx("vring", new THREE.Vector3(p0.x, p0.y + 1.2, p0.z).addScaledVector(new THREE.Vector3(Math.sin(w.playerYaw), 0, Math.cos(w.playerYaw)), 0.8), { yaw: w.playerYaw, color, size: 1.2 });
-  addFx("ring", p0.clone().setY(p0.y + 0.05), { color: "#ffffff", size: 2.2 });
+  strike("converge", p0.x, p0.y + 0.05, p0.z, { r: 2.2, n: 8, yaw: w.playerYaw, color });
   sfx.chime(3);
   // bung đúng khung trúng của animation (≈ 0,38 s)
   setTimeout(() => {
     const ww = useWorld.getState();
     const at = ww.player.clone().setY(ww.player.y + 0.06);
     HIT_MOD.launch = 9;
-    addFx("nova", at, { color, size: 7 });
-    addFx("ring", at, { color: "#ffffff", size: 7.5 });
+    strike("drop", at.x, at.y, at.z, { r: 7, yaw: ww.playerYaw, color });
     addFx("crater", at.clone().setY(at.y - 0.03), { color, size: 3, yaw: Math.random() * 6 });
     hitRadius(at, 7, 55, 9);
     HIT_MOD.launch = 0;
@@ -994,8 +1113,9 @@ export function burst() {
     ww.addShake(0.8);
     ww.burst([at.x, at.y + 1.2, at.z], color, 90);
     impact(1.2);
+    shockwave(at.clone().setY(at.y + 1), 1.3);
     sfx.impact(1.6);
-    sfx.shatter();
+    sfx.explode(undefined, 1.4);
   }, melee ? 380 : 260);
 }
 
@@ -1007,7 +1127,7 @@ export function cycleWeapon(dir = 1) {
   const weapon = (c.weapon + dir + n) % n;
   useCombat.setState({ weapon, swingAt: performance.now() });
   const p = useWorld.getState().player;
-  addFx("ring", p.clone().setY(p.y + 0.05), { color: curWeapon().color, size: 1.4 });
+  strike("helix", p.x, p.y + 0.05, p.z, { r: 0.8, yaw: useWorld.getState().playerYaw, color: curWeapon().color });
   sfx.click();
 }
 
@@ -1028,6 +1148,12 @@ export function playerHurt(dmg: number, from?: THREE.Vector3) {
     return;
   }
   if (now < c.downUntil || now < guard.until || now < motion.dashUntil + 120) return; // đang lướt thì né được (khung bất tử)
+  // vũ khí có thế đỡ riêng (Khiên Con lắc): chặn một phần / toàn bộ, có thể phản đòn
+  const left = WEAPON_EXT.guard?.(dmg, from);
+  if (left != null) {
+    if (left <= 0) return;
+    dmg = Math.max(1, Math.round(left));
+  }
   const w = useWorld.getState();
   const hp = Math.max(0, c.hp - dmg);
   useCombat.setState({ hp });
@@ -1035,7 +1161,7 @@ export function playerHurt(dmg: number, from?: THREE.Vector3) {
   w.addShake(0.35);
   w.act("hurt", 450);
   floatText(TMP.copy(w.player).add(UP), `-${dmg}`, "hurt");
-  sfx.hit(1);
+  sfx.hurt();
   if (hp <= 0) useCombat.setState({ downUntil: now + 1800 });
 }
 
@@ -1045,13 +1171,13 @@ export function plungeImpact(at: THREE.Vector3, fall: number) {
   const dmg = 22 + Math.min(40, fall * 4);
   const r = 2.6 + Math.min(1.6, fall * 0.12);
   hitRadius(at, r, dmg, 8);
-  addFx("ring", at.clone().setY(at.y + 0.05), { color: curWeapon().color, size: r });
-  addFx("nova", at.clone().setY(at.y + 0.05), { color: "#ffffff", size: r * 0.8 });
+  strike("crater", at.x, at.y + 0.05, at.z, { r, yaw: w.playerYaw, color: curWeapon().color });
   addFx("crater", at.clone().setY(at.y + 0.03), { color: curWeapon().color, size: r * 0.7, yaw: Math.random() * 6 });
   w.addShake(0.35 + Math.min(0.4, fall * 0.04));
   w.hitstop(60);
   w.burst([at.x, at.y + 0.4, at.z], curWeapon().color, 40);
   impact(0.6);
-  sfx.shatter();
+  shockwave(at.clone().setY(at.y + 0.3), 0.6 + Math.min(0.6, fall * 0.05));
+  sfx.explode("earth", 0.7 + Math.min(0.6, fall * 0.05));
   sfx.impact(1.1);
 }

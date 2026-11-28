@@ -1,0 +1,80 @@
+# Original audio direction for the math game
+
+**Keep the harmony alive and the foreground quiet.** Use a soft bed, one moving part, and occasional accents. The numbers below are starting presets to audition on your target laptops, not universal standards; measured formant and bell data are labeled separately.
+
+## 1. Choir writing and area palettes
+
+- **SATB:** Start with these working MIDI ranges: `B 43–55`, `T 50–62`, `A 57–69`, `S 62–74`. Keep `S–A` and `A–T` within `12` semitones; allow up to `19` for `T–B`, with more space in the low register. Don’t cross voices. In root-position triads, double the root first; retain common tones and favor `1–2` semitone motion in upper voices. Avoid incidental parallel fifths/octaves for hymn writing; use them deliberately for organum. ([rwu.pressbooks.pub](https://rwu.pressbooks.pub/musictheory/chapter/spacing-voicing-and-doubling-of-chord-tones-in-satb-style/?utm_source=openai))
+- **Modes and cadences:** Semitones from tonic: Aeolian `[0,2,3,5,7,8,10]`, Dorian `[0,2,3,5,7,9,10]`, Mixolydian `[0,2,4,5,7,9,10]`. Hold a tonic or fifth pedal for `2–4 bars`. Replace the third with scale degree `4` or `2` for `sus4`/`sus2`; resolve on a subsequent beat or leave it open. For a plagal “Amen” in C, use `F → C` or `Fm → C`; try `[53,60,65,68] → [48,60,64,67]` in B–T–A–S order. That last chord is a **Picardy third** only if it closes a phrase established in C minor. Save definitive arrivals for events, not every loop. ([viva.pressbooks.pub](https://viva.pressbooks.pub/openmusictheorycopy/chapter/diatonic-modes/?utm_source=openai))
+- **Chant and color:** Write an original unison line spanning `≤7` semitones, mostly stepwise, with irregular `0.5–2 s` notes. Add a second line at a fifth for just `1–2` notes for an organum-like effect. Use **“oo”** for a tucked-away bed, **“oh”** for warmth, **“ah”** for an opening or arrival. For anime-fantasy scoring, give choir and legato strings the long tones; let **one** of celesta, music box or harp carry the glint. Pizzicato or harpsichord supplies motion; bells mark scale or distance. This is a palette for your game, not a template from any specific score. ([oyc.yale.edu](https://oyc.yale.edu/music/musi-112/lecture-15?utm_source=openai))
+- **Sweet but eerie:** Keep a familiar pedal or common tone, then change one thing: omit the third before alternating minor/major, use a chromatic mediant (`C → A♭`, keep C), or flash `[0,2,4,6]` above the pedal for `1–2 beats`. For collage, detune a quiet box double `±8 cents`, reverse a `0.3–0.8 s` swell into a cut, or bake a `150–300 ms` tape-stop into a transition **without stopping the beat clock**.
+
+| Area | Starting palette |
+|---|---|
+| Pastoral plaza | **Day:** `76 BPM`, Mixolydian harp + pizz, celesta every `4 bars`. **Night:** same grid, Dorian, fewer plucks, soft “oo.” |
+| Impossible cathedral | `60 BPM` grid, freely phrased Dorian chant, organ pedal, “oh→ah,” `4.5 s` midband reverb; distant bell every `8–16 bars`. |
+| Witch labyrinth | `96 BPM`, Aeolian pedal, detuned music box + sparse harpsichord eighths. One collage gesture per `8–16 bars`. |
+| Boss layer | Same `96 BPM` and harmony; add low string pulses and tenor “ah” every `2 bars`. Increase density before level. |
+| Voxel overworld | **Day:** `72 BPM`, Mixolydian harp + legato strings. **Night:** same grid, Aeolian fifths, one celesta answer every `4–8 bars`. |
+| Dark archive | `65–100 Hz` pedal with audible octave above; distant “oo” for `3–5 s` every `20–40 s`; no ostinato. |
+| Study room | `60 BPM` or no audible pulse; felt-like celesta or harmonium, `1–3` notes per `8 s`; choir off by default. |
+
+## 2. Offline formant choir
+
+**Csound presets, F1–F3.** Each cell is `frequency_Hz / bandwidth_Hz / relative_dB`, in formant order. Use the linked table for F4–F5. Peterson–Barney measured **spoken** vowels; don’t treat those measurements as SATB singing presets. ([csound.com](https://csound.com/manual/misc/formants/))
+
+| Part | `a` (ah) | `o` (oh) | `u` (oo) | `e` (eh-like) |
+|---|---|---|---|---|
+| S | `800,1150,2900 / 80,90,120 / 0,-6,-32` | `450,800,2830 / 40,80,100 / 0,-11,-22` | `325,700,2700 / 50,60,170 / 0,-16,-35` | `350,2000,2800 / 60,100,120 / 0,-20,-15` |
+| A | `800,1150,2800 / 80,90,120 / 0,-4,-20` | `450,800,2830 / 70,80,100 / 0,-9,-16` | `325,700,2530 / 50,60,170 / 0,-12,-30` | `400,1600,2700 / 60,80,120 / 0,-24,-30` |
+| T | `650,1080,2650 / 80,90,120 / 0,-6,-7` | `400,800,2600 / 70,80,100 / 0,-10,-12` | `350,600,2700 / 40,60,100 / 0,-20,-17` | `400,1700,2600 / 70,80,100 / 0,-14,-12` |
+| B | `600,1040,2250 / 60,70,110 / 0,-7,-9` | `400,750,2400 / 40,80,100 / 0,-11,-21` | `350,600,2400 / 40,80,100 / 0,-20,-32` | `400,1620,2400 / 40,80,100 / 0,-12,-9` |
+
+- **Start additive:** At `48 kHz`, integrate instantaneous `f0` to phase `φ`; sum `A[k] * sin(k*φ + phase[k])`. For `f = k*f0`, try `A[k] = k**(-1.2) * (0.02 + sum(10**(g/20) / sqrt(1 + (2*(f-F)/BW)**2)))`. Cap partials at `min(8 kHz, 0.45*fs)` for this pad. Level-match notes offline, not every frame. If high “oo” hollows out, try `F1 = max(F1, 1.02*f0)` on soprano and compare by ear; high singers can tune that resonance toward the fundamental. ([newt.phys.unsw.edu.au](https://newt.phys.unsw.edu.au/~jw/reprints/Joliveauetal.pdf?utm_source=openai))
+- **Alternative source:** Feed a band-limited `1/k` saw or an oversampled, low-passed glottal pulse into **parallel** peak-normalized bandpasses (`Q = F/BW`, gain `10**(g/20)`). Try a `0.55–0.70` open fraction for the pulse. Additive is easier for smooth morphs; the filter bank is useful for putting breath through the same resonances. For either, interpolate formant centers, widths and dB gains over `2–6 s`, with independent timing per singer. ([csound.com](https://csound.com/manual/misc/formants/))
+- **Make it an ensemble:** `3 singers/part`, offsets `[-5,0,+5] cents`, onset spreads `0–35 ms`, independent phases, pan within `±0.5`. Vibrato `4.7–5.8 Hz`, `±5–12 cents`, starts after `250–500 ms` and ramps in over `300 ms`. Add smoothed drift `0.3–1 Hz` at `1–3 cents RMS`, optional cycle jitter `≤0.1%`, and slow gain shimmer `±0.5 dB`. Use `180–450 ms` attack, `350–900 ms` release, and `0.8–4 kHz` breath at `−32 dB RMS` relative to the voiced sustain; raise breath briefly at entrances, not throughout.
+
+## 3. Offline instruments and space
+
+- **Pipe organ:** Mix `16′, 8′, 4′, 2⅔′, 2′` at ratios `[0.5,1,2,3,4]`, gains `[-15,0,-12,-23,-27] dB`. Use `16′` only on the pedal. Add `20–50 ms` bandpassed `1–3 kHz` chiff at `−24 dB RMS` and `200–900 Hz` wind at `−38 dB RMS`, relative to sustain. **Harmonium:** use harmonics `1–12` with `k**(-1.1)`, emphasize `2–4` by `3 dB`; add bellows motion `0.4–0.8 Hz`, `±0.7 dB`, and `100–220 ms` attack. ([hammondorganco.com](https://hammondorganco.com/wp-content/uploads/2022/09/Sk-Reference-Guide-for-web-1.pdf?utm_source=openai))
+- **Music box / celesta:** For modal voices use `amp(t) = 10**(gain_dB/20) * 10**(-3*t/T60)`. **Box:** idealized cantilever ratios `[1,6.27,17.55]`, gains `[0,-21,-34] dB`, `T60 [1.6,0.35,0.10] s`; add a `4 ms` pin tick. **Celesta:** bar-inspired ratios `[1,2.76,5.42]`, gains `[0,-19,-30] dB`, `T60 [1.3,0.25,0.08] s`; use a `6 ms` rounded attack and a quiet body resonance near the fundamental. These are patches, not measured presets for specific instruments. ([emweb.unl.edu](https://emweb.unl.edu/mechanics-pages/scott-whitney/325hweb/beams.htm?utm_source=openai))
+- **Harpsichord / harp / pizz:** In Karplus–Strong, start with fractional delay `fs/f0 - 0.5` for the two-point average; retune if you change the loop filter. Shape the noise excitation with `x[n] − x[n−round(p*fs/f0)]` using a circular shift over one period. For `p` and target `T60`, try harpsichord `0.10–0.18 / 0.5–1.2 s`, harp `0.28–0.38 / 1.5–3 s`, pizz `0.20–0.35 / 0.25–0.65 s`. Start loop gain at `10**(-3/(f0*T60))`, then measure actual decay: the loop filter adds loss. **Legato strings:** `3` band-limited saw/additive voices at `[-4,0,+4] cents`, `100–250 ms` attack, bow noise `0.7–3 kHz` at `−32 dB RMS`, slow independent vibrato near `5 Hz / ±8 cents`. ([musicweb.ucsd.edu](https://musicweb.ucsd.edu/~trsmyth/papers/KSExtensions.pdf?utm_source=openai))
+- **Bells:** Church **hum, prime, tierce, quint, nominal** relative to prime: `[0.5,1,1.189,1.498,2]`; try gains `[-12,0,-10,-18,-8] dB`, `T60 [5,3,1.9,1.5,0.9] s`. For tubular color use a separate beam-like patch `[1,2.76,5.4,8.9]` relative to its lowest mode, gains `[0,-9,-13,-18] dB`, `T60 [2.2,1.2,0.7,0.35] s`; tune the **heard strike**, not just the lowest mode. ([hibberts.co.uk](https://www.hibberts.co.uk/wp-content/uploads/2022/01/perrin_charnley_depont_1982.pdf?utm_source=openai))
+- **Cathedral IR:** Put wet-only taps at `[24,39,57,83] ms`, gains `[-12,-16,-19,-22] dB`. Fade in filtered Gaussian noise at `60–100 ms`; use `T60 [5.5,4.5,3.0,1.8] s` for bands `125–500 / 500–1500 / 1500–4000 / 4000–8000 Hz`. Multiply each band by `10**(-3*t/T60)`. For stereo, use `sqrt(0.3)*shared + sqrt(0.7)*independent` noise per channel. Convolve offline with `scipy.signal.fftconvolve`; begin with wet RMS `12–18 dB` below dry and check mono. ([pmc.ncbi.nlm.nih.gov](https://pmc.ncbi.nlm.nih.gov/articles/PMC5137703/?utm_source=openai))
+
+## 4. Adaptive music, clock and CPU
+
+- **Arrange:** Vertical = change gains on synchronized stems; horizontal = choose the next compatible cell. Start with `2–3` stems, `4–8` bar beds and `2–4` bar cells, plus `3–5` compatible variants per phrase role. Tag entry/exit harmony and pickups; avoid repeating either of the last `2` variants when eligible. At `96 BPM` in `4/4`, beats are `0.625 s`, bars `2.5 s` or `120,000` frames at `48 kHz`. Use `1–2 bars` for zone fades, `0.5–1 beat` for layer fades, and downbeats for musical stingers. If keys clash, crossfade through a pedal or unpitched bridge. ([audiokinetic.com](https://www.audiokinetic.com/files/?get=2015.1.9_5624%2FWwise_Fundamentals_en.pdf&utm_source=openai))
+- **Seams:** For a fixed loop, fold the baked wet tail modulo the exact loop length, or convolve several repeats and keep a settled middle cycle. Make the dry layer continuous too. For interchangeable cells, keep the outgoing tail after the boundary; start the next cell **on time**, not after the tail. Try `20–80 ms` overlap on texture seams, not over downbeat attacks. Decode both Ogg Opus and AAC-LC `.m4a` in target browsers and verify frame count, onset and seam; priming/padding handling matters. ([datatracker.ietf.org](https://datatracker.ietf.org/doc/html/rfc7845?utm_source=openai))
+- **Clock:** Poll every `25 ms`; schedule `150–250 ms` ahead via `start(epoch + barIndex*barSec)`. Use `currentTime` for scheduling and `getOutputTimestamp()` for visuals: `heardTime = contextTime + (performance.now()-performanceTime)/1000`. Refresh the mapping rather than integrating frame deltas. Calibrate display/input offset separately. After a stall or resume, skip missed cues and rejoin on a future grid point; don’t play a backlog. ([web.dev](https://web.dev/articles/audio-scheduling))
+- **CPU/RAM:** Cache decoded buffers; create fresh source nodes. Bake synthesis and reverb, use mono for positional SFX and low stems, and decode ahead of zone entry. Budget `32 MiB` decoded PCM initially: `seconds × Hz × channels × 4`; `20 s` stereo at `48 kHz` costs `7.32 MiB` per stem. Lower encoder input rate alone **doesn’t** save decoded RAM: `decodeAudioData` resamples to the decoding context. Try a `24 kHz OfflineAudioContext` for dark/mono assets if RAM is tight; profile playback resampling against the native-rate path. ([w3.org](https://www.w3.org/TR/webaudio/))
+- **Mix:** Start music-only at `−30 to −27 LUFS-I`, study at `−34 to −31`, boss at `−27 to −25`. Duck music `2–3 dB` for priority SFX and `4–7 dB` for dialogue, `25–60 ms` down / `250–600 ms` back; don’t duck every footstep. Measure representative gameplay, not isolated assets: ITU-T H.872 gives a **whole-game** `−23 LUFS` 30-minute reference (`±2 LU`) and `−1 dBTP` ceiling. ([itu.int](https://www.itu.int/rec/dologin_pub.asp?id=T-REC-H.872-202410-I%21%21PDF-E&lang=e&type=items&utm_source=openai))
+
+## 5. SFX palette
+
+These are **isolated sample peaks at default gain**, not loudness targets. Compare them in the full mix.
+
+| Event | Recipe | Length / peak |
+|---|---|---|
+| Hover / click / confirm / back | Soft tick / felt pluck / rising third / falling fourth | `35–65 / 45–90 / 120–250 / 90–160 ms`; `−32 / −25 / −21 / −24 dBFS` |
+| Pickup | Two celesta notes `50–80 ms` apart, up a fifth | `180–350 ms`, `−21 dBFS` |
+| Grass / stone / wood / paper steps | `1–3 kHz` swish / `200 Hz` knock + grit / `180–350 Hz` hollow hit / `1–4 kHz` crackle | `80–180 ms`, `−30 to −24 dBFS` |
+| Splash / swim | Noise sweep `3→0.7 kHz` + bubble pops / muted `0.2–1.2 kHz` stroke | `200–500 / 150–300 ms`, `−22 / −27 dBFS` |
+| Block break / place | `3–5` tiny fractures / single rounded `180–300 Hz` knock | `100–250 / 50–120 ms`, `−23 / −26 dBFS` |
+| Portal | Reversed “oo” + filtered up-gliss, then a soft landing | `0.8–1.6 s`, `−19 dBFS` |
+| Quest / boss reveal | Wordless plagal “oh→ah” / reverse swell into low bell and open fifth | `1.2–2 / 1–2 s`, `−18 / −16 dBFS` |
+| Victory / defeat | Picardy only in minor context / unresolved descending “oo” | `1.5–3 / 1–2 s`, `−17 / −21 dBFS` |
+
+- **Voice limits:** Start at `12` concurrent SFX: max `2` UI, `3` steps, `4` block impacts, `1` musical sting; reserve room for priority cues. Fade stolen voices over `10–20 ms`. Give common SFX `5–8` variants, no immediate repeat, `±3–5%` playback rate and `±1.5 dB` gain; keep pitched confirms within `±10 cents`. Debounce hover by `100 ms`; offer independent music/SFX sliders and hover mute.
+
+## Pitfalls
+
+- **Don’t normalize stems independently.** Verify the densest stack, overlapping tails and mono fold-down. At `32–40 kbps`, A/B the decoded choir and bells against PCM; reduce stereo noise or raise the bitrate if tails turn grainy.
+- **Verify one slice before expanding:** Build `4` bars of labyrinth bed, `3` cells and `1` boss layer. Listen while solving problems for `15 minutes`, force a main-thread stall, and check for clicks, drift, masked UI and motifs you start anticipating. If the cue is tiring, remove the recurring foreground event before turning the whole bed down.
+
+## Sources
+
+- [Open Music Theory: modal schemas](https://viva.pressbooks.pub/openmusictheory/chapter/modal-schemas/) · [SATB part-writing](https://milnepublishing.geneseo.edu/fundamentals-function-form-workbook/front-matter/guide-to-satb-part-writing/) · [Yale: chant and organum](https://oyc.yale.edu/music/musi-112/lecture-15) · [Kensuke Ushio interview](https://animecorner.me/interview-kensuke-ushio-on-creating-the-music-of-agents-of-the-four-seasons/)
+- [Csound formant tables](https://csound.com/manual/misc/formants/) · [Peterson–Barney](https://www.ee.columbia.edu/~dpwe/papers/PetB52-vowels.pdf) · [Joliveau et al.: soprano resonance tuning](https://doi.org/10.1038/427116a)
+- [Jaffe–Smith: Karplus–Strong extensions](https://musicweb.ucsd.edu/~trsmyth/papers/KSExtensions.pdf) · [Rossing: bell acoustics](https://www.jstage.jst.go.jp/article/ast1980/10/5/10_5_241/_article/-char/ja/) · [Traer–McDermott: reverberation](https://pmc.ncbi.nlm.nih.gov/articles/PMC5137703/)
+- [Audiokinetic: Wwise Fundamentals](https://www.audiokinetic.com/files/?get=2015.1.9_5624%2FWwise_Fundamentals_en.pdf) · [W3C Web Audio](https://www.w3.org/TR/webaudio/) · [Audio scheduling](https://web.dev/articles/audio-scheduling) · [Ogg Opus RFC](https://datatracker.ietf.org/doc/html/rfc7845) · [Apple: AAC priming](https://developer.apple.com/documentation/quicktime-file-format/background_aac_encoding) · [ITU-T H.872](https://www.itu.int/epublications/publication/itu-t-h-872-2024-10-safe-listening-for-video-gameplay-and-esports)

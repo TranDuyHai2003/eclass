@@ -75,13 +75,16 @@ const FS = /* glsl */ `
     float d = dot(N, uSun);
     // ramp 3 bậc (vùng chuyển hẹp, mềm) — kiểu Genshin
     float ramp = 0.55 + 0.22 * smoothstep(0.0, 0.12, d) + 0.23 * smoothstep(0.42, 0.56, d);
-    // ánh xuyên lá khi nhìn ngược nắng
-    float back = 0.28 * smoothstep(0.1, 0.8, -d) * (0.4 + 0.6 * pow(max(dot(-uSun, V), 0.0), 2.0));
-    float rim = 0.08 * pow(1.0 - abs(dot(N, V)), 3.0) * max(d, 0.0);
-    // màu: xám atlas trộn 2 sắc (lá đậm ↔ lá non), vùng sâu trong tán ngả sắc tối lạnh
+    // ánh xuyên lá khi nhìn ngược nắng — mạnh hơn khi nắng thấp (giờ vàng: tán "phát sáng" vàng lục như Genshin)
+    float lowSun = 1.0 - smoothstep(0.2, 0.7, uSun.y);
+    float back = (0.3 + 0.25 * lowSun) * smoothstep(0.1, 0.8, -d) * (0.4 + 0.6 * pow(max(dot(-uSun, V), 0.0), 2.0));
+    // viền nắng ấm CHỈ ở mép tán phía mặt trời (silhouette), không phủ cả tán
+    float rim = (0.12 + 0.12 * lowSun) * pow(1.0 - abs(dot(N, V)), 3.0) * smoothstep(0.0, 0.5, d);
+    // màu: xám atlas trộn 2 sắc (lá đậm ↔ lá non), lõi tán ngả lam lục mát; ngọn tán (AO cao) ấm vàng hơn
     vec3 base = mix(uTintA, uTintB, smoothstep(0.55, 0.95, tex.r));
-    base = mix(uDark, base, smoothstep(0.45, 0.9, vAO));
-    vec3 col = base * (ramp * uBright) + base * back * vec3(1.25, 1.05, 0.55) + vec3(1.0, 0.95, 0.8) * rim;
+    base = mix(uDark, base, smoothstep(0.4, 0.92, vAO));
+    base *= mix(vec3(0.96, 0.98, 1.04), vec3(1.06, 1.03, 0.9), smoothstep(0.75, 1.0, vAO));
+    vec3 col = base * (ramp * uBright) + base * back * vec3(1.3, 1.12, 0.55) + vec3(1.0, 0.9, 0.68) * rim;
     gl_FragColor = vec4(col * uLevel, 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -103,8 +106,9 @@ const MASK_FS = /* glsl */ `
 
 export type FoliageKind = "leaf" | "blossom";
 const LOOK: Record<FoliageKind, { a: string; b: string; dark: string; bright: number }> = {
-  leaf: { a: "#3f8a3c", b: "#a5d65a", dark: "#1f4a3a", bright: 1.08 },
-  blossom: { a: "#ef8fb4", b: "#ffe0ec", dark: "#9a5a8a", bright: 1.1 },
+  // Genshin: lá tươi sáng (lục non ↔ lục đậm), bóng trong tán lam lục mát (không xám bẩn); anh đào hồng phấn ấm
+  leaf: { a: "#4b9744", b: "#b4dd68", dark: "#285a55", bright: 1.1 },
+  blossom: { a: "#f6a8c6", b: "#fff0f4", dark: "#c27ea6", bright: 1.08 },
 };
 
 export function foliageMaterial(kind: FoliageKind, sun: THREE.Vector3) {

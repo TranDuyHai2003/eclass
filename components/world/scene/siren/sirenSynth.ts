@@ -12,6 +12,8 @@
  *    giới hạn số giọng đồng thời; âm lượng / tắt riêng (localStorage), tôn trọng công tắc âm thanh chung "world.sfx".
  */
 
+import { sfxInput, sharedContext } from "../../audio/engine";
+
 const KEY_VOL = "world.siren.vol";
 let ctx: AudioContext | null = null;
 let out: GainNode | null = null;
@@ -43,9 +45,11 @@ function ac(): AudioContext | null {
   const vol = sirenVolume();
   if (vol <= 0) return null;
   if (!ctx) {
-    const C = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!C) return null;
-    ctx = new C();
+    // một AudioContext dùng chung với hiệu ứng / nhạc nền (components/world/audio/engine.ts) — chỉ có sau thao tác người dùng
+    const shared = sharedContext();
+    const bus = sfxInput();
+    if (!shared || !bus) return null;
+    ctx = shared;
     // giới hạn đỉnh + nén nhẹ để nhiều giọng cùng lúc không vỡ tiếng
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -14;
@@ -53,7 +57,7 @@ function ac(): AudioContext | null {
     comp.ratio.value = 6;
     comp.attack.value = 0.004;
     comp.release.value = 0.18;
-    comp.connect(ctx.destination);
+    comp.connect(bus);
     out = ctx.createGain();
     out.gain.value = vol * 0.6;
     out.connect(comp);

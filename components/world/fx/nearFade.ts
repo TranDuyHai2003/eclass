@@ -23,7 +23,8 @@ export const NEAR_FADE_GLSL = /* glsl */ `
       float t = dot(p, f) / ff;
       if (t > 0.0 && t < 0.9) {
         float d = length(p - f * t);
-        fade = min(fade, mix(0.12, 1.0, smoothstep(0.7, 1.7, d)));
+        // lõi ống nhìn: TAN HẲN (trước còn 12% điểm ảnh → màn chấm sẫm vì không có TAA); chỉ mép ống còn dải dither hẹp
+        fade = min(fade, smoothstep(0.75, 1.75, d));
       }
     }
     if (fade < 0.999 && nfIgn(gl_FragCoord.xy) > fade) discard;

@@ -39,7 +39,8 @@ const BODY_VS = /* glsl */ `
   float radius(float u){
     // rồng: mõm thon → đầu → cổ hơi thắt → thân → đuôi nhọn; sâu: thân đều, đầu tròn to, đốt phồng
     float head = smoothstep(0.0, 0.07, u);
-    float neck = 1.0 - 0.18 * exp(-pow((u - 0.13) * 22.0, 2.0));
+    float nk = (u - 0.13) * 22.0;
+    float neck = 1.0 - 0.18 * exp(-nk * nk);
     float body = 1.0 - 0.82 * smoothstep(0.2, 1.0, u);
     float dr = mix(0.45, 1.0, head) * neck * body;
     float seg = 1.0 + 0.12 * pow(abs(sin(u * 90.0)), 6.0);
@@ -75,13 +76,16 @@ const BODY_FS = /* glsl */ `
     float lam = 0.35 + 0.65 * max(dot(n, uSun), 0.0);
     vec3 col = base * lam;
     // dải phát sáng chạy dọc sống lưng + nhịp sáng lan từ đầu tới đuôi
-    float spineLine = exp(-pow(vBelly + 1.0, 2.0) * 40.0);
+    float sb = vBelly + 1.0;
+    float spineLine = exp(-sb * sb * 40.0);
     float pulse = pow(0.5 + 0.5 * sin(vUT.x * 38.0 - uT * 3.2), 10.0);
     col += uGlow * (spineLine * (0.6 + 2.4 * pulse) + scale * pulse * 0.35 * (1.0 - belly));
     // viền fresnel
     col += uGlow * pow(1.0 - nv, 3.0) * 0.9;
     // mắt (gần đầu, hai bên)
-    float eye = exp(-pow((vUT.x - 0.045) * 90.0, 2.0)) * exp(-pow((abs(vBelly) - 0.05) * 9.0, 2.0)) * step(0.0, -vBelly + 0.3);
+    float ex = (vUT.x - 0.045) * 90.0;
+    float ey = (abs(vBelly) - 0.05) * 9.0;
+    float eye = exp(-ex * ex) * exp(-ey * ey) * step(0.0, -vBelly + 0.3);
     col += vec3(3.0, 2.6, 1.2) * eye;
     // phối cảnh khí quyển: xa thì hoà vào màu trời (exp(−0,003 d): 16% / 45% / 70% ở 60 / 200 / 400 m) — cảm giác khổng lồ ở xa
     col = mix(uFog, col, exp(-0.003 * length(cameraPosition - vW)));
@@ -94,13 +98,14 @@ const BODY_FS = /* glsl */ `
 const FIN_VS = /* glsl */ `
   uniform sampler2D uSpine; uniform float uRad; uniform float uT; uniform float uSpan;
   attribute vec3 aFin;
-  varying vec2 vF; varying float vSide; varying vec3 vW; varying vec3 vN;
+  varying vec2 vF; varying float vSide; varying vec3 vW; varying vec3 vN; varying float vUl;
   vec3 sp(int row, float u){ float x = u * ${N - 1}.0; int i0 = int(floor(x)); int i1 = min(i0 + 1, ${N - 1}); float f = x - float(i0);
     return mix(texelFetch(uSpine, ivec2(i0, row), 0).xyz, texelFetch(uSpine, ivec2(i1, row), 0).xyz, f); }
   void main(){
     float u = aFin.x, v = aFin.y, side = aFin.z;
     vec3 P = sp(0, u), Nn = normalize(sp(1, u)), B = normalize(sp(2, u));
     vec3 w;
+    vUl = 0.0;
     if (abs(side) > 1.5) {
       // râu rồng: mọc từ hai bên mõm, chạy ngược về sau dọc 35% thân, uốn sóng trễ pha (dải mảnh)
       float us = u * 0.35;
@@ -116,30 +121,57 @@ const FIN_VS = /* glsl */ `
       w = P + Nn * (uRad * 0.8 + v * h) + B * sin(u * 30.0 - uT * 3.0) * v * uRad * 0.25;
       vN = B;
     } else {
-      // cánh màng: vỗ chậm, mép sau trễ pha
-      // vỗ chậm ~0,14 Hz, mép ngoài trễ ~0,4 s (khổng lồ thì chuyển động chậm)
-      float flap = 0.5 * sin(uT * 0.9 - v * 0.9) + 0.25;
-      vec3 out_ = normalize(B * side * cos(flap) + Nn * sin(flap));
-      w = P + out_ * (uRad * 0.8 + v * uSpan);
-      vN = normalize(cross(out_, B));
+      // CÁNH MÀNG kiểu rồng / dơi: gốc bám 16–30% thân, dây cung hẹp dần về mút và quét ngược ra sau;
+      // vỗ 2 khớp (vai trước, mút trễ ~0,9 rad → cánh cuộn sóng); màng võng giữa 3 xương ngón.
+      float ul = clamp((u - 0.16) / 0.14, 0.0, 1.0);
+      float uRoot = mix(0.16, 0.3, ul * (1.0 - 0.55 * v));
+      vec3 Pr = sp(0, uRoot), Nr = normalize(sp(1, uRoot)), Br = normalize(sp(2, uRoot));
+      vec3 T = normalize(sp(0, min(uRoot + 0.01, 1.0)) - Pr + 1e-5);
+      float ph = uT * 0.9;
+      float arm = 0.55 * sin(ph) + 0.2;
+      float tip = arm + 0.45 * sin(ph - 0.9);
+      float ang = mix(arm, tip, smoothstep(0.3, 0.8, v));
+      vec3 out_ = normalize(Br * side * cos(ang) + Nr * sin(ang));
+      w = Pr + out_ * (uRad * 0.8 + v * uSpan) + T * pow(v, 1.4) * uSpan * 0.5;
+      // võng giữa các ngón (ngón ở ul = 0, 1/3, 2/3, 1)
+      float bill = abs(sin(ul * 9.42478)) * v * uRad * 0.7;
+      w -= normalize(cross(out_, T)) * bill * side;
+      vN = normalize(cross(out_, T));
+      vUl = ul;
     }
     vF = vec2(u, v); vSide = side; vW = w;
     gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
   }`;
 
 const FIN_FS = /* glsl */ `
-  uniform vec3 uFin; uniform float uT;
-  varying vec2 vF; varying float vSide; varying vec3 vW; varying vec3 vN;
+  uniform vec3 uFin; uniform vec3 uMem; uniform float uT;
+  varying vec2 vF; varying float vSide; varying vec3 vW; varying vec3 vN; varying float vUl;
   void main(){
     vec3 V = normalize(cameraPosition - vW);
     float fr = pow(1.0 - abs(dot(normalize(vN), V)), 1.5);
+    if (abs(vSide) > 0.5 && abs(vSide) < 1.5) {
+      // cánh: mép sau khoét vỏ sò giữa các ngón, xương ngón + mép trước sáng, gân toả mảnh
+      float fing = abs(sin(vUl * 9.42478));
+      float vmax = 1.0 - 0.2 * pow(fing, 1.6);
+      if (vF.y > vmax) discard;
+      float bone = (1.0 - smoothstep(0.0, 0.09, fing)) * smoothstep(0.02, 0.15, vF.y);
+      float lead = 1.0 - smoothstep(0.0, 0.07, vUl);
+      float rim = smoothstep(vmax - 0.07, vmax, vF.y);
+      float vein = pow(0.5 + 0.5 * cos(vUl * 56.5), 18.0) * 0.35 * (1.0 - bone);
+      float root = smoothstep(0.0, 0.06, vF.y);
+      float cover = (0.32 + 0.3 * fr) * root;
+      vec3 memc = mix(uMem, uFin * 0.55, 0.25 + 0.5 * fr) * (0.75 + 0.5 * fr);
+      float glow = (0.9 * max(bone, lead) + 0.6 * rim + vein) * root;
+      gl_FragColor = vec4(memc * cover + uFin * glow * (1.0 + max(bone, lead)), cover);
+      return;
+    }
     // gân màng: tia toả theo v + mép sáng
     float ribs = pow(0.5 + 0.5 * cos(vF.x * (abs(vSide) > 0.5 ? 160.0 : 220.0)), 14.0);
     float edge = smoothstep(0.82, 1.0, vF.y);
     float a = (0.12 + 0.5 * fr + 0.45 * ribs + 0.7 * edge) * (1.0 - smoothstep(0.92, 1.0, vF.y) * 0.4);
     a *= smoothstep(0.0, 0.08, vF.y);
     vec3 col = uFin * (1.0 + 1.5 * edge + 0.8 * ribs);
-    gl_FragColor = vec4(col * a, 1.0);
+    gl_FragColor = vec4(col * a, 0.0);
   }`;
 
 const WAKE_VS = /* glsl */ `
@@ -225,8 +257,8 @@ export function CosmicBeast({ path, look, bodyLen, radius, speed, sun, phase0 = 
     };
     strip(0.08, 0.95, 0, 80, 3);
     if (!worm) {
-      strip(0.16, 0.3, 1, 16, 6);
-      strip(0.16, 0.3, -1, 16, 6);
+      strip(0.16, 0.3, 1, 30, 12);
+      strip(0.16, 0.3, -1, 30, 12);
       // râu: u 0 → 1 dọc chiều dài râu (đổi sang 0 → 35% thân trong shader), v = bề ngang
       strip(0, 1, 2, 40, 1);
       strip(0, 1, -2, 40, 1);
@@ -235,13 +267,19 @@ export function CosmicBeast({ path, look, bodyLen, radius, speed, sun, phase0 = 
     finGeo.setAttribute("aFin", new THREE.Float32BufferAttribute(fin, 3));
     finGeo.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(fin.length), 3));
     finGeo.setIndex(fidx);
+    // màng cánh: sẫm (pha màu lưng) để đọc rõ trên trời sáng ban ngày; gân / mép vẫn phát sáng
+    const mem = new THREE.Color(look.back).lerp(new THREE.Color(look.fin), 0.35).multiplyScalar(0.85);
     const finMat = new THREE.ShaderMaterial({
-      uniforms: { ...common, uSpan: { value: radius * 9 }, uFin: { value: new THREE.Color(look.fin).multiplyScalar(1.6) } },
+      uniforms: { ...common, uSpan: { value: radius * 9 }, uFin: { value: new THREE.Color(look.fin).multiplyScalar(1.6) }, uMem: { value: mem } },
       vertexShader: FIN_VS,
       fragmentShader: FIN_FS,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      // "over" tiền nhân alpha: rgb = phát sáng + màng × độ che, a = độ che (vây / râu: a = 0 → cộng thuần như cũ)
+      blending: THREE.CustomBlending,
+      blendEquation: THREE.AddEquation,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneMinusSrcAlphaFactor,
       side: THREE.DoubleSide,
       toneMapped: false,
     });
@@ -291,11 +329,19 @@ export function CosmicBeast({ path, look, bodyLen, radius, speed, sun, phase0 = 
     // sóng thân: bước sóng ~0,3 thân, ~0,2 Hz (Codex: 24 m / 0,22 Hz cho thân 80 m)
     res.sp = spine(path, S.a, N, bodyLen, radius * (worm ? 0.8 : 1.0), bodyLen * 0.3, t * (worm ? 1.5 : 1.3), res.sp ?? undefined);
     const d = res.data;
-    for (let i = 0; i < N; i++) {
-      d.set([res.sp.pos[i * 3], res.sp.pos[i * 3 + 1], res.sp.pos[i * 3 + 2], 1], i * 4);
-      d.set([res.sp.nrm[i * 3], res.sp.nrm[i * 3 + 1], res.sp.nrm[i * 3 + 2], 1], (N + i) * 4);
-      d.set([res.sp.bin[i * 3], res.sp.bin[i * 3 + 1], res.sp.bin[i * 3 + 2], 1], (2 * N + i) * 4);
-    }
+    // ghi thẳng vào mảng texture (trước đây 3·N mảng tạm mỗi khung cho mỗi con)
+    const put = (src: ArrayLike<number>, row: number) => {
+      for (let i = 0; i < N; i++) {
+        const o = (row * N + i) * 4;
+        d[o] = src[i * 3];
+        d[o + 1] = src[i * 3 + 1];
+        d[o + 2] = src[i * 3 + 2];
+        d[o + 3] = 1;
+      }
+    };
+    put(res.sp.pos, 0);
+    put(res.sp.nrm, 1);
+    put(res.sp.bin, 2);
     res.tex.needsUpdate = true;
     res.bodyMat.uniforms.uT.value = t;
     // đuôi tinh vân: sinh mảng ở 85–100% thân, 12 lần / giây

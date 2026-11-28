@@ -10,11 +10,13 @@ import { Label3D } from "../ui/Labels";
 import { SelfName } from "../ui/NameField";
 import { CAM, addFx, air, attackLocked, cancelRecovery, chargeLevel, curWeapon, motion, plungeImpact, rhythmGold, tickCombat, trailActive, updrafts, useCombat } from "../combat/combat";
 import { WeaponTrail } from "../fx/WeaponTrail";
+import { strike } from "../fx/StrikeFx";
 import { SCOPE, useScope, zoomBy } from "../scope";
 import { FLIGHT, useFlight } from "../flight";
 import { FLY, soarVertical } from "@/lib/world/impCosmos";
 import { nearestFree } from "@/lib/world/collide";
 import { setWind } from "@/lib/world/sfx";
+import { bossFrame, closeness } from "@/lib/world/vfxBudget";
 import { WingTrails } from "../fx/WingTrails";
 const RAY = new THREE.Raycaster();
 const SD_P = new THREE.Vector3();
@@ -66,6 +68,8 @@ export const HELD_W: Partial<Record<WeaponId, { hand: "right" | "left"; grip: nu
   lever: { hand: "right", grip: 0.22 },
   staff: { hand: "right", grip: 0.45 },
   bow: { hand: "left", grip: 0 },
+  lance: { hand: "right", grip: 0.6 },
+  shield: { hand: "left", grip: 0 },
 };
 import { CombatFx, Enemies, WeaponFamiliar, useWeaponModel } from "../combat/CombatScene";
 import { Ouroboros } from "./Props";
@@ -79,7 +83,12 @@ import { BlobShadow, useArchMaterials } from "./Architecture";
 import { AVATAR_BY_ID, worldAsset } from "@/lib/world/avatars";
 import { DUMMIES, GARDEN, GATES, GATE_BY_ID, HUB_WALK_R, INTERACT, MUSEUM, NPC, PAVILION, UPDRAFT, YARD, creatureSpot, hubBlocked as layoutBlocked, hubGround, type GateId } from "@/lib/world/hubLayout";
 import { HubPlaza } from "./HubPlaza";
+import { VaultDoor } from "../vault/VaultDoor";
+import { TorusDoor } from "./torus/TorusDoor";
+import { CoastDoor } from "./coast/CoastDoor";
+import { BazaarDoor } from "./bazaar/BazaarDoor";
 import { TITLES } from "../ui/AreaTitle";
+import { isSwimming, swimVy, wadeFactor } from "@/lib/world/swim";
 import type { CreatureView } from "@/lib/world/service";
 
 /** Cổng phó bản boss (bệ nam) — giữ tên cũ cho các nơi khác dùng */
@@ -127,6 +136,10 @@ export function Hub() {
   return (
     <group>
       <HubPlaza />
+      <VaultDoor />
+      <TorusDoor />
+      <CoastDoor />
+      <BazaarDoor />
       {/* NPC VRM ~20 MB mỗi model: bỏ trên máy yếu / điện thoại */}
       {quality !== "low" && (
         <>
@@ -177,6 +190,8 @@ export interface PlayerField {
   drive?: (dt: number) => boolean;
   frame?: () => THREE.Quaternion | null;
   camFrame?: () => THREE.Quaternion | null;
+  /** độ cao mặt nước tại chỗ người chơi (null = không ở trong nước) → bơi khi ngập sâu: nổi, đi chậm, nhảy = đạp nước, nhìn xuống + đi = lặn */
+  water?: (p: THREE.Vector3) => number | null;
 }
 const Y_UP = new THREE.Vector3(0, 1, 0);
 
@@ -461,7 +476,23 @@ export function Player({
     // Mặt đất + nhảy: trên không thì rơi theo trọng lực; chạm đất thì bám mượt theo bậc / dốc
     const gy = ground ? ground(s.player.x, s.player.z, s.player.y) : 0;
     if (!driven) air.height = s.player.y - gy;
-    if (driven) {
+    // Bơi (cảnh có nước): ngập quá 0,55 m trên nước đủ sâu → nổi đầu trên mặt nước, đi chậm; lội nông thì chỉ chậm lại
+    const ws = !driven && field?.water ? field.water(s.player) : null;
+    const swim = isSwimming(ws, s.player.y, gy, motion.vy);
+    if (field?.water) motion.wade = wadeFactor(ws, s.player.y, swim);
+    motion.swimming = swim;
+    if (swim && ws !== null) {
+      motion.grounded = false;
+      motion.gliding = false;
+      motion.plunging = false;
+      // nổi: đầu nhô khỏi mặt nước, dập dềnh; nhìn xuống (máy quay cao) + bơi tới → lặn; nhịp đạp (vy > 0) giữ đà lên
+      motion.vy = swimVy({ surface: ws, y: s.player.y, floor: gy, vy: motion.vy, dive: mag > 0.05 && s.camPitch > 0.8, t: now, dt });
+      s.player.y += motion.vy * dt;
+      if (s.player.y < gy) {
+        s.player.y = gy;
+        motion.vy = Math.max(0, motion.vy);
+      }
+    } else if (driven) {
       // mặt đất / rơi do cảnh lo
     } else if (!motion.grounded || motion.vy > 0) {
       motion.vy -= (motion.plunging ? 40 : 22) * dt * (field?.gravity?.(s.player) ?? 1);
@@ -487,7 +518,7 @@ export function Player({
         motion.gliding = false;
         // Tiếp đất mạnh → vòng bụi + rung máy nhẹ
         if (motion.vy < -5) {
-          addFx("ring", TMP_T.set(s.player.x, gy + 0.05, s.player.z), { color: "#fff6dc", size: 0.9 });
+          strike("land", s.player.x, gy + 0.05, s.player.z, { r: 1.2, yaw: s.playerYaw, color: "#fff6dc" });
           s.addShake(Math.min(0.18, -motion.vy * 0.015));
         }
         s.player.y = gy;
@@ -541,7 +572,7 @@ export function Player({
     // Động tác
     const act = s.action && now < s.action.until ? s.action.pose : null;
     // Nhảy 3 pha (bật → lơ lửng → tiếp đất); sau khi đánh cận chiến giữ thế cầm kiếm 2,5 s
-    const airPose: Pose | null = motion.plunging ? "slash" : !motion.grounded ? (motion.vy > 1 && !motion.gliding ? "jump" : "fall") : now - motion.landAt < 230 ? "land" : null;
+    const airPose: Pose | null = motion.swimming ? (mag > 0.05 ? "swim" : "tread") : motion.plunging ? "slash" : !motion.grounded ? (motion.vy > 1 && !motion.gliding ? "jump" : "fall") : now - motion.landAt < 230 ? "land" : null;
     const melee = armed && HELD_W[curWeapon().id]?.hand === "right";
     const idlePose: Pose = melee && now - useCombat.getState().swingAt < 2500 ? "stance" : "idle";
     const next: Pose = down ? "hurt" : motion.plunging ? "slash" : act ?? airPose ?? (mag > 0.05 ? (run ? "run" : "walk") : idlePose);
@@ -564,6 +595,7 @@ export function Player({
 
     // Camera cầu quanh nhân vật: mục tiêu bám nhanh, khoảng cách/góc bám mượt (cảm giác "trễ" nhẹ)
     CAM.cam = camera;
+    CAM.self = g;
     if (CAM.shift) {
       // thế giới vừa quấn người chơi sang một ô giống hệt → dời máy quay theo, không để nó "bay" qua
       camTarget.current.add(CAM.shift);
@@ -626,12 +658,16 @@ export function Player({
       pc.updateProjectionMatrix();
     }
     // (trọng lực kỳ dị: độ lệch mục tiêu + quỹ đạo máy quay tính trong hệ "lên" hiện tại rồi xoay ra thế giới)
-    TMP_T.set(sideX, 1.3 + 0.2 * ak, sideZ);
+    // B1: đứng sát boss to (CAM.focus) → máy quay tự lùi xa + hạ góc + nâng điểm nhìn (không ghi đè góc người chơi chỉnh)
+    const fc = CAM.focus;
+    const bf = fc ? bossFrame(1, s.camPitch, closeness(Math.hypot(s.player.x - fc.x, s.player.z - fc.z), fc.near, fc.far) * (1 - ak)) : null;
+    TMP_T.set(sideX, 1.3 + 0.2 * ak + (bf ? bf.lift : 0), sideZ);
     const cq = field?.camFrame ? field.camFrame() : fq;
     if (cq) TMP_T.applyQuaternion(cq);
     camTarget.current.lerp(TMP_T.add(s.player), Math.min(1, rawDt * 10));
-    const cp = Math.cos(s.camPitch);
-    TMP_POS.set(Math.sin(s.camYaw) * cp, Math.sin(s.camPitch), Math.cos(s.camYaw) * cp).multiplyScalar((s.camDist * (1 - ak) + 1.7 * ak) * CAM.dolly * camK.current);
+    const pitch = bf ? bf.pitch : s.camPitch;
+    const cp = Math.cos(pitch);
+    TMP_POS.set(Math.sin(s.camYaw) * cp, Math.sin(pitch), Math.cos(s.camYaw) * cp).multiplyScalar((s.camDist * (1 - ak) + 1.7 * ak) * CAM.dolly * camK.current * (bf ? bf.dist : 1));
     if (cq) TMP_POS.applyQuaternion(cq);
     TMP_POS.add(camTarget.current);
     camera.up.copy(Y_UP);
@@ -673,13 +709,17 @@ export function Player({
 function nearest(p: THREE.Vector3, creatures: CreatureView[]) {
   const lang = useWorld.getState().lang;
   const G = GATE_BY_ID;
-  const cands: { kind: "portal" | "museum" | "characters" | "creature" | "wonder" | "npc"; id?: string; label: string; pos: THREE.Vector3; r?: number }[] = [
+  const cands: { kind: "portal" | "museum" | "characters" | "creature" | "wonder" | "npc" | "action"; id?: string; label: string; pos: THREE.Vector3; r?: number }[] = [
     { kind: "npc", id: "suong", label: lang === "vi" ? "Trò chuyện với Sương" : "Talk to Sương", pos: V3(NPC.guide) },
     { kind: "npc", id: "diep", label: lang === "vi" ? "Trò chuyện với Diệp" : "Talk to Diệp", pos: V3(NPC.curator) },
     { kind: "portal", id: "valley", label: tt(lang, "enterValley"), pos: V3(G.valley), r: G.valley.r - 0.4 },
     { kind: "portal", id: "expanse", label: tt(lang, "enterExpanse"), pos: V3(G.expanse), r: G.expanse.r - 0.4 },
     { kind: "portal", id: "impossible", label: tt(lang, "enterImpossible"), pos: V3(G.impossible), r: G.impossible.r - 0.4 },
     { kind: "portal", id: "study", label: tt(lang, "enterStudy"), pos: V3(INTERACT.study), r: 2 },
+    { kind: "action", id: "vault:door", label: tt(lang, "enterVault"), pos: V3(INTERACT.vault), r: 2.2 },
+    { kind: "portal", id: "torus", label: tt(lang, "enterTorus"), pos: V3(INTERACT.torus), r: 2 },
+    { kind: "portal", id: "coast", label: tt(lang, "enterCoast"), pos: V3(INTERACT.coast), r: 2 },
+    { kind: "portal", id: "bazaar", label: tt(lang, "enterBazaar"), pos: V3(INTERACT.bazaar), r: 2 },
     { kind: "portal", id: "siren", label: lang === "vi" ? "Vào Mê cung Hoạ âm (boss tổ đội)" : "Enter the Labyrinth of Harmonics (co-op boss)", pos: V3(G.siren), r: G.siren.r - 0.4 },
     { kind: "museum", label: tt(lang, "museum"), pos: V3(INTERACT.museum), r: 3.2 },
     { kind: "characters", label: tt(lang, "mirror"), pos: V3(INTERACT.mirror), r: 2.4 },

@@ -1,0 +1,48 @@
+{
+  "info": {
+    "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "w": 1094,
+    "h": 615,
+    "scene": "hub",
+    "q": "mid"
+  },
+  "anon": [
+    "19  BufferGeometry v3 inst1 |  | depth Scene vistrue",
+    "4  BufferGeometry v513 inst1 | uT,uTex,uSpeed,uCore,uWhite,uScale | depth Group vistrue",
+    "3  PlaneGeometry v4 inst1 | uT,uA,uB,uShape,uNear | depth Group vistrue",
+    "2  PlaneGeometry v4 inst1 | uTime,uColor,uColor2,uGlyphs,uIntensity,uReveal | depth Group vistrue",
+    "2  CircleGeometry v34 inst1 | uT,uR,uInner,uC,uK,uD | depth Group vistrue",
+    "2  CircleGeometry v34 inst1 | uNormal,uNoise,uLUT,uFoamTex,uLace,uRings | depth Group vistrue",
+    "1  PlaneGeometry v4 inst1 | uTex,uDelta,uDrops,uN,uDamp | depth Scene vistrue",
+    "1  PlaneGeometry v4 inst1 | uPrev,uWave,uDelta,uStamps,uN,uDecay | depth Scene vistrue",
+    "1  BufferGeometry v4796 inst8 | uWind,uFocus | depth Scene vistrue",
+    "1  BufferGeometry v2878 inst8 | uWind,uFocus | depth Scene vistrue",
+    "1  BufferGeometry v1120 inst8 | uAtlas,uT,uGust,uFocus | depth Scene vistrue",
+    "1  BufferGeometry v4800 inst8 | uWind,uFocus | depth Scene vistrue",
+    "1  BufferGeometry v2879 inst8 | uWind,uFocus | depth Scene vistrue",
+    "1  BufferGeometry v1440 inst8 | uAtlas,uT,uGust,uFocus | depth Scene vistrue",
+    "1  SphereGeometry v1225 inst1 | uT,uSun,uMoon,uZen,uHor,uSunK | depth Group vistrue",
+    "1  CircleGeometry v50 inst1 | uT,uSX,uSZ | depth Group vistrue",
+    "1  PlaneGeometry v4 inst1 | uT | depth Group vistrue",
+    "1  SphereGeometry v315 inst15 |  | depth Group vistrue",
+    "1  SphereGeometry v315 inst7 |  | depth Group vistrue",
+    "1  InstancedBufferGeometry v180 inst1 |  | depth Scene vistrue",
+    "1  BufferGeometry v320 inst |  | depth Group vistrue",
+    "1  CylinderGeometry v42 inst1 | uTime | depth Group vistrue",
+    "1  CircleGeometry v12 inst |  | depth Group vistrue",
+    "1  BufferGeometry v9 inst |  | depth Group vistrue",
+    "1  CylinderGeometry v98 inst1 | uT,uSun,uNoise | depth Group vistrue",
+    "1  CircleGeometry v26 inst1 |  | depth Group vistrue",
+    "1  CircleGeometry v66 inst1 | uT,uR,uInner,uC,uK,uD | depth Group vistrue",
+    "1  PlaneGeometry v4 inst1 |  | depth Group vistrue",
+    "1  BufferGeometry v160 inst1 | uOn,uBoost | depth Group vistrue",
+    "1  InstancedBufferGeometry v4 inst1 | uViewport | depth Scene vistrue",
+    "1  InstancedBufferGeometry v4 inst1 | uRunes | depth Scene vistrue",
+    "1  BufferGeometry v2560 inst1 |  | depth Group vistrue",
+    "1  BufferGeometry v896 inst1 | uT,uBrush,uBrushK | depth Scene vistrue"
+  ],
+  "errors": [
+    "warning: THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.",
+    "warning: THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+  ]
+}

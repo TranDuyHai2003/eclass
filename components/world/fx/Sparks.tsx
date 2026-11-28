@@ -7,12 +7,18 @@
  *  • màu: lõi trắng ấm → thân màu phép → đuôi tắt dần (ramp theo tuổi), độ sáng 2–5 (bloom bắt).
  * Mô phỏng CPU nhẹ (≤ 480 hạt), giới hạn cỡ trên màn hình để tránh overdraw khi sát camera.
  * API: emitSpark(...), emitBurst(...) — gọi từ bất cứ đâu (combat, phép, cảnh).
+ * Giới hạn theo mức hiệu ứng trong cài đặt đồ hoạ (V1, lib/world/vfxBudget.ts): số hạt sống tối đa 140 / 300 / 480,
+ * chùm nổ và tia trúng đòn phát 40 % / 70 % / 100 % số hạt.
  */
 import { useEffect, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useWorld } from "../store";
 import { timeScale } from "../store";
+import { useGfx } from "../gfx";
+import { canEmit, scaleCount, type VfxLevel } from "@/lib/world/vfxBudget";
+import { vfxRand } from "@/lib/world/vfxRng";
+import { fxFrozen } from "./fxClock";
 
 const MAX = 480;
 const P = {
@@ -26,19 +32,44 @@ const P = {
   kind: new Float32Array(MAX),
   drag: new Float32Array(MAX),
   grav: new Float32Array(MAX),
+  /** độ cao sàn (−∞ = không va chạm): tia chạm đất thì nảy thấp + trượt (than hồng lắng xuống) thay vì xuyên đất */
+  floor: new Float32Array(MAX).fill(-1e9),
   head: 0,
+  /** số hạt đang sống (đếm lại mỗi khung + cộng dồn khi phát) và mức hiệu ứng hiện tại */
+  live: 0,
+  level: 2 as VfxLevel,
+  /** DEV: số hạt sống cao nhất từ lần đọc trước (window.__sparks()) */
+  peak: 0,
 };
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production")
+  (window as unknown as { __sparks: unknown }).__sparks = () => {
+    const r = { live: P.live, peak: P.peak };
+    P.peak = 0;
+    return r;
+  };
+function level(): VfxLevel {
+  return (useGfx.getState().vfx ?? 2) as VfxLevel;
+}
 const C = new THREE.Color();
 
 export type SparkOpts = { size?: number; life?: number; stretch?: number; kind?: 0 | 1; drag?: number; gravity?: number; bright?: number };
 
-/** một hạt: vị trí, vận tốc (m/s), màu (chuỗi hoặc Color) */
-export function emitSpark(x: number, y: number, z: number, vx: number, vy: number, vz: number, color: string | THREE.Color, o: SparkOpts = {}) {
+/** một hạt: vị trí, vận tốc (m/s), màu (chuỗi hoặc Color); floorY: mặt sàn để hạt nảy / trượt (mặc định không va chạm) */
+export function emitSpark(x: number, y: number, z: number, vx: number, vy: number, vz: number, color: string | THREE.Color, o: SparkOpts = {}, floorY = -1e9) {
+  // glint (điểm nhấn) luôn được phát; tia thường bị cắt khi vượt ngân sách của mức đồ hoạ
+  if (o.kind !== 1 && !canEmit(P.live, P.level)) return;
+  P.live++;
   const i = P.head++ % MAX;
-  P.pos.set([x, y, z], i * 3);
-  P.vel.set([vx, vy, vz], i * 3);
+  P.pos[i * 3] = x;
+  P.pos[i * 3 + 1] = y;
+  P.pos[i * 3 + 2] = z;
+  P.vel[i * 3] = vx;
+  P.vel[i * 3 + 1] = vy;
+  P.vel[i * 3 + 2] = vz;
   C.set(color as THREE.ColorRepresentation).multiplyScalar(o.bright ?? 2.6);
-  P.col.set([C.r, C.g, C.b], i * 3);
+  P.col[i * 3] = C.r;
+  P.col[i * 3 + 1] = C.g;
+  P.col[i * 3 + 2] = C.b;
   P.life[i] = o.life ?? 0.5;
   P.age[i] = 0;
   P.size[i] = o.size ?? 0.05;
@@ -46,19 +77,21 @@ export function emitSpark(x: number, y: number, z: number, vx: number, vy: numbe
   P.kind[i] = o.kind ?? 0;
   P.drag[i] = o.drag ?? 2.5;
   P.grav[i] = o.gravity ?? 4;
+  P.floor[i] = floorY;
 }
 
 /** chùm tia toả nửa cầu trên (thay vụ nổ khối hình học cũ) + vài glint */
 export function emitBurst(x: number, y: number, z: number, color: string, n = 24, speed = 5, o: SparkOpts = {}) {
+  n = scaleCount(n, level());
   for (let k = 0; k < n; k++) {
-    const u = Math.random() * 2 - 1;
-    const th = Math.random() * Math.PI * 2;
+    const u = vfxRand() * 2 - 1;
+    const th = vfxRand() * Math.PI * 2;
     const rr = Math.sqrt(1 - u * u);
-    const sp = speed * (0.35 + Math.random() * 0.8);
+    const sp = speed * (0.35 + vfxRand() * 0.8);
     const glint = k % 6 === 0;
     emitSpark(x, y, z, rr * Math.cos(th) * sp, (Math.abs(u) * 1.1 + 0.25) * sp, rr * Math.sin(th) * sp, k % 3 === 0 ? "#fff4d4" : color, {
-      size: glint ? 0.22 : 0.035 + Math.random() * 0.035,
-      life: glint ? 0.35 : 0.35 + Math.random() * 0.45,
+      size: glint ? 0.22 : 0.035 + vfxRand() * 0.035,
+      life: glint ? 0.35 : 0.35 + vfxRand() * 0.45,
       kind: glint ? 1 : 0,
       ...o,
     });
@@ -68,12 +101,12 @@ export function emitBurst(x: number, y: number, z: number, color: string, n = 24
 /** tia trúng đòn dùng chung: 1 glint + 5–9 tia ngắn xoè theo hướng (dx, dz) */
 export function emitHit(x: number, y: number, z: number, color: string, dx = 0, dz = 0, k = 1) {
   emitSpark(x, y, z, 0, 0, 0, "#fff4d4", { kind: 1, size: 0.26 * k, life: 0.16, bright: 3.2 });
-  const n = 5 + Math.floor(Math.random() * 5);
+  const n = scaleCount(5 + Math.floor(vfxRand() * 5), level());
   const l = Math.hypot(dx, dz) || 1;
   for (let i = 0; i < n; i++) {
-    const a = Math.random() * Math.PI * 2;
-    const s = 4 + Math.random() * 5;
-    emitSpark(x, y, z, Math.cos(a) * s * 0.7 + (dx / l) * 3, (Math.random() * 0.9 + 0.2) * s * 0.7, Math.sin(a) * s * 0.7 + (dz / l) * 3, i % 2 ? color : "#fff4d4", { size: 0.03, life: 0.12 + Math.random() * 0.12, stretch: 0.045, drag: 6, gravity: 2 });
+    const a = vfxRand() * Math.PI * 2;
+    const s = 4 + vfxRand() * 5;
+    emitSpark(x, y, z, Math.cos(a) * s * 0.7 + (dx / l) * 3, (vfxRand() * 0.9 + 0.2) * s * 0.7, Math.sin(a) * s * 0.7 + (dz / l) * 3, i % 2 ? color : "#fff4d4", { size: 0.03, life: 0.12 + vfxRand() * 0.12, stretch: 0.045, drag: 6, gravity: 2 });
   }
 }
 
@@ -124,6 +157,12 @@ const FS = /* glsl */ `
     gl_FragColor = vec4(vCol.rgb * a, 1.0);
   }`;
 
+function upload(a: THREE.InstancedBufferAttribute, n: number) {
+  a.clearUpdateRanges();
+  a.addUpdateRange(0, n * a.itemSize);
+  a.needsUpdate = true;
+}
+
 export function Sparks() {
   const { gl, size } = useThree();
   const { mesh, geo, mat } = useMemo(() => {
@@ -173,7 +212,8 @@ export function Sparks() {
       last.id = b.id;
       emitBurst(b.pos[0], b.pos[1], b.pos[2], b.color, Math.min(48, Math.round(b.count * 0.7)));
     }
-    const dt = Math.min(0.05, rawDt) * timeScale();
+    // __fxFreeze (dev): dừng cả hạt để ảnh chụp từng pha khớp với phép / khói / sóng xung kích
+    const dt = fxFrozen() ? 0 : Math.min(0.05, rawDt) * timeScale();
     const ip = geo.attributes.iPos as THREE.InstancedBufferAttribute;
     const iv = geo.attributes.iVel as THREE.InstancedBufferAttribute;
     const ic = geo.attributes.iCol as THREE.InstancedBufferAttribute;
@@ -191,6 +231,13 @@ export function Sparks() {
       P.pos[i * 3] += P.vel[i * 3] * dt;
       P.pos[i * 3 + 1] += P.vel[i * 3 + 1] * dt;
       P.pos[i * 3 + 2] += P.vel[i * 3 + 2] * dt;
+      if (P.pos[i * 3 + 1] < P.floor[i]) {
+        // chạm sàn: nảy thấp + ma sát (không xuyên đất)
+        P.pos[i * 3 + 1] = P.floor[i];
+        if (P.vel[i * 3 + 1] < 0) P.vel[i * 3 + 1] *= -0.28;
+        P.vel[i * 3] *= 0.55;
+        P.vel[i * 3 + 2] *= 0.55;
+      }
       // ramp: loé nhanh (0–8%) rồi tắt dần; màu ngả về thân khi già
       const a = k < 0.08 ? k / 0.08 : 1 - (k - 0.08) / 0.92;
       ip.setXYZ(n, P.pos[i * 3], P.pos[i * 3 + 1], P.pos[i * 3 + 2]);
@@ -200,8 +247,15 @@ export function Sparks() {
       n++;
     }
     geo.instanceCount = n;
+    P.live = n;
+    if (n > P.peak) P.peak = n;
+    P.level = level();
     if (n) {
-      ip.needsUpdate = iv.needsUpdate = ic.needsUpdate = is.needsUpdate = true;
+      // chỉ tải phần đang sống (bộ đệm 480 hạt, thường dùng vài chục)
+      upload(ip, n);
+      upload(iv, n);
+      upload(ic, n);
+      upload(is, n);
     }
   });
   return <primitive object={mesh} />;

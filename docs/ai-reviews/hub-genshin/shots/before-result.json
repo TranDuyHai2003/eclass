@@ -1,0 +1,43 @@
+{
+  "info": {
+    "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "w": 1094,
+    "h": 615,
+    "scene": "hub",
+    "q": "mid"
+  },
+  "perf": {
+    "spawn": {
+      "fps": 29.6,
+      "frameMs": 33.73,
+      "gpuMs": 10.92,
+      "cpuMs": 29.4,
+      "cpuP95": 33,
+      "gapP95": 39.5,
+      "renders": 24.25,
+      "calls": 466,
+      "tris": 945002,
+      "programs": 177,
+      "geometries": 308,
+      "textures": 130
+    },
+    "overview": {
+      "fps": 38.3,
+      "frameMs": 26.12,
+      "gpuMs": 9.62,
+      "cpuMs": 24.2,
+      "cpuP95": 28.7,
+      "gapP95": 32.1,
+      "renders": 23.87,
+      "calls": 419,
+      "tris": 915926,
+      "programs": 179,
+      "geometries": 336,
+      "textures": 130
+    }
+  },
+  "errors": [
+    "warning: THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.",
+    "warning: THREE.Clock: This module has been deprecated. Please use THREE.Timer instead."
+  ]
+}

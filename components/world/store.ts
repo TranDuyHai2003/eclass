@@ -14,8 +14,8 @@ export type Quality = "low" | "mid" | "high";
 export type ActPose = "cast" | "cheer" | "hurt" | "jump" | "slash" | "roll";
 /** Đoạn clip cụ thể cho một động tác (thế võ): tên clip trong thư viện animation, giây bắt đầu, tốc độ */
 export type ActClip = { name: string; from: number; speed: number };
-export type SceneId = "hub" | "valley" | "expanse" | "impossible" | "siren" | "babel" | "paradox" | "study";
-export type Overlay = null | "museum" | "battle" | "characters" | "discovery" | "wonder" | "emotes" | "forge" | "console" | "babel" | "hilbert" | "guide" | "cave" | "monty" | "theseus" | "maxwell" | "croom" | "paradox";
+export type SceneId = "hub" | "valley" | "expanse" | "impossible" | "siren" | "babel" | "paradox" | "study" | "vault" | "torus" | "bazaar" | "coast" | "archive";
+export type Overlay = null | "museum" | "battle" | "characters" | "discovery" | "wonder" | "emotes" | "forge" | "console" | "babel" | "hilbert" | "guide" | "cave" | "monty" | "theseus" | "maxwell" | "croom" | "paradox" | "craft";
 
 export interface Burst {
   id: number;
