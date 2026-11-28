@@ -75,3 +75,14 @@ tam giác desktop; texture KTX2 / WebP khi đóng gói.
   - Kiểm bằng mắt + chụp ảnh (sảnh, hành lang, lối kệ, cửa SCP, ô tối có đèn pin, so sánh với cảnh toon) và đo `__perf` trong cảnh (lần đo đầu: 160 lệnh vẽ, 640k tam giác, 32 lượt render mỗi khung — vượt ngân sách, cần tìm nguồn: bóng đèn pin vẽ lại kệ 12,4k tam giác, N8AO + bloom).
   - Cửa vào từ sân Bất Khả: đã có `ArchiveDoor.tsx` + `GATE` / `gateBlocked` trong `archiveLayout.ts` nhưng CHƯA gắn vào `Impossible.tsx` (gỡ ra vì chưa kiểm vị trí) — gắn lại: render `<ArchiveDoor />` trong Court, `gateBlocked` trong impBlocked, cổng `archive` trong impNearby (WorldClient đã có chỗ xuất hiện khi trở về).
   - Giảm tam giác kệ (decimate hoặc LOD), chỉ cho kệ gần đổ bóng; âm nền (tiếng ù huỳnh quang); thử WebGPU.
+
+- 29/11 (nối vào game + kiểm bằng trình duyệt thật — Chrome headless qua CDP, GPU Iris Xe, ANGLE D3D11, 1094 × 615, mức "mid"):
+  - Cửa hầm SCP (`ArchiveDoor.tsx`) đã gắn vào sân Thế giới Bất Khả ở mép đông (x 18,2; z −1,5; mặt quay về tâm sân), có va chạm (`gateBlocked`), nhắc "Mở cửa hầm (Thư khố bỏ hoang)" / "Open the vault door…", bấm F → lỗ sâu → Thư khố. Về: đứng dưới cửa sổ trăng cuối sảnh, F → xuất hiện trước cửa hầm ở sân (đã kiểm cả hai chiều).
+  - Màn đen ở chỗ xuất hiện: ĐÃ HẾT (nguyên nhân: tường đầu sảnh cũ có cửa đôi đóng kín che máy quay; đã thay bằng tường có lối 4 m + nướng lại lightmap sảnh). Mép cửa sổ ô lộ nền xanh của trang → nền cảnh = màu sương (cùng một Color), sương dày hơn (0,085).
+  - Hiệu năng: kệ thép giảm 12,4k → 3,7k tam giác (Decimate collapse giữ đường nối UV); chỉ kệ trong 3 × 3 ô quanh người chơi đổ bóng đèn pin (InstancedMesh riêng); cửa sổ ô 11 × 11 → 9 × 9; bloom mipmap 4 mức. 32 lượt render / khung KHÔNG phải probe hay cubemap (cubemap chụp đúng một lần khi gắn cảnh): mức "low" (không hậu kỳ) chỉ 2 lượt — phần còn lại là các lượt toàn màn hình của N8AO / bloom / SMAA; giờ còn 24.
+  - Đo `window.__perf(4000)` khi đã ở hẳn trong cảnh (scene = archive, đứng trong hành lang / ô tối): ~41 FPS, CPU ~22 ms, GPU ~11 ms, 139–152 lệnh vẽ, ~305k tam giác. Riêng môi trường Thư khố ≈ 32 lệnh vẽ, ~93k tam giác (tắt hết nhóm perf:ar_* còn 115 lệnh / 219k tam giác — là nhân vật VRM, hiệu ứng chung và các lượt hậu kỳ, có ở mọi cảnh). Mức "low": 60 FPS, 77 lệnh vẽ, 175k tam giác, 2 lượt render. → Tam giác đạt ngân sách (≤ 400k); lệnh vẽ toàn khung vượt 60 do phần chung của game, không phải do Thư khố.
+  - Ảnh: `shots/00-impossible-door.jpg`, `01-entrance.jpg`, `02-corridor.jpg`, `03-shelf-aisle.jpg`, `04-scp-door.jpg`, `05-dark-flashlight.jpg`.
+- Còn:
+  - Ô "tối" vẫn khá sáng (lightmap nướng với các ô hàng xóm sáng) và vệt đèn pin chưa nổi rõ → tăng cường độ đèn pin / giảm lightmap ô tối, thêm ảnh so trước / sau với cảnh hoạt hình.
+  - CPU ~22 ms/khung ở mức mid (giới hạn FPS): cân nhắc tắt N8AO mặc định ở mức mid trên máy này, gộp vật liệu cửa hầm (6 lệnh vẽ).
+  - Âm nền (ù huỳnh quang), thử WebGPU.

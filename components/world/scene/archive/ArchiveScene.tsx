@@ -48,14 +48,16 @@ import {
 
 const BASE = "archive/";
 /** bán kính cửa sổ ô quanh người chơi (ô) */
-const WIN_R = 5;
+const WIN_R = 4;
 const N_CELLS = (2 * WIN_R + 1) ** 2;
 /** module GLB → khoá lightmap */
-const MODS = ["cell", "cell_dark", "wall", "door", "pillar", "shelf"] as const;
+const MODS = ["cell", "cell_dark", "wall", "door", "pillar", "shelf", "shelf_near"] as const;
+/** kệ gần (≤ 1 ô quanh người chơi) đổ bóng đèn pin; kệ xa thì không (bóng chỉ thấy rõ ở gần) — cùng lưới GLB */
+const NODE: Record<string, string> = { shelf_near: "shelf" };
 type Mod = (typeof MODS)[number];
-const CAP: Record<Mod, number> = { cell: N_CELLS, cell_dark: N_CELLS, wall: 4 * N_CELLS, door: N_CELLS, pillar: (2 * WIN_R + 2) ** 2, shelf: N_CELLS };
+const CAP: Record<Mod, number> = { cell: N_CELLS, cell_dark: N_CELLS, wall: 4 * N_CELLS, door: N_CELLS, pillar: (2 * WIN_R + 2) ** 2, shelf: N_CELLS, shelf_near: 9 };
 /** vật thể đổ bóng đèn pin */
-const CASTS: Record<Mod, boolean> = { cell: false, cell_dark: false, wall: true, door: true, pillar: true, shelf: true };
+const CASTS: Record<Mod, boolean> = { cell: false, cell_dark: false, wall: true, door: true, pillar: true, shelf: false, shelf_near: true };
 
 // ───────────── epoch "bất khả" (ô phòng đổi dạng sau lưng) ─────────────
 const EPOCH = new Map<number, number>();
@@ -231,13 +233,14 @@ export function Archive() {
     const mats: THREE.MeshStandardMaterial[] = [];
     const insts: Inst[] = [];
     for (const mod of MODS) {
-      const node = gltf.scene.getObjectByName("m_" + mod);
+      const base = NODE[mod] ?? mod;
+      const node = gltf.scene.getObjectByName("m_" + base);
       if (!node) continue;
       const meshes: THREE.Mesh[] = [];
       node.traverse((o) => (o as THREE.Mesh).isMesh && meshes.push(o as THREE.Mesh));
       for (const me of meshes) {
         const src = me.material as THREE.Material;
-        const mat = makeMat(src.name, tex, lms["mod_" + mod], LM_SCALE["mod_" + mod] ?? 1);
+        const mat = makeMat(src.name, tex, lms["mod_" + base], LM_SCALE["mod_" + base] ?? 1);
         mats.push(mat);
         const im = new THREE.InstancedMesh(me.geometry, mat, CAP[mod]);
         im.count = 0;
@@ -291,7 +294,7 @@ export function Archive() {
     for (const m of MODS) r[m] = insts.filter((x) => x.mod === m);
     return r;
   }, [insts]);
-  const counts = useMemo(() => ({ cell: 0, cell_dark: 0, wall: 0, door: 0, pillar: 0, shelf: 0 }) as Record<Mod, number>, []);
+  const counts = useMemo(() => ({ cell: 0, cell_dark: 0, wall: 0, door: 0, pillar: 0, shelf: 0, shelf_near: 0 }) as Record<Mod, number>, []);
   const FWD = useMemo(() => new THREE.Vector3(), []);
 
   function put(mod: Mod, x: number, z: number, rot: number) {
@@ -323,7 +326,7 @@ export function Archive() {
           flick.idx[flick.n] = n;
           flick.seed[flick.n++] = ((i * 92821) ^ (j * 68917)) & 1023;
         }
-        if (b & SHELFC) put("shelf", x, z, Math.PI / 2);
+        if (b & SHELFC) put(Math.abs(i - ci) <= 1 && Math.abs(j - cj) <= 1 ? "shelf_near" : "shelf", x, z, Math.PI / 2);
         for (let d = 0; d < 4; d++) {
           const k = edgeKind(i, j, d, epochOf);
           if (k) put(k === 2 ? "door" : "wall", x, z, DIR_ROT[d]);
@@ -424,15 +427,19 @@ export function Archive() {
     };
   }, [scene, torch]);
   const hemi = useRef<THREE.HemisphereLight>(null);
-  const fog = useMemo(() => new THREE.FogExp2("#15130f", 0.07), []);
+  const fog = useMemo(() => new THREE.FogExp2("#15130f", 0.085), []);
   const C = useMemo(
     () => ({ litSky: new THREE.Color("#fff0dc"), litGnd: new THREE.Color("#4a3c2c"), darkSky: new THREE.Color("#4a5468"), darkGnd: new THREE.Color("#120f0c"), hallSky: new THREE.Color("#9fb6ff"), hallGnd: new THREE.Color("#3a2c22"), fogNear: new THREE.Color("#17140f"), fogDeep: new THREE.Color("#0b1016"), tmp: new THREE.Color(), probe: { k: 1 } }),
     [],
   );
   useEffect(() => {
+    // nền = màu sương (cùng một Color, đổi theo độ sâu) → mép cửa sổ ô (≈ 16 m) tan vào sương, không lộ khoảng trống
+    const prevBg = scene.background;
     scene.fog = fog;
+    scene.background = fog.color;
     return () => {
       if (scene.fog === fog) scene.fog = null;
+      if (scene.background === fog.color) scene.background = prevBg;
     };
   }, [scene, fog]);
 
@@ -455,7 +462,7 @@ export function Archive() {
     const depth = Math.min(1, Math.hypot(p.x, p.z) / 70);
     const lk = 1 - 0.4 * depth;
     for (const m of mats) if (m.userData.lmBase) m.lightMapIntensity = m.userData.lmBase * lk;
-    fog.density = 0.062 + 0.035 * depth;
+    fog.density = 0.082 + 0.03 * depth;
     fog.color.lerpColors(C.fogNear, C.fogDeep, depth);
     // probe nhân vật: khớp ô đang đứng (sáng / đèn hỏng / sảnh trăng)
     const h = hemi.current;
@@ -487,7 +494,6 @@ export function Archive() {
 
   return (
     <group>
-      <color attach="background" args={["#050505"]} />
       <hemisphereLight ref={hemi} args={["#fff0dc", "#4a3c2c", 1.2]} />
       {insts.map((x, i) => (
         <primitive key={i} object={x.im} />

@@ -83,7 +83,7 @@ export function BlockInteractor() {
       if ((cur !== B.air && cur !== B.water) || py < -40 || py > 80) return;
       if (!consumeSlot(slot)) return;
       setBlock(px, py, pz, block);
-      sfx.click();
+      sfx.block("place", block);
     };
     const down = (e: MouseEvent) => {
       if (document.pointerLockElement !== gl.domElement) return;
@@ -208,7 +208,7 @@ export function BlockInteractor() {
 function breakBlock(x: number, y: number, z: number, id: number, creative: boolean) {
   const tl = tool();
   setBlock(x, y, z, B.air);
-  sfx.hit(0);
+  sfx.block("break", id);
   const c = BLOCK_RGB[id]?.[1] ?? [0.9, 0.86, 0.75];
   useWorld.getState().burst([x + 0.5, y + 0.5, z + 0.5], `rgb(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)})`, 12);
   if (creative) return;

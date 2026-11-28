@@ -24,6 +24,7 @@ import { PUFF, emitDustRing, emitPuff } from "./Puffs";
 import { emitSpark, type SparkOpts } from "./Sparks";
 import { blankTexture, whenVfxTextures } from "./vfxTextures";
 import { vfxRand } from "@/lib/world/vfxRng";
+import { sfx } from "@/lib/world/sfx";
 import { STRIKE_BEATS, beatAt, catenary, isKnightCell, lodCount, newBeat, strikeDuration, tendril, zigzagCrack, type StrikeShape } from "@/lib/world/strikeShapes";
 
 type Lv = 0 | 1 | 2;
@@ -118,6 +119,8 @@ export function strike(shape: StrikeShape, x: number, y: number, z: number, o: S
   e.arc = o.arc ?? Math.PI / 6;
   e.seed = Math.floor(vfxRand() * 1e6);
   e.fired = 0;
+  // âm rất nhỏ ở cao trào (báo trước + nín thở)
+  sfx.strike(shape, e.r, STRIKE_BEATS[shape].tele + STRIKE_BEATS[shape].hold);
   e.body.set(o.color ?? "#ffd27a");
   // 3 giá trị: mực = thân tối đi + ngả về tím than; lõi = thân ngả trắng (HDR nhân theo nhịp)
   e.ink.copy(e.body).multiplyScalar(0.25).lerp(DEEP, 0.55);

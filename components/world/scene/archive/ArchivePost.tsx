@@ -18,7 +18,7 @@ export function ArchivePost({ quality }: { quality: Quality }) {
       {!low ? <N8AO aoRadius={0.7} intensity={2.0} distanceFalloff={0.5} quality="performance" halfRes depthAwareUpsampling /> : <></>}
       {/* thấu kính / nhoè khi qua lỗ sâu */}
       <Lensing />
-      {!low && gfx.bloom ? <Bloom intensity={0.5} luminanceThreshold={1.15} luminanceSmoothing={0.25} mipmapBlur /> : <></>}
+      {!low && gfx.bloom ? <Bloom intensity={0.5} luminanceThreshold={1.15} luminanceSmoothing={0.25} mipmapBlur levels={4} /> : <></>}
       <ToneMapping mode={ToneMappingMode.AGX} />
       <BrightnessContrast brightness={0.0} contrast={0.08} />
       <Vignette eskil={false} offset={0.22} darkness={0.6} />

@@ -86,5 +86,3 @@ docs/ai-reviews/**/.review-stderr.log
 # Python cache
 __pycache__/
 
-# Nhạc render offline — chưa nối vào game, vượt ngân sách dung lượng (để sau)
-/public/world/audio/

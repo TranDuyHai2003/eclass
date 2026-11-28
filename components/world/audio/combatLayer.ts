@@ -8,6 +8,7 @@
 import { audioCore, audioRunning, getVol } from "./engine";
 import { noiseHit, osc } from "./synth";
 import { MUSIC_KEY } from "./sfxKit";
+import { musicGrid } from "./musicDirector";
 import { midiToHz } from "@/lib/world/music";
 import { COMBAT_PATTERN, combatDecay } from "@/lib/world/musicVoices";
 
@@ -40,7 +41,8 @@ function start() {
 
 function tick() {
   const core = audioCore(false);
-  const k = combatDecay(S.k, (performance.now() - S.at) / 1000);
+  // bản boss render sẵn đã có bộ gõ riêng → lớp này im
+  const k = musicGrid()?.boss ? 0 : combatDecay(S.k, (performance.now() - S.at) / 1000);
   if (!core || !S.out || !audioRunning() || k < 0.03) {
     if (S.out && core) S.out.gain.setTargetAtTime(0, core.ctx.currentTime, 0.5);
     if (S.timer) clearInterval(S.timer);

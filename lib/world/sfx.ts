@@ -10,6 +10,9 @@ import { audioCore, duckMusic, sfxVoice, type Voice } from "@/components/world/a
 import * as kit from "@/components/world/audio/sfxKit";
 import { noiseHit, osc } from "@/components/world/audio/synth";
 import { bumpCombat } from "@/components/world/audio/combatLayer";
+import { playStinger } from "@/components/world/audio/stemPlayer";
+import type { Surface } from "./foleyLogic";
+import { BLOCKS } from "./blocks";
 import { spellElement, type Element, type VoiceCat } from "./musicVoices";
 
 type Cat = Exclude<VoiceCat, "music">;
@@ -270,7 +273,8 @@ export const sfx = {
   },
   /** Thăng cấp / hoàn thành nhiệm vụ (theo khoá nhạc vùng) */
   levelUp() {
-    kit.levelUp();
+    // "Amen" hợp xướng (iv → I, render sẵn); chưa tải → kèn hợp âm tổng hợp cũ
+    if (!playStinger("amen")) kit.levelUp();
   },
   /** Vẽ ký hiệu: bắt đầu / nhận ra (khoá) / không nhận ra */
   sigilStart() {
@@ -287,6 +291,116 @@ export const sfx = {
     if (!v) return;
     tone(v, 1320, 0, 0.06, "sine", 0.08);
   },
+  /** Rê chuột qua nút: tích celesta rất nhỏ */
+  hover() {
+    const v = voice("ui", 0.08, 0, 0.05);
+    if (!v) return;
+    osc(v.c, v.out, { f0: 2637 * (0.98 + Math.random() * 0.04), t: v.t, a: 0.002, d: 0.045, gain: 0.018 });
+  },
+  /** Mở bảng: hai nốt celesta đi lên (quãng ba) */
+  uiOpen() {
+    const v = voice("ui", 0.4, 1, 0.25);
+    if (!v) return;
+    osc(v.c, v.out, { f0: 1318.5, t: v.t, a: 0.003, d: 0.16, gain: 0.045 });
+    osc(v.c, v.out, { f0: 1661.2, t: v.t + 0.06, a: 0.003, d: 0.22, gain: 0.04 });
+  },
+  /** Đóng bảng / quay lại: hai nốt đi xuống (quãng bốn) */
+  uiBack() {
+    const v = voice("ui", 0.35, 1, 0.2);
+    if (!v) return;
+    osc(v.c, v.out, { f0: 1318.5, t: v.t, a: 0.003, d: 0.12, gain: 0.035 });
+    osc(v.c, v.out, { f0: 987.8, t: v.t + 0.055, a: 0.003, d: 0.18, gain: 0.032 });
+  },
+  /** Bước chân theo mặt đất (nhỏ, ngẫu nhiên ±) */
+  footstep(s: Surface, speed = 3) {
+    const v = voice("move", 0.2, 0, 0.04);
+    if (!v) return;
+    const k = Math.min(1.3, 0.55 + speed / 10) * (0.85 + Math.random() * 0.3);
+    const j = 0.9 + Math.random() * 0.2;
+    const N = (dur: number, f0: number, f1: number, q: number, g: number, t = 0) => noiseHit(v.core, v.out, { t: v.t + t, dur, f0: f0 * j, f1: f1 * j, q, gain: g * k * LEG });
+    switch (s) {
+      case "grass":
+      case "leaf":
+        N(0.11, 2600, 1300, 0.9, 0.05);
+        N(0.05, 600, 300, 1, 0.03);
+        break;
+      case "sand":
+      case "snow":
+        N(0.14, s === "snow" ? 3200 : 1800, 900, 0.8, 0.05);
+        break;
+      case "wood":
+        osc(v.c, v.out, { type: "triangle", f0: 240 * j, f1: 170, t: v.t, a: 0.002, d: 0.06, gain: 0.05 * k });
+        N(0.04, 1500, 700, 1.5, 0.03);
+        break;
+      case "paper":
+        N(0.07, 3400, 1800, 1.2, 0.045);
+        N(0.03, 5200, 4000, 2, 0.02, 0.03);
+        break;
+      case "crystal":
+        osc(v.c, v.out, { f0: 2100 * j, t: v.t, a: 0.001, d: 0.05, gain: 0.012 * k });
+        N(0.04, 2200, 1200, 1.5, 0.035);
+        break;
+      default:
+        osc(v.c, v.out, { f0: 190 * j, f1: 120, t: v.t, a: 0.002, d: 0.05, gain: 0.05 * k });
+        N(0.05, 2400, 1000, 1.2, 0.035);
+    }
+  },
+  /** Tiếp đất sau cú rơi (power ~ thời gian trên không, giây) */
+  land(s: Surface, power = 0.5) {
+    const v = voice("move", 0.35, 1, 0.08);
+    if (!v) return;
+    const p = Math.min(1.5, 0.5 + power);
+    osc(v.c, v.out, { f0: 110, f1: 55, t: v.t, a: 0.003, d: 0.12, gain: 0.08 * p });
+    noiseHit(v.core, v.out, { t: v.t, dur: 0.1, f0: s === "grass" || s === "leaf" ? 1800 : 1200, f1: 400, q: 0.8, gain: 0.05 * p * LEG });
+  },
+  /** Xuống nước: quét nhiễu 3 kHz → 700 Hz + bong bóng */
+  splash(power = 1) {
+    const v = voice("move", 0.7, 2, 0.15);
+    if (!v) return;
+    const p = Math.min(1.4, power);
+    noiseHit(v.core, v.out, { t: v.t, dur: 0.38, f0: 3000, f1: 700, q: 0.7, gain: 0.12 * p * LEG });
+    for (let i = 0; i < 3; i++) osc(v.c, v.out, { f0: 500 + Math.random() * 500, f1: 1300 + Math.random() * 800, t: v.t + 0.08 + i * 0.05, d: 0.04, gain: 0.03 * p });
+  },
+  /** Sải bơi: nước gợn trầm */
+  swimStroke() {
+    const v = voice("move", 0.35, 0, 0.1);
+    if (!v) return;
+    noiseHit(v.core, v.out, { t: v.t, dur: 0.24, f0: 1200 * (0.9 + Math.random() * 0.2), f1: 300, q: 0.9, gain: 0.05 * LEG, a: 0.06 });
+  },
+  /** Đặt / phá khối voxel theo vật liệu (id trong BLOCKS) */
+  block(kind: "place" | "break", id: number) {
+    const name = BLOCKS[id] ?? "stone";
+    const soft = ["grass", "dirt", "moss", "leaf", "blossom", "pine", "sand", "snow"].includes(name);
+    const wood = ["wood", "plank", "rope", "bench", "torch"].includes(name);
+    const glass = ["glass", "crystal", "intcrystal"].includes(name);
+    const v = voice(kind === "break" ? "impact" : "ui", 0.35, 2, 0.12);
+    if (!v) return;
+    const j = 0.9 + Math.random() * 0.2;
+    if (kind === "place") {
+      osc(v.c, v.out, { type: "triangle", f0: (wood ? 260 : soft ? 180 : 220) * j, f1: 140, t: v.t, a: 0.002, d: 0.07, gain: 0.07 });
+      noiseHit(v.core, v.out, { t: v.t, dur: 0.05, f0: soft ? 1400 : 2200, f1: 800, q: 1.2, gain: 0.05 * LEG });
+      return;
+    }
+    if (glass) for (let i = 0; i < 4; i++) osc(v.c, v.out, { f0: (1800 + Math.random() * 2200) * j, t: v.t + i * 0.022, a: 0.001, d: 0.09, gain: 0.025 });
+    for (let i = 0; i < (soft ? 2 : 4); i++) noiseHit(v.core, v.out, { t: v.t + i * 0.03 * j, dur: 0.05, f0: (soft ? 1500 : wood ? 1900 : 2600) * j, f1: 600, q: 1.1, gain: (soft ? 0.06 : 0.08) * LEG });
+    osc(v.c, v.out, { type: "triangle", f0: (wood ? 200 : soft ? 120 : 160) * j, f1: 70, t: v.t, a: 0.002, d: 0.1, gain: 0.08 });
+  },
+  /** Hình strike() (VFX) tới cao trào: lớp rất nhỏ, theo nhóm hình (delayMs = báo trước + nín thở) */
+  strike(shape: string, r = 2, delayMs = 0) {
+    if (shape === "muzzle") return; // mỗi phát bắn đã có tiếng riêng
+    const v = voice("ambient", 0.6 + delayMs / 1000, 1, 0.25);
+    if (!v) return;
+    const t = delayMs / 1000;
+    const k = Math.min(1.2, 0.5 + r / 6);
+    if (["rupture", "crater", "crest", "drop", "piston", "wall", "land", "scorch"].includes(shape)) {
+      osc(v.c, v.out, { f0: 70, f1: 38, t: v.t + t, a: 0.004, d: 0.25, gain: 0.06 * k });
+    } else if (["sigil", "star", "converge", "hex", "iris", "gate", "dial", "grid", "knight"].includes(shape)) {
+      osc(v.c, v.out, { f0: 1760 * (0.97 + Math.random() * 0.06), t: v.t + t, a: 0.003, d: 0.25, gain: 0.015 * k });
+      osc(v.c, v.out, { f0: 2637, t: v.t + t + 0.03, a: 0.003, d: 0.2, gain: 0.01 * k });
+    } else {
+      noiseHit(v.core, v.out, { t: v.t + t, dur: 0.14, f0: 900, f1: 2600, q: 1.2, gain: 0.03 * k * LEG, a: 0.04 });
+    }
+  },
   /** Trống dồn (game show): các nhịp nhiễu dày dần + mạnh dần, kết bằng một cú chũm choẹ */
   drumroll(dur = 1.2) {
     const v = voice("ui", dur + 0.8, 2, 0.2);
@@ -297,6 +411,7 @@ export const sfx = {
   },
   /** Kèn chiến thắng: hợp âm rải trưởng đi lên + hợp âm ngân */
   fanfare() {
+    if (playStinger("victory", 0.9)) return;
     const v = voice("ui", 1.9, 3, 0.35);
     if (!v) return;
     const n = [523.25, 659.25, 783.99, 1046.5];

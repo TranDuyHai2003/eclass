@@ -9,6 +9,9 @@ import { Composer, enoOnsets, midiToHz, SCALES, chordPcs, zoneProfile, type Musi
 import { audioCore, audioRunning, getVol, onAudioChange } from "./engine";
 import { playEvent, startBed } from "./instruments";
 import { MUSIC_KEY } from "./sfxKit";
+import { StemPlayer, preloadStingers, stemLoadStats } from "./stemPlayer";
+import { selectTrack } from "@/lib/world/musicStems";
+import { TRACKS } from "@/lib/world/musicTracks";
 
 const TICK_MS = 50;
 const LOOKAHEAD = 0.25;
@@ -109,7 +112,10 @@ class ZonePlayer {
 }
 
 let player: ZonePlayer | null = null;
-let want: { scene: string; night: number } | null = null;
+let want: { scene: string; night: number; boss: boolean; fight: boolean } | null = null;
+let stem: StemPlayer | null = null;
+/** bản render bị lỗi tải → dùng nhạc tạo sinh cho bản đó (không thử lại trong phiên) */
+const failedTracks = new Set<string>();
 let timer: ReturnType<typeof setInterval> | null = null;
 let unsub: (() => void) | null = null;
 
@@ -118,43 +124,100 @@ function apply() {
   const run = !!want && audioRunning() && getVol("music") > 0.001 && !!k;
   if (!run || !k) {
     // tắt âm / chưa mở khoá / âm lượng nhạc 0: dừng hẳn (đỡ tốn CPU)
-    if (player && (!audioRunning() || getVol("music") <= 0.001)) {
-      player.stop(0.4);
+    if (!audioRunning() || getVol("music") <= 0.001) {
+      player?.stop(0.4);
       player = null;
+      stem?.stop(0.4);
+      stem = null;
     }
-    if (timer && !player) {
+    if (timer && !player && !stem) {
       clearInterval(timer);
       timer = null;
     }
     return;
   }
-  const p = zoneProfile(want!.scene, want!.night);
-  if (player && player.scene === want!.scene && p) {
-    // cùng vùng: chỉ đổi hồ sơ (ngày ↔ đêm) — áp dụng từ câu kế
-    if (player.p.id !== p.id) player.setProfile(p);
-  } else {
-    player?.stop();
-    player = p ? new ZonePlayer(p, want!.scene, k.ctx, k.duck, k.noise, player ? 0.8 : 0.3) : null;
+  preloadStingers();
+  const w = want!;
+  // 1) bản render sẵn (nếu có và chưa lỗi) — nhạc tạo sinh cũ dừng
+  const tid = selectTrack(w.scene, { night: w.night, boss: w.boss }, stem?.def.id ?? null);
+  if (stem?.failed) {
+    failedTracks.add(stem.def.id);
+    stem.stop(0.5);
+    stem = null;
   }
-  if (player && !timer) timer = setInterval(() => player?.tick(), TICK_MS);
-  if (!player && timer) {
+  const def = tid && !failedTracks.has(tid) ? TRACKS[tid] : undefined;
+  if (def) {
+    if (!stem || stem.def.id !== def.id) {
+      const bossIn = def.id === "boss";
+      const was = stem ?? player;
+      stem?.stop(bossIn ? 1.5 : 3);
+      player?.stop(bossIn ? 1.5 : 3);
+      player = null;
+      stem = new StemPlayer(def, k, was ? (bossIn ? 0.2 : 0.8) : 0.3, bossIn ? 1.2 : 3.5);
+    }
+    stem.ctrl.boss = w.fight;
+    stem.ctrl.harmonic = w.scene === "siren";
+  } else {
+    stem?.stop();
+    stem = null;
+    // 2) nhạc tạo sinh cũ (vùng chưa có bản render, hoặc bản render lỗi)
+    const p = zoneProfile(w.scene, w.night);
+    if (player && player.scene === w.scene && p) {
+      // cùng vùng: chỉ đổi hồ sơ (ngày ↔ đêm) — áp dụng từ câu kế
+      if (player.p.id !== p.id) player.setProfile(p);
+    } else {
+      player?.stop();
+      player = p ? new ZonePlayer(p, w.scene, k.ctx, k.duck, k.noise, player ? 0.8 : 0.3) : null;
+    }
+  }
+  if ((player || stem) && !timer) timer = setInterval(tickAll, TICK_MS);
+  if (!player && !stem && timer) {
     clearInterval(timer);
     timer = null;
   }
 }
 
-/** Đặt vùng hiện tại (gọi khi đổi cảnh, và định kỳ ở Quảng trường với mức đêm). scene = null: dừng nhạc. */
-export function setMusicZone(scene: string | null, night = 0) {
-  want = scene ? { scene, night } : null;
+function tickAll() {
+  player?.tick();
+  if (stem) {
+    stem.tick();
+    // tải lỗi (thiếu file / không giải mã được) → quay về nhạc tạo sinh
+    if (stem.failed) apply();
+  }
+}
+
+/**
+ * Đặt vùng hiện tại (gọi khi đổi cảnh, và định kỳ để cập nhật đêm / boss). scene = null: dừng nhạc.
+ * boss: đang đấu boss Vùng Kỳ quan (chuyển sang bản boss); fight: lớp boss dọc (Mê cung Hoạ âm).
+ */
+export function setMusicZone(scene: string | null, night = 0, o: { boss?: boolean; fight?: boolean } = {}) {
+  want = scene ? { scene, night, boss: !!o.boss, fight: !!o.fight } : null;
   if (!unsub) unsub = onAudioChange(apply);
   if (!scene) {
     player?.stop();
     player = null;
+    stem?.stop();
+    stem = null;
   }
   apply();
 }
 
+/** Lưới nhịp của bản render đang phát (combatLayer khoá theo) + có phải bản boss không */
+export function musicGrid() {
+  const g = stem && !stem.dead ? stem.grid() : null;
+  return g ? { ...g, boss: stem!.def.id === "boss" || stem!.ctrl.boss } : null;
+}
+
 /** Trạng thái để kiểm thử trong trình duyệt */
 export function musicDebug() {
-  return { zone: player?.p.id ?? null, scene: player?.scene ?? null, queued: player?.q.length ?? 0, last: player?.last ?? "", key: { ...MUSIC_KEY } };
+  return {
+    zone: player?.p.id ?? null,
+    scene: player?.scene ?? want?.scene ?? null,
+    queued: player?.q.length ?? 0,
+    last: player?.last ?? "",
+    key: { ...MUSIC_KEY },
+    stem: stem?.debug() ?? null,
+    loads: stemLoadStats(),
+    failed: [...failedTracks],
+  };
 }

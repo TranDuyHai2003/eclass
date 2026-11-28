@@ -55,6 +55,8 @@ import { motion } from "../combat/combat";
 import { setWind } from "@/lib/world/sfx";
 import { LAB_IDS, labSpot, type LabId } from "@/lib/world/impCosmos";
 import { LAB_TITLES } from "./CosmosLab";
+import { ArchiveDoor } from "./archive/ArchiveDoor";
+import { GATE_FRONT, gateBlocked } from "@/lib/world/archiveLayout";
 import { t as tt } from "@/lib/world/i18n";
 
 const BOOTH = { x: -6, z: -4, w: 2.2, d: 2.2 }; // tâm bốt; cửa ở mặt +z
@@ -333,6 +335,8 @@ function Court() {
       <SierpPaper />
       <ChineseRoomScene />
       <BoothExterior />
+      {/* cửa hầm thép SCP → Thư khố bỏ hoang (cảnh tả thực) */}
+      <ArchiveDoor />
     </>
   );
 }
@@ -398,6 +402,7 @@ function impBlocked(x: number, z: number, y = 0) {
   // bay cao trên sân: không vướng công trình
   if (y > 9) return false;
   if (Math.hypot(x - PENROSE.x, z - PENROSE.z) < 1.9) return true;
+  if (gateBlocked(x, z, r)) return true;
   if (x > 9 && z < -6.5 && caveBlocked(x, z)) return true;
   if (montyBlocked(x, z, y)) return true;
   if (z < -10.5 && theseusBlocked(x, z)) return true;
@@ -444,6 +449,7 @@ function impNearby(p: THREE.Vector3): Nearby | null {
   if (p.y > 4.5) return null;
   if (Math.hypot(p.x, p.z - 16) < 2.6) return { kind: "portal", id: "hub", label: tt(lang, "returnHub") };
   if (SPACE.v === "court" && Math.hypot(p.x - ANAM.x, p.z - ANAM.z) < 1.6) return { kind: "paradox", id: "anamorph", label: lang === "vi" ? "Nhìn từ điểm chiếu" : "Look from the projection point" };
+  if (SPACE.v === "court" && Math.hypot(p.x - GATE_FRONT.x, p.z - GATE_FRONT.z) < GATE_FRONT.r) return { kind: "portal", id: "archive", label: tt(lang, "enterArchive") };
   if (SPACE.v === "court" && Math.hypot(p.x - PGATE.x, p.z - PGATE.z) < 2.2) return { kind: "portal", id: "paradox", label: lang === "vi" ? "Bước vào Hư Không Nghịch Lý" : "Enter the Paradox Void" };
   if (SPACE.v === "court") {
     if (Math.hypot(p.x - SAGE.x, p.z - SAGE.z) < 2.0) return { kind: "npc", id: "plato", label: lang === "vi" ? "Nói chuyện với Hồi âm của Hang" : "Talk to the Echo of the Cave" };

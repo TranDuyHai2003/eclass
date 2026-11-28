@@ -93,24 +93,23 @@ Vùng khác (valley, paradox, babel, vault, torus, coast, bazaar) giữ nhạc t
 - Trôi đồng hồ Siren: lịch theo từng câu (≤ 20 s), neo lại liên tục.
 - Dung lượng: mục tiêu ≤ ~6 MB tổng (Opus + AAC).
 
-## 6. Trạng thái (28/11/2026, dừng sớm theo yêu cầu)
-**Đã xong**
-- `scripts/audio-render.py`: bộ render offline (hợp xướng formant 3 ca sĩ / bè, dây, organ, harmonium, sáo, hộp nhạc, celesta,
-  chuông, timpani, Karplus-Strong harpsichord / đàn hạc / pizz, IR tổng hợp hall / cathedral / far, chuẩn hoá BS.1770, limiter),
-  render song song (~3 phút / 8 nhân). Đã hiệu chỉnh độ to từng nhạc cụ (vel 0,5 ≈ −24 LUFS / nốt).
-- 9 bản (hubDay, hubNight, impossible, siren [+ lớp dis, boss, 3 glitch], boss, expDay, expNight, archive, study) + sprite
-  stinger (amen, victory, defeat, bossReveal, portal) → `public/world/audio/` (102 file: Opus 4,4 MB + AAC 4,9 MB = **9,4 MB**).
-- Manifest sinh tự động `lib/world/musicTracks.ts`; kiểu + `selectTrack` / `stingerRate` thuần ở `lib/world/musicStems.ts`.
-- Bản nghe thử ~1 phút mỗi bản (mô phỏng ghép câu): `blender-src/audio-src/preview/<id>_demo.ogg` (gitignore). Xem SAMPLES.md.
-- `npx tsc --noEmit -p .` sạch; eslint 2 file TS mới sạch.
+## 6. Trạng thái (28/11/2026)
+**Đã nối vào game**
+- `components/world/audio/stemPlayer.ts`: tải lười theo bản (Opus → AAC dự phòng, giải mã 32 kHz, LRU 3 bản), ghép câu
+  (`CellPlanner`), crossfade đổi vùng (3 s; vào bản boss 1,5 s), lớp dọc dissonance / boss, Mê cung khoá HARMONIC
+  (`ClockAnchor`, bù outputLatency, chỉ lấy mẫu khi khung mới), decomposition → lọc thông thấp, dissonance → glitch,
+  `MUSIC_KEY` theo hợp âm từng ô. Thiếu file / giải mã lỗi → bản đó đánh dấu lỗi, quay về nhạc tạo sinh cũ; không ném lỗi.
+- `musicDirector.ts`: cảnh có bản render → StemPlayer (nhạc oscillator dừng), còn lại → ZonePlayer cũ. Tôn trọng thanh trượt Nhạc,
+  công tắc chung, tab ẩn (dùng lại engine). `musicGrid()`; combatLayer im khi bản boss đang chạy.
+- `ZoneMusic.tsx`: mỗi giây gửi night (hub / expanse), boss (bossStore.on, mode ≠ dead), fight (Mê cung: trong đấu trường).
+- Stinger: amen ← `sfx.levelUp` (hoàn thành nhiệm vụ), victory ← `sfx.fanfare`, defeat ← `useCombat.downUntil`,
+  bossReveal ← bossStore.on / vào đấu trường Mê cung, portal ← `useTransit.travelTo`. Dịch giọng về chủ âm đang phát, nhạc hạ 6 dB.
+- SFX mới (`lib/world/sfx.ts` + `worldEvents.ts` + `lib/world/foleyLogic.ts`): bước chân theo mặt, tiếp đất, té nước, sải bơi,
+  hover / mở / đóng bảng, `sfx.block` đặt / phá theo vật liệu (2 dòng ở BlockInteractor), `sfx.strike` rất nhỏ ở cao trào (1 dòng ở StrikeFx, bỏ qua muzzle).
+- Test `tests/world/musicStems.test.ts` (8 test). Kiểm CDP headless: hub / impossible / siren / archive tải đủ file .ogg (0 lỗi),
+  nhạc tạo sinh dừng, không lỗi JS.
 
-**Chưa làm (KHÔNG nằm trong đường chạy — game vẫn dùng nhạc tạo sinh cũ, không phát file nào)**
-- `components/world/audio/stemPlayer.ts` (tải lười, giải mã 32 kHz, lập lịch bed / khe câu / lớp dọc, MUSIC_KEY, khoá HARMONIC cho
-  Siren, lọc theo decomposition, glitch theo dissonance, dip nhạc dưới stinger) + nối vào `musicDirector.apply()` + ZoneMusic
-  (night cho expanse, boss từ bossStore / Siren). Thiết kế chi tiết ở §1–§2.
-- SFX mới: foley (bước chân theo mặt, té nước, tiếp đất), hover / mở / đóng bảng, `sfx.block`, portal / bossReveal / defeat qua
-  đăng ký store, `levelUp` → amen, `fanfare` → victory, móc `strike()`. combatLayer khoá lưới nhịp.
-- Test `tests/world/musicStems.test.ts` (selectTrack trễ ngưỡng, stingerRate, planner, ClockAnchor).
-- **Dung lượng vượt ngân sách (9,4 MB > ~6 MB)**: hạ Opus 24 kbps / AAC 40 kbps, hoặc bỏ AAC cho bản phụ, hoặc rút biến thể câu.
-  Nên chưa commit `public/world/audio/` cho tới khi chỉnh xong.
-- Chưa nghe thử bằng tai / đo trong trình duyệt (CPU, mức so với nhạc tạo sinh).
+**Còn lại**
+- Đo CPU thật (headless SwiftShader 0,6 fps nên `__perf` vô nghĩa) — đo trên Chrome thật; nghe thử 15 phút, chỉnh `level` từng bản.
+- combatLayer chưa khoá lưới nhịp của bản render (chỉ im khi boss).
+- Dung lượng 9,4 MB (ngân sách đã nâng lên 50 MB).
