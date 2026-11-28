@@ -13,7 +13,7 @@ import type { WebGLRenderer } from "three";
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { GLTFLoader as StdGLTFLoader } from "three-stdlib";
-import { WORLD_ASSET_BASE } from "@/lib/world/avatars";
+import { worldAsset } from "@/lib/world/avatars";
 import { ktx2Url } from "@/lib/world/ktx2";
 
 let shared: KTX2Loader | null = null;
@@ -37,7 +37,7 @@ function hook(proto: HasKtx2) {
 export function installKtx2(gl: WebGLRenderer) {
   if (shared) return shared;
   try {
-    shared = new KTX2Loader().setTranscoderPath(`${WORLD_ASSET_BASE}/basis/`).detectSupport(gl);
+    shared = new KTX2Loader().setTranscoderPath(worldAsset("basis/")).detectSupport(gl);
     hook(GLTFLoader.prototype as unknown as HasKtx2);
     hook(StdGLTFLoader.prototype as unknown as HasKtx2);
   } catch (e) {

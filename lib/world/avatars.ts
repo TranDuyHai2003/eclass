@@ -19,13 +19,17 @@ export const WORLD_ASSET_BASE = (process.env.NEXT_PUBLIC_WORLD_ASSET_BASE || "/w
  * Gốc đặt LÚC CHẠY: server đọc env WORLD_HEAVY_ASSET_BASE mỗi lần mở /world và truyền xuống (đổi địa chỉ không phải build lại).
  */
 let heavyBase: string | null = null;
-const HEAVY = /^(avatars|anim)\//;
 export function setHeavyAssetBase(base: string | null | undefined) {
   heavyBase = base ? base.replace(/\/$/, "") : null;
 }
+/**
+ * URL một asset của Thế giới Toán. Khi có WORLD_HEAVY_ASSET_BASE (production) thì MỌI asset (model, texture, âm thanh,
+ * bộ giải mã Basis…) đều tải từ kho CDN; không có (dev / preview) thì dùng /world của chính app.
+ * Gọi LÚC DÙNG (không lưu vào hằng số cấp module) vì gốc chỉ được đặt sau khi trang /world nạp.
+ */
 export const worldAsset = (path: string) => {
-  const p = path.replace(/^\//, "");
-  return `${heavyBase && HEAVY.test(p) ? heavyBase : WORLD_ASSET_BASE}/${p}`;
+  const p = path.replace(/^\/?(world\/)?/, "");
+  return `${heavyBase ?? WORLD_ASSET_BASE}/${p}`;
 };
 
 export const AVATARS: AvatarDef[] = [

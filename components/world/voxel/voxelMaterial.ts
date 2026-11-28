@@ -9,12 +9,13 @@
 import * as THREE from "three";
 import { GRADIENT } from "../fx/shaders";
 import { DETAIL_TILES, TILE_NAMES, TILE_PX, tileBase } from "@/lib/world/voxel/tiles";
+import { worldAsset } from "@/lib/world/avatars";
 
 /**
  * Hoạ tiết khối: DataArrayTexture (mỗi lớp TILE_PX², phóng = gần nhất, thu = mipmap tuyến tính). Tạo ngay bằng màu gốc
  * (giống hệt trước khi có ảnh), nạp `tiles.png` (dải dọc, đã chuẩn hoá khi đóng gói) rồi thay dữ liệu.
  */
-const TILES_URL = "/world/voxel/tiles.png";
+// ảnh ô gạch: worldAsset("voxel/tiles.png") (CDN ở production)
 let tilesTex: THREE.DataArrayTexture | null = null;
 function voxelTiles(): THREE.DataArrayTexture {
   if (tilesTex) return tilesTex;
@@ -52,7 +53,7 @@ function voxelTiles(): THREE.DataArrayTexture {
       data.set(g.getImageData(0, 0, img.width, img.height).data);
       t.needsUpdate = true;
     };
-    img.src = TILES_URL;
+    img.src = worldAsset("voxel/tiles.png");
   }
   return t;
 }

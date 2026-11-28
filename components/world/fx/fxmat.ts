@@ -8,6 +8,7 @@
  *  - stepped alpha (cel look) and hybrid premultiplied blend: alpha-blended dark edge + additive core in one draw
  */
 import * as THREE from "three";
+import { worldAsset } from "@/lib/world/avatars";
 
 let cache: { noise: THREE.Texture; ramp: THREE.Texture; ring: THREE.Texture } | null = null;
 function textures() {
@@ -19,12 +20,12 @@ function textures() {
     if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
     return t;
   };
-  const ramp = L.load("/world/fx/tex/ramps.png");
+  const ramp = L.load(worldAsset("fx/tex/ramps.png"));
   ramp.colorSpace = THREE.SRGBColorSpace;
   ramp.magFilter = THREE.NearestFilter;
   ramp.minFilter = THREE.NearestFilter;
   ramp.generateMipmaps = false;
-  cache = { noise: lin("/world/fx/tex/noise_pack.png"), ramp, ring: lin("/world/fx/tex/ring_wave.png") };
+  cache = { noise: lin(worldAsset("fx/tex/noise_pack.png")), ramp, ring: lin(worldAsset("fx/tex/ring_wave.png")) };
   return cache;
 }
 
@@ -42,7 +43,7 @@ const masks = new Map<string, THREE.Texture>();
 export function fxMask(name: string): THREE.Texture {
   let t = masks.get(name);
   if (!t) {
-    t = new THREE.TextureLoader().load(`/world/fx/tex/${name}.png`);
+    t = new THREE.TextureLoader().load(worldAsset(`fx/tex/${name}.png`));
     t.colorSpace = THREE.NoColorSpace;
     masks.set(name, t);
   }

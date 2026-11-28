@@ -36,13 +36,13 @@ import { netPeers, netStatus, onNet, samplePeer } from "../net";
 import { SPOTS } from "../scene/Hub";
 import { isSfxEnabled, setSfxEnabled } from "@/lib/world/sfx";
 import { AudioSettings } from "../audio/AudioSettings";
-import { AVATAR_BY_ID } from "@/lib/world/avatars";
+import { AVATAR_BY_ID, worldAsset } from "@/lib/world/avatars";
 import type { Lang } from "@/lib/world/i18n";
 
 /** Biểu tượng vũ khí (ảnh vẽ tay kiểu anime; lucide chỉ dùng khi ảnh chưa tải) */
 function WeaponGlyph({ id }: { id: WeaponId }) {
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={`/world/items/w_${id}.webp`} alt="" draggable={false} className="w-skill__art" />;
+  return <img src={worldAsset(`items/w_${id}.webp`)} alt="" draggable={false} className="w-skill__art" />;
 }
 
 export function Hud({ onInteract, readOnly, rootRef, onFullscreen }: { onInteract: () => void; readOnly: boolean; rootRef: React.RefObject<HTMLDivElement | null>; onFullscreen: () => void }) {

@@ -17,6 +17,7 @@ import { sfx } from "@/lib/world/sfx";
 import { DROPS, consumeSlot, dropMax, dropRoom, dropTake, isCreative, spawnDrop, useInv } from "./invStore";
 import { saveStats, startWorldSave } from "./worldSave";
 import { ITEM_USE } from "./itemUse";
+import { worldAsset } from "@/lib/world/avatars";
 
 /** Trạng thái đào cho HUD (đọc bằng rAF, không qua React) */
 export const MINE = { has: false, x: 0, y: 0, z: 0, id: 0, frac: 0, mining: false, harvest: true, need: 0 };
@@ -224,7 +225,7 @@ function breakBlock(x: number, y: number, z: number, id: number, creative: boole
 let crackTex: THREE.Texture | null = null;
 function crackMaterial() {
   if (!crackTex) {
-    crackTex = new THREE.TextureLoader().load("/world/voxel/crack.png");
+    crackTex = new THREE.TextureLoader().load(worldAsset("voxel/crack.png"));
     crackTex.magFilter = crackTex.minFilter = THREE.NearestFilter;
     crackTex.generateMipmaps = false;
   }

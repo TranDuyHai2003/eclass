@@ -10,6 +10,7 @@ import { Backpack, Star, X } from "lucide-react";
 import { useWorld } from "../store";
 import { useCombat } from "../combat/combat";
 import { MAT_DEFS, MAT_ORDER, RARITY_COLOR, WEAPON_DEFS, WEAPON_ORDER, equip, initBag, markSeen, useBag, usePickups, type MatId, type Rarity, type WeaponId } from "../combat/items";
+import { worldAsset } from "@/lib/world/avatars";
 
 type L = { en: string; vi: string };
 const TX = {
@@ -31,7 +32,7 @@ function useTx() {
   return (k: keyof typeof TX | L) => (typeof k === "string" ? TX[k] : k)[lang === "vi" ? "vi" : "en"];
 }
 
-const art = (kind: "w" | "m", id: string) => `/world/items/${kind}_${id}.webp`;
+const art = (kind: "w" | "m", id: string) => worldAsset(`items/${kind}_${id}.webp`);
 
 function Stars({ n, size = 12 }: { n: Rarity; size?: number }) {
   return (

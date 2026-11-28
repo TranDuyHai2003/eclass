@@ -12,6 +12,7 @@ import { BookOpen, ChevronDown, X } from "lucide-react";
 import { useWorld } from "../store";
 import { allQuests, chapterOf, CODEX, DIALOGUES, NPCS, type CodexId } from "@/lib/world/story";
 import { advanceDialogue, initQuest, questProgress, useDialogue, useQuest } from "../story/quest";
+import { worldAsset } from "@/lib/world/avatars";
 
 function useLang(): "en" | "vi" {
   return useWorld((s) => (s.lang === "vi" ? "vi" : "en"));
@@ -111,7 +112,7 @@ export function DialogueOverlay() {
             {npc && (
               <motion.div key={npc.portrait} className="w-dlg__portrait" initial={{ x: -60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -30, opacity: 0 }} transition={{ type: "spring", stiffness: 220, damping: 24 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/world/portraits/${npc.portrait}.webp`} alt="" draggable={false} onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")} />
+                <img src={worldAsset(`portraits/${npc.portrait}.webp`)} alt="" draggable={false} onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")} />
               </motion.div>
             )}
           </AnimatePresence>

@@ -11,6 +11,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { forEachEdit, onAnyEdit } from "@/lib/world/voxels";
 import { B } from "@/lib/world/blocks";
+import { worldAsset } from "@/lib/world/avatars";
 
 const MAX = 512;
 const T_U = { uT: { value: 0 } };
@@ -19,7 +20,7 @@ const M = new THREE.Matrix4();
 export function TorchSprites() {
   const ref = useRef<THREE.InstancedMesh>(null);
   const res = useMemo(() => {
-    const tex = new THREE.TextureLoader().load("/world/voxel/torch_sprite.png");
+    const tex = new THREE.TextureLoader().load(worldAsset("voxel/torch_sprite.png"));
     tex.magFilter = THREE.NearestFilter;
     tex.minFilter = THREE.NearestMipmapLinearFilter;
     tex.colorSpace = THREE.SRGBColorSpace;

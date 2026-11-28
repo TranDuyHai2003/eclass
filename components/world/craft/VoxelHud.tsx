@@ -18,6 +18,7 @@ import { sfx } from "@/lib/world/sfx";
 import { MINE, openCraft } from "./BlockInteractor";
 import { craftRecipe, creativeSet, moveSlot, quickMoveSlot, setMode, throwStack, useInv, usePickFeed } from "./invStore";
 import { startWorldSave } from "./worldSave";
+import { worldAsset } from "@/lib/world/avatars";
 
 if (typeof window !== "undefined") startWorldSave();
 
@@ -67,7 +68,7 @@ function benchNearby(): boolean {
 // ───────────── Biểu tượng vật phẩm ─────────────
 
 /** ảnh icon: khối → khối isometric dựng từ hoạ tiết (scripts/voxel-icons.py); vật phẩm khác → tranh anime (Codex) */
-const iconSrc = (def: ItemDef) => `/world/items/vox/${def.kind === "block" && def.block !== undefined ? BLOCKS[def.block] : def.id}.png`;
+const iconSrc = (def: ItemDef) => worldAsset(`items/vox/${def.kind === "block" && def.block !== undefined ? BLOCKS[def.block] : def.id}.png`);
 
 export function ItemIcon({ def, n, size = 40 }: { def: ItemDef; n?: number; size?: number }) {
   const [broken, setBroken] = useState<string | null>(null);

@@ -17,8 +17,9 @@ import { mulberry32 } from "@/lib/world/music";
 import { HARMONIC } from "@/lib/world/harmonicState";
 import { MUSIC_KEY } from "./sfxKit";
 import { audioCore, audioRunning, sfxVoice, type Core } from "./engine";
+import { worldAsset } from "@/lib/world/avatars";
 
-const BASE = "/world/audio/";
+
 const AHEAD = 1.2;
 
 // ───────────── tải / giải mã ─────────────
@@ -63,7 +64,7 @@ const loads = { ok: 0, fail: 0 };
 
 async function fetchDecode(core: Core, f: string, e: string): Promise<AudioBuffer | null> {
   try {
-    const r = await fetch(BASE + f + e);
+    const r = await fetch(worldAsset("audio/" + f + e));
     if (!r.ok) return null;
     return await decode(decoderCtx(core), await r.arrayBuffer());
   } catch {
