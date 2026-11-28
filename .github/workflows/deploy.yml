@@ -1,0 +1,114 @@
+# CI/CD teacherduc.me (28/11/2026): mỗi lần push lên master → kiểm tra → tự deploy lên Heroku (app eclass-vps).
+# Pull request vào master: chỉ kiểm tra, không deploy. Có thể chạy tay ở tab Actions (Run workflow).
+#
+# Cần 1 secret trong GitHub (Settings → Secrets and variables → Actions → New repository secret):
+#   HEROKU_API_KEY = khoá lấy bằng lệnh `heroku authorizations:create -d "GitHub Actions deploy eclass"` (dòng Token)
+#
+# Kiểm tra trước khi deploy (lỗi bước nào thì KHÔNG deploy): typecheck, test logic (Postgres riêng của CI), build production.
+# Test của game Thế giới Toán (tests/world) chạy riêng, KHÔNG chặn deploy (đang có test lỗi sẵn của nhóm game).
+name: CI & Deploy
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+# Hai lần push liền nhau: lần sau chờ lần trước deploy xong (không deploy chồng)
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Kiểm tra (typecheck · test · build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: eclass_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      # DB thử của CI (localhost → test được phép ghi / xoá)
+      CUSTOM_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/eclass_test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/eclass_test
+      AUTH_SECRET: ci-only-secret-not-used-in-production
+      AUTH_TRUST_HOST: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Cài thư viện
+        run: npm ci --no-audit --no-fund
+
+      # Dựng bảng thẳng từ schema.prisma: chuỗi migration không chạy lại được từ đầu trên DB trống
+      # (migration 20260602000000_baseline tạo lại bảng đã có — trên prod nó chỉ được đánh dấu đã chạy).
+      # Migration thật vẫn chạy trên Heroku ở bước release (Procfile: prisma migrate deploy).
+      - name: Tạo bảng DB thử
+        run: npx prisma db push --skip-generate
+
+      - name: Typecheck
+        run: npx tsc --noEmit -p .
+
+      - name: Test logic (chặn deploy nếu lỗi)
+        run: node --no-experimental-strip-types --test --test-reporter=spec -r ./tests/setup/register.cjs $(find tests -name '*.test.ts' -not -path 'tests/world/*' | sort)
+
+      - name: Test game Thế giới Toán (không chặn deploy)
+        continue-on-error: true
+        run: node --no-experimental-strip-types --test --test-reporter=spec -r ./tests/setup/register.cjs $(find tests/world -name '*.test.ts' | sort)
+
+      - name: Build production
+        run: npm run build
+
+  deploy:
+    name: Deploy Heroku (eclass-vps)
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://teacherduc.me
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Kiểm tra có khoá Heroku
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: |
+          if [ -z "$HEROKU_API_KEY" ]; then
+            echo "::error::Chưa có secret HEROKU_API_KEY (xem hướng dẫn ở đầu file .github/workflows/deploy.yml)"
+            exit 1
+          fi
+
+      - name: Đẩy code lên Heroku (Heroku tự build + chạy migration ở bước release)
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: git push "https://heroku:${HEROKU_API_KEY}@git.heroku.com/eclass-vps.git" HEAD:refs/heads/master --force
+
+      - name: Kiểm tra web sau deploy
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" https://teacherduc.me/login || true)
+            if [ "$code" = "200" ]; then echo "teacherduc.me/login → 200"; exit 0; fi
+            sleep 10
+          done
+          echo "::error::teacherduc.me/login không trả 200 sau 5 phút"
+          exit 1

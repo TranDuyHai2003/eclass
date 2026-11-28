@@ -25,5 +25,5 @@ Xem `docs/ai-reviews/README.md`.
 
 ## Quy tắc dự án
 - Không commit `README.md` / `README.vi.md` (người dùng đang sửa dở).
-- Chỉ deploy khi người dùng đồng ý, vào buổi tối: `git push origin master` rồi `git push heroku master --force`.
+- Chỉ deploy khi người dùng đồng ý. Từ 28/11/2026 có CI/CD (`.github/workflows/deploy.yml`): **push lên `master` của GitHub là tự kiểm tra rồi deploy Heroku** → chỉ push master khi người dùng đồng ý deploy. Deploy tay (dự phòng): `git push heroku master --force`.
 - Production: chỉ chạy truy vấn đọc, không sửa dữ liệu khi chưa được đồng ý.
