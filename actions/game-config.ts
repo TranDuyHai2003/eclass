@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { demoGuard } from "@/lib/demo";
-import { normalizeEarning, normalizeItemPrices, writeGameConfig } from "@/lib/game/game-config";
+import { normalizeChestConfig, normalizeEarning, normalizeItemPrices, writeGameConfig } from "@/lib/game/game-config";
 
 /**
  * Admin sửa giá thú cưng / khung viền / bảng tên và mức xu các hoạt động (khu Quản lý trong Tiệm quà).
@@ -46,4 +46,18 @@ export async function saveEarningConfig(input: unknown): Promise<Result> {
   await writeGameConfig("earning", parsed.data, adminId);
   revalidate();
   return { success: true, message: "Đã lưu mức xu các hoạt động." };
+}
+
+/** Giá mở rương + lượt Rương Xu mỗi ngày (28/11) — chỉ admin */
+export async function saveChestConfig(input: unknown): Promise<Result> {
+  const blocked = await demoGuard();
+  if (blocked) return blocked;
+  const adminId = await requireAdmin();
+  if (!adminId) return { success: false, error: "Chỉ admin được sửa giá rương." };
+  const parsed = normalizeChestConfig(input);
+  if ("error" in parsed) return { success: false, error: parsed.error };
+  await writeGameConfig("chests", parsed.data, adminId);
+  revalidate();
+  revalidatePath("/rewards/gacha");
+  return { success: true, message: "Đã lưu giá rương." };
 }

@@ -35,7 +35,7 @@ describe("Thang điểm", () => {
 
   test("bảng 'Cách nhận xu' theo cơ chế 3 hành động; nguồn đang tắt (0 xu) không hiện", () => {
     const rules = earningRules();
-    assert.equal(rules[0].label, "Nộp bài tập về nhà đúng hạn");
+    assert.equal(rules[0].label, "Làm / nộp bài tập về nhà đúng hạn");
     assert.equal(rules[0].points, `+${POINTS.homeworkSubmit}`);
     assert.equal(rules.find((r) => r.label === "Thầy duyệt chữa bài")?.points, "+280 / +400");
     assert.ok(rules.some((r) => r.label === "Mã quà tặng"));

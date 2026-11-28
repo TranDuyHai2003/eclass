@@ -11,7 +11,7 @@ import { FrameRing } from "@/components/profile/FrameRing";
 import { FrameFx } from "@/components/avatar/FrameFx";
 import { Chibi } from "@/components/avatar/Chibi";
 import { ShopArt, Sprite, V2Art, hasSprite, shopItemIndex, v2Index } from "@/components/studio/Sprite";
-import { FrameCut, PetImage, hasCutFrame } from "@/components/studio/CutArt";
+import { FrameCut, PetImage, faceBoxStyle, hasCutFrame } from "@/components/studio/CutArt";
 
 /* Mảnh giao diện dùng chung của Tiệm quà v2 "Adorable Home" (canvas ShopV2.dc.html) */
 
@@ -49,7 +49,7 @@ export function FrameOverlay({ frameId }: { frameId?: string | null; size?: numb
 export function AvatarRing({ config, size, inset, title, className }: { config: AvatarConfig; size: number; inset: number; title?: string; className?: string }) {
   return (
     <span className={cn("relative block shrink-0", className)} style={{ width: size, height: size }} data-testid="avatar-ring">
-      <span className="absolute" style={{ inset }}>
+      <span className="absolute" style={hasCutFrame(config.frame) ? faceBoxStyle(config.frame) : { inset }}>
         <AvatarFace config={config} title={title} className="h-full w-full" bg="#fffdf8" />
       </span>
       <FrameOverlay frameId={config.frame} />
@@ -81,7 +81,7 @@ export function ItemArt({ it, avatar, name, withFace }: { it: Item; avatar: Avat
     return (
       <span className="relative block aspect-square h-[86%]">
         {withFace && (
-          <span className="absolute inset-[21%]">
+          <span className="absolute" style={faceBoxStyle(it.id)}>
             <AvatarFace config={avatar} className="h-full w-full" bg="#fffdf8" />
           </span>
         )}

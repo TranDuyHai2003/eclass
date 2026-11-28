@@ -9,7 +9,10 @@ Trước đây web cắt ô bằng khung tròn / mặt nạ mờ → tai mèo, �
   3. mép mềm: độ trong theo khoảng cách màu tới nền, trừ màu nền khỏi điểm mép (không viền trắng);
   4. khung viền: căn theo TÂM LỖ của khung, bán kính lỗ = 30% cạnh ảnh (mặt nhân vật đặt inset 21% vừa khít);
      phần trang trí thò ra ngoài (tai, đầu rồng) → ảnh lớn hơn, ghi tỉ lệ vào lib/game/cut-art.ts để vẽ tràn ra.
+  5. (28/11) chỗ đặt mặt riêng từng khung: vòng tròn lớn nhất gần tâm mà ≥94% chu vi không chạm tranh
+     (tai mèo có chân thò vào, trăng khuyết lệch, hoa anh đào bông to) → CUT_FRAME_FACE [bán kính, lệch x, lệch y] theo cạnh ô.
 Chạy: python scripts/studio/cut-item-art.py   (cần numpy, scipy, pillow)
+      python scripts/studio/cut-item-art.py --faces-only   (chỉ tính lại chỗ đặt mặt từ ảnh đã cắt, không cắt lại tranh)
 """
 from collections import deque
 import json
@@ -159,14 +162,69 @@ def trim_square(rgba: np.ndarray, pad=0.04):
     return out
 
 
+def face_spot(alpha: np.ndarray, k: float):
+    """Vòng tròn đặt mặt: tâm trong ±12% quanh tâm ô, bán kính lớn nhất mà ≥94% chu vi nằm ở vùng trống (tỉ lệ theo cạnh ô)."""
+    free = alpha <= 40
+    n = alpha.shape[0]
+    box = n / k
+    c = (n - 1) / 2
+    t = np.linspace(0, 2 * np.pi, 180, endpoint=False)
+    best = (0.0, 0, 0)
+    rr = int(0.12 * box)
+    for dy in range(-rr, rr + 1, 2):
+        for dx in range(-rr, rr + 1, 2):
+            y, x = int(c + dy), int(c + dx)
+            if not free[y, x]:
+                continue
+            lo, hi = 0.10 * box, 0.32 * box
+            for _ in range(18):
+                r = (lo + hi) / 2
+                py = (y + r * np.sin(t)).astype(int)
+                px = (x + r * np.cos(t)).astype(int)
+                ok = (py >= 0) & (py < n) & (px >= 0) & (px < n)
+                inside = np.zeros_like(t, bool)
+                inside[ok] = free[py[ok], px[ok]]
+                if inside.mean() >= 0.94:
+                    lo = r
+                else:
+                    hi = r
+            if lo > best[0]:
+                best = (lo, dx, dy)
+    r, dx, dy = best
+    return [round(float(r / box), 3), round(float(dx / box), 3), round(float(dy / box), 3)]
+
+
+def write_ts(scales, faces):
+    with open(TS_OUT, "w", encoding="utf-8") as f:
+        f.write("// TỰ SINH bởi scripts/studio/cut-item-art.py — không sửa tay.\n")
+        f.write("/** Tranh vẽ tay đã tách nền (public/studio/cut/<id>.webp). Khung: tỉ lệ ảnh / ô khung (>1 = trang trí thò ra ngoài) */\n")
+        f.write(f"export const CUT_FRAME_SCALE: Record<string, number> = {json.dumps(scales)};\n")
+        f.write("/** Chỗ đặt mặt trong từng khung: [bán kính, lệch ngang, lệch dọc] theo cạnh ô khung (mặt không bị trang trí che) */\n")
+        f.write(f"export const CUT_FRAME_FACE: Record<string, [number, number, number]> = {json.dumps(faces)};\n")
+        f.write(f"export const CUT_PETS = new Set<string>({json.dumps(sorted(list(PETS_ITEMS) + list(PETS_SHOP)))});\n")
+
+
+def faces_only():
+    src = open(TS_OUT, encoding="utf-8").read()
+    scales = json.loads(src.split("CUT_FRAME_SCALE: Record<string, number> = ")[1].split(";")[0])
+    faces = {}
+    for fid, k in scales.items():
+        a = np.asarray(Image.open(os.path.join(OUT_DIR, f"{fid}.webp")).convert("RGBA"))[..., 3]
+        faces[fid] = face_spot(a, k)
+    write_ts(scales, faces)
+    print("faces", faces)
+
+
 def main():
     scales = {}
+    faces = {}
     for fid, (c, r) in FRAMES.items():
         cell = ITEMS.crop((c * IW, r * IH, (c + 1) * IW, (r + 1) * IH))
         rgba, fg, _ = cutout(cell, frame=True)
         sq, scale = frame_square(rgba, fg)
         save(sq, fid)
         scales[fid] = round(float(scale), 4)
+        faces[fid] = face_spot(sq[..., 3], scales[fid])
     for pid, (c, r) in PETS_ITEMS.items():
         cell = ITEMS.crop((c * IW, r * IH, (c + 1) * IW, (r + 1) * IH))
         rgba, _, _ = cutout(cell, frame=False)
@@ -179,13 +237,11 @@ def main():
         cell = SHOP.crop(((i % 8) * SW, (i // 8) * SW, (i % 8 + 1) * SW, (i // 8 + 1) * SW))
         rgba, _, _ = cutout(cell, frame=False, step=STEP_OF.get(cid, STEP))
         save(trim_square(rgba, pad=0.02), cid)
-    with open(TS_OUT, "w", encoding="utf-8") as f:
-        f.write("// TỰ SINH bởi scripts/studio/cut-item-art.py — không sửa tay.\n")
-        f.write("/** Tranh vẽ tay đã tách nền (public/studio/cut/<id>.webp). Khung: tỉ lệ ảnh / ô khung (>1 = trang trí thò ra ngoài) */\n")
-        f.write(f"export const CUT_FRAME_SCALE: Record<string, number> = {json.dumps(scales)};\n")
-        f.write(f"export const CUT_PETS = new Set<string>({json.dumps(sorted(list(PETS_ITEMS) + list(PETS_SHOP)))});\n")
+    write_ts(scales, faces)
     print("frames", scales)
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    faces_only() if "--faces-only" in sys.argv else main()

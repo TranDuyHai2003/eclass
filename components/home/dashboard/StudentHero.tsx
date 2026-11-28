@@ -89,7 +89,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside,
           <div className={cn("grid gap-2", points ? "grid-cols-3" : "max-w-sm grid-cols-2")}>
             {points && (
               <>
-                <HeroStat href={shopOpen ? "/rewards" : undefined} icon="🪙" value={points.balance} label="xu" accent="text-amber-300" />
+                <HeroStat href={shopOpen ? "/rewards" : undefined} icon="💰" value={points.balance} label="xu" accent="text-amber-300" />
                 <HeroStat
                   icon="🔥"
                   value={points.weekStreak}
@@ -178,7 +178,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside,
                               </span>
                             )}
                           </span>
-                          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-black text-amber-800">🪙 {r.price.toLocaleString("vi-VN")}</span>
+                          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-black text-amber-800">💰 {r.price.toLocaleString("vi-VN")}</span>
                         </Link>
                       </li>
                     );

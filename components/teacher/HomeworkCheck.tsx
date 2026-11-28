@@ -22,6 +22,7 @@ const vnLocal = (iso: string | null) => {
   return d.toISOString().slice(0, 16);
 };
 const vnText = (iso: string) => new Date(iso).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" });
+const vnDay = (iso: string) => new Date(iso).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" });
 
 type Row = CheckList["students"][number];
 
@@ -43,6 +44,10 @@ export function HomeworkCheck({ classes, classId, lessons, lessonId, list, xu }:
   const [due, setDue] = useState(vnLocal(list?.dueDate ?? null));
   const [savedDue, setSavedDue] = useState(list?.dueDate ?? null);
   const [pending, start] = useTransition();
+  // 28/11: mặc định chỉ bài 30 ngày gần đây (mới nhất lên đầu); bài đang mở dù cũ vẫn hiện
+  const [showOld, setShowOld] = useState(false);
+  const oldCount = lessons.filter((l) => !l.recent).length;
+  const options = lessons.filter((l) => showOld || l.recent || l.id === lessonId);
 
   const LEVELS: { level: HomeworkReviewLevel; label: string; xu: number; on: string }[] = [
     { level: "NONE", label: "Chưa chữa", xu: 0, on: "border-slate-500 bg-slate-600 text-white" },
@@ -55,7 +60,7 @@ export function HomeworkCheck({ classes, classId, lessons, lessonId, list, xu }:
     return rows.filter((r) => (!k || norm(r.name).includes(k) || norm(r.email ?? "").includes(k)) && (only === "all" || (only === "todo" ? !r.level : !!r.level)));
   }, [rows, q, only]);
   const done = rows.filter((r) => r.level).length;
-  const submitted = rows.filter((r) => r.submittedAt).length;
+  const submitted = rows.filter((r) => r.submittedAt || r.doneAt).length;
 
   // Mức thầy chọn cuối cùng cho bạn đang lưu dở: bấm nút khác khi chưa lưu xong → lưu tiếp ngay sau (không bỏ qua lần bấm)
   const wanted = useRef(new Map<string, HomeworkReviewLevel>());
@@ -123,10 +128,21 @@ export function HomeworkCheck({ classes, classId, lessons, lessonId, list, xu }:
         <label className="text-xs font-bold text-slate-500">
           Bài tập về nhà
           <select value={lessonId ?? ""} disabled={!classId} data-testid="hc-lesson" onChange={(e) => go(classId, e.target.value || null)} className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 disabled:opacity-50">
-            <option value="">{classId ? (lessons.length ? "— Chọn bài —" : "Lớp chưa có bài tập về nhà") : "Chọn lớp trước"}</option>
-            {lessons.map((l) => <option key={l.id} value={l.id}>{l.course} · {l.title}{l.dueDate ? " ⏰" : ""}</option>)}
+            <option value="">{classId ? (options.length ? "— Chọn bài (mới nhất ở trên) —" : lessons.length ? "Không có bài trong 30 ngày gần đây" : "Lớp chưa có bài tập về nhà") : "Chọn lớp trước"}</option>
+            {options.map((l) => (
+              <option key={l.id} value={l.id}>
+                {vnDay(l.activityAt)} · {l.title}{l.online ? " 💻" : ""}{l.dueDate ? " ⏰" : ""}
+              </option>
+            ))}
           </select>
         </label>
+        {classId && oldCount > 0 && (
+          <label className="flex items-center gap-2 text-xs font-bold text-slate-500 sm:col-span-2">
+            <input type="checkbox" checked={showOld} data-testid="hc-show-old" onChange={(e) => setShowOld(e.target.checked)} className="h-4 w-4" />
+            Hiện cả {oldCount} bài cũ hơn 30 ngày
+            <span className="font-semibold text-slate-400">· 💻 làm online · ⏰ đã đặt hạn</span>
+          </label>
+        )}
       </div>
 
       {list && lesson && (
@@ -139,7 +155,13 @@ export function HomeworkCheck({ classes, classId, lessons, lessonId, list, xu }:
             <button type="button" disabled={pending || !due} data-testid="hc-due-save" onClick={() => saveDue(due)} className="h-11 rounded-xl bg-sky-600 px-4 text-sm font-black text-white disabled:opacity-50">Lưu hạn</button>
             {savedDue && <button type="button" disabled={pending} onClick={() => saveDue(null)} className="h-11 rounded-xl border border-sky-300 bg-white px-3 text-sm font-bold text-sky-700">Bỏ hạn</button>}
             <p className="w-full text-[12px] font-semibold text-sky-800">
-              {savedDue ? <>Nộp trước <b>{vnText(savedDue)}</b> được <b>+{xu.submit} xu</b>; nộp sau hạn không được xu.</> : <>Chưa đặt hạn — bạn nào nộp online cũng được <b>+{xu.submit} xu</b>.</>}
+              {savedDue ? (
+                <>Nộp {list.online ? "(làm online hoặc nộp ảnh) " : ""}trước <b>{vnText(savedDue)}</b> được <b>+{xu.submit} xu</b> (lần nộp đầu); nộp sau hạn không được xu.</>
+              ) : lesson.recent ? (
+                <>Chưa đặt hạn — bài giao trong 30 ngày nên nộp lần đầu được <b>+{xu.submit} xu</b>.</>
+              ) : (
+                <>Bài cũ hơn 30 ngày, chưa đặt hạn → nộp <b>không</b> được xu. Muốn cho xu thì đặt hạn mới.</>
+              )}
             </p>
           </div>
 
@@ -153,17 +175,22 @@ export function HomeworkCheck({ classes, classId, lessons, lessonId, list, xu }:
                 <button key={k} type="button" aria-pressed={only === k} onClick={() => setOnly(k)} className={cn("h-9 rounded-full border px-3 text-xs font-black", only === k ? "border-slate-800 bg-slate-800 text-white" : "border-slate-200 bg-white text-slate-600")}>{label}</button>
               ))}
             </div>
-            <p className="text-xs font-semibold text-slate-500">{lesson.course} · {lesson.chapter} · <b className="text-slate-700">{lesson.title}</b> — {submitted}/{rows.length} bạn đã nộp ảnh online.</p>
+            <p className="text-xs font-semibold text-slate-500">{lesson.course} · {lesson.chapter} · <b className="text-slate-700">{lesson.title}</b> — {submitted}/{rows.length} bạn đã {list.online ? "làm / nộp" : "nộp ảnh"} online.</p>
             <ul className="flex flex-col divide-y divide-slate-100">
               {shown.map((r) => (
                 <li key={r.id} data-testid="hc-row" data-user={r.id} data-level={r.level ?? ""} className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-black text-slate-800">{r.name}{!r.approved && <span className="ml-1 text-[11px] font-bold text-amber-600">(chưa duyệt TK — không cộng xu)</span>}</p>
                     <p className="text-[12px] font-semibold">
+                      {r.doneAt && (
+                        <span className={cn("mr-2", r.doneLate ? "text-rose-600" : "text-emerald-700")} data-testid="hc-done">
+                          💻 Làm {vnText(r.doneAt)}{r.score !== null ? ` · ${String(Math.round(r.score * 100) / 100).replace(".", ",")}đ` : ""} · {r.doneLate ? "trễ hạn" : "đúng hạn"}
+                        </span>
+                      )}
                       {r.submittedAt ? (
                         <span className={r.late ? "text-rose-600" : "text-emerald-700"}>📸 Nộp {vnText(r.submittedAt)} · {r.late ? "trễ hạn" : "đúng hạn"}</span>
                       ) : (
-                        <span className="text-slate-400">Chưa nộp ảnh online</span>
+                        !r.doneAt && <span className="text-slate-400">{list.online ? "Chưa làm online" : "Chưa nộp ảnh online"}</span>
                       )}
                     </p>
                   </div>

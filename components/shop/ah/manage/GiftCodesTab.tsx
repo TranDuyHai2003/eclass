@@ -85,7 +85,7 @@ export function GiftCodesTab({ batches, unused, classes }: { batches: GiftCodeBa
             <div className="mt-1 grid grid-cols-2 gap-1">
               {(["XU", "GEM"] as const).map((c) => (
                 <button key={c} type="button" aria-pressed={currency === c} data-testid={`giftcode-cur-${c}`} onClick={() => { setCurrency(c); setAmount(c === "GEM" ? 3 : 300); }} className={cn("ah-btn h-11 px-1 text-sm", currency === c ? "ah-gold" : "ah-cream")}>
-                  {c === "XU" ? "🪙 Xu" : "💎 Ngọc"}
+                  {c === "XU" ? "💰 Xu" : "💎 Ngọc"}
                 </button>
               ))}
             </div>
@@ -171,7 +171,7 @@ export function GiftCodesTab({ batches, unused, classes }: { batches: GiftCodeBa
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="font-black">
-                  {b.total} mã × {b.amount.toLocaleString("vi-VN")} {b.currency === "GEM" ? "💎 ngọc" : "🪙 xu"}
+                  {b.total} mã × {b.amount.toLocaleString("vi-VN")} {b.currency === "GEM" ? "💎 ngọc" : "💰 xu"}
                   {b.maxUses > 1 && <span className="ml-1 text-xs font-bold text-[#6e4722]">· {b.maxUses} lượt/mã</span>}
                 </p>
                 <p className="mt-0.5 text-xs font-bold text-[#6e4722]">

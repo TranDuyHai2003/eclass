@@ -4,9 +4,12 @@ import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { play } from "@/lib/sound";
-import { saveEarningConfig, saveItemPrices } from "@/actions/game-config";
+import { saveChestConfig, saveEarningConfig, saveItemPrices } from "@/actions/game-config";
 import type { AvatarConfig } from "@/lib/game/avatar";
+import { SLOTS } from "@/lib/game/items";
 import {
+  CHEST_DEFAULTS,
+  CHEST_LIMITS,
   EARNING_DEFAULTS,
   EARNING_FIELDS,
   PRICE_EDITABLE_ITEMS,
@@ -18,12 +21,20 @@ import {
 } from "@/lib/game/game-config-shared";
 import { CoinDot, GemDot, ItemArt, RAR_LABEL, fmt } from "./parts";
 
-/* Khu admin trong Tiệm quà (26/11/2026): sửa giá thú cưng / khung / bảng tên theo tiền thật, sửa mức xu các hoạt động. */
+/* Khu admin trong Tiệm quà (26/11/2026): sửa giá đồ trang trí theo tiền thật (28/11: mọi loại đồ + giá rương), sửa mức xu các hoạt động. */
 
 const priceText = (p: { xu: number } | { gem: number } | undefined) => (!p ? "—" : "xu" in p ? `${fmt(p.xu)} xu` : `${p.gem} KC`);
 
 type Draft = { mode: "xu" | "gem"; vnd: string; xu?: number; gem: string };
-const SLOT_TABS = [["pet", "🐾 Thú cưng"], ["frame", "🖼️ Khung viền"], ["nameplate", "🪪 Bảng tên"]] as const;
+/** Tab theo loại đồ có món sửa giá được (thứ tự: thú cưng, khung, bảng tên trước — hay sửa nhất) + tab Rương */
+const FIRST = ["pet", "frame", "nameplate"];
+const rank = (k: string) => (FIRST.includes(k) ? FIRST.indexOf(k) : 99);
+const SLOT_TABS: [string, string][] = [
+  ...SLOTS.filter((sl) => PRICE_EDITABLE_ITEMS.some((i) => i.slot === sl.key))
+    .sort((a, b) => rank(a.key) - rank(b.key))
+    .map((sl): [string, string] => [sl.key, `${sl.icon} ${sl.label}`]),
+  ["chest", "🎁 Rương bí ẩn"],
+];
 
 export function ItemPriceManager({ config, avatar }: { config: GameConfigData; avatar: AvatarConfig }) {
   const init = () => {
@@ -34,7 +45,7 @@ export function ItemPriceManager({ config, avatar }: { config: GameConfigData; a
     return d;
   };
   const [draft, setDraft] = useState<Record<string, Draft>>(init);
-  const [slot, setSlot] = useState<(typeof SLOT_TABS)[number][0]>("pet");
+  const [slot, setSlot] = useState<string>("pet");
   const [pending, start] = useTransition();
 
   /** Bảng giá gửi lên (chỉ món có ghi đè) + lỗi nhập */
@@ -88,6 +99,8 @@ export function ItemPriceManager({ config, avatar }: { config: GameConfigData; a
         ))}
         <span className="ml-auto text-xs font-extrabold text-[#6e4722]">{changed} món đang đặt giá riêng</span>
       </div>
+      {slot === "chest" && <ChestPriceManager key={JSON.stringify(config.chests ?? {})} config={config} />}
+      {slot !== "chest" && (<>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(250px,100%),1fr))] gap-3">
         {list.map((it) => {
           const d = draft[it.id];
@@ -133,6 +146,68 @@ export function ItemPriceManager({ config, avatar }: { config: GameConfigData; a
         {bad && <span className="mr-auto text-[12px] font-black text-[#b83d27]">{bad}</span>}
         <button type="button" disabled={pending || !dirty} onClick={() => { play("click"); setDraft(init()); }} className="ah-btn ah-cream h-10 px-4 text-sm">Huỷ thay đổi</button>
         <button type="button" disabled={pending || !dirty || !!bad} data-testid="price-save" onClick={save} className="ah-btn ah-gold h-10 px-5 text-sm">{pending ? "Đang lưu…" : "Lưu giá"}</button>
+      </div>
+      </>)}
+    </div>
+  );
+}
+
+/** Giá mở rương + lượt Rương Xu mỗi ngày (28/11: thầy muốn sửa giá gacha) */
+function ChestPriceManager({ config }: { config: GameConfigData }) {
+  const c = config.chests ?? {};
+  const init = () => ({ xuCost: c.xu?.cost ? String(c.xu.cost) : "", xuVnd: "", daily: c.xu?.dailyLimit ? String(c.xu.dailyLimit) : "", gemCost: c.gem?.cost ? String(c.gem.cost) : "" });
+  const [v, setV] = useState(init);
+  const [pending, start] = useTransition();
+  const vnd = v.xuVnd.trim() ? parseVnd(v.xuVnd) : null;
+  const xuCost = vnd ? vndToXu(vnd) : v.xuCost.trim() ? Number(v.xuCost) : undefined;
+  const payload = { xu: { cost: xuCost, dailyLimit: v.daily.trim() ? Number(v.daily) : undefined }, gem: { cost: v.gemCost.trim() ? Number(v.gemCost) : undefined } };
+  const bad =
+    xuCost !== undefined && !(xuCost >= CHEST_LIMITS.xuMin && xuCost <= CHEST_LIMITS.xuMax)
+      ? `Giá Rương Xu từ ${fmt(CHEST_LIMITS.xuMin)} đến ${fmt(CHEST_LIMITS.xuMax)} xu (thấp hơn ${fmt(CHEST_LIMITS.xuMin)} thì học sinh mở rương lãi xu).`
+      : payload.xu.dailyLimit !== undefined && !(payload.xu.dailyLimit >= CHEST_LIMITS.dailyMin && payload.xu.dailyLimit <= CHEST_LIMITS.dailyMax)
+        ? `Lượt mỗi ngày từ ${CHEST_LIMITS.dailyMin} đến ${CHEST_LIMITS.dailyMax}.`
+        : payload.gem.cost !== undefined && !(payload.gem.cost >= CHEST_LIMITS.gemMin && payload.gem.cost <= CHEST_LIMITS.gemMax)
+          ? `Giá Rương Ngọc từ ${CHEST_LIMITS.gemMin} đến ${CHEST_LIMITS.gemMax} ngọc.`
+          : null;
+  const field = "h-10 w-full rounded-[12px] border-2 border-[#241e1a] bg-white px-2 text-sm font-bold outline-none focus:ring-2 focus:ring-[#fbd048]";
+  const save = (body: unknown) =>
+    start(async () => {
+      const res = await saveChestConfig(body);
+      if (res.success) { play("coin"); toast.success(res.message); } else { play("error"); toast.error(res.error); }
+    });
+  const box = "flex flex-col gap-2 rounded-[18px] border-[2.5px] border-[#241e1a] bg-[#fffdf8] p-3 shadow-[0_3px_0_#241e1a]";
+  return (
+    <div className="flex flex-col gap-3" data-testid="chest-manager">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className={box}>
+          <b className="ah-hand text-[16px]">🧰 Rương Xu</b>
+          <label className="text-[12px] font-black text-[#6e4722]">
+            Giá mở (xu) — gốc {fmt(CHEST_DEFAULTS.xu.cost)}
+            <input value={v.xuCost} inputMode="numeric" placeholder={fmt(CHEST_DEFAULTS.xu.cost)} data-testid="chest-xu-cost" onChange={(e) => setV({ ...v, xuCost: e.target.value.replace(/[^\d]/g, ""), xuVnd: "" })} className={field} />
+          </label>
+          <label className="text-[12px] font-black text-[#6e4722]">
+            …hoặc nhập giá tiền thật (đ) → tự đổi ra xu
+            <input value={v.xuVnd} inputMode="numeric" placeholder="VD 3000" data-testid="chest-xu-vnd" onChange={(e) => setV({ ...v, xuVnd: e.target.value })} className={field} />
+          </label>
+          {vnd !== null && <span className="text-[12px] font-black text-[#2f7d32]">{fmt(vnd)}đ ÷ 3,6 = {fmt(vndToXu(vnd))} xu</span>}
+          <label className="text-[12px] font-black text-[#6e4722]">
+            Lượt mở mỗi ngày — gốc {CHEST_DEFAULTS.xu.dailyLimit}
+            <input value={v.daily} inputMode="numeric" placeholder={String(CHEST_DEFAULTS.xu.dailyLimit)} data-testid="chest-xu-daily" onChange={(e) => setV({ ...v, daily: e.target.value.replace(/[^\d]/g, "") })} className={field} />
+          </label>
+        </div>
+        <div className={box}>
+          <b className="ah-hand text-[16px]">💎 Rương Ngọc</b>
+          <label className="text-[12px] font-black text-[#6e4722]">
+            Giá mở (ngọc) — gốc {CHEST_DEFAULTS.gem.cost}
+            <input value={v.gemCost} inputMode="numeric" placeholder={String(CHEST_DEFAULTS.gem.cost)} data-testid="chest-gem-cost" onChange={(e) => setV({ ...v, gemCost: e.target.value.replace(/[^\d]/g, "") })} className={field} />
+          </label>
+          <p className="text-[11px] font-bold text-[#6e4722]">Ngọc chỉ có từ mã quà tặng thầy phát.</p>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-2 rounded-[16px] border-2 border-[#241e1a] bg-[#fff1c9] px-3 py-2">
+        {bad && <span className="mr-auto text-[12px] font-black text-[#b83d27]">{bad}</span>}
+        <button type="button" disabled={pending} data-testid="chest-reset" onClick={() => { setV({ xuCost: "", xuVnd: "", daily: "", gemCost: "" }); save({}); }} className="ah-btn ah-cream h-10 px-4 text-sm">Về giá gốc</button>
+        <button type="button" disabled={pending || !!bad} data-testid="chest-save" onClick={() => save(payload)} className="ah-btn ah-gold h-10 px-5 text-sm">{pending ? "Đang lưu…" : "Lưu giá rương"}</button>
       </div>
     </div>
   );

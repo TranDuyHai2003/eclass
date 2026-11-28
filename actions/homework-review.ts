@@ -49,19 +49,29 @@ export async function setHomeworkDeadline(input: { lessonId: string; classId: st
   if (blocked) return blocked;
   if (!(await requireStaff())) return { success: false, error: "Chỉ giáo viên được đặt hạn." };
   const [lesson, cls] = await Promise.all([
-    prisma.lesson.findUnique({ where: { id: String(input.lessonId) }, select: { hasHomework: true } }),
+    prisma.lesson.findUnique({ where: { id: String(input.lessonId) }, select: { hasHomework: true, test: { select: { id: true, type: true } } } }),
     prisma.studyClass.findUnique({ where: { id: String(input.classId) }, select: { id: true } }),
   ]);
-  if (!lesson?.hasHomework || !cls) return { success: false, error: "Bài hoặc lớp không tồn tại." };
+  const testId = lesson?.test?.type === "HOMEWORK" ? lesson.test.id : null;
+  if (!lesson || (!lesson.hasHomework && !testId) || !cls) return { success: false, error: "Bài hoặc lớp không tồn tại." };
   const where = { lessonId_classId: { lessonId: input.lessonId, classId: input.classId } };
   if (!input.dueDate) {
-    await prisma.homeworkDeadline.deleteMany({ where: { lessonId: input.lessonId, classId: input.classId } });
+    await prisma.$transaction([
+      prisma.homeworkDeadline.deleteMany({ where: { lessonId: input.lessonId, classId: input.classId } }),
+      ...(testId ? [prisma.testDeadline.deleteMany({ where: { testId, classId: input.classId } })] : []),
+    ]);
     revalidatePath("/teacher/homework/check");
-    return { success: true, message: "Đã bỏ hạn nộp — nộp lúc nào cũng được +xu.", dueDate: null };
+    return { success: true, message: "Đã bỏ hạn nộp — bài giao trong 30 ngày nộp lúc nào cũng được +xu.", dueDate: null };
   }
   const due = parseVnDateTime(input.dueDate);
   if (!due) return { success: false, error: "Hạn nộp không hợp lệ." };
-  await prisma.homeworkDeadline.upsert({ where, create: { lessonId: input.lessonId, classId: input.classId, dueDate: due }, update: { dueDate: due } });
+  // Bài có đề BTVN làm online → hạn của lớp cho đề cũng đặt theo (xu "nộp đúng hạn" tính theo một hạn duy nhất)
+  await prisma.$transaction([
+    prisma.homeworkDeadline.upsert({ where, create: { lessonId: input.lessonId, classId: input.classId, dueDate: due }, update: { dueDate: due } }),
+    ...(testId
+      ? [prisma.testDeadline.upsert({ where: { testId_classId: { testId, classId: input.classId } }, create: { testId, classId: input.classId, dueDate: due }, update: { dueDate: due } })]
+      : []),
+  ]);
   revalidatePath("/teacher/homework/check");
   return { success: true, message: "Đã lưu hạn nộp.", dueDate: due.toISOString() };
 }

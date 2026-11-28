@@ -36,11 +36,18 @@ export function createFixture() {
       return prisma.test.create({ data: { pdfUrl: "test.pdf", duration: 10, title: tag, dueDate: opts.dueDate ?? null, courseId: opts.courseId ?? null } });
     },
     /** Bài học có bài tập về nhà (khoá học + chương riêng của lần chạy, xoá theo tên khi dọn) */
-    async homeworkLesson(opts: { classIds?: string[] } = {}) {
+    async homeworkLesson(opts: { classIds?: string[]; createdAt?: Date; isPublished?: boolean } = {}) {
       const owner = await prisma.user.create({ data: { email: `${tag}-owner-${Math.random().toString(36).slice(2, 8)}@test.local`, role: "TEACHER", isApproved: true } });
-      const course = await prisma.course.create({ data: { title: tag, userId: owner.id, isPublished: true, ...(opts.classIds?.length ? { classes: { connect: opts.classIds.map((id) => ({ id })) } } : {}) } });
+      // Khoá trên prod đều isPublished=false (28/11) → mặc định thử đúng trường hợp đó
+      const course = await prisma.course.create({ data: { title: tag, userId: owner.id, isPublished: opts.isPublished ?? false, ...(opts.classIds?.length ? { classes: { connect: opts.classIds.map((id) => ({ id })) } } : {}) } });
       const chapter = await prisma.chapter.create({ data: { title: tag, courseId: course.id, isPublished: true } });
-      return prisma.lesson.create({ data: { title: `${tag} BTVN`, chapterId: chapter.id, hasHomework: true, isPublished: true } });
+      return prisma.lesson.create({ data: { title: `${tag} BTVN`, chapterId: chapter.id, hasHomework: true, isPublished: true, ...(opts.createdAt ? { createdAt: opts.createdAt } : {}) } });
+    },
+    /** BTVN làm online: bài học (khoá gắn lớp) + đề loại HOMEWORK gắn bài */
+    async homeworkTest(opts: { classIds?: string[]; createdAt?: Date; dueDate?: Date | null; type?: "HOMEWORK" | "EXAM" } = {}) {
+      const lesson = await this.homeworkLesson({ classIds: opts.classIds, createdAt: opts.createdAt });
+      const test = await prisma.test.create({ data: { pdfUrl: "test.pdf", duration: 10, title: tag, lessonId: lesson.id, type: opts.type ?? "HOMEWORK", dueDate: opts.dueDate ?? null, ...(opts.createdAt ? { createdAt: opts.createdAt } : {}) } });
+      return { lesson, test };
     },
     async attempt(testId: string, userId: string, score: number | null, completedAt: Date | null = new Date()) {
       return prisma.studentAttempt.create({ data: { testId, userId, score, completedAt } });

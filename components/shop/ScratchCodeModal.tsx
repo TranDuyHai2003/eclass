@@ -100,7 +100,7 @@ export function ScratchCodeModal({ open, onOpenChange, inline, canEarn }: { open
       <ShopModal open={open} onOpenChange={onOpenChange} inline={inline} title="🎟️ Thẻ Cào & GiftCode" description="Dùng chuột hoặc ngón tay cào lớp nhũ bạc để mở ô nhập mã thầy phát." testId="scratch-modal">
         {won ? (
           <div data-testid="giftcode-won" className="animate-pop-in rounded-2xl border-2 border-[#4fae4a] bg-[#eef9ea] p-5 text-center">
-            <p className="text-4xl">{won.currency === "GEM" ? "💎" : "🪙"}</p>
+            <p className="text-4xl">{won.currency === "GEM" ? "💎" : "💰"}</p>
             <p className="mt-1 text-2xl font-black text-[#1f6b22]">+{won.amount.toLocaleString("vi-VN")} {won.currency === "GEM" ? "Kim Cương" : "Xu"}</p>
             <p className="text-sm font-semibold text-[#2f7a33]">Đã cộng vào ví của bạn 🎉</p>
             <button type="button" onClick={() => setWon(null)} className="btn-pill mt-3 px-4 py-1.5 text-xs">Nhập mã khác</button>

@@ -12,7 +12,7 @@ export function ShopClosed({ balance }: { balance?: number | null }) {
         </p>
         {typeof balance === "number" && (
           <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm font-black text-amber-700">
-            🪙 {balance.toLocaleString("vi-VN")} xu đang có
+            💰 {balance.toLocaleString("vi-VN")} xu đang có
           </p>
         )}
         <div className="mt-5 flex flex-wrap justify-center gap-2">

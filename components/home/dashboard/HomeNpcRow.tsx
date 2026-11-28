@@ -36,7 +36,7 @@ export function HomeNpcRow({ lines, top3, grade, currentUserId }: { lines: strin
                     <span className="text-lg">{MEDAL[i]}</span>
                     <Chibi config={r.avatar} size={56} />
                     <span className="mt-1 line-clamp-1 w-full text-xs font-black text-slate-800 [overflow-wrap:anywhere]">{r.name || "Học sinh"}</span>
-                    <span className="text-[11px] font-bold text-amber-700 tabular-nums">🪙 {r.xu.toLocaleString("vi-VN")}</span>
+                    <span className="text-[11px] font-bold text-amber-700 tabular-nums">💰 {r.xu.toLocaleString("vi-VN")}</span>
                   </Link>
                 </li>
               ))}

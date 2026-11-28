@@ -7,7 +7,7 @@ import { ProfileScene } from "./ProfileScene";
 import { EffectLayer } from "./EffectLayer";
 import { FrameRing } from "./FrameRing";
 import { Sprite, hasSprite } from "@/components/studio/Sprite";
-import { FrameCut, PetImage, hasCutFrame } from "@/components/studio/CutArt";
+import { FrameCut, PetImage, faceBoxStyle, hasCutFrame } from "@/components/studio/CutArt";
 
 /**
  * Banner hồ sơ dùng chung (trang /profile và hồ sơ công khai): cảnh Hình nền + Hiệu ứng động + nhân vật + thú cưng,
@@ -60,7 +60,8 @@ export function AvatarRing({ frameId, image, name, className }: { frameId?: stri
   const initial = (name?.trim()?.[0] ?? "H").toUpperCase();
   return (
     <div className={cn("relative", className)} data-testid="profile-avatar-ring">
-      <div className="absolute inset-[15%] overflow-hidden rounded-full bg-[#5B2BD6] ring-4 ring-white">
+      {/* Khung tranh vẽ tay: mặt đặt đúng lỗ giữa từng khung (trước inset 15% → khung đè mất mép ảnh) */}
+      <div className={cn("absolute overflow-hidden rounded-full bg-[#5B2BD6]", hasCutFrame(frameId) ? "" : "ring-4 ring-white")} style={faceBoxStyle(frameId, 15)}>
         {image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={image} alt="" className="h-full w-full object-cover" />

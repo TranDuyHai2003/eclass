@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { CUT_FRAME_SCALE, CUT_PETS } from "@/lib/game/cut-art";
+import { CUT_FRAME_FACE, CUT_FRAME_SCALE, CUT_PETS } from "@/lib/game/cut-art";
 import { PetSvg } from "@/components/avatar/PetSvg";
 import { ShopArt, shopItemIndex } from "./Sprite";
 
@@ -32,6 +32,19 @@ export function FrameCut({ id, className }: { id: string; className?: string }) 
       style={{ left: `-${pad}%`, top: `-${pad}%`, width: `${k * 100}%`, height: `${k * 100}%` }}
     />
   );
+}
+
+/**
+ * Chỗ đặt mặt nhân vật trong khung (28/11: thầy báo khung lệch, khuất góc — lỗ giữa nhiều khung không tròn đều:
+ * tai mèo có chân thò vào, trăng khuyết lệch, hoa anh đào bông to). Khung tranh vẽ tay → vị trí riêng từng khung
+ * (CUT_FRAME_FACE, script tính); khung khác → inset mặc định (% cạnh).
+ */
+export function faceBoxStyle(frameId?: string | null, fallbackInsetPct = 21): React.CSSProperties {
+  const f = frameId ? CUT_FRAME_FACE[frameId] : undefined;
+  if (!f) return { inset: `${fallbackInsetPct}%` };
+  const [r, dx, dy] = f;
+  const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
+  return { left: pct(0.5 + dx - r), top: pct(0.5 + dy - r), width: pct(2 * r), height: pct(2 * r) };
 }
 
 /** Ảnh thú cưng: tranh vẽ tay tách nền → ô tranh tiệm → SVG có khối. Giữ tỉ lệ, nằm gọn trong khung cha. */

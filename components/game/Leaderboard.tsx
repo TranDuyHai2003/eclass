@@ -86,7 +86,7 @@ export function LeaderboardView({
                     <p className="mt-1 line-clamp-2 w-full text-sm font-black text-slate-900 [overflow-wrap:anywhere]">{r.name || "Học sinh"}</p>
                     {r.equippedTitle && <p className="text-[10px] font-black text-violet-700">🏷️ {r.equippedTitle}</p>}
                     <p className="text-[11px] font-bold text-slate-500">{r.level.icon} {r.level.name}{r.className ? ` · ${r.className}` : ""}</p>
-                    <p className="mt-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-black text-amber-800 tabular-nums">🪙 {fmt(r.xu)}</p>
+                    <p className="mt-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-black text-amber-800 tabular-nums">💰 {fmt(r.xu)}</p>
                   </Link>
                 );
               })}
@@ -103,7 +103,7 @@ export function LeaderboardView({
                     <span className="block truncate text-sm font-bold text-slate-900">{r.name || "Học sinh"}</span>
                     <span className="block truncate text-[11px] font-semibold text-slate-500">{r.level.icon} {r.level.name}{r.className ? ` · ${r.className}` : ""}{r.equippedTitle ? ` · 🏷️ ${r.equippedTitle}` : ""}</span>
                   </span>
-                  <span className="shrink-0 text-sm font-black text-amber-700 tabular-nums">🪙 {fmt(r.xu)}</span>
+                  <span className="shrink-0 text-sm font-black text-amber-700 tabular-nums">💰 {fmt(r.xu)}</span>
                 </Link>
               ))}
             </section>
@@ -112,7 +112,7 @@ export function LeaderboardView({
           {mine && !inTop && (
             <div data-testid="lb-mine" className="flex items-center gap-3 rounded-3xl border-2 border-blue-300 bg-blue-50 px-4 py-3">
               <span className="text-sm font-black text-blue-800">Bạn đang hạng #{mine.rank}/{mine.total}</span>
-              <span className="ml-auto text-sm font-black text-amber-700 tabular-nums">🪙 {fmt(mine.xu)}</span>
+              <span className="ml-auto text-sm font-black text-amber-700 tabular-nums">💰 {fmt(mine.xu)}</span>
             </div>
           )}
           {mine && inTop && <p className="text-center text-xs font-bold text-blue-700">Bạn đang hạng #{mine.rank}/{mine.total} — tên bạn được tô xanh ở trên 🎉</p>}

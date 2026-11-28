@@ -107,7 +107,7 @@ export function GachaModal({
                   {RARITY_LABEL[res.outcome.rarity]}{res.guaranteed ? " · bảo hiểm 🛡️" : ""}
                 </span>
                 <div className={cn("dots-bg mt-2 flex h-32 items-center justify-center rounded-xl border-2 border-dashed border-[#5b3d1e]/30", BAND[res.outcome.rarity].art)} style={{ "--dot": "rgba(91,61,30,.14)" } as React.CSSProperties}>
-                  {resItem ? <span className="animate-float"><ItemThumb itemId={resItem} avatar={avatar} size={104} /></span> : <span className="animate-float text-6xl">{res.outcome.kind === "xu" ? "🪙" : "💎"}</span>}
+                  {resItem ? <span className="animate-float"><ItemThumb itemId={resItem} avatar={avatar} size={104} /></span> : <span className="animate-float text-6xl">{res.outcome.kind === "xu" ? "💰" : "💎"}</span>}
                 </div>
                 <p className="mt-2 text-[15px] font-black text-[#3b2a14]">{describeOutcome(res.outcome)}</p>
                 {res.outcome.kind === "item" && !res.outcome.duplicate && <p className="text-[11px] font-semibold text-[#1f6b22]">Đã vào túi đồ ✨</p>}
@@ -148,7 +148,7 @@ export function GachaModal({
         <button type="button" data-testid="pray-xu" disabled={busy || !canEarn || g.left === 0} onClick={() => g.open("xu")} className="btn-pill btn-pill-yellow btn-shine relative flex-col gap-0 py-2 text-sm">
           <span aria-hidden className="sparkle -right-1 -top-1" />
           <span className="inline-flex items-center gap-1">{g.pending && g.chest === "xu" ? <Loader2 className="h-4 w-4 animate-spin" /> : "🌠"} Cầu Nguyện Hộp Sao</span>
-          <span className="text-[11px] font-bold text-[#5b3d1e]" data-testid="pray-xu-left">🪙 {xuCost} Xu · còn {g.left}/{g.limit} hôm nay</span>
+          <span className="text-[11px] font-bold text-[#5b3d1e]" data-testid="pray-xu-left">💰 {xuCost} Xu · còn {g.left}/{g.limit} hôm nay</span>
         </button>
         <button type="button" data-testid="pray-gem" disabled={busy || !canEarn} onClick={() => g.open("gem")} className="btn-pill btn-pill-blue btn-shine relative flex-col gap-0 py-2 text-sm">
           <span aria-hidden className="sparkle sparkle-2 -right-1 -top-1" />
@@ -157,7 +157,7 @@ export function GachaModal({
         </button>
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-[#7a5a35]">
-        <span data-testid="gacha-wallet">🪙 {g.wallet.balance.toLocaleString("vi-VN")} xu · 💎 {g.wallet.gems} KC</span>
+        <span data-testid="gacha-wallet">💰 {g.wallet.balance.toLocaleString("vi-VN")} xu · 💎 {g.wallet.gems} KC</span>
         {!canEarn && <span className="text-[#b4531a]">Tài khoản cần được thầy duyệt mới mở được hộp.</span>}
         <Link href="/rewards/gacha" className="underline decoration-dotted">Lịch sử mở hộp →</Link>
       </div>

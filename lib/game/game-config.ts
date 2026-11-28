@@ -1,6 +1,6 @@
 import { unstable_rethrow } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { EMPTY_GAME_CONFIG, applyGameConfig, type EarningConfig, type GameConfigData, type ItemPrices } from "./game-config-shared";
+import { EMPTY_GAME_CONFIG, applyGameConfig, type ChestConfig, type EarningConfig, type GameConfigData, type ItemPrices } from "./game-config-shared";
 
 /**
  * Đọc cấu hình game admin sửa (bảng GameConfig), cache 30 giây trong tiến trình, áp vào ITEM_BY_ID / POINTS.
@@ -20,18 +20,19 @@ let cache: { at: number; data: GameConfigData } | null = null;
 const memoryMode = () => process.env.GAME_CONFIG_SOURCE === "memory";
 let memory: GameConfigData = EMPTY_GAME_CONFIG;
 export function setGameConfigForTests(cfg: Partial<GameConfigData> | null) {
-  memory = { itemPrices: cfg?.itemPrices ?? {}, earning: cfg?.earning ?? {} };
+  memory = { itemPrices: cfg?.itemPrices ?? {}, earning: cfg?.earning ?? {}, chests: cfg?.chests ?? {} };
   cache = null;
   applyGameConfig(memory);
 }
 let inflight: Promise<GameConfigData> | null = null;
 
 async function read(): Promise<GameConfigData> {
-  const rows = await prisma.gameConfig.findMany({ where: { key: { in: ["itemPrices", "earning"] } } });
+  const rows = await prisma.gameConfig.findMany({ where: { key: { in: ["itemPrices", "earning", "chests"] } } });
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
   return {
     itemPrices: ((get("itemPrices") as ItemPrices | undefined) ?? {}) as ItemPrices,
     earning: ((get("earning") as EarningConfig | undefined) ?? {}) as EarningConfig,
+    chests: ((get("chests") as ChestConfig | undefined) ?? {}) as ChestConfig,
   };
 }
 
@@ -64,7 +65,7 @@ export async function loadGameConfig(force = false): Promise<GameConfigData> {
 }
 
 /** Ghi một khoá cấu hình rồi áp ngay trong tiến trình này */
-export async function writeGameConfig(key: "itemPrices" | "earning", value: ItemPrices | EarningConfig, userId: string) {
+export async function writeGameConfig(key: "itemPrices" | "earning" | "chests", value: ItemPrices | EarningConfig | ChestConfig, userId: string) {
   if (memoryMode()) {
     memory = { ...memory, [key]: value };
     return loadGameConfig(true);

@@ -24,7 +24,7 @@ import { ProfileBanner } from "./ProfileBanner";
 import { ProfileScene } from "./ProfileScene";
 import { FrameRing } from "./FrameRing";
 import { FrameFx } from "@/components/avatar/FrameFx";
-import { FrameCut, PetImage, hasCutFrame } from "@/components/studio/CutArt";
+import { FrameCut, PetImage, faceBoxStyle, hasCutFrame } from "@/components/studio/CutArt";
 import { applyGameConfig, type GameConfigData } from "@/lib/game/game-config-shared";
 
 export interface DecorStudioProps {
@@ -240,7 +240,7 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
     if (it.slot === "frame")
       return (
         <span className={cn("relative block", small ? "h-11 w-11" : "h-[72px] w-[72px]")}>
-          <span className="absolute inset-[21%] rounded-full bg-[#DDD6FE]" />
+          <span className="absolute rounded-full bg-[#DDD6FE]" style={faceBoxStyle(it.id)} />
           {hasCutFrame(it.id) ? <FrameCut id={it.id} /> : <FrameRing frameId={it.id} className="absolute inset-0 h-full w-full" />}
         </span>
       );
@@ -280,7 +280,9 @@ export default function DecorStudio({ user, config: initial, owned: ownedInit, w
         <div className="flex flex-col gap-[18px] px-6 pb-6">
           <div className="-mt-[52px] flex items-end gap-3.5">
             <div className={cn("relative h-28 w-28 shrink-0 rounded-full", !config.frame && "bg-[#EEF0FB] shadow-[0_0_0_4px_#fff]")} data-testid="profile-avatar-ring" data-frame={config.frame ?? ""}>
-              <AvatarFace config={config} bg="#EDE7FD" title={user.name ?? undefined} className={cn("absolute", config.frame ? "inset-[21%]" : "inset-6")} />
+              <span className={cn("absolute", !config.frame && "inset-6")} style={config.frame ? faceBoxStyle(config.frame) : undefined}>
+                <AvatarFace config={config} bg="#EDE7FD" title={user.name ?? undefined} className="h-full w-full" />
+              </span>
               {config.frame && hasCutFrame(config.frame) && (
                 <>
                   <FrameCut id={config.frame} />

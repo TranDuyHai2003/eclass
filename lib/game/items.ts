@@ -17,7 +17,7 @@ export const SLOTS: { key: Slot; label: string; icon: string; optional?: boolean
   { key: "frame", label: "Khung", icon: "🖼️", optional: true },
   { key: "background", label: "Nền", icon: "🌈", optional: true },
   { key: "effect", label: "Hiệu ứng", icon: "✨", optional: true },
-  { key: "nameplate", label: "Bảng tên", icon: "🪪", optional: true },
+  { key: "nameplate", label: "Bảng tên", icon: "📛", optional: true },
   { key: "title", label: "Danh hiệu", icon: "🏷️", optional: true },
   { key: "pet", label: "Mèo Cún", icon: "🐱", optional: true },
 ];

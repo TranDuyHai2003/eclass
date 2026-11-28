@@ -51,7 +51,7 @@ export function PublicProfileView({ p }: { p: PublicProfile }) {
             </div>
             <div className="mt-3 max-w-md">
               <div className="flex justify-between text-[11px] font-bold text-slate-600">
-                <span>🪙 {p.lifetimeEarned.toLocaleString("vi-VN")} xu tích luỹ</span>
+                <span>💰 {p.lifetimeEarned.toLocaleString("vi-VN")} xu tích luỹ</span>
                 <span>{p.level.next ? `còn ${p.level.toNext.toLocaleString("vi-VN")} xu → ${p.level.next.icon} ${p.level.next.name}` : "Danh hiệu cao nhất 👑"}</span>
               </div>
               <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-white/70" role="progressbar" aria-valuenow={p.level.progress} aria-valuemin={0} aria-valuemax={100}>

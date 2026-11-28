@@ -71,7 +71,7 @@ export function InventoryModal({
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#fff1c2] text-2xl">{r.reward.emoji || "🎁"}</span>
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-1 text-sm font-black text-[#3b2a14]">{r.reward.title}</p>
-                  <p className="text-[11px] font-semibold text-[#7a5a35]">{fmtDate(r.createdAt)} · 🪙 {r.price.toLocaleString("vi-VN")}{r.note ? ` · ${r.note}` : ""}</p>
+                  <p className="text-[11px] font-semibold text-[#7a5a35]">{fmtDate(r.createdAt)} · 💰 {r.price.toLocaleString("vi-VN")}{r.note ? ` · ${r.note}` : ""}</p>
                   <span className={cn("mt-0.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-black", st.cls)}>{st.label}</span>
                 </div>
                 {r.status === "PENDING" && (

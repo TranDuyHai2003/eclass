@@ -14,7 +14,7 @@ export type RewardTemplate = Omit<RewardInput, "classIds" | "isActive"> & {
  */
 export const REWARD_TEMPLATES: RewardTemplate[] = [
   // ---- Quà hiện vật (canvas) ----
-  { shop: true, emoji: "🧋", title: "Trà Sữa Tai Mèo 700ml", description: "Một ly trà sữa size lớn, nhận tại lớp.", price: xu(30000), kind: "PHYSICAL", costVnd: 30000, stock: 5, perStudentMonthlyLimit: 1 },
+  { shop: true, emoji: "🥤", title: "Trà Sữa Tai Mèo 700ml", description: "Một ly trà sữa size lớn, nhận tại lớp.", price: xu(30000), kind: "PHYSICAL", costVnd: 30000, stock: 5, perStudentMonthlyLimit: 1 },
   { shop: true, emoji: "📒", title: "Sổ Tay Lò Xo Mèo Xinh", description: "Sổ tay lò xo bìa mèo để ghi công thức.", price: xu(12000), kind: "PHYSICAL", costVnd: 12000, stock: 10 },
   { shop: true, emoji: "🖊️", title: "Set Bút Gel Pastel 6 Màu", description: "6 bút gel màu pastel để tô điểm vở ghi.", price: xu(15000), kind: "PHYSICAL", costVnd: 15000, stock: 12 },
   { shop: true, emoji: "🧻", title: "Túi Giấy Ăn Nhỏ Hoạt Hình", description: "Gói khăn giấy bỏ túi in hình mèo. Bạn đầu tiên trong lớp đổi sẽ mở một nhiệm vụ ẩn!", price: xu(5000), kind: "PHYSICAL", costVnd: 5000, stock: 10 },
@@ -31,7 +31,7 @@ export const REWARD_TEMPLATES: RewardTemplate[] = [
   { shop: true, emoji: "🙋", title: "Vé Hỏi Riêng Thầy/Cô 1-1", description: "Một buổi hỏi bài riêng với thầy/cô.", price: xu(3000), kind: "VIRTUAL", costVnd: 0, perStudentMonthlyLimit: 2 },
   { shop: true, emoji: "🧹", title: "Vé Miễn Trực Nhật 1 Tuần", description: "Được miễn trực nhật trong một tuần.", price: xu(6000), kind: "VIRTUAL", offlineOnly: true, costVnd: 0, perStudentMonthlyLimit: 1 },
   { shop: true, emoji: "💬", title: "Vé Gợi Ý 1 Câu Kiểm Tra", description: "Xin thầy gợi ý một câu trong bài kiểm tra.", price: xu(7500), kind: "VIRTUAL", costVnd: 0, perStudentMonthlyLimit: 1 },
-  { shop: true, emoji: "🪑", title: "Vé Chọn Chỗ Cạnh Bạn Thân", description: "Được ngồi cạnh bạn thân trong một buổi học.", price: xu(12000), kind: "VIRTUAL", offlineOnly: true, costVnd: 0, perStudentMonthlyLimit: 1 },
+  { shop: true, emoji: "💺", title: "Vé Chọn Chỗ Cạnh Bạn Thân", description: "Được ngồi cạnh bạn thân trong một buổi học.", price: xu(12000), kind: "VIRTUAL", offlineOnly: true, costVnd: 0, perStudentMonthlyLimit: 1 },
   { shop: true, emoji: "⚡", title: "Thẻ Quyền Năng +0.5 Điểm", description: "Cộng 0,5 điểm vào một bài kiểm tra do thầy chọn.", price: xu(27000), kind: "VIRTUAL", costVnd: 0, perStudentMonthlyLimit: 1 },
   // ---- Mẫu nhỏ khác ----
   { emoji: "🍬", title: "Kẹo / bánh nhỏ", price: xu(3000), kind: "PHYSICAL", costVnd: 3000, perStudentMonthlyLimit: 2 },

@@ -212,17 +212,30 @@ describe("Xoá lượt làm bài", () => {
 
 describe("Bài tập về nhà", () => {
   test("nộp lại bài đã có từ trước (resubmit — kể cả bài cũ nộp trước khi reset xu) không cộng xu; lần nộp đầu mới cộng", async () => {
-    const s = await fx.user();
-    const old = fx.tag + "-old-hw";
-    await onHomeworkSubmitted({ userId: s.id, lessonId: old, submissionId: "x", resubmit: true });
+    const cls = await fx.cls();
+    const s = await fx.user({ classId: cls.id });
+    const old = await fx.homeworkLesson({ classIds: [cls.id] });
+    await onHomeworkSubmitted({ userId: s.id, lessonId: old.id, submissionId: "x", resubmit: true });
     assert.equal(await fx.balance(s.id), 0, "bài cũ nộp lại không được xu");
-    const fresh = fx.tag + "-new-hw";
-    await onHomeworkSubmitted({ userId: s.id, lessonId: fresh, submissionId: "y" });
+    const fresh = await fx.homeworkLesson({ classIds: [cls.id] });
+    await onHomeworkSubmitted({ userId: s.id, lessonId: fresh.id, submissionId: "y" });
     assert.equal(await fx.balance(s.id), P.homeworkSubmit, "lần nộp đầu được xu");
   });
+
+  test("bài nộp ảnh: khoá của lớp khác / bài cũ hơn 30 ngày chưa đặt hạn → không xu", async () => {
+    const [mine, other] = await Promise.all([fx.cls(), fx.cls()]);
+    const s = await fx.user({ classId: mine.id });
+    const otherLesson = await fx.homeworkLesson({ classIds: [other.id] });
+    await onHomeworkSubmitted({ userId: s.id, lessonId: otherLesson.id, submissionId: "x" });
+    assert.equal(await fx.balance(s.id), 0, "khoá lớp khác");
+    const oldLesson = await fx.homeworkLesson({ classIds: [mine.id], createdAt: new Date(Date.now() - 40 * 86_400_000) });
+    await onHomeworkSubmitted({ userId: s.id, lessonId: oldLesson.id, submissionId: "x" });
+    assert.equal(await fx.balance(s.id), 0, "bài cũ chưa đặt hạn");
+  });
   test("nộp (nộp lại không cộng), Đạt cộng, Chưa đạt thu hồi, Đạt lại cộng", async () => {
-    const s = await fx.user();
-    const lessonId = fx.tag + "-lesson";
+    const cls = await fx.cls();
+    const s = await fx.user({ classId: cls.id });
+    const lessonId = (await fx.homeworkLesson({ classIds: [cls.id] })).id;
     await onHomeworkSubmitted({ userId: s.id, lessonId, submissionId: "x" });
     await onHomeworkSubmitted({ userId: s.id, lessonId, submissionId: "x" });
     assert.equal(await fx.balance(s.id), P.homeworkSubmit);
@@ -242,5 +255,71 @@ describe("Bài tập về nhà", () => {
     const s = await fx.user();
     await onHomeworkGraded({ userId: s.id, lessonId: "L", submissionId: "x", status: "UNSATISFACTORY", teacherId: s.id });
     assert.equal(await fx.balance(s.id), 0);
+  });
+});
+
+describe("BTVN làm online (đề loại HOMEWORK) — +100 xu (thầy báo 28/11: học sinh làm bài không có xu)", () => {
+  const DAY = 86_400_000;
+  const run = async (opts: Parameters<typeof fx.homeworkTest>[0] & { classed?: boolean; otherClass?: boolean } = {}) => {
+    const [mine, other] = await Promise.all([fx.cls(), fx.cls()]);
+    const s = await fx.user({ classId: opts.classed === false ? null : mine.id });
+    const { test: t } = await fx.homeworkTest({ ...opts, classIds: [opts.otherClass ? other.id : mine.id] });
+    return { s, t, mine };
+  };
+  // File này chạy với mức xu cũ (nộp bài / điểm cao…) → chỉ đếm xu "nộp BTVN"
+  const hw = async (userId: string) => (await prisma.pointLedger.aggregate({ where: { userId, key: { startsWith: "HWTEST:" } }, _sum: { amount: true } }))._sum.amount ?? 0; // tính cả dòng thu hồi cùng khoá
+  const doTest = async (userId: string, t: { id: string; dueDate: Date | null; courseId: string | null }, answered = 10) => {
+    const at = await fx.attempt(t.id, userId, 8);
+    await onTestSubmitted({ userId, attemptId: at.id, test: { id: t.id, dueDate: t.dueDate, courseId: t.courseId }, score: 8, answeredCount: answered, questionCount: 10, hasPendingEssay: false });
+  };
+
+  test("bài mới chưa đặt hạn → +100 lần làm đầu; làm lại không cộng thêm", async () => {
+    const { s, t } = await run();
+    await doTest(s.id, t);
+    assert.equal(await hw(s.id), P.homeworkSubmit);
+    await doTest(s.id, t);
+    assert.equal(await hw(s.id), P.homeworkSubmit, "làm lại không cộng");
+    const row = await prisma.pointLedger.findFirst({ where: { userId: s.id, source: "HOMEWORK_SUBMIT" } });
+    assert.equal(row?.key, `HWTEST:${t.id}`);
+  });
+
+  test("hạn còn → +100; hạn đã qua → 0; bài cũ (>30 ngày) có hạn còn → +100, không hạn → 0", async () => {
+    const a = await run({ dueDate: new Date(Date.now() + DAY) });
+    await doTest(a.s.id, a.t);
+    assert.equal(await hw(a.s.id), P.homeworkSubmit);
+    const b = await run({ dueDate: new Date(Date.now() - DAY) });
+    await doTest(b.s.id, b.t);
+    assert.equal(await hw(b.s.id), 0, "trễ hạn");
+    const c = await run({ createdAt: new Date(Date.now() - 40 * DAY), dueDate: new Date(Date.now() + DAY) });
+    await doTest(c.s.id, c.t);
+    assert.equal(await hw(c.s.id), P.homeworkSubmit, "bài cũ thầy đặt hạn mới");
+    const d = await run({ createdAt: new Date(Date.now() - 40 * DAY) });
+    await doTest(d.s.id, d.t);
+    assert.equal(await hw(d.s.id), 0, "bài cũ không hạn");
+  });
+
+  test("chống lấy xu: khoá của lớp khác (vd lớp dưới) → 0; chưa xếp lớp → 0; đề thi (EXAM) → 0; làm quá ít câu → 0", async () => {
+    const other = await run({ otherClass: true });
+    await doTest(other.s.id, other.t);
+    assert.equal(await hw(other.s.id), 0, "khoá lớp khác");
+    const noClass = await run({ classed: false });
+    await doTest(noClass.s.id, noClass.t);
+    assert.equal(await hw(noClass.s.id), 0, "chưa xếp lớp");
+    const exam = await run({ type: "EXAM" });
+    await doTest(exam.s.id, exam.t);
+    assert.equal(await hw(exam.s.id), 0, "đề thi");
+    const blank = await run();
+    await doTest(blank.s.id, blank.t, 1);
+    assert.equal(await hw(blank.s.id), 0, "nộp gần như trắng");
+  });
+
+  test("thầy xoá lượt làm → thu hồi 100; làm lại lần đầu (không còn lượt nào khác) được lại", async () => {
+    const { s, t } = await run();
+    await doTest(s.id, t);
+    await onAttemptDeleted({ userId: s.id, testId: t.id, teacherId: s.id });
+    assert.equal(await hw(s.id), 0);
+    await prisma.studentAttempt.deleteMany({ where: { userId: s.id, testId: t.id } });
+    await doTest(s.id, t);
+    assert.equal(await hw(s.id), P.homeworkSubmit);
   });
 });

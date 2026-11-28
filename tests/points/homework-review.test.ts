@@ -101,6 +101,40 @@ describe("Thầy duyệt chữa bài: 0 / +280 / +400", () => {
     assert.ok(a.submittedAt && a.late && a.level === null);
     assert.equal(list.students.find((x) => x.id === s2.id)?.level, "PARTIAL");
   });
+
+  test("28/11: danh sách bài xếp theo hoạt động gần nhất, bài >30 ngày đánh dấu cũ; có cả BTVN làm online (lần làm đầu, đúng/trễ hạn)", async () => {
+    const cls = await fx.cls();
+    const s = await fx.user({ classId: cls.id });
+    const DAY = 86_400_000;
+    const old = await fx.homeworkLesson({ classIds: [cls.id], createdAt: new Date(Date.now() - 60 * DAY) });
+    const { lesson: online, test: t } = await fx.homeworkTest({ classIds: [cls.id], createdAt: new Date(Date.now() - 10 * DAY) });
+    await fx.attempt(t.id, s.id, 7.5, new Date(Date.now() - 2 * DAY));
+    await fx.attempt(t.id, s.id, 9, new Date(Date.now() - DAY)); // lần làm lại: không thay lần đầu
+    const lessons = await getClassHomeworkLessons(cls.id);
+    const ids = lessons.map((l) => l.id);
+    assert.ok(ids.indexOf(online.id) < ids.indexOf(old.id), "bài mới / vừa có người làm lên trước");
+    assert.equal(lessons.find((l) => l.id === old.id)?.recent, false);
+    const o = lessons.find((l) => l.id === online.id)!;
+    assert.ok(o.recent && o.online);
+    const list = await getHomeworkCheckList(online.id, cls.id);
+    assert.equal(list.online, true);
+    const row = list.students.find((x) => x.id === s.id)!;
+    assert.equal(row.score, 7.5, "lần làm đầu");
+    assert.equal(row.doneLate, false);
+  });
+
+  test("đặt hạn ở trang duyệt cho bài có đề online → hạn lớp của đề cũng đặt theo (xu đúng hạn tính một hạn)", async () => {
+    const cls = await fx.cls();
+    const { lesson, test: t } = await fx.homeworkTest({ classIds: [cls.id] });
+    const due = new Date(Date.now() + 3600_000);
+    // gọi phần lõi như action (action cần đăng nhập)
+    await prisma.$transaction([
+      prisma.homeworkDeadline.create({ data: { lessonId: lesson.id, classId: cls.id, dueDate: due } }),
+      prisma.testDeadline.create({ data: { testId: t.id, classId: cls.id, dueDate: due } }),
+    ]);
+    const list = await getHomeworkCheckList(lesson.id, cls.id);
+    assert.equal(list.dueDate, due.toISOString());
+  });
 });
 
 describe("Mã quà tặng tự đặt, dùng 1 lần", () => {

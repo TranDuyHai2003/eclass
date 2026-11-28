@@ -13,7 +13,6 @@ import {
 } from "@/lib/homework-review";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { cleanHomeworkAttachments, homeworkKeyOf } from "@/lib/homework-files";
-import { getVisibleCourseIds } from "@/lib/home/student-home";
 import { revokeKey, lockWallet } from "@/lib/points/engine";
 
 // ----------------------------------------------------------------------
@@ -89,13 +88,12 @@ export async function submitHomework(
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
-  // Chống lấy xu khống (26/11/2026): bài phải có BTVN, thuộc khoá học sinh được học, và có tệp thật đã tải lên
+  // Chống lấy xu khống (26/11/2026): bài phải có BTVN và có tệp thật đã tải lên.
+  // Khoá của lớp mình hay không chỉ quyết định có xu (lib/points/xu-eligibility.ts), không chặn nộp bài
+  // (28/11: các khoá trên prod đều isPublished=false → kiểm "khoá được học" theo getVisibleCourseIds chặn nhầm mọi bài nộp)
   if (typeof lessonId !== "string" || !lessonId) throw new Error("Bài học không hợp lệ.");
-  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { hasHomework: true, chapter: { select: { courseId: true } } } });
+  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { hasHomework: true } });
   if (!lesson?.hasHomework) throw new Error("Bài học này không có bài tập về nhà.");
-  if (session.user.role === "STUDENT" && !(await getVisibleCourseIds(session.user.id)).includes(lesson.chapter.courseId)) {
-    throw new Error("Em chưa được học khoá này.");
-  }
 
   const existing = await prisma.homeworkSubmission.findUnique({
     where: {

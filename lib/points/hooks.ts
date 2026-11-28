@@ -4,6 +4,7 @@ import { awardOnce, isEligibleStudent, lockWallet, revokeKey, runPointsSafely, u
 import type { Tx } from "./engine";
 import { checkSubmitQuests, runQuestsSafely } from "@/lib/game/quests";
 import { homeworkDueFor } from "./homework";
+import { courseCountsForXu, homeworkOnTimeForXu } from "./xu-eligibility";
 
 /**
  * Các điểm gắn vào luồng nộp/chấm bài. Đều chạy SAU khi dữ liệu chính đã lưu, trong giao dịch riêng
@@ -15,6 +16,8 @@ const testKey = (testId: string) => `TEST:${testId}`;
 const onTimeKey = (testId: string) => `ONTIME:${testId}`;
 const scoreKey = (testId: string) => `TESTSCORE:${testId}`;
 const breakKey = (testId: string) => `BREAK:${testId}`;
+/** BTVN làm online (đề loại HOMEWORK) — +100 xu nộp đúng hạn (cơ chế 26/11, thầy báo học sinh làm bài không có xu 28/11) */
+const hwTestKey = (testId: string) => `HWTEST:${testId}`;
 
 export function scoreTierPoints(score: number) {
   return POINTS.scoreTiers.find((t) => score >= t.min)?.points ?? 0;
@@ -109,6 +112,33 @@ export async function onTestSubmitted(p: {
       now,
     });
 
+    // BTVN làm online: lần làm đầu, bài thuộc khoá lớp mình, nộp đúng hạn (chưa đặt hạn → bài giao trong 30 ngày)
+    if (!isFinal && POINTS.homeworkSubmit > 0) {
+      const info = await tx.test.findUnique({
+        where: { id: p.test.id },
+        select: { type: true, createdAt: true, lesson: { select: { createdAt: true, chapter: { select: { courseId: true } } } } },
+      });
+      if (info?.type === "HOMEWORK" && info.lesson) {
+        const earlier = await tx.studentAttempt.count({ where: { userId: p.userId, testId: p.test.id, completedAt: { not: null }, id: { not: p.attemptId } } });
+        if (
+          earlier === 0 &&
+          homeworkOnTimeForXu(status, info.lesson.createdAt, now) &&
+          (await courseCountsForXu(tx, p.userId, info.lesson.chapter.courseId))
+        ) {
+          await awardOnce(tx, {
+            userId: p.userId,
+            amount: POINTS.homeworkSubmit,
+            source: "HOMEWORK_SUBMIT",
+            key: hwTestKey(p.test.id),
+            refId: p.attemptId,
+            reason: status === "on-time" ? "Nộp bài tập về nhà đúng hạn" : "Nộp bài tập về nhà",
+            capped: true,
+            now,
+          });
+        }
+      }
+    }
+
     if (status === "on-time") {
       await awardOnce(tx, {
         userId: p.userId,
@@ -167,7 +197,7 @@ export function onAttemptDeleted(p: { userId: string; testId: string; teacherId:
   return runPointsSafely("onAttemptDeleted", async (tx) => {
     await lockWallet(tx, p.userId);
     const reason = "Giáo viên xoá lượt làm bài";
-    for (const key of [testKey(p.testId), onTimeKey(p.testId), scoreKey(p.testId), breakKey(p.testId)]) {
+    for (const key of [testKey(p.testId), onTimeKey(p.testId), scoreKey(p.testId), breakKey(p.testId), hwTestKey(p.testId)]) {
       await revokeKey(tx, p.userId, key, reason, p.teacherId);
     }
   });
@@ -184,7 +214,14 @@ export async function onHomeworkSubmitted(p: { userId: string; lessonId: string;
     const wallet = await lockWallet(tx, p.userId);
     // Cơ chế 26/11: chỉ cộng khi nộp TRƯỚC hạn của lớp (chưa đặt hạn → cộng); trễ hạn vẫn tính hoạt động chuỗi tuần
     const due = await homeworkDueFor(tx, p.lessonId, p.userId);
-    if (!p.resubmit && (!due || now <= due)) {
+    const lesson = await tx.lesson.findUnique({ where: { id: p.lessonId }, select: { createdAt: true, chapter: { select: { courseId: true } } } });
+    const status = !due ? "none" : now <= due ? "on-time" : "late";
+    if (
+      !p.resubmit &&
+      lesson &&
+      homeworkOnTimeForXu(status, lesson.createdAt, now) &&
+      (await courseCountsForXu(tx, p.userId, lesson.chapter.courseId))
+    ) {
       await awardOnce(tx, {
         userId: p.userId,
         amount: POINTS.homeworkSubmit,

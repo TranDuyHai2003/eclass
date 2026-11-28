@@ -79,10 +79,11 @@ export interface ManageData {
  */
 export function RewardManager({ data, gameConfig, avatar, tab, onTab }: { data: ManageData; gameConfig?: GameConfigData; avatar: AvatarConfig; tab: ManageTab; onTab: (t: ManageTab) => void }) {
   const pendingCount = data.teacher.pending.length;
+  const noClass = data.teacher.classes.find((c) => c.id === "__none__")?.students.length ?? 0;
   const tabs: [ManageTab, string, number?][] = [
     ["requests", "📬 Đơn đổi quà", pendingCount],
     ["rewards", "🎁 Quà & thẻ"],
-    ["grant", "🪙 Thưởng xu"],
+    ["grant", "💰 Thưởng xu"],
     ["codes", "🎟️ Mã quà tặng"],
     ["stats", "📊 Thống kê"],
     ...(data.isAdmin ? ([["prices", "🏷️ Giá đồ trang trí"], ["earning", "⚙️ Mức xu"]] as [ManageTab, string][]) : []),
@@ -95,6 +96,12 @@ export function RewardManager({ data, gameConfig, avatar, tab, onTab }: { data: 
         <span className="text-xs font-extrabold text-[#6e4722]">Chỉ giáo viên / admin thấy khu này</span>
         <Link href="/teacher/homework/check" data-testid="mgr-review-link" className="ah-btn ah-sky ml-auto h-10 shrink-0 whitespace-nowrap px-3.5 text-[13px]">✍️ Duyệt chữa bài<span className="max-sm:hidden">&nbsp;(+280 / +400 xu)</span> →</Link>
       </div>
+      {noClass > 0 && (
+        <p className="rounded-[14px] border-2 border-[#e8a33c] bg-[#fff4dc] px-3 py-2 text-[13px] font-bold text-[#7a4a12]" data-testid="mgr-no-class">
+          ⚠️ {noClass} học sinh đã duyệt <b>chưa xếp lớp</b> → làm bài tập không được xu và không có tên trên Bảng Vàng (bảng xếp theo khối của lớp).{" "}
+          {data.isAdmin && <Link href="/admin/users" className="underline decoration-dotted">Xếp lớp ở trang Người dùng →</Link>}
+        </p>
+      )}
       <div className="-mx-1 flex gap-1.5 overflow-x-auto border-b-2 border-[#efe3cc] px-1 pb-3 [scrollbar-width:thin]" role="tablist" aria-label="Mục quản lý">
         {tabs.map(([k, label, badge]) => (
           <button key={k} type="button" role="tab" aria-selected={current === k} data-testid={`mgr-tab-${k}`} onClick={() => { play("click"); onTab(k); }} className={cn("ah-btn relative h-10 shrink-0 px-3.5 text-[13px]", current === k ? "ah-coral" : "ah-cream")}>

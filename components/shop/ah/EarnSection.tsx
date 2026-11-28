@@ -59,7 +59,7 @@ export function EarnSection({ todo, todoTotal, recent, lifetimeEarned, level }: 
           </div>
         )}
         <div className="rounded-[18px] border-2 border-dashed border-[#241e1a] bg-[#fff6db] px-4 py-3 text-[13px] font-bold">
-          Bài tập về nhà: chụp ảnh bài làm và nộp trong trang bài học <b>trước hạn</b> (+{fmt(POINTS.homeworkSubmit)} xu, chỉ lần nộp đầu — nộp lại không cộng thêm). Lên lớp thầy duyệt chữa bài: có chữa +{fmt(POINTS.homeworkReview.partial)} xu, chữa đủ và tốt +{fmt(POINTS.homeworkReview.full)} xu.
+          Bài tập về nhà: làm BTVN trên web (hoặc nộp ảnh bài làm) <b>trước hạn</b>, bài của khoá lớp mình (+{fmt(POINTS.homeworkSubmit)} xu, chỉ lần đầu — làm lại không cộng thêm). Lên lớp thầy duyệt chữa bài: có chữa +{fmt(POINTS.homeworkReview.partial)} xu, chữa đủ và tốt +{fmt(POINTS.homeworkReview.full)} xu.
         </div>
       </section>
       <section className="ah-panel flex flex-col gap-3 p-5">

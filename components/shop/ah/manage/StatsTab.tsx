@@ -9,7 +9,7 @@ import { BOX, Empty, LABEL } from "./ui";
 export function StatsTab({ data }: { data: TeacherRewardsPageData }) {
   const s = data.stats;
   const cards: [string, string, string][] = [
-    ["🪙", "Xu học sinh nhận tháng này", fmt(s.earnedThisMonth)],
+    ["💰", "Xu học sinh nhận tháng này", fmt(s.earnedThisMonth)],
     ["🛍️", "Xu đã dùng đổi quà", fmt(s.spentThisMonth)],
     ["🎁", "Quà đã trao tháng này", fmt(s.deliveredThisMonth)],
     ["💵", "Chi phí quà tháng này", `${fmt(s.costThisMonth)}đ`],

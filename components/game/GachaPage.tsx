@@ -9,6 +9,7 @@ import { CHESTS, RARITY_ORDER, describeOutcome, ratesTable, type ChestId, type O
 import { RARITY_LABEL } from "@/lib/game/items";
 import type { AvatarConfig } from "@/lib/game/avatar";
 import { RARITY } from "@/lib/points/rarity";
+import { applyGameConfig, type GameConfigData } from "@/lib/game/game-config-shared";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SoundToggle } from "./SoundToggle";
 
@@ -21,8 +22,9 @@ const GachaScene = dynamic(() => import("./GachaScene").then((m) => m.GachaScene
 const fmtTime = (iso: string) => new Date(iso).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export function GachaPage({
-  wallet, pity, pullsToday, history, canEarn, avatar, owned, initialChest = "xu",
+  wallet, pity, pullsToday, history, canEarn, avatar, owned, initialChest = "xu", gameConfig,
 }: {
+  gameConfig?: GameConfigData;
   wallet: { balance: number; gems: number };
   pity: number;
   pullsToday: number;
@@ -32,6 +34,7 @@ export function GachaPage({
   owned: string[];
   initialChest?: ChestId;
 }) {
+  applyGameConfig(gameConfig); // giá rương admin sửa — cùng cấu hình với server
   const [ratesFor, setRatesFor] = useState<ChestId | null>(null);
   return (
     <div className="space-y-4" data-testid="gacha-page">

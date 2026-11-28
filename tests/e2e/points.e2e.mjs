@@ -110,7 +110,7 @@ async function setup() {
 
 async function cleanup() {
   // Cấu hình giá / mức xu thử trên giao diện (bước admin) — xoá nếu bước bị dừng giữa chừng
-  await prisma.gameConfig.deleteMany({ where: { key: { in: ["itemPrices", "earning"] } } }).catch(() => {});
+  await prisma.gameConfig.deleteMany({ where: { key: { in: ["itemPrices", "earning", "chests"] } } }).catch(() => {});
   await prisma.reward.deleteMany({ where: { title: { startsWith: tag } } });
   // Quà tạo từ mẫu trên giao diện mang tên mẫu → xoá theo người tạo
   const teacher = await prisma.user.findUnique({ where: { email: `${tag}-gv@test.local` } });
@@ -991,6 +991,23 @@ try {
       await a.ev(`document.querySelector('[data-testid="price-save"]').click()`);
       await sleep(1500);
       expect(JSON.stringify((await prisma.gameConfig.findUnique({ where: { key: "itemPrices" } }))?.value) === "{}", "Về giá gốc không lưu");
+      // 28/11: sửa được mọi loại đồ (có tab Kiểu tóc) + giá rương
+      expect(await a.ev(`return !!document.querySelector('[data-testid="price-slot-hair"]')`), "thiếu tab giá Kiểu tóc");
+      await a.ev(`document.querySelector('[data-testid="price-slot-chest"]').click()`);
+      await sleep(300);
+      await setVal('[data-testid="chest-xu-cost"]', "400");
+      await sleep(200);
+      expect(await a.ev(`return document.querySelector('[data-testid="chest-save"]').disabled`), "giá rương dưới 500 xu phải bị chặn");
+      await setVal('[data-testid="chest-xu-cost"]', "900");
+      await setVal('[data-testid="chest-xu-daily"]', "5");
+      await a.ev(`document.querySelector('[data-testid="chest-save"]').click()`);
+      expect(await a.waitText(/Đã lưu giá rương/), "không lưu được giá rương");
+      const ch = (await prisma.gameConfig.findUnique({ where: { key: "chests" } }))?.value;
+      expect(ch?.xu?.cost === 900 && ch?.xu?.dailyLimit === 5, `DB giá rương sai: ${JSON.stringify(ch)}`);
+      await sleep(1200);
+      await a.ev(`document.querySelector('[data-testid="chest-reset"]').click()`);
+      await sleep(1500);
+      expect(JSON.stringify((await prisma.gameConfig.findUnique({ where: { key: "chests" } }))?.value) === "{}", "Về giá gốc rương không lưu");
       await a.goto("/rewards?manage=prices", /Quản lý tiệm/i);
       expect(await a.ev(`return document.querySelector('[data-testid="mgr-tab-prices"]')?.getAttribute("aria-selected") === "true"`), "link ?manage=prices không mở đúng mục cho admin");
       expect(a.errors.length === 0, a.errors.join("\n    "));

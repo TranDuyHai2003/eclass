@@ -93,7 +93,7 @@ export function GrantTab({ data, manualMax, manualDailyCap }: { data: TeacherRew
           onClick={() => run(() => grantPoints({ userIds: chosen, amount, reason }), () => setSelected(new Set()))}
           className={cn("ah-btn h-12 w-full text-[15px]", amount < 0 ? "ah-coral" : "ah-gold")}
         >
-          {pending ? "Đang lưu…" : amount < 0 ? `Trừ ${fmt(-amount)} xu` : `🪙 Thưởng ${fmt(Math.max(0, amount))} xu`}
+          {pending ? "Đang lưu…" : amount < 0 ? `Trừ ${fmt(-amount)} xu` : `💰 Thưởng ${fmt(Math.max(0, amount))} xu`}
         </button>
         <p className={HINT}>
           Mỗi lần tối đa {fmt(manualMax)} xu; mỗi học sinh nhận tối đa {fmt(manualDailyCap)} xu thưởng tay mỗi ngày. Học sinh nhận thông báo kèm lý do.

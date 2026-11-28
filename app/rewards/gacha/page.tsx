@@ -8,6 +8,7 @@ import { getHeaderPoints } from "@/lib/points/queries";
 import { isGachaEnabled, pullsToday, recentPulls } from "@/lib/game/gacha";
 import { getAvatar } from "@/lib/game/inventory";
 import { prisma } from "@/lib/prisma";
+import { loadGameConfig } from "@/lib/game/game-config";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Rương bí ẩn" };
@@ -20,6 +21,7 @@ export default async function GachaRoute({ searchParams }: { searchParams: Promi
   if (!["STUDENT", "ADMIN", "TEACHER"].includes(session.user.role)) redirect("/");
   if (!canUseShop(session.user)) redirect("/rewards");
   const uid = session.user.id;
+  const gameConfig = await loadGameConfig(); // giá rương admin sửa
 
   const [wallet, today, history, me, { config, owned }, pityRow] = await Promise.all([
     getHeaderPoints(uid),
@@ -48,6 +50,7 @@ export default async function GachaRoute({ searchParams }: { searchParams: Promi
             avatar={config}
             owned={owned}
             initialChest={sp.chest === "gem" ? "gem" : "xu"}
+            gameConfig={gameConfig}
           />
         </main>
       </div>

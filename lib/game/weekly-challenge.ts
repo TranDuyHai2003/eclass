@@ -3,6 +3,7 @@
  * không bịa sự kiện. Thuần (không Prisma) để test được.
  */
 import { getVietnamWeekStart } from "@/lib/ranking/history-engine";
+import { POINTS } from "@/lib/points/config";
 
 const DAY = 86_400_000;
 
@@ -18,6 +19,8 @@ export function daysLeftInWeek(now: Date = new Date()): number {
   const end = getVietnamWeekStart(now).getTime() + 7 * DAY;
   return Math.max(1, Math.ceil((end - now.getTime()) / DAY));
 }
+
+const streakPays = () => Object.values(POINTS.streak.milestones).some((v) => v > 0) || POINTS.streak.every4WeeksAfter12 > 0;
 
 export function weeklyChallenge(
   w: { weekActivities: number; weekTarget: number; thisWeekCounted: boolean; weekStreak: number },
@@ -37,7 +40,8 @@ export function weeklyChallenge(
   const need = Math.max(0, w.weekTarget - w.weekActivities);
   return {
     title: "Thử thách tuần: giữ chuỗi 🔥",
-    text: `Nộp thêm ${need} bài trong tuần này (đang ${w.weekActivities}/${w.weekTarget}) để giữ chuỗi và nhận thưởng mốc tuần.${streak}`,
+    // Thưởng mốc chuỗi tuần mặc định 0 xu từ 26/11 → chỉ hứa thưởng khi admin bật lại (28/11: thầy thấy câu hứa sai)
+    text: `Nộp thêm ${need} bài trong tuần này (đang ${w.weekActivities}/${w.weekTarget}) để giữ chuỗi${streakPays() ? " và nhận thưởng mốc tuần" : ""}.${streak}`,
     badge: `Còn ${left} ngày`,
     done: false,
   };

@@ -54,7 +54,7 @@ const CATS: { key: Cat | "box"; label: string; icon: string }[] = [
   { key: "physical", label: "Quà hiện vật", icon: "🎁" },
   { key: "voucher", label: "Thẻ đặc quyền", icon: "🎫" },
   { key: "frame", label: "Viền avatar", icon: "🖼️" },
-  { key: "nameplate", label: "Bảng tên VIP", icon: "🪪" },
+  { key: "nameplate", label: "Bảng tên VIP", icon: "📛" },
   { key: "pet", label: "Mèo cún", icon: "🐾" },
   { key: "deco", label: "Trang trí khác", icon: "🎀" },
   { key: "box", label: "Hộp bí ẩn", icon: "📦" },

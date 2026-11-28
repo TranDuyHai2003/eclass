@@ -33,7 +33,7 @@ export async function grantManualInTx(
   await tx.notification.create({
     data: {
       userId: p.userId,
-      title: value > 0 ? `Thầy thưởng ${value.toLocaleString("vi-VN")} xu 🪙` : `Bị trừ ${(-value).toLocaleString("vi-VN")} xu`,
+      title: value > 0 ? `Thầy thưởng ${value.toLocaleString("vi-VN")} xu 💰` : `Bị trừ ${(-value).toLocaleString("vi-VN")} xu`,
       message: reason,
       link: "/rewards",
       type: "SYSTEM",
