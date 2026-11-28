@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { usePointsEnabled } from "@/components/points/PointsFlag";
 import { canUseShop } from "@/lib/points/shop-access";
+import { WORLD_GAME_VISIBLE } from "@/lib/world-visibility";
 
 const DiscordIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 -28.5 256 256" fill="currentColor" {...props}>
@@ -62,7 +63,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
       ? [{ icon: HomeIcon, label: "Trang chủ", href: "/", exact: true }]
       : [{ icon: LogIn, label: "Đăng nhập", href: "/login" }]),
     { icon: BookOpen, label: "Khóa Học", href: "/courses" },
-    ...(currentUser ? [{ icon: Gamepad2, label: "Game Thế giới Toán", href: "/world" }] : []),
+    ...(currentUser && WORLD_GAME_VISIBLE ? [{ icon: Gamepad2, label: "Game Thế giới Toán", href: "/world" }] : []),
     { icon: Trophy, label: "Bảng xếp hạng Hunter", href: "/ranking" },
     // Bảng Vàng chỉ nằm trong Tiệm quà (thầy yêu cầu 28/11) — không còn mục riêng ở thanh bên
     ...(pointsEnabled && ((role === "STUDENT" && canUseShop(currentUser)) || isTeacher) ? [{ icon: Gift, label: "Tiệm quà", href: "/rewards" }] : []),

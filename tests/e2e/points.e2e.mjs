@@ -582,6 +582,7 @@ try {
     await s.goto("/", /Tiệm quà/i);
     expect(await s.ev(`return !!document.querySelector('[data-testid="npc"]') && !!document.querySelector('[data-testid="home-top3"]')`), "trang chủ thiếu NPC hoặc top 3");
     expect(await s.ev(`return !document.querySelector('aside a[href="/leaderboard"]')`), "thanh bên vẫn còn mục Bảng Vàng riêng");
+    expect(await s.ev(`return !document.querySelector('a[href="/world"]')`), "lối vào game 3D phải đang ẩn (thầy 28/11)");
     const npc = await s.ev(`return document.querySelector('[data-testid="npc"]')?.innerText || ""`);
     expect(/lucky boy/i.test(npc) && !/rương/i.test(npc), `NPC sai: ${npc.slice(0, 80)}`);
   });

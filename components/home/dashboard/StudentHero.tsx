@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WORLD_GAME_VISIBLE } from "@/lib/world-visibility";
 import { BookOpen, ChevronRight, Gamepad2, PlayCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLevel } from "@/lib/points/levels";
@@ -55,14 +56,14 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside,
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {/* Vào game Thế giới Toán 3D (trang riêng, toàn màn hình) */}
-              <Link
+              {/* Vào game Thế giới Toán 3D (trang riêng, toàn màn hình) — tạm ẩn theo cờ WORLD_GAME_VISIBLE */}
+              {WORLD_GAME_VISIBLE && <Link
                 href="/world"
                 data-testid="hero-game"
                 className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-300 to-orange-400 px-3.5 py-1.5 text-xs font-black text-indigo-950 shadow-[0_3px_0_0_#b45309] ring-1 ring-white/40 transition-transform hover:scale-105 active:translate-y-0.5 active:shadow-none"
               >
                 <Gamepad2 className="h-4 w-4" /> Vào Game
-              </Link>
+              </Link>}
               {level && (
                 <Link
                   href={shopOpen ? "/rewards" : "/profile"}
