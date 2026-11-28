@@ -17,8 +17,9 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   if (!isPointsEnabled()) notFound();
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
-  // Học sinh vào được tiệm: Bảng Vàng nằm trong Tiệm quà (mở sẵn hộp Bảng Vàng)
-  if (session.user.role === "STUDENT" && canUseShop(session.user)) redirect("/rewards#bang-vang");
+  // Bảng Vàng chỉ nằm trong Tiệm quà (thầy yêu cầu 28/11): ai vào được tiệm (học sinh offline, thầy, admin) → hộp Bảng Vàng trong tiệm.
+  // Trang đầy đủ này chỉ còn cho học sinh chưa được vào tiệm (online).
+  if (canUseShop(session.user)) redirect("/rewards#bang-vang");
   const sp = await searchParams;
   const period: Period = sp.period === "month" ? "month" : "all";
 

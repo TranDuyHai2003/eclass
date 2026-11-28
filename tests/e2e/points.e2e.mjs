@@ -567,18 +567,18 @@ try {
     await s.screenshot(path.join(SHOTS, "gacha-result.png"));
   });
 
-  await step("Bảng Vàng: học sinh vào tiệm → /leaderboard mở hộp Bảng Vàng trong tiệm (không còn mục ở thanh bên); thầy vẫn xem trang đầy đủ; trang chủ có NPC + top 3", async () => {
+  await step("Bảng Vàng: học sinh vào tiệm → /leaderboard mở hộp Bảng Vàng trong tiệm (không còn mục ở thanh bên); thầy cũng xem trong tiệm; trang chủ có NPC + top 3", async () => {
     await s.goto("/leaderboard?tab=g7&period=all", /Bảng Vàng Server Khối/i);
     expect(await s.ev(`return location.pathname === "/rewards" && !!document.querySelector('[data-testid="leaderboard-modal"]')`), "học sinh vào /leaderboard không được đưa vào hộp Bảng Vàng của tiệm");
     expect(/Học sinh/.test(await s.ev(`return document.querySelector('[data-testid="leaderboard-modal"]')?.innerText || ""`)), "hộp Bảng Vàng không có mình");
     await s.ev(`document.querySelector('[data-testid="shop-modal-close"]').click()`);
-    await t.goto("/leaderboard?tab=g7&period=all", /Bảng Vàng/i);
-    expect(await t.ev(`return !!document.querySelector('[data-testid="podium"]')`), "không thấy bục top 3");
-    const podium = await t.ev(`return document.querySelector('[data-testid="podium"]')?.innerText || ""`);
-    expect(podium.includes("Học sinh") && /17\.100|16\.|15\./.test(podium), `bục không có học sinh thử: ${podium.slice(0, 80)}`);
-    expect(await t.ev(`return document.querySelectorAll('[data-testid="podium"] svg[role="img"]').length >= 1`), "bục thiếu nhân vật");
-    await t.goto("/leaderboard?tab=g7&period=month", /Bảng Vàng/i);
-    expect(/Tháng này/.test(await t.text()), "thiếu tab Tháng này");
+    // 28/11: thầy cũng xem Bảng Vàng trong Tiệm quà (bỏ trang riêng / mục thanh bên)
+    await t.goto("/leaderboard?tab=g7&period=all", /Bảng Vàng Server Khối/i);
+    expect(await t.ev(`return location.pathname === "/rewards" && !!document.querySelector('[data-testid="leaderboard-modal"]')`), "thầy vào /leaderboard không được đưa vào hộp Bảng Vàng của tiệm");
+    await t.ev(`document.querySelector('[data-testid="board-g7"]')?.click()`);
+    await sleep(400);
+    expect(/Học sinh/.test(await t.ev(`return document.querySelector('[data-testid="leaderboard-modal"]')?.innerText || ""`)), "hộp Bảng Vàng của thầy (khối 7) không có học sinh thử");
+    expect(await t.ev(`return !document.querySelector('[data-testid="leaderboard-modal"] a[href="/leaderboard"]')`), "hộp Bảng Vàng còn nút xem trang riêng");
     await s.goto("/", /Tiệm quà/i);
     expect(await s.ev(`return !!document.querySelector('[data-testid="npc"]') && !!document.querySelector('[data-testid="home-top3"]')`), "trang chủ thiếu NPC hoặc top 3");
     expect(await s.ev(`return !document.querySelector('aside a[href="/leaderboard"]')`), "thanh bên vẫn còn mục Bảng Vàng riêng");
@@ -1025,6 +1025,9 @@ try {
     const before = await balanceOf(data.student.id);
     await t.goto(`/teacher/homework/check?class=${data.cls.id}&lesson=${data.hwLesson.id}`, /Duyệt chữa bài tập/i);
     expect(await t.ev(`return !!document.querySelector('[data-testid="homework-check"]') && document.querySelectorAll('[data-testid="hc-row"]').length >= 1`), "trang duyệt không có danh sách lớp");
+    // 28/11: chỉ mục "Duyệt chữa bài" sáng, "Duyệt Bài tự luận" (/teacher/homework) không sáng theo
+    const act = await t.ev(`return [...document.querySelectorAll('a[aria-current="page"]')].map(a=>a.getAttribute('href'))`);
+    expect(act.includes("/teacher/homework/check") && !act.includes("/teacher/homework"), `thanh bên sáng sai: ${JSON.stringify(act)}`);
     await t.fill('[data-testid="hc-due"]', "2099-12-31T21:00");
     await t.ev(`document.querySelector('[data-testid="hc-due-save"]').click()`);
     expect(await t.waitText(/Đã lưu hạn nộp/), "không lưu được hạn nộp");

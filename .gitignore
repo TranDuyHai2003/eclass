@@ -76,3 +76,4 @@ docs/ai-reviews/**/.review-stderr.log
 /realtime/node_modules/
 /realtime/assets/
 /realtime/cloudflared.yml
+__pycache__/

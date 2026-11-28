@@ -24,7 +24,6 @@ import {
   FileText,
   ClipboardCheck,
   Trophy,
-  Crown,
   Gift,
   Gamepad2,
 } from "lucide-react";
@@ -65,8 +64,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
     { icon: BookOpen, label: "Khóa Học", href: "/courses" },
     ...(currentUser ? [{ icon: Gamepad2, label: "Game Thế giới Toán", href: "/world" }] : []),
     { icon: Trophy, label: "Bảng xếp hạng Hunter", href: "/ranking" },
-    // Học sinh vào được tiệm: Bảng Vàng nằm trong Tiệm quà nên không cần mục riêng
-    ...(pointsEnabled && !(role === "STUDENT" && canUseShop(currentUser)) ? [{ icon: Crown, label: "Bảng Vàng", href: "/leaderboard" }] : []),
+    // Bảng Vàng chỉ nằm trong Tiệm quà (thầy yêu cầu 28/11) — không còn mục riêng ở thanh bên
     ...(pointsEnabled && ((role === "STUDENT" && canUseShop(currentUser)) || isTeacher) ? [{ icon: Gift, label: "Tiệm quà", href: "/rewards" }] : []),
     {
       icon: DiscordIcon,
@@ -123,11 +121,18 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
     },
   ];
 
+  // Mục sáng = đường dẫn khớp DÀI NHẤT (28/11: ở /teacher/homework/check thì "Duyệt Bài tự luận" /teacher/homework không sáng theo)
+  const pathOf = (href: string) => href.split("?")[0];
+  const matches = (href: string) => {
+    const h = pathOf(href);
+    return h !== "/" && !!pathname && (pathname === h || pathname.startsWith(h.endsWith("/") ? h : `${h}/`));
+  };
+  const allHrefs = [...generalLinks, ...teacherLinks, ...adminLinks].map((l) => l.href).filter((h) => h.startsWith("/"));
   const renderLinks = (links: any[]) => {
     return links.map((item) => {
       const isActive = item.exact
         ? pathname === item.href
-        : item.href !== "/" && (pathname?.startsWith(item.href) ?? false);
+        : matches(item.href) && !allHrefs.some((o) => matches(o) && pathOf(o).length > pathOf(item.href).length);
       const isDiscord = item.label === "Discord";
 
       return (
@@ -135,6 +140,7 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
           key={item.label}
           href={item.href}
           target={item.target}
+          aria-current={isActive ? "page" : undefined}
           rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
           onClick={(e) => {
             if (isDiscord) {

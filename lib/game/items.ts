@@ -73,7 +73,7 @@ export const ITEMS: Item[] = [
   { id: "hair-wolf", slot: "hair", name: "Tóc wolf", rarity: "rare", price: { xu: 1200 }, studio: true, isNew: true, v: "spiky", gender: "male" },
   { id: "hair-longm", slot: "hair", name: "Dài lãng tử", rarity: "rare", price: { xu: 1200 }, studio: true, isNew: true, v: "long", gender: "male" },
   { id: "hair-manbun", slot: "hair", name: "Búi samurai", rarity: "epic", price: { xu: 1500 }, studio: true, isNew: true, v: "bun", gender: "male" },
-  { id: "hair-pixie", slot: "hair", name: "Tóc tém", rarity: "common", free: true, studio: true, isNew: true, v: "bob", gender: "female" },
+  { id: "hair-pixie", slot: "hair", name: "Tóc ngắn xoè", rarity: "common", free: true, studio: true, isNew: true, v: "bob", gender: "female" },
   { id: "hair-twintail", slot: "hair", name: "Hai đuôi cao", rarity: "rare", price: { xu: 900 }, studio: true, isNew: true, v: "twin", gender: "female" },
   { id: "hair-sidetail", slot: "hair", name: "Đuôi lệch vai", rarity: "rare", price: { xu: 900 }, studio: true, isNew: true, v: "ponytail", gender: "female" },
   { id: "hair-odango", slot: "hair", name: "Búi đôi", rarity: "rare", price: { xu: 1200 }, studio: true, isNew: true, v: "bun", gender: "female" },

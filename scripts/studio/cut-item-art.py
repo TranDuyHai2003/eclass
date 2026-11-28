@@ -9,8 +9,8 @@ Trước đây web cắt ô bằng khung tròn / mặt nạ mờ → tai mèo, �
   3. mép mềm: độ trong theo khoảng cách màu tới nền, trừ màu nền khỏi điểm mép (không viền trắng);
   4. khung viền: căn theo TÂM LỖ của khung, bán kính lỗ = 30% cạnh ảnh (mặt nhân vật đặt inset 21% vừa khít);
      phần trang trí thò ra ngoài (tai, đầu rồng) → ảnh lớn hơn, ghi tỉ lệ vào lib/game/cut-art.ts để vẽ tràn ra.
-  5. (28/11) chỗ đặt mặt riêng từng khung: vòng tròn lớn nhất gần tâm mà ≥94% chu vi không chạm tranh
-     (tai mèo có chân thò vào, trăng khuyết lệch, hoa anh đào bông to) → CUT_FRAME_FACE [bán kính, lệch x, lệch y] theo cạnh ô.
+  5. (28/11) chỗ đặt mặt riêng từng khung: tâm = tâm lỗ (khung hở như trăng khuyết: tâm lòng trăng), bán kính lớn nhất
+     mà ≥90% chu vi không chạm tranh (tai mèo có chân thò vào, hoa anh đào bông to) → CUT_FRAME_FACE [bán kính, lệch x, lệch y].
 Chạy: python scripts/studio/cut-item-art.py   (cần numpy, scipy, pillow)
       python scripts/studio/cut-item-art.py --faces-only   (chỉ tính lại chỗ đặt mặt từ ảnh đã cắt, không cắt lại tranh)
 """
@@ -163,35 +163,41 @@ def trim_square(rgba: np.ndarray, pad=0.04):
 
 
 def face_spot(alpha: np.ndarray, k: float):
-    """Vòng tròn đặt mặt: tâm trong ±12% quanh tâm ô, bán kính lớn nhất mà ≥94% chu vi nằm ở vùng trống (tỉ lệ theo cạnh ô)."""
+    """
+    Chỗ đặt mặt (tỉ lệ theo cạnh ô khung): [bán kính, lệch ngang, lệch dọc].
+    Khung có lỗ kín → tâm mặt = TÂM LỖ (ô khung đã căn theo tâm lỗ → lệch 0); 28/11 thầy thấy mặt lệch khi dịch tâm
+    theo "vòng tròn lớn nhất" (tai mèo lên 3%, băng xuống 2%…). Khung hở (trăng khuyết) → tâm khối của vùng trống quanh tâm.
+    Bán kính: lớn nhất mà ≥ 90% chu vi nằm ở vùng trống (trang trí nhỏ được phép chạm mép mặt), tối đa 0,29.
+    """
     free = alpha <= 40
     n = alpha.shape[0]
     box = n / k
     c = (n - 1) / 2
-    t = np.linspace(0, 2 * np.pi, 180, endpoint=False)
-    best = (0.0, 0, 0)
-    rr = int(0.12 * box)
-    for dy in range(-rr, rr + 1, 2):
-        for dx in range(-rr, rr + 1, 2):
-            y, x = int(c + dy), int(c + dx)
-            if not free[y, x]:
-                continue
-            lo, hi = 0.10 * box, 0.32 * box
-            for _ in range(18):
-                r = (lo + hi) / 2
-                py = (y + r * np.sin(t)).astype(int)
-                px = (x + r * np.cos(t)).astype(int)
-                ok = (py >= 0) & (py < n) & (px >= 0) & (px < n)
-                inside = np.zeros_like(t, bool)
-                inside[ok] = free[py[ok], px[ok]]
-                if inside.mean() >= 0.94:
-                    lo = r
-                else:
-                    hi = r
-            if lo > best[0]:
-                best = (lo, dx, dy)
-    r, dx, dy = best
-    return [round(float(r / box), 3), round(float(dx / box), 3), round(float(dy / box), 3)]
+    lab, _ = nd.label(free)
+    hole = lab == lab[int(c), int(c)]
+    closed = not (hole[0].any() or hole[-1].any() or hole[:, 0].any() or hole[:, -1].any())
+    if closed:
+        y, x = c, c
+    else:
+        # vùng trống trong bán kính 32% quanh tâm ô (lòng trăng), lấy tâm khối
+        yy, xx = np.mgrid[0:n, 0:n]
+        near = hole & ((yy - c) ** 2 + (xx - c) ** 2 <= (0.32 * box) ** 2)
+        ys, xs = np.nonzero(near)
+        y, x = ys.mean(), xs.mean()
+    t = np.linspace(0, 2 * np.pi, 240, endpoint=False)
+    lo, hi = 0.10 * box, 0.29 * box
+    for _ in range(20):
+        r = (lo + hi) / 2
+        py = (y + r * np.sin(t)).astype(int)
+        px = (x + r * np.cos(t)).astype(int)
+        ok = (py >= 0) & (py < n) & (px >= 0) & (px < n)
+        inside = np.zeros_like(t, bool)
+        inside[ok] = free[py[ok], px[ok]]
+        if inside.mean() >= 0.90:
+            lo = r
+        else:
+            hi = r
+    return [round(float(lo / box), 3), round(float((x - c) / box), 3), round(float((y - c) / box), 3)]
 
 
 def write_ts(scales, faces):

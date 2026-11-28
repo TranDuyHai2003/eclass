@@ -588,12 +588,21 @@ def curly(front, back, p, over=None):
 
 
 def twintail(front, back, p, over=None):
-    """Hai đuôi cao: hai đuôi buộc cao hai bên, xoè ra rồi rủ xuống ngang hông"""
+    """
+    Hai đuôi cao (vẽ lại 28/11 — bản cũ đuôi mảnh, thẳng như râu, dây buộc bị đầu che):
+    đuôi buộc ở hai bên đỉnh đầu, phồng to rồi thuôn xuống ngang ngực, 2 lọn chồng cho dày, dây buộc vẽ đè lên đầu.
+    """
     for side in (L, Lm):
-        side(back, p, (92, 66), (112, 28), (62, 236), [(78, 100), (64, 170)], [(46, 12), (22, 120)], ring=(0.12, 0.25), strands=9, root=0.5, seed=100 if side is L else 110)
-        side(back, p, (100, 36), (110, 30), (32, 196), [(70, 30), (40, 100)], [(64, 20), (24, 110)], ring=(0.14, 0.27), strands=4, root=0.45, seed=101 if side is L else 111)
-    tie(back, p, 104, 40, 10, 13, -0.4)
-    tie(back, p, 206, 40, 10, 13, 0.4)
+        sd = 0 if side is L else 10
+        # lọn chính: mép ngoài phồng ra xa, ngọn cong vào dưới vai
+        side(back, p, (70, 38), (96, 54), (58, 208), [(20, 34), (10, 150)], [(94, 112), (82, 170)], ring=(0.12, 0.24), strands=5, lights=2, root=0.4, seed=200 + sd)
+        # lọn trong (đè lên lọn chính, hơi tối) → đuôi dày, có lớp
+        side(back, p, (80, 44), (94, 54), (74, 196), [(46, 70), (42, 150)], [(96, 116), (88, 166)], ring=(0.16, 0.29), strands=3, lights=1, dark=0.12, root=0.35, seed=201 + sd)
+        # ngọn tách lọn nhỏ
+        side(back, p, (40, 150), (56, 156), (34, 214), [(30, 176), (30, 200)], [(54, 182), (42, 204)], ring=None, strands=2, lights=0, root=0.2, seed=202 + sd, nf=10)
+    if over is not None:  # dây buộc nằm trên đầu → luôn nhìn thấy
+        tie(over, p, 86, 46, 9, 12, -0.6)
+        tie(over, p, 224, 46, 9, 12, 0.6)
 
 
 def sidetail(front, back, p, over=None):
@@ -737,12 +746,26 @@ def side_part(front, back, p, over=None, U=None, female=False):
 
 
 def pixie(front, back, p, over=None, U=None):
-    side_part(front, back, p, over, U, female=True)
+    """
+    Tóc ngắn xoè (vẽ lại 28/11 — bản cũ dựng từ đầu trọc: mặt bè, mảng tóc che đuôi mắt, lộ tai):
+    giữ nguyên tóc bob vẽ tay, thêm đuôi tóc xoè ra hai bên ngang cằm, phồng nhẹ phía sau, kẹp tóc hồng.
+    """
+    for side in (L, Lm):
+        sd = 0 if side is L else 10
+        # phồng sau gáy (sau đầu) → dáng tròn hơn bob
+        side(back, p, (84, 70), (100, 60), (70, 150), [(62, 90), (60, 130)], [(96, 110), (86, 140)], ring=(0.2, 0.34), strands=2, lights=1, dark=0.18, root=0.3, seed=220 + sd, nf=12)
+        # đuôi xoè ra ngoài ở mép dưới tóc hai bên (dưới đầu → chỉ thấy phần thò ra)
+        side(front, p, (82, 128), (100, 140), (60, 168), [(74, 146), (64, 158)], [(96, 154), (78, 166)], ring=None, strands=2, lights=1, root=0.25, seed=221 + sd, nf=10)
+        side(front, p, (92, 136), (104, 148), (82, 176), [(90, 156), (84, 166)], [(104, 160), (94, 172)], ring=None, strands=1, lights=0, dark=0.1, root=0.2, seed=222 + sd, nf=8)
+    if over is not None:  # kẹp tóc hồng bên trái
+        over.paint(chain(bez((88, 70), (100, 58), (116, 58), n=10), bez((118, 66), (102, 66), (91, 77), n=10)), p, color=TIE, hair=False, outline=1.5,
+                   lights=[bez((94, 67), (104, 61), (113, 61), n=6)])
+        over.paint(ellipse(116, 62, 5.5, 5.5), p, color="#fde68a", hair=False, outline=1.4)
 
 
 NEW_HAIR_G = [("hair-buzz", 0, buzz, True), ("hair-sidepart", 0, side_part, True), ("hair-slick", 0, slick, True), ("hair-curly", 0, curly, False),
               ("hair-wolf", 0, wolf, False), ("hair-longm", 0, longm, False), ("hair-manbun", 0, manbun, False),
-              ("hair-pixie", 8, pixie, True), ("hair-twintail", 8, twintail, False), ("hair-sidetail", 8, sidetail, False),
+              ("hair-pixie", 8, pixie, False), ("hair-twintail", 8, twintail, False), ("hair-sidetail", 8, sidetail, False),
               ("hair-odango", 8, odango, False), ("hair-wavy", 8, wavy, False)]
 
 

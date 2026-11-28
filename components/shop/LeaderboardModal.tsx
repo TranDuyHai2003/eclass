@@ -12,7 +12,7 @@ export interface BoardData {
   mine: { rank: number; total: number; xu: number } | null;
 }
 
-/** "Bản Tin & Bảng Vàng": top 5 mỗi khối + hạng của mình; xem đầy đủ ở /leaderboard */
+/** "Bản Tin & Bảng Vàng": top mỗi khối + hạng của mình (Bảng Vàng chỉ nằm trong Tiệm quà — 28/11) */
 export function LeaderboardModal({ open, onOpenChange, inline, boards, myGrade, currentUserId, event }: { open: boolean; onOpenChange: (o: boolean) => void; inline?: boolean; boards: BoardData[]; myGrade: number | null; currentUserId: string; event?: { title: string; text: string; badge: string } | null }) {
   const [grade, setGrade] = useState<number | null>(myGrade ?? boards[0]?.grade ?? null);
   const board = boards.find((b) => b.grade === grade);
@@ -62,7 +62,6 @@ export function LeaderboardModal({ open, onOpenChange, inline, boards, myGrade, 
           </ul>
         </>
       )}
-      <Link href="/leaderboard" className="btn-pill btn-pill-brown mt-3 w-full py-2 text-xs">Xem Bảng Vàng đầy đủ →</Link>
     </ShopModal>
   );
 }
