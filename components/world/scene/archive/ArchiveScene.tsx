@@ -6,7 +6,9 @@
  *  • Mô-đun 4 × 4 × 3,2 m từ Blender (public/world/archive/archive.glb): UV0 vật liệu PBR (Poly Haven CC0, 1K WebP),
  *    UV1 lightmap Cycles nướng sẵn (path tracing, 2048 mẫu) — mỗi loại mô-đun một InstancedMesh / vật liệu, dùng chung lightmap.
  *  • Ô quanh người chơi (11 × 11) dựng lại khi đổi ô — không cấp phát mỗi khung (ma trận / mảng dựng sẵn).
- *  • Đèn pin: SpotLight có bóng PCF + cookie; nhân vật (cel) nhận ánh sáng từ "probe" bán cầu khớp ô đang đứng;
+ *  • Ánh sáng nướng theo ô: mỗi instance nhân lightmap với hệ số đèn còn sáng quanh nó + màu theo độ sâu (instanceColor
+ *    dùng chung cho mọi vật liệu của một mô-đun) → ô đèn hỏng tối thật, đèn chập chờn làm cả ô chớp tắt (vũng sáng / bóng tối).
+ *  • Đèn pin (ArchiveTorch.tsx): SpotLight bóng PCF + cookie + nón sáng thể tích + bụi; nhân vật (cel) nhận "probe" bán cầu theo ô;
  *    bề mặt nướng bỏ ánh sáng môi trường thời gian thực (chỉ lightmap + đèn pin) → không cộng sáng hai lần.
  *  • Bất khả: ô phòng sau lưng (ngoài tầm nhìn) đổi dạng mỗi lần dựng lại; càng sâu càng tối và lạnh (sương, lightmap).
  *  • Kim loại (cửa hầm, khung kệ): phản chiếu cubemap chụp một lần trong hành lang (PMREM).
@@ -22,7 +24,10 @@ import { Player, type Nearby } from "../Hub";
 import { RemotePlayers } from "../RemotePlayers";
 import { ARCHIVE_MATS, LM_SCALE } from "./archiveMats";
 import { registerAction } from "../../actions";
-import { sfx } from "@/lib/world/sfx";
+import { sfx, setHum } from "@/lib/world/sfx";
+import { ArchiveTorch } from "./ArchiveTorch";
+import { ArchivePages, ArchivePresence, useArchivePages } from "./ArchiveExtras";
+import { pageCount } from "@/lib/world/archivePages";
 import {
   archiveBlocked,
   cameraReach,
@@ -30,6 +35,9 @@ import {
   cellBits,
   ceilingAt,
   DARK,
+  depth01,
+  depthTint,
+  floorLight,
   DIR_ROT,
   DIR_X,
   DIR_Z,
@@ -40,8 +48,14 @@ import {
   HALL,
   inHall,
   OPEN,
+  pageNear,
   pillarAt,
+  pillarLight,
+  propLight,
   SHELFC,
+  CABINET,
+  DESK,
+  spillAt,
   shouldMutate,
   type EpochFn,
 } from "@/lib/world/archiveLayout";
@@ -51,13 +65,13 @@ const BASE = "archive/";
 const WIN_R = 4;
 const N_CELLS = (2 * WIN_R + 1) ** 2;
 /** module GLB → khoá lightmap */
-const MODS = ["cell", "cell_dark", "wall", "door", "pillar", "shelf", "shelf_near"] as const;
+const MODS = ["cell", "cell_dark", "wall", "door", "pillar", "shelf", "shelf_near", "cabinet", "desk"] as const;
 /** kệ gần (≤ 1 ô quanh người chơi) đổ bóng đèn pin; kệ xa thì không (bóng chỉ thấy rõ ở gần) — cùng lưới GLB */
 const NODE: Record<string, string> = { shelf_near: "shelf" };
 type Mod = (typeof MODS)[number];
-const CAP: Record<Mod, number> = { cell: N_CELLS, cell_dark: N_CELLS, wall: 4 * N_CELLS, door: N_CELLS, pillar: (2 * WIN_R + 2) ** 2, shelf: N_CELLS, shelf_near: 9 };
+const CAP: Record<Mod, number> = { cell: N_CELLS, cell_dark: N_CELLS, wall: 4 * N_CELLS, door: N_CELLS, pillar: (2 * WIN_R + 2) ** 2, shelf: N_CELLS, shelf_near: 9, cabinet: N_CELLS, desk: N_CELLS };
 /** vật thể đổ bóng đèn pin */
-const CASTS: Record<Mod, boolean> = { cell: false, cell_dark: false, wall: true, door: true, pillar: true, shelf: false, shelf_near: true };
+const CASTS: Record<Mod, boolean> = { cell: false, cell_dark: false, wall: true, door: true, pillar: true, shelf: false, shelf_near: true, cabinet: true, desk: true };
 
 // ───────────── epoch "bất khả" (ô phòng đổi dạng sau lưng) ─────────────
 const EPOCH = new Map<number, number>();
@@ -67,14 +81,25 @@ const STATE = { ci: 1e9, cj: 1e9, tick: 0, dirty: true };
 export const archiveBlockedNow = (x: number, z: number) => archiveBlocked(x, z, 0.3, epochOf);
 
 // ───────────── vật liệu ─────────────
+/**
+ * lightmap × hệ số ánh sáng của ô (instanceColor) — lúc onBeforeCompile #include chưa được mở → chèn đoạn chunk đã sửa.
+ * Shader mảnh chỉ có USE_COLOR (USE_INSTANCING_COLOR chỉ định nghĩa ở shader đỉnh); GLB xuất không có màu đỉnh.
+ */
+const LFM = THREE.ShaderChunk.lights_fragment_maps.replace(
+  "vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;",
+  "vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;\n#ifdef USE_COLOR\n lightMapIrradiance *= vColor.rgb;\n#endif",
+);
 /** bề mặt nướng: bỏ ánh sáng môi trường thời gian thực (bán cầu cho nhân vật) — chỉ lightmap + đèn pin */
 function bakedOnly(sh: THREE.WebGLProgramParametersWithUniforms) {
-  sh.fragmentShader = sh.fragmentShader.replace("#include <lights_fragment_maps>", "#if defined( RE_IndirectDiffuse )\n irradiance = vec3( 0.0 );\n#endif\n#include <lights_fragment_maps>");
+  sh.fragmentShader = sh.fragmentShader
+    .replace("#include <lights_fragment_maps>", "#if defined( RE_IndirectDiffuse )\n irradiance = vec3( 0.0 );\n#endif\n" + LFM)
+    // instanceColor = hệ số ánh sáng nướng của ô (không phải màu bề mặt): bỏ khỏi albedo
+    .replace("#include <color_fragment>", "");
 }
 /** đèn huỳnh quang: độ sáng phát xạ theo màu instance (chập chờn từng ô) */
 function lampFlicker(sh: THREE.WebGLProgramParametersWithUniforms) {
   bakedOnly(sh);
-  sh.fragmentShader = sh.fragmentShader.replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n#ifdef USE_INSTANCING_COLOR\n totalEmissiveRadiance *= vColor;\n#endif");
+  sh.fragmentShader = sh.fragmentShader.replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n#ifdef USE_COLOR\n totalEmissiveRadiance *= vColor.rgb;\n#endif");
 }
 
 type Tex = Record<string, THREE.Texture>;
@@ -84,7 +109,7 @@ function texList() {
   return [...s];
 }
 const TEX_FILES = texList();
-const LM_KEYS = ["mod_cell", "mod_cell_dark", "mod_wall", "mod_door", "mod_pillar", "mod_shelf", "arch_hall"] as const;
+const LM_KEYS = ["mod_cell", "mod_cell_dark", "mod_wall", "mod_door", "mod_pillar", "mod_shelf", "mod_cabinet", "mod_desk", "arch_hall"] as const;
 
 /** vật liệu PBR cho (mô-đun, tên vật liệu Blender) — lightmap riêng mỗi mô-đun */
 function makeMat(name: string, tex: Tex, lm: THREE.Texture | null, lmScale: number): THREE.MeshStandardMaterial {
@@ -125,45 +150,6 @@ function makeMat(name: string, tex: Tex, lm: THREE.Texture | null, lmScale: numb
   return m;
 }
 
-/** cookie đèn pin: lõi sáng, vành mờ, vài vệt bẩn trên kính (vẽ một lần) */
-function cookieTexture() {
-  const S = 256;
-  const c = document.createElement("canvas");
-  c.width = c.height = S;
-  const g = c.getContext("2d")!;
-  g.fillStyle = "#000";
-  g.fillRect(0, 0, S, S);
-  const r = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-  r.addColorStop(0, "#fff");
-  r.addColorStop(0.22, "#f4efe6");
-  r.addColorStop(0.3, "#9a968e");
-  r.addColorStop(0.42, "#bdb8ae");
-  r.addColorStop(0.62, "#47443f");
-  r.addColorStop(0.9, "#0d0c0b");
-  r.addColorStop(1, "#000");
-  g.fillStyle = r;
-  g.fillRect(0, 0, S, S);
-  // vệt bẩn / xước trên kính đèn (tất định)
-  let s = 7;
-  const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
-  g.globalCompositeOperation = "multiply";
-  for (let k = 0; k < 26; k++) {
-    const a = rnd() * Math.PI * 2;
-    const rr = rnd() * S * 0.36;
-    const x = S / 2 + Math.cos(a) * rr;
-    const y = S / 2 + Math.sin(a) * rr;
-    const gr = g.createRadialGradient(x, y, 0, x, y, 6 + rnd() * 22);
-    const v = Math.round(150 + rnd() * 90);
-    gr.addColorStop(0, `rgb(${v},${v},${v})`);
-    gr.addColorStop(1, "#fff");
-    g.fillStyle = gr;
-    g.fillRect(0, 0, S, S);
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
-
 /** bầu trời đêm sau ô cửa sổ vòm: dải chân trời lạnh, trăng mờ sau mây, sao lấm tấm (shader, không ảnh) */
 function moonSkyMaterial() {
   return new THREE.ShaderMaterial({
@@ -193,7 +179,43 @@ function moonSkyMaterial() {
   });
 }
 
+const POOL_CAP = 24;
+/** vũng sáng đèn bàn trên sàn: quầng ấm cộng màu (decal) — sàn là lưới mô-đun ô tối, không nướng đèn bàn */
+function poolMaterial() {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    fog: true,
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uC: { value: new THREE.Color("#ffb066") } }]),
+    vertexShader: `varying vec2 vUv;
+      #include <common>
+      #include <fog_pars_vertex>
+      void main(){ vUv = uv; vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mvPosition;
+      #include <fog_vertex>
+      }`,
+    fragmentShader: `varying vec2 vUv; uniform vec3 uC;
+      #include <common>
+      #include <fog_pars_fragment>
+      void main(){ float r = length(vUv - 0.5) * 2.0; float a = exp(-r * r * 5.0) * (1.0 - smoothstep(0.8, 1.0, r));
+        gl_FragColor = vec4(uC * a * 0.22, 1.0);
+        #include <fog_fragment>
+      }`,
+  });
+}
+
 type Inst = { im: THREE.InstancedMesh; mod: Mod; lamp: boolean };
+/** ánh sáng nướng của từng instance (rgb, dùng chung cho mọi vật liệu của một mô-đun) + bản gốc để chập chờn */
+type Light = { attr: THREE.InstancedBufferAttribute; base: Float32Array };
+const MOD_I = Object.fromEntries(MODS.map((m, i) => [m, i])) as Record<Mod, number>;
+const TINT: [number, number, number] = [1, 1, 1];
+/** giá trị chập chờn của đèn huỳnh quang (tất định theo hạt giống ô) — phần lớn thời gian sáng, thỉnh thoảng một tràng chớp tắt */
+function flickerAt(time: number, sd: number): number {
+  const burst = Math.sin(time * 0.53 + sd) * Math.sin(time * 0.21 + sd * 1.7) > 0.42;
+  if (!burst) return 1;
+  const ph = time * (9 + (sd % 7)) + sd;
+  return Math.sin(ph) * Math.sin(ph * 2.3 + 1.0) > 0.05 ? 0.9 : 0.04;
+}
 
 export function Archive() {
   const avatar = useWorld((s) => s.avatar);
@@ -229,9 +251,10 @@ export function Archive() {
   }, [texArr, lmArr]);
 
   // InstancedMesh cho mỗi (mô-đun × vật liệu)
-  const { insts, mats, hall, sky, lamp } = useMemo(() => {
+  const { insts, mats, hall, sky, lights } = useMemo(() => {
     const mats: THREE.MeshStandardMaterial[] = [];
     const insts: Inst[] = [];
+    const lights = MODS.map((mod) => ({ attr: new THREE.InstancedBufferAttribute(new Float32Array(CAP[mod] * 3).fill(1), 3), base: new Float32Array(CAP[mod] * 3) }) as Light);
     for (const mod of MODS) {
       const base = NODE[mod] ?? mod;
       const node = gltf.scene.getObjectByName("m_" + base);
@@ -245,11 +268,13 @@ export function Archive() {
         const im = new THREE.InstancedMesh(me.geometry, mat, CAP[mod]);
         im.count = 0;
         im.frustumCulled = false;
-        im.castShadow = CASTS[mod];
+        // cửa hầm 6 vật liệu: chỉ khung bê tông + cánh thép đổ bóng (sọc cảnh báo / đèn đỏ / chốt nhỏ không cần) → bớt 4 lượt bóng
+        // tủ / bàn: chỉ thân (thép sơn / gỗ) đổ bóng, bỏ tay nắm, giấy, chụp đèn
+        im.castShadow = CASTS[mod] && (mod !== "door" || src.name === "bk_concrete" || src.name === "bk_door") && (mod !== "cabinet" || src.name === "bk_cabinet") && (mod !== "desk" || src.name === "bk_trim");
         im.receiveShadow = true;
         im.name = `perf:ar_${mod}`;
         const lamp = !!ARCHIVE_MATS[src.name]?.emissive && mod === "cell";
-        if (lamp) im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(CAP[mod] * 3).fill(1), 3);
+        im.instanceColor = lights[MOD_I[mod]].attr;
         insts.push({ im, mod, lamp });
       }
     }
@@ -275,8 +300,7 @@ export function Archive() {
       });
     }
     const sky = hall.children.find((o) => (o as THREE.Mesh).material instanceof THREE.ShaderMaterial) as THREE.Mesh | undefined;
-    const lamp = insts.find((x) => x.lamp) ?? null;
-    return { insts, mats, hall, sky: sky ? (sky.material as THREE.ShaderMaterial) : null, lamp };
+    return { insts, mats, hall, sky: sky ? (sky.material as THREE.ShaderMaterial) : null, lights };
   }, [gltf, tex, lms]);
   useEffect(
     () => () => {
@@ -287,21 +311,49 @@ export function Archive() {
   );
 
   // ───────────── dựng lại ô quanh người chơi (khi đổi ô) ─────────────
-  const flick = useMemo(() => ({ idx: new Int32Array(N_CELLS), n: 0, seed: new Float32Array(N_CELLS) }), []);
+  // ô chập chờn: hạt giống + dải [e0, e1) trong danh sách (mô-đun, instance) của ô đó (sàn, tường, cửa, kệ)
+  const flick = useMemo(() => ({ n: 0, seed: new Float32Array(N_CELLS), x: new Float32Array(N_CELLS), z: new Float32Array(N_CELLS), e0: new Int32Array(N_CELLS), e1: new Int32Array(N_CELLS), last: new Float32Array(N_CELLS), ne: 0, em: new Int8Array(N_CELLS * 8), ei: new Int32Array(N_CELLS * 8) }), []);
   const M = useMemo(() => new THREE.Matrix4(), []);
+  const pools = useMemo(() => {
+    const g = new THREE.PlaneGeometry(3.2, 3.2);
+    g.rotateX(-Math.PI / 2);
+    const im = new THREE.InstancedMesh(g, poolMaterial(), POOL_CAP);
+    im.count = 0;
+    im.frustumCulled = false;
+    im.renderOrder = 1;
+    im.name = "perf:ar_pool";
+    return { im, n: 0 };
+  }, []);
+  useEffect(
+    () => () => {
+      pools.im.geometry.dispose();
+      (pools.im.material as THREE.Material).dispose();
+      pools.im.dispose();
+    },
+    [pools],
+  );
   const byMod = useMemo(() => {
     const r = {} as Record<Mod, Inst[]>;
     for (const m of MODS) r[m] = insts.filter((x) => x.mod === m);
     return r;
   }, [insts]);
-  const counts = useMemo(() => ({ cell: 0, cell_dark: 0, wall: 0, door: 0, pillar: 0, shelf: 0, shelf_near: 0 }) as Record<Mod, number>, []);
+  const counts = useMemo(() => Object.fromEntries(MODS.map((m) => [m, 0])) as Record<Mod, number>, []);
   const FWD = useMemo(() => new THREE.Vector3(), []);
 
-  function put(mod: Mod, x: number, z: number, rot: number) {
+  /** đặt một instance; l = hệ số ánh sáng nướng (× màu theo độ sâu TINT); ghi vào danh sách chập chờn nếu ô đang chập chờn */
+  function put(mod: Mod, x: number, z: number, rot: number, l: number, fl: boolean) {
     const n = counts[mod];
     if (n >= CAP[mod]) return -1;
     M.makeRotationY(rot).setPosition(x, 0, z);
     for (const it of byMod[mod]) it.im.setMatrixAt(n, M);
+    const a = lights[MOD_I[mod]].attr.array as Float32Array;
+    a[n * 3] = l * TINT[0];
+    a[n * 3 + 1] = l * TINT[1];
+    a[n * 3 + 2] = l * TINT[2];
+    if (fl && flick.ne < flick.em.length) {
+      flick.em[flick.ne] = MOD_I[mod];
+      flick.ei[flick.ne++] = n;
+    }
     counts[mod] = n + 1;
     return n;
   }
@@ -315,38 +367,65 @@ export function Archive() {
       for (let i = ci - WIN_R; i <= ci + WIN_R; i++) if (shouldMutate(i, j, p.x, p.z, FWD.x / fl, FWD.z / fl, STATE.tick)) EPOCH.set(key(i, j), STATE.tick);
     for (const m of MODS) counts[m] = 0;
     flick.n = 0;
+    pools.n = 0;
+    flick.ne = 0;
     for (let j = cj - WIN_R; j <= cj + WIN_R; j++)
       for (let i = ci - WIN_R; i <= ci + WIN_R; i++) {
         const b = cellBits(i, j, epochOf);
         if (!(b & OPEN)) continue;
         const x = i * CELL;
         const z = j * CELL;
-        const n = put(b & DARK ? "cell_dark" : "cell", x, z, 0);
-        if (b & FLICKER && !(b & DARK) && n >= 0) {
-          flick.idx[flick.n] = n;
-          flick.seed[flick.n++] = ((i * 92821) ^ (j * 68917)) & 1023;
+        depthTint(depth01(x, z), TINT);
+        const fl = (b & FLICKER) !== 0 && !(b & DARK);
+        if (fl) {
+          flick.seed[flick.n] = ((i * 92821) ^ (j * 68917)) & 1023;
+          flick.x[flick.n] = x;
+          flick.z[flick.n] = z;
+          flick.last[flick.n] = 1;
+          flick.e0[flick.n] = flick.ne;
         }
-        if (b & SHELFC) put(Math.abs(i - ci) <= 1 && Math.abs(j - cj) <= 1 ? "shelf_near" : "shelf", x, z, Math.PI / 2);
+        const pl = propLight(i, j, epochOf);
+        put(b & DARK ? "cell_dark" : "cell", x, z, 0, floorLight(i, j, epochOf), fl);
+        if (b & SHELFC) put(b & CABINET ? "cabinet" : Math.abs(i - ci) <= 1 && Math.abs(j - cj) <= 1 ? "shelf_near" : "shelf", x, z, Math.PI / 2, pl, fl);
+        if (b & DESK) {
+          // đèn bàn luôn sáng (nướng sẵn) + chút ánh sáng tràn từ ô kề; hướng bàn tất định theo ô
+          const rot = (((i * 7 + j * 13) % 4) + 4) % 4;
+          const n = put("desk", x, z, (rot * Math.PI) / 2, b & DARK ? 0.75 + 0.25 * spillAt(i, j, epochOf) : 1, fl);
+          if (n >= 0 && pools.n < POOL_CAP) {
+            const a = (rot * Math.PI) / 2;
+            // vũng sáng ấm dưới đèn bàn (đèn ở (0,42; 0,16) cục bộ Blender → three: (x, −y))
+            M.makeRotationY(a).setPosition(x + Math.cos(a) * 0.42 + Math.sin(a) * -0.16, 0.012, z - Math.sin(a) * 0.42 + Math.cos(a) * -0.16);
+            pools.im.setMatrixAt(pools.n++, M);
+          }
+        }
         for (let d = 0; d < 4; d++) {
           const k = edgeKind(i, j, d, epochOf);
-          if (k) put(k === 2 ? "door" : "wall", x, z, DIR_ROT[d]);
+          if (k) put(k === 2 ? "door" : "wall", x, z, DIR_ROT[d], pl, fl);
         }
+        if (fl) flick.e1[flick.n++] = flick.ne;
       }
-    for (let j = cj - WIN_R; j <= cj + WIN_R + 1; j++) for (let i = ci - WIN_R; i <= ci + WIN_R + 1; i++) if (pillarAt(i, j, epochOf)) put("pillar", i * CELL - HALF, j * CELL - HALF, 0);
+    for (let j = cj - WIN_R; j <= cj + WIN_R + 1; j++)
+      for (let i = ci - WIN_R; i <= ci + WIN_R + 1; i++)
+        if (pillarAt(i, j, epochOf)) {
+          depthTint(depth01(i * CELL - HALF, j * CELL - HALF), TINT);
+          // lightmap cột nướng sát đèn (thang 31) → hạ 40 % cho khỏi "phát sáng" trong vùng tối
+          put("pillar", i * CELL - HALF, j * CELL - HALF, 0, 0.6 * pillarLight(i, j, epochOf), false);
+        }
     for (const it of insts) {
       it.im.count = counts[it.mod];
       it.im.instanceMatrix.needsUpdate = true;
-      if (it.im.instanceColor) {
-        (it.im.instanceColor.array as Float32Array).fill(1);
-        it.im.instanceColor.needsUpdate = true;
-      }
+    }
+    pools.im.count = pools.n;
+    pools.im.instanceMatrix.needsUpdate = true;
+    for (const L of lights) {
+      L.base.set(L.attr.array as Float32Array);
+      L.attr.needsUpdate = true;
     }
     STATE.ci = ci;
     STATE.cj = cj;
   }
 
   // gắn cảnh: bóng đổ (PCF), dựng ô đầu tiên, chụp cubemap phản chiếu cho kim loại
-  const lampMat = lamp ? (lamp.im.material as THREE.MeshStandardMaterial) : null;
   useLayoutEffect(() => {
     EPOCH.clear();
     STATE.ci = STATE.cj = 1e9;
@@ -383,7 +462,7 @@ export function Archive() {
     }
     cubeRT.dispose();
     pm.dispose();
-    if (process.env.NODE_ENV !== "production") Object.assign(window, { __archive: { EPOCH, STATE, insts, rebuild, cellBits, edgeKind, pillarAt, epochOf, torch, mats, camera, hall, THREE } });
+    if (process.env.NODE_ENV !== "production") Object.assign(window, { __archive: { EPOCH, STATE, insts, rebuild, cellBits, edgeKind, pillarAt, epochOf, mats, camera, hall, lights, flick, THREE } });
     return () => {
       gl.shadowMap.enabled = prevEn;
       gl.shadowMap.type = prevType;
@@ -392,6 +471,9 @@ export function Archive() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- dựng một lần khi gắn cảnh
   }, [gl, scene, insts, mats]);
+
+  // rời cảnh: tắt tiếng ù
+  useEffect(() => () => setHum(0), []);
 
   // cửa hầm niêm phong: gõ (âm thanh + rung nhẹ)
   useEffect(
@@ -403,33 +485,13 @@ export function Archive() {
     [],
   );
 
-  // ───────────── đèn pin + probe nhân vật + sương theo độ sâu ─────────────
-  const cookie = useMemo(() => (typeof document === "undefined" ? null : cookieTexture()), []);
-  useEffect(() => () => cookie?.dispose(), [cookie]);
-  const torch = useMemo(() => {
-    const l = new THREE.SpotLight("#ffe9cf", 90, 26, 0.52, 0.55, 2);
-    l.castShadow = quality !== "low";
-    l.shadow.mapSize.setScalar(quality === "high" ? 1024 : 512);
-    l.shadow.radius = 3;
-    l.shadow.bias = -0.0006;
-    l.shadow.normalBias = 0.03;
-    l.shadow.camera.near = 0.3;
-    l.shadow.camera.far = 26;
-    l.map = cookie;
-    l.name = "ar_torch";
-    return l;
-  }, [cookie, quality]);
-  useEffect(() => {
-    scene.add(torch, torch.target);
-    return () => {
-      scene.remove(torch, torch.target);
-      torch.dispose();
-    };
-  }, [scene, torch]);
+  // ───────────── đèn pin (ArchiveTorch) + probe nhân vật + sương theo độ sâu ─────────────
+  const torchPower = useMemo(() => ({ v: 1 }), []);
+  const reach = useMemo(() => (x: number, z: number, dx: number, dz: number, max: number) => cameraReach(x, z, x + dx * max, z + dz * max, epochOf, 0.05) * max, []);
   const hemi = useRef<THREE.HemisphereLight>(null);
   const fog = useMemo(() => new THREE.FogExp2("#15130f", 0.085), []);
   const C = useMemo(
-    () => ({ litSky: new THREE.Color("#fff0dc"), litGnd: new THREE.Color("#4a3c2c"), darkSky: new THREE.Color("#4a5468"), darkGnd: new THREE.Color("#120f0c"), hallSky: new THREE.Color("#9fb6ff"), hallGnd: new THREE.Color("#3a2c22"), fogNear: new THREE.Color("#17140f"), fogDeep: new THREE.Color("#0b1016"), tmp: new THREE.Color(), probe: { k: 1 } }),
+    () => ({ litSky: new THREE.Color("#fff0dc"), litGnd: new THREE.Color("#4a3c2c"), darkSky: new THREE.Color("#4a5468"), darkGnd: new THREE.Color("#120f0c"), hallSky: new THREE.Color("#9fb6ff"), hallGnd: new THREE.Color("#3a2c22"), fogNear: new THREE.Color("#17140f"), fogDeep: new THREE.Color("#0b1016"), tmp: new THREE.Color(), probe: { k: 1 }, dirty: new Uint8Array(MODS.length), zapAt: 0, hum: 0 }),
     [],
   );
   useEffect(() => {
@@ -450,45 +512,52 @@ export function Archive() {
     const cj = Math.round(p.z / CELL);
     if (ci !== STATE.ci || cj !== STATE.cj) rebuild(ci, cj);
     const time = st.clock.elapsedTime;
-    // đèn pin: trên vai phải nhân vật, chiếu theo hướng máy quay (hơi chúc xuống)
-    const yaw = s.camYaw;
-    const fx = -Math.sin(yaw);
-    const fz = -Math.cos(yaw);
-    const pitch = Math.max(-0.6, Math.min(0.5, -s.camPitch * 0.8 + 0.05));
-    torch.position.set(p.x + Math.cos(yaw) * 0.28 + fx * 0.15, p.y + 1.45, p.z - Math.sin(yaw) * 0.28 + fz * 0.15);
-    torch.target.position.set(torch.position.x + fx * 10, torch.position.y + Math.tan(pitch) * 10 - 0.6, torch.position.z + fz * 10);
-    torch.target.updateMatrixWorld();
-    // độ sâu: lightmap tối dần, sương dày + lạnh hơn
-    const depth = Math.min(1, Math.hypot(p.x, p.z) / 70);
-    const lk = 1 - 0.4 * depth;
-    for (const m of mats) if (m.userData.lmBase) m.lightMapIntensity = m.userData.lmBase * lk;
-    fog.density = 0.082 + 0.03 * depth;
+    // độ sâu: sương dày + lạnh hơn (ánh sáng nướng tối / lạnh dần theo từng ô — depthTint trong rebuild)
+    const depth = depth01(p.x, p.z);
+    const lk = 1 - 0.5 * depth;
+    fog.density = 0.085 + 0.035 * depth;
     fog.color.lerpColors(C.fogNear, C.fogDeep, depth);
+    // đèn huỳnh quang chập chờn: cả ô (sàn, trần, tường, kệ, cửa) chớp tắt cùng bóng đèn; tiếng tách khi bật lại gần người chơi
+    let here = 1;
+    let zapD = 99;
+    const dirty = C.dirty;
+    dirty.fill(0);
+    for (let k = 0; k < flick.n; k++) {
+      const v = flickerAt(time, flick.seed[k]);
+      const d = Math.hypot(flick.x[k] - p.x, flick.z[k] - p.z);
+      if (d < HALF * 1.2) here = v;
+      if (v === flick.last[k]) continue;
+      if (v > flick.last[k] && d < zapD) zapD = d;
+      flick.last[k] = v;
+      for (let e = flick.e0[k]; e < flick.e1[k]; e++) {
+        const L = lights[flick.em[e]];
+        const a = L.attr.array as Float32Array;
+        const o = flick.ei[e] * 3;
+        a[o] = L.base[o] * v;
+        a[o + 1] = L.base[o + 1] * v;
+        a[o + 2] = L.base[o + 2] * v;
+        dirty[flick.em[e]] = 1;
+      }
+    }
+    for (let m = 0; m < lights.length; m++) if (dirty[m]) lights[m].attr.needsUpdate = true;
+    if (zapD < 14 && time - C.zapAt > 0.09) {
+      C.zapAt = time;
+      sfx.zap(Math.max(0.15, 1 - zapD / 14));
+    }
     // probe nhân vật: khớp ô đang đứng (sáng / đèn hỏng / sảnh trăng)
     const h = hemi.current;
     if (h) {
       const b = cellBits(ci, cj, epochOf);
       const hallNow = inHall(p.x, p.z);
-      const target = hallNow ? 0.9 : b & DARK ? 0.22 : 1.25;
+      const target = hallNow ? 0.9 : b & DARK ? 0.06 + 0.3 * floorLight(ci, cj, epochOf) : 1.2 * here;
       C.probe.k += (target - C.probe.k) * Math.min(1, dt * 3);
       h.intensity = C.probe.k * lk;
+      // tiếng ù huỳnh quang 100 Hz theo đèn quanh chỗ đứng (ô tối: xa xăm)
+      C.hum += ((hallNow ? 0.05 : b & DARK ? 0.25 * floorLight(ci, cj, epochOf) : here > 0.5 ? 0.85 : 0.1) * lk - C.hum) * Math.min(1, dt * 2);
+      setHum(C.hum);
       h.color.lerp(hallNow ? C.hallSky : b & DARK ? C.darkSky : C.litSky, Math.min(1, dt * 3));
       h.groundColor.lerp(hallNow ? C.hallGnd : b & DARK ? C.darkGnd : C.litGnd, Math.min(1, dt * 3));
     }
-    // đèn huỳnh quang chập chờn (vài ô)
-    if (lamp?.im.instanceColor && flick.n) {
-      const a = lamp.im.instanceColor.array as Float32Array;
-      for (let k = 0; k < flick.n; k++) {
-        const sd = flick.seed[k];
-        const ph = time * (7 + (sd % 5)) + sd;
-        const burst = Math.sin(time * 0.7 + sd) > 0.55;
-        const v = burst ? (Math.sin(ph) * Math.sin(ph * 2.3 + 1.0) > 0.1 ? 1 : 0.06) : 1;
-        const o = flick.idx[k] * 3;
-        a[o] = a[o + 1] = a[o + 2] = v;
-      }
-      lamp.im.instanceColor.needsUpdate = true;
-    }
-    if (lampMat) lampMat.emissiveIntensity = (ARCHIVE_MATS.emit_fluoro.emissiveIntensity ?? 14) * 0.55 * lk;
     if (sky) sky.uniforms.uT.value = time;
   });
 
@@ -499,7 +568,11 @@ export function Archive() {
         <primitive key={i} object={x.im} />
       ))}
       <primitive object={hall} />
+      <primitive object={pools.im} />
       <HallSconces />
+      <ArchiveTorch quality={quality} reach={reach} power={torchPower} />
+      <ArchivePages />
+      <ArchivePresence epochOf={epochOf} power={torchPower} />
       <RemotePlayers />
       <Player avatarFile={AVATAR_BY_ID[avatar]?.file} blocked={archiveBlockedNow} findNearby={archiveNearby} camClamp={clampCam} />
     </group>
@@ -531,13 +604,26 @@ function HallSconces() {
     },
     [bulb, base, geoB, geoP],
   );
+  // 3 đèn × (đế + bóng) = 2 InstancedMesh (2 lệnh vẽ thay vì 6)
+  const { ims } = useMemo(() => {
+    const a = new THREE.InstancedMesh(geoP, base, SCONCES.length);
+    const b = new THREE.InstancedMesh(geoB, bulb, SCONCES.length);
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2));
+    const one = new THREE.Vector3(1, 1, 1);
+    const pos = new THREE.Vector3();
+    SCONCES.forEach(([sx, y], k) => {
+      pos.set(sx * 2.97, 2.35, -y + HALL.dz);
+      a.setMatrixAt(k, m.compose(pos, q, one));
+      pos.x += -sx * 0.12;
+      b.setMatrixAt(k, m.identity().setPosition(pos));
+    });
+    return { ims: [a, b] };
+  }, [geoP, geoB, base, bulb]);
   return (
     <group name="perf:ar_sconce">
-      {SCONCES.map(([sx, y]) => (
-        <group key={y} position={[sx * 2.97, 2.35, -y + HALL.dz]}>
-          <mesh geometry={geoP} material={base} rotation={[0, 0, Math.PI / 2]} />
-          <mesh geometry={geoB} material={bulb} position={[-sx * 0.12, 0, 0]} />
-        </group>
+      {ims.map((o, k) => (
+        <primitive key={k} object={o} />
       ))}
     </group>
   );
@@ -555,6 +641,9 @@ function clampCam(pos: THREE.Vector3, target: THREE.Vector3) {
 function archiveNearby(p: THREE.Vector3): Nearby | null {
   const lang = useWorld.getState().lang;
   if (Math.hypot(p.x - EXIT.x, p.z - EXIT.z) < EXIT.r) return { kind: "portal", id: "impossible", label: tt(lang, "archiveExit") };
+  // trang "Hồi âm" trên sàn
+  const got = useArchivePages.getState().got;
+  if (pageNear(p.x, p.z, got) >= 0) return { kind: "action", id: "archive-page", label: tt(lang, "archivePage", { n: pageCount(got) + 1 }) };
   // cửa hầm gần nhất (niêm phong)
   const ci = Math.round(p.x / CELL);
   const cj = Math.round(p.z / CELL);

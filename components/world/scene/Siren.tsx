@@ -15,7 +15,7 @@ import { MAZE_UPDRAFTS, ZONE_LABEL } from "@/lib/world/sirenMaze";
 import { CollageFlats, MathRoses, MazeGeometry } from "./siren/SirenMaze";
 import { LoopVortices, SirenFog, SirenSky, StageCurtain } from "./siren/SirenSky";
 import { SirenDirector } from "./siren/SirenDirector";
-import { SirenWorld } from "./siren/SirenWorld";
+import { SirenWorld, SirenWorldSky } from "./siren/SirenWorld";
 import { PortalSurfaces, usePortalDriver } from "./siren/SirenPortals";
 import { GravityZones, gravityCamClamp, reduceMotion, sirenField } from "./siren/SirenGravity";
 import { BossBody, BossEpicycles, CometRibbons, createStandingMat, standingMode } from "./siren/SirenBossFx";
@@ -25,8 +25,9 @@ import { SirenPlay, playNearby } from "./siren/SirenPlay";
 import { HarmonicPlatforms, StaffBridge } from "./siren/SirenFloor";
 import { SirenPuppets } from "./siren/SirenPuppets";
 // giai đoạn 2: đồ thị khu (Biển Phím, Phòng Chờ, Sa Mạc) — docs/ai-reviews/siren-witch/PHASE2_PLAN.md
-import { HubOnly, SirenZones, zoneNearby } from "./siren/zones/SirenZones";
+import { HubOnly, HubVisual, SirenZones, zoneNearby } from "./siren/zones/SirenZones";
 import { ZONE_RT, worldBlocked, worldCamFloor, worldGround } from "./siren/zones/zoneRuntime";
+import { ktrNearby } from "./siren/witches/KhoangTru";
 import * as THREE from "three";
 import { create } from "zustand";
 import { useWorld } from "../store";
@@ -202,45 +203,49 @@ export function Siren() {
   return (
     <group>
       <SirenDirector boss={useBossUi.getState} />
-      {/* hình của mê cung hub: ẩn khi đang ở khu khác của đồ thị khu (0 lệnh vẽ) */}
+      {/* mê cung hub — HubOnly: phần cần GIỮ gắn (trạng thái câu đố / quái / trọng lực / cổng / thân boss), ẩn + useFrame trả về
+          sớm khi ở khu khác; HubVisual: phần THUẦN HÌNH, rời hub > 4 s thì gỡ hẳn (0 useFrame, 0 ma trận, 0 nhãn DOM) */}
       <HubOnly>
-      <SirenSky />
-      {/* nhánh W: trời cắt dán nhiều lớp, đĩa than, thác ký hiệu, Dấu lặng, kết giới */}
-      <SirenWorld />
-      <SirenFog />
-      <LoopVortices />
-      <StageCurtain />
-      <MazeGeometry />
-      {/* nhánh P: cầu khuông nhạc uốn Fourier + đoàn con rối giấy */}
-      <StaffBridge />
-      <SirenPuppets />
-      <CollageFlats />
-      <MathRoses />
-      <PortalSurfaces group={portals} />
-      <GravityZones />
-      <Updrafts list={MAZE_UPDRAFTS} />
-      {ZONE_LABEL.map((z) => (
-        <Label3D key={z.zone} text={z[lang]} position={z.at} maxDist={60} />
-      ))}
-      <ArenaFloor />
-      {/* nhánh B (siren-witch): thân boss lò xo + mực in lệch; epicycle tự dựng / phân rã; vệt Lissajous; Chladni */}
-      <BossBody boss={boss} />
-      <BossEpicycles />
-      <Telegraphs boss={boss} />
-      <CometRibbons boss={boss} />
-      <MagicCircle radius={3.2} position={[0, 0.04, 0]} color="#ff9ecb" color2="#9fe6ff" intensity={0.8} spin={0.4} />
-      <Enemies
-        ground={() => 0}
-        clampR={ARENA_R}
-        aggro={0}
-        spawner={{ kind: "fixed", points: [{ kind: "siren", at: [0, 0, 0] }, { kind: "node", at: [NODE_POS[0][0], 0, NODE_POS[0][1]] }, { kind: "node", at: [NODE_POS[1][0], 0, NODE_POS[1][1]] }] }}
-      />
-      {/* sau <Enemies> (nó xoá danh sách quái khi gắn): quái hoạ âm + câu đố toán – nhạc */}
-      <MazeMonsters />
-      <SirenPlay />
-      <HarmonicPlatforms />
-      <Updrafts list={UPDRAFTS} />
+        <SirenWorld />
+        <SirenFog />
+        <MazeGeometry />
+        <PortalSurfaces group={portals} />
+        <GravityZones />
+        <BossBody boss={boss} />
+        <Enemies
+          ground={() => 0}
+          clampR={ARENA_R}
+          aggro={0}
+          spawner={{ kind: "fixed", points: [{ kind: "siren", at: [0, 0, 0] }, { kind: "node", at: [NODE_POS[0][0], 0, NODE_POS[0][1]] }, { kind: "node", at: [NODE_POS[1][0], 0, NODE_POS[1][1]] }] }}
+        />
+        {/* sau <Enemies> (nó xoá danh sách quái khi gắn): quái hoạ âm + câu đố toán – nhạc */}
+        <MazeMonsters />
+        <SirenPlay />
       </HubOnly>
+      <HubVisual>
+        <SirenSky />
+        {/* nhánh W: trời cắt dán nhiều lớp, đĩa than, thác ký hiệu, Dấu lặng */}
+        <SirenWorldSky />
+        <LoopVortices />
+        <StageCurtain />
+        {/* nhánh P: cầu khuông nhạc uốn Fourier + đoàn con rối giấy */}
+        <StaffBridge />
+        <SirenPuppets />
+        <CollageFlats />
+        <MathRoses />
+        <Updrafts list={MAZE_UPDRAFTS} />
+        {ZONE_LABEL.map((z) => (
+          <Label3D key={z.zone} text={z[lang]} position={z.at} maxDist={60} />
+        ))}
+        <ArenaFloor />
+        {/* nhánh B (siren-witch): epicycle tự dựng / phân rã; vệt Lissajous; Chladni */}
+        <BossEpicycles />
+        <Telegraphs boss={boss} />
+        <CometRibbons boss={boss} />
+        <MagicCircle radius={3.2} position={[0, 0.04, 0]} color="#ff9ecb" color2="#9fe6ff" intensity={0.8} spin={0.4} />
+        <HarmonicPlatforms />
+        <Updrafts list={UPDRAFTS} />
+      </HubVisual>
       <CombatFx />
       <RemotePlayers />
       <Player armed avatarFile={AVATAR_BY_ID[avatar]?.file} ground={worldGround} blocked={worldBlocked} camClamp={camClamp} field={sirenField} findNearby={sirenNearby} />
@@ -261,7 +266,7 @@ function sirenNearby(p: THREE.Vector3) {
   // Cổng về sảnh ở rìa phía nam đấu trường
   if (Math.hypot(p.x, p.z - 13) < 2.2) return { kind: "portal" as const, id: "hub", label: useWorld.getState().lang === "vi" ? "Rời Mê cung" : "Leave the Labyrinth" };
   // khu mới (đồ thị khu) trước; rồi đàn một dây, ống Fourier, con lắc, rương (registerAction → WorldClient gọi runAction)
-  return zoneNearby(p) ?? playNearby(p);
+  return zoneNearby(p) ?? ktrNearby(p) ?? playNearby(p);
 }
 
 /** Báo trước đòn: dải sóng dừng, vòng nhịp, quỹ đạo Lissajous, nút giao thoa */

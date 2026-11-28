@@ -5,5 +5,7 @@
  "mod_pillar": 31.1007,
  "mod_door": 2.18,
  "mod_shelf": 3.874,
- "arch_hall": 4.7788
+ "arch_hall": 4.7788,
+ "mod_cabinet": 3.6923,
+ "mod_desk": 1.3888
 }

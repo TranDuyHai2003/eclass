@@ -38,18 +38,18 @@ import { CUT } from "@/lib/world/zones/cutAtlas";
 import { useWorld } from "../../../store";
 import { CAM, motion } from "../../../combat/combat";
 import { Label3D } from "../../../ui/Labels";
-import { netPeers, samplePeer, setNetZone } from "../../../net";
+import { netPeers, samplePeer, setNetZone, setNetZoneFlags } from "../../../net";
 import { carryHorizontal } from "../SirenPortals";
 import { reduceMotion } from "../SirenGravity";
 import { SIREN_FOG } from "../SirenSky";
 import { synth } from "../sirenSynth";
 import { CutoutBatch, ZONE_CODE, createCutoutMat, createHoleMat, createVeilMat, createZoneSkyMat, type CutItem } from "./zoneMats";
-import { ZONE_RT, teleportLocal, useZones, zoneHint } from "./zoneRuntime";
+import { HUB_KEEP_MS, ZONE_RT, teleportLocal, useZones, zoneHint } from "./zoneRuntime";
 import { CUT_TEX, useCutTex, useZoneGroup } from "./zoneHooks";
 import { ZoneHud } from "./ZoneHud";
-import { ZoneWait, waitNearby } from "./ZoneWait";
-import { ZoneKeys, keysNearby } from "./ZoneKeys";
-import { ZoneDesert, DESERT_SKY, desertNearby } from "./ZoneDesert";
+import { ZoneWait, waitLocal, waitNearby, waitShared } from "./ZoneWait";
+import { ZoneKeys, keysLocal, keysNearby, keysShared } from "./ZoneKeys";
+import { ZoneDesert, DESERT_SKY, desertLocal, desertNearby, desertShared } from "./ZoneDesert";
 
 useTexture.preload(CUT_TEX);
 const lang = (): Lang => (useWorld.getState().lang === "vi" ? "vi" : "en");
@@ -62,10 +62,21 @@ const FOG: Record<ZoneId, [string, number, number]> = {
   desert: ["#f0cf98", 50, 260],
 };
 
-/** Hình của mê cung hub: ẩn khi ở khu khác */
+/** Phần hub cần GIỮ gắn (trạng thái câu đố, quái, trọng lực, cổng, thân boss…): ẩn khi ở khu khác; useFrame của chúng tự
+ * trả về sớm bằng offHub() (zoneRuntime). */
 export function HubOnly({ children }: { children: ReactNode }) {
   const ref = useZoneGroup("hub");
   return <group ref={ref}>{children}</group>;
+}
+
+/**
+ * Phần THUẦN HÌNH của hub (trời, đĩa than, rối giấy, sàn đấu trường, nhãn…): rời hub > HUB_KEEP_MS thì GỠ HẲN — 0 useFrame,
+ * 0 cập nhật ma trận, 0 nhãn DOM khi đang ở khu khác. Quay về: gắn lại ngay (texture / chương trình shader đã có trong cache;
+ * màn che của cửa phủ khung đầu). Suspense riêng → một phần còn tải không chặn cả cảnh.
+ */
+export function HubVisual({ children }: { children: ReactNode }) {
+  const away = useZones((s) => s.hubAway && s.zone !== "hub");
+  return away ? null : <Suspense fallback={null}>{children}</Suspense>;
 }
 
 /** Tương tác (phím F) trong khu mới — Siren.tsx gọi trước playNearby */
@@ -91,7 +102,8 @@ function setZone(id: ZoneId) {
   ZONE_RT.id = id;
   ZONE_RT.visited.add(id);
   const s = useZones.getState();
-  useZones.setState({ zone: id, visited: [...ZONE_RT.visited], mount: s.mount.includes(id) || id === "hub" ? s.mount : [id, ...s.mount] });
+  ZONE_RT.leftHubAt = id === "hub" ? -1 : ZONE_RT.leftHubAt < 0 ? performance.now() : ZONE_RT.leftHubAt;
+  useZones.setState({ zone: id, visited: [...ZONE_RT.visited], mount: s.mount.includes(id) || id === "hub" ? s.mount : [id, ...s.mount], hubAway: id === "hub" ? false : s.hubAway });
 }
 
 function ZoneDriver() {
@@ -99,11 +111,29 @@ function ZoneDriver() {
   const st = useRef({ init: false, lastStream: 0, cache: [] as ZoneId[], fogZone: "" as ZoneId | "", lockHintAt: 0 });
   useEffect(() => {
     setNetZone(() => ZONE_RT.id);
+    // co-op: cờ câu đố dùng chung của phòng (đê / vé / mode sa mạc) — net.ts tin "zf"; server cũ bỏ qua → chỉ cục bộ như trước
+    setNetZoneFlags({
+      apply: (f) => {
+        if (f.dike === 1) keysShared();
+        if (f.ticket === 1) waitShared();
+        if (typeof f.desert === "number") desertShared(f.desert);
+      },
+      local: () => ({ ...keysLocal(), ...waitLocal(), ...desertLocal() }),
+    });
+    // DEV: window.__zone("desert") → tới điểm hồi sinh của khu (đo / chụp); __zone("desert", [x, y, z]) → điểm cục bộ
+    if (process.env.NODE_ENV !== "production")
+      (window as unknown as { __zone: unknown }).__zone = (id: ZoneId, at?: [number, number, number]) => {
+        if (!ZONE_DEFS[id]) return 0;
+        teleportLocal(id, at ?? ZONE_DEFS[id].spawn, "curtain");
+        return 1;
+      };
     return () => {
       setNetZone(null);
+      setNetZoneFlags(null);
       ZONE_RT.id = "hub";
       ZONE_RT.lock = "";
-      useZones.setState({ zone: "hub", mount: [] });
+      ZONE_RT.leftHubAt = -1;
+      useZones.setState({ zone: "hub", mount: [], hubAway: false });
     };
   }, []);
   useFrame((three, rawDt) => {
@@ -228,6 +258,8 @@ function ZoneDriver() {
     // ── streaming (3 lần / giây)
     if (now - S.lastStream > 330) {
       S.lastStream = now;
+      // rời hub đủ lâu → gỡ phần thuần hình của hub (HubVisual)
+      if (id !== "hub" && ZONE_RT.leftHubAt > 0 && now - ZONE_RT.leftHubAt > HUB_KEEP_MS && !useZones.getState().hubAway) useZones.setState({ hubAway: true });
       const cam = three.camera;
       cam.getWorldDirection(FWD);
       const seen: { to: ZoneId; inView: boolean }[] = [];

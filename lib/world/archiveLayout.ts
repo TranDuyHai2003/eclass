@@ -56,6 +56,12 @@ export const HALLCELL = 2;
 export const DARK = 4;
 export const SHELFC = 8;
 export const FLICKER = 16;
+/** biến thể của ô kệ: hai dãy tủ hồ sơ thép (cùng chỗ chiếm / va chạm như kệ) */
+export const CABINET = 32;
+/** phòng đọc: bàn + ghế + đèn bàn ở giữa ô phòng (chủ yếu ô đèn hỏng → vũng sáng ấm giữa bóng tối) */
+export const DESK = 64;
+/** nửa cạnh khối va chạm của bàn đọc (vuông, không phụ thuộc hướng xoay) */
+export const DESK_R = 0.95;
 
 /** epoch "bất khả" của từng ô phòng (0 = gốc) */
 export type EpochFn = (i: number, j: number) => number;
@@ -88,11 +94,14 @@ export function cellBits(i: number, j: number, ep: EpochFn = NO_EPOCH): number {
   if (!corr && hash3(i, j, 11 + e * 7) < 0.42) return 0;
   let b = OPEN;
   const d = depthOf(i, j);
-  // càng sâu càng nhiều đèn hỏng (tối dần): 6 % gần cửa → tối đa 55 %
-  if (hash3(i, j, 23 + e * 5) < Math.min(0.55, 0.06 + d * 0.012) && !(i === 0 && j === 0)) b |= DARK;
+  // càng sâu càng nhiều đèn hỏng (tối dần): ~14 % gần cửa → tối đa 62 % — vũng sáng huỳnh quang ngăn bởi bóng tối
+  if (hash3(i, j, 23 + e * 5) < Math.min(0.62, 0.1 + d * 0.02) && !(i === 0 && j === 0)) b |= DARK;
   else if (hash3(i, j, 31) < 0.1) b |= FLICKER;
-  // kệ sách: chỉ trong phòng, lối đi dọc trục x
-  if (!corr && hash3(i, j, 47 + e * 3) < 0.5) b |= SHELFC;
+  // kệ sách: chỉ trong phòng, lối đi dọc trục x; ~30 % thành dãy tủ hồ sơ
+  if (!corr && hash3(i, j, 47 + e * 3) < 0.5) {
+    b |= SHELFC;
+    if (hash3(i, j, 53 + e * 3) < 0.3) b |= CABINET;
+  } else if (!corr && hash3(i, j, 61 + e * 3) < (b & DARK ? 0.6 : 0.12)) b |= DESK;
   return b;
 }
 export const isOpen = (i: number, j: number, ep: EpochFn = NO_EPOCH) => (cellBits(i, j, ep) & OPEN) !== 0;
@@ -168,6 +177,7 @@ export function archiveBlocked(x: number, z: number, r: number, ep: EpochFn = NO
         if (inBox(x, z, cx - SHELF.len, cx + SHELF.len, cz - SHELF.out, cz - SHELF.in, r)) return true;
         if (inBox(x, z, cx - SHELF.len, cx + SHELF.len, cz + SHELF.in, cz + SHELF.out, r)) return true;
       }
+      if (b & DESK && inBox(x, z, cx - DESK_R, cx + DESK_R, cz - DESK_R, cz + DESK_R, r)) return true;
       // tường / cửa trên 4 cạnh của ô mở này
       for (let d = 0; d < 4; d++) {
         const k = edgeKind(i, j, d, ep);
@@ -232,3 +242,147 @@ export const GATE = { x: 18.2, z: -1.5, halfW: 2.0, halfT: 0.3 };
 /** đứng trước cửa (phía −x) */
 export const GATE_FRONT = { x: GATE.x - 1.6, z: GATE.z, r: 2.0 };
 export const gateBlocked = (x: number, z: number, r: number) => Math.abs(x - GATE.x) < GATE.halfT + r && Math.abs(z - GATE.z) < GATE.halfW + r;
+
+// ───────────── ánh sáng nướng theo ô (hệ số nhân lightmap từng instance) ─────────────
+/**
+ * Lightmap mỗi mô-đun nướng MỘT lần trong ngữ cảnh 3 × 3 ô sáng (đèn huỳnh quang ở mọi ô). Khi ghép, ô "đèn hỏng" và tường /
+ * kệ / cửa của nó phải tối thật → mỗi instance nhân lightmap với một hệ số theo đèn còn sáng quanh nó:
+ *  • ô sáng: 1;
+ *  • ô tối (lưới mod_cell_dark đã nướng với 8 ô sáng xung quanh): × spill² (spill = tỉ lệ ô sáng trong 8 ô kề) — tối hẳn khi cả cụm hỏng;
+ *  • tường / cửa / kệ trong ô tối (lightmap nướng với đèn của chính ô): chỉ còn ánh sáng tràn ≈ DARK_LEAK × spill.
+ */
+export const DARK_LEAK = 0.06;
+/** ô mở còn đèn sáng (không tính sảnh) */
+export function lampOn(i: number, j: number, ep: EpochFn = NO_EPOCH): boolean {
+  const b = cellBits(i, j, ep);
+  return (b & OPEN) !== 0 && (b & DARK) === 0;
+}
+/** tỉ lệ ô có đèn sáng trong 8 ô kề (sảnh tính nửa — đèn tường + trăng) */
+export function spillAt(i: number, j: number, ep: EpochFn = NO_EPOCH): number {
+  let s = 0;
+  for (let dj = -1; dj <= 1; dj++)
+    for (let di = -1; di <= 1; di++) {
+      if (!di && !dj) continue;
+      const b = cellBits(i + di, j + dj, ep);
+      s += b & HALLCELL ? 0.5 : (b & OPEN) !== 0 && (b & DARK) === 0 ? 1 : 0;
+    }
+  return s / 8;
+}
+/** hệ số lightmap cho lưới SÀN / TRẦN của ô (mod_cell hoặc mod_cell_dark) */
+export function floorLight(i: number, j: number, ep: EpochFn = NO_EPOCH): number {
+  const b = cellBits(i, j, ep);
+  if (!(b & OPEN)) return 0;
+  const sp = spillAt(i, j, ep);
+  return b & DARK ? sp * sp : 1;
+}
+/** hệ số lightmap cho tường / cửa / kệ thuộc ô (i, j) */
+export function propLight(i: number, j: number, ep: EpochFn = NO_EPOCH): number {
+  const b = cellBits(i, j, ep);
+  if (!(b & OPEN)) return 0;
+  return b & DARK ? DARK_LEAK * spillAt(i, j, ep) : 1;
+}
+/** hệ số cho cột ở góc (ci, cj) (chung 4 ô): trung bình propLight của các ô mở quanh góc */
+export function pillarLight(ci: number, cj: number, ep: EpochFn = NO_EPOCH): number {
+  let s = 0;
+  let n = 0;
+  for (const [i, j] of [
+    [ci - 1, cj - 1],
+    [ci, cj - 1],
+    [ci - 1, cj],
+    [ci, cj],
+  ] as const) {
+    if (!isOpen(i, j, ep)) continue;
+    s += propLight(i, j, ep);
+    n++;
+  }
+  return n ? s / n : 0;
+}
+/** độ sâu chuẩn hoá 0…1 (≈ 70 m) — càng sâu đèn càng yếu + lạnh */
+export const depth01 = (x: number, z: number) => Math.min(1, Math.hypot(x, z) / 70);
+/** màu ánh sáng nướng theo độ sâu: ấm → lạnh, yếu dần (rgb tuyến tính, nhân vào lightmap) */
+export function depthTint(d: number, out: [number, number, number] = [1, 1, 1]): [number, number, number] {
+  const k = 1 - 0.5 * d;
+  out[0] = k * (1 - 0.38 * d);
+  out[1] = k * (1 - 0.24 * d);
+  out[2] = k;
+  return out;
+}
+
+// ───────────── "Hồi âm": trang ghi chép toán rải trong Thư khố ─────────────
+/** 5 trang nằm trên sàn ô HÀNH LANG (luôn mở, không kệ / bàn), sâu dần; (i, j) ô + (ox, oz) lệch trong ô */
+export const PAGES: readonly { i: number; j: number; ox: number; oz: number; rot: number }[] = [
+  { i: 0, j: 3, ox: 0.9, oz: 0.6, rot: 0.4 },
+  { i: -6, j: 6, ox: -0.7, oz: 0.8, rot: 2.1 },
+  { i: 6, j: 9, ox: 0.6, oz: -0.9, rot: 1.2 },
+  { i: -9, j: 12, ox: 0.8, oz: -0.5, rot: 3.0 },
+  { i: 3, j: 15, ox: -0.9, oz: 0.7, rot: 0.9 },
+];
+export const pagePos = (k: number) => ({ x: PAGES[k].i * CELL + PAGES[k].ox, z: PAGES[k].j * CELL + PAGES[k].oz });
+/** trang chưa nhặt gần (x, z) nhất trong bán kính r, hoặc −1 (got: mặt nạ bit trang đã nhặt) */
+export function pageNear(x: number, z: number, got: number, r = 1.4): number {
+  let best = -1;
+  let bd = r;
+  for (let k = 0; k < PAGES.length; k++) {
+    if (got & (1 << k)) continue;
+    const p = pagePos(k);
+    const d = Math.hypot(p.x - x, p.z - z);
+    if (d < bd) {
+      bd = d;
+      best = k;
+    }
+  }
+  return best;
+}
+
+// ───────────── hiện diện vô hình (chỉ di chuyển khi không bị nhìn) ─────────────
+/** ô đứng được của "người thủ thư": mở, không sảnh, không kệ / bàn */
+export const presenceCell = (i: number, j: number, ep: EpochFn = NO_EPOCH) => {
+  const b = cellBits(i, j, ep);
+  return (b & OPEN) !== 0 && (b & (SHELFC | DESK | HALLCELL)) === 0;
+};
+/** khoảng cách gần nhất (ô, Chebyshev) mà nó tự tiến tới */
+export const PRESENCE_MIN = 3;
+/**
+ * Một bước của hiện diện: KHÔNG BAO GIỜ di chuyển khi đang bị nhìn thấy (seen); khi không bị nhìn, nhích tối đa 1 ô (4 hướng,
+ * không qua tường / cửa) về phía người chơi (pi, pj) nhưng dừng ở khoảng cách ≥ PRESENCE_MIN ô. Tất định theo tick.
+ * Trả ô mới [i, j].
+ */
+export function presenceStep(i: number, j: number, pi: number, pj: number, seen: boolean, tick: number, ep: EpochFn = NO_EPOCH): [number, number] {
+  if (seen) return [i, j];
+  const cheb = (a: number, b: number) => Math.max(Math.abs(a - pi), Math.abs(b - pj));
+  const now = cheb(i, j);
+  let bi = i;
+  let bj = j;
+  let bs = now <= PRESENCE_MIN ? -1 : 0;
+  for (let d = 0; d < 4; d++) {
+    if (edgeKind(i, j, d, ep)) continue;
+    const ni = i + DIR_X[d];
+    const nj = j + DIR_Z[d];
+    if (!presenceCell(ni, nj, ep)) continue;
+    const c = cheb(ni, nj);
+    if (c < PRESENCE_MIN) continue;
+    // ưu tiên lại gần; hoà → băm theo tick (đi lang thang chứ không thẳng tắp)
+    const score = now - c + hash3(ni, nj, 131 + tick) * 0.5;
+    if (score > bs) {
+      bs = score;
+      bi = ni;
+      bj = nj;
+    }
+  }
+  return [bi, bj];
+}
+/** chỗ xuất hiện lại: ô đứng được cách người chơi 4–6 ô, sau lưng hướng nhìn (fx, fz) — hoặc null */
+export function presenceRespawn(pi: number, pj: number, fx: number, fz: number, tick: number, ep: EpochFn = NO_EPOCH): [number, number] | null {
+  for (let t = 0; t < 40; t++) {
+    const a = hash3(pi, pj, 211 + tick * 41 + t) * Math.PI * 2;
+    const r = 4 + Math.floor(hash3(pi, pj, 223 + tick * 43 + t) * 3);
+    const i = pi + Math.round(Math.cos(a) * r);
+    const j = pj + Math.round(Math.sin(a) * r);
+    if (!presenceCell(i, j, ep) || inHallCells(i, j)) continue;
+    const dx = i - pi;
+    const dz = j - pj;
+    if ((dx * fx + dz * fz) / Math.hypot(dx, dz) > -0.2) continue;
+    return [i, j];
+  }
+  return null;
+}

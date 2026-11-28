@@ -45,7 +45,7 @@ const SHORT: Record<ZoneId, { vi: string; en: string }> = {
 };
 
 /** phần tử la bàn đang hiện (khu hiện tại) → useFrame đặt vị trí */
-const MARKS: { el: HTMLElement; x: number; z: number }[] = [];
+const MARKS: { el: HTMLElement; x: number; z: number; tx: number; op: number }[] = [];
 
 function HudView() {
   const zone = useZones((s) => s.zone);
@@ -108,7 +108,7 @@ function HudView() {
               className={m.lm ? "zn-mk lm" : "zn-mk"}
               ref={(el) => {
                 const i = MARKS.findIndex((k) => k.el === el);
-                if (el && i < 0) MARKS.push({ el, x: m.x, z: m.z });
+                if (el && i < 0) MARKS.push({ el, x: m.x, z: m.z, tx: 1e9, op: -1 });
               }}
             >
               {m.text}
@@ -153,6 +153,8 @@ export function ZoneHud() {
     // hướng nhìn của máy quay góc ba: (−sin camYaw, −cos camYaw)
     const fx = -Math.sin(w.camYaw);
     const fz = -Math.cos(w.camYaw);
+    // đọc bề rộng MỘT lần, TRƯỚC mọi lần ghi style (đọc sau khi ghi = ép trình duyệt dựng bố cục mỗi dấu — 0,5 ms/khung)
+    const half = (MARKS[0].el.parentElement?.clientWidth ?? 300) / 2;
     for (let i = MARKS.length - 1; i >= 0; i--) {
       const m = MARKS[i];
       if (!m.el.isConnected) {
@@ -162,10 +164,18 @@ export function ZoneHud() {
       const dx = m.x - px;
       const dz = m.z - pz;
       const rel = Math.atan2(fx * dz - fz * dx, fx * dx + fz * dz);
-      const half = (m.el.parentElement?.clientWidth ?? 300) / 2;
       const k = Math.max(-1, Math.min(1, rel / (Math.PI / 2)));
-      m.el.style.transform = `translateX(calc(-50% + ${(k * (half - 40)).toFixed(1)}px))`;
-      m.el.style.opacity = Math.abs(rel) > Math.PI / 2 ? "0.35" : "1";
+      // chỉ ghi khi đổi ≥ 0,5 px (không tạo chuỗi mỗi khung khi đứng yên)
+      const tx = Math.round(k * (half - 40) * 2) / 2;
+      if (tx !== m.tx) {
+        m.tx = tx;
+        m.el.style.transform = `translateX(calc(-50% + ${tx}px))`;
+      }
+      const op = Math.abs(rel) > Math.PI / 2 ? 0.35 : 1;
+      if (op !== m.op) {
+        m.op = op;
+        m.el.style.opacity = op === 1 ? "1" : "0.35";
+      }
     }
   });
   return null;

@@ -1,4 +1,5 @@
 // Tự kiểm server realtime (chạy: node realtime/selftest.mjs) — server tạm cổng 2599, ALLOW_ANON, dữ liệu trong thư mục tạm:
+//   cờ câu đố dùng chung của đồ thị khu Mê cung Hoạ âm (tin "zf": chốt, lọc, giới hạn, người vào sau nhận),
 //   tên tự đặt (lọc), tên mặc định, đổi tên (gộp trong 2 s, phát tên mới nhất), quaternion nghiêng s[8] (hợp lệ / rác),
 //   Hầm Bổ đề: lập tổ đội theo mã, vào bằng mã, mã sai, sẵn sàng → bắt đầu, ghế theo uid khi kết nối lại, đầy ghế, bộ ảnh chụp giữ thứ tự cũ
 //   Lò rèn Ma trận: một thông điệp "forge" → người khác nhận đúng 1 tin + đúng khối, người vào sau thấy, op sai / đứng xa / dồn dập bị bỏ
@@ -80,6 +81,29 @@ a.ws.send(JSON.stringify({ t: "s", s: [3, 0, 1, 0, "walk", null, null, "", null,
 await sleep(350);
 zr = b.got.filter((m) => m.t === "snap").pop()?.p.find((r) => r[1] === 3);
 check(!zr, "gói quá 10 phần tử bị bỏ");
+// ───── Cờ câu đố dùng chung của đồ thị khu (tin "zf"): đê / vé chốt, mode sa mạc, rác bị bỏ, người vào sau nhận ─────
+const zfOf = (c) => c.got.filter((m) => m.t === "zf").pop()?.f;
+a.ws.send(JSON.stringify({ t: "zf", k: "dike", v: 1 }));
+await sleep(250);
+check(zfOf(b)?.dike === 1 && zfOf(a)?.dike === 1, `đê hạ → cả phòng nhận (kể cả người gửi): ${JSON.stringify(zfOf(b))}`);
+const nZf = () => b.got.filter((m) => m.t === "zf").length;
+let n0 = nZf();
+b.ws.send(JSON.stringify({ t: "zf", k: "dike", v: 0 }));
+b.ws.send(JSON.stringify({ t: "zf", k: "Bad Key", v: 1 }));
+b.ws.send(JSON.stringify({ t: "zf", k: "desert", v: 99 }));
+await sleep(300);
+check(nZf() === n0 && zfOf(b).dike === 1, "đê đã hạ không dựng lại; khoá rác / giá trị ngoài 0…15 bị bỏ (không phát)");
+// gửi dồn dập: chỉ ≤ 4 tin / giây được nhận
+await sleep(1100);
+n0 = nZf();
+for (let i = 0; i < 10; i++) a.ws.send(JSON.stringify({ t: "zf", k: "desert", v: i % 5 }));
+await sleep(300);
+const burst = nZf() - n0;
+check(burst >= 1 && burst <= 5, `gửi dồn 10 tin → bị giới hạn (${burst} tin phát)`);
+const lateZ = await client("cccccccc-0000-0000-0000-00000000000c", "Muộn");
+await sleep(300);
+check(zfOf(lateZ)?.dike === 1 && typeof zfOf(lateZ)?.desert === "number", `người vào sau nhận cờ hiện tại: ${JSON.stringify(zfOf(lateZ))}`);
+lateZ.ws.close();
 a.ws.close(); b.ws.close();
 
 // ───── Hầm Bổ đề: tổ đội theo mã ─────

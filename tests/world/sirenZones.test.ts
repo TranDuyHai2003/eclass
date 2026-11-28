@@ -2,9 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DOOR_BY_ID, ZONE_FLAGS, ZVOID, doorLanding, zoneBlocked, zoneGround, zoneIndex, type ZoneId } from "@/lib/world/zoneGraph";
 import { chladni } from "@/lib/world/harmonicState";
+import { GXI, gxiHudOn, gxiToWorld, gxiWallLength } from "@/lib/world/witchGoiXepIm";
 import { BELL, BOARD, LCM_ROUNDS, MACHINE, TIMELINE, bellAt, demoAt, lcm, machineTarget, nextCoincidence, stampAt, tileAt, tileX } from "@/lib/world/zones/waitHall";
 import { KEY_N, OCTAVE_ROUNDS, PIER_E, isBlack, isOctave, keyAt, keyFreq, keyX, noteName, octaveTarget, pitchClass } from "@/lib/world/zones/keySea";
-import { DANGER, GATE_E, GATE_W, LEVER, MODES, MODE_ANSWER, PLATE, TOWER, WITCH_ARENA, beetleStep, nodalConnected, plateDanger, plateF } from "@/lib/world/zones/bronzeDesert";
+import { DANGER, GATE_E, GATE_W, LEVER, MODES, MODE_ANSWER, PLATE, TOWER, WITCH_ARENA, WITCH_WALL, beetleStep, nodalConnected, plateDanger, plateF } from "@/lib/world/zones/bronzeDesert";
 
 /** BFS đi bộ trên lưới h (mặc định 0,5 m) (bước lên ≤ 0,8 m, rơi xuống tuỳ ý, không xuyên tường); avoid: ô cấm thêm (luật khu) */
 function reach(zone: Exclude<ZoneId, "hub">, from: [number, number, number], avoid?: (x: number, z: number) => boolean, h = 0.5) {
@@ -155,4 +156,44 @@ test("Sa Mạc: bọ gom cát trôi về đường nút và ở trong tấm", ()
     assert.ok(Math.abs(plateF(st[b * 3], st[b * 3 + 1], m, n)) < DANGER, `bọ ${b} không ở đường nút`);
     assert.ok(Math.abs(st[b * 3]) < PLATE.half && Math.abs(st[b * 3 + 1]) < PLATE.half);
   }
+});
+
+test("Sa Mạc: vách vải Gối Xếp Im — tường chặn trùng chỗ vách vẽ, chỉ chặn khi vách dựng; HUD chỉ hiện khi tới gần / giao chiến", () => {
+  const ix = zoneIndex("desert");
+  const L = gxiWallLength(WITCH_ARENA.r);
+  assert.ok(L > 11 && L <= GXI.L, `vách dài ${L} m`);
+  // hai đầu vách vẽ (nhóm rotation-y = yaw của GoiXepIm.tsx, vách ở lz = −D/2) = hai đầu tường chặn
+  for (const lx of [-L / 2, 0, L / 2]) {
+    const [x, z] = gxiToWorld(WITCH_ARENA.x, WITCH_ARENA.z, WITCH_ARENA.yaw, lx, -GXI.D / 2);
+    assert.ok(Math.abs(x - WITCH_WALL.x) < 1e-9, "vách nằm trên đường x = WITCH_WALL.x");
+    assert.ok(Math.abs(z - WITCH_WALL.z) <= L / 2 + 1e-9);
+  }
+  // người chơi phía trước vách (phía +lz của sân = phía Tây)
+  const [fx] = gxiToWorld(WITCH_ARENA.x, WITCH_ARENA.z, WITCH_ARENA.yaw, 0, 0);
+  assert.ok(fx < WITCH_WALL.x, "mặt trước vách quay về phía Tây");
+  const probe = (on: boolean) => {
+    ZONE_FLAGS[WITCH_WALL.flag] = on;
+    let blocked = 0;
+    for (let k = -10; k <= 10; k++) {
+      const z = WITCH_WALL.z + (k / 10) * (L / 2 - 0.1);
+      if (zoneBlocked(ix, WITCH_WALL.x, z, 0)) blocked++;
+    }
+    return blocked;
+  };
+  try {
+    assert.equal(probe(false), 0, "vách hạ: đi xuyên được (gối ngủ không chặn đường)");
+    assert.equal(probe(true), 21, "vách dựng: chặn trên suốt chiều dài");
+    // cạnh mép: trong bán kính thân 0,35 m cũng chặn; xa 1 m thì không
+    assert.ok(zoneBlocked(ix, WITCH_WALL.x - WITCH_WALL.half - 0.2, WITCH_WALL.z, 0));
+    assert.ok(!zoneBlocked(ix, WITCH_WALL.x - 1.2, WITCH_WALL.z, 0));
+    // vẫn đi vòng được ra sau vách từ bờ Đông (không bịt kín bờ)
+    assert.ok(!zoneBlocked(ix, WITCH_WALL.x, WITCH_WALL.z + L / 2 + 1, 0));
+  } finally {
+    ZONE_FLAGS[WITCH_WALL.flag] = false;
+  }
+  // HUD: vào khu (xa, gối ngủ) → ẩn; tới gần gối → hiện; đã giao chiến thì hiện dù đứng xa
+  assert.equal(gxiHudOn("dormant", 40), false);
+  assert.equal(gxiHudOn("dormant", GXI.WAKE_R + 1), true);
+  assert.equal(gxiHudOn("fight", 30), true);
+  assert.equal(gxiHudOn("predict", 15), true);
 });

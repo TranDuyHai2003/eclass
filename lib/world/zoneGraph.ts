@@ -182,6 +182,19 @@ export function zoneAtWorld(x: number, z: number): ZoneId {
   return best;
 }
 
+/** quãng nhảy tối đa coi là "di chuyển thường" trong một khung (m) — lướt / bắn cổng nhanh nhất ≈ 2 m mỗi khung */
+export const JUMP_MAX = 25;
+/**
+ * "Cú nhảy xa" giữa hai vị trí liên tiếp mà bộ điều khiển cổng cũ của hub (SirenPortals.usePortalDriver) thấy: khác khu (vừa qua
+ * cửa của đồ thị khu — dời ~2000 m) hoặc dời > JUMP_MAX (hồi sinh, lệnh dev…). Khi đó đoạn prev → cur KHÔNG phải đường đi thật:
+ * bỏ kiểm cổng / lỗ sâu / vận tốc trọng lực trong khung đó (nếu không: vận tốc ảo ~10⁵ m/s, có thể xuyên nhầm cổng hub).
+ */
+export function zoneJump(ax: number, az: number, bx: number, bz: number): boolean {
+  const dx = bx - ax;
+  const dz = bz - az;
+  return dx * dx + dz * dz > JUMP_MAX * JUMP_MAX || zoneAtWorld(ax, az) !== zoneAtWorld(bx, bz);
+}
+
 // ───────────── Chỉ mục va chạm theo khu (lưới băm) ─────────────
 export const ZVOID = -1e4;
 export const Z_STEP_UP = 0.8;
@@ -285,6 +298,7 @@ export function zoneBlocked(ix: ZoneIndex, x: number, z: number, y: number): boo
   for (let k = 0; k < cl.w.length; k++) {
     const w: ZWall = ix.col.walls[cl.w[k]];
     if (w.flag && ZONE_FLAGS[w.flag]) continue;
+    if (w.need && !ZONE_FLAGS[w.need]) continue;
     if (y + Z_HEAD <= w.y0 || y >= w.y1) continue;
     if (inFootprint({ kind: "box", x: w.x, z: w.z, hx: w.hx, hz: w.hz, yaw: w.yaw }, x, z, 0.35)) return true;
   }

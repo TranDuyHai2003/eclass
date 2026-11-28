@@ -22,7 +22,8 @@ export interface ZSurf {
   tag?: string;
 }
 
-/** Tường hộp đứng (y0…y1). flag: chỉ chặn khi ZONE_FLAGS[flag] chưa bật (vd. đê mở) */
+/** Tường hộp đứng (y0…y1). flag: chỉ chặn khi ZONE_FLAGS[flag] chưa bật (vd. đê mở); need: chỉ chặn khi ZONE_FLAGS[need] ĐÃ bật
+ * (vd. vách vải của phù thuỷ đang dựng) */
 export interface ZWall {
   id: string;
   x: number;
@@ -33,6 +34,7 @@ export interface ZWall {
   y0: number;
   y1: number;
   flag?: string;
+  need?: string;
 }
 
 /** Trụ đứng */

@@ -120,6 +120,24 @@ export const netBoss: { data: number[] | null; offset: number; at: number } = { 
 export function netName(name: string) {
   if (ws?.readyState === 1 && realm) ws.send(JSON.stringify({ t: "name", name }));
 }
+/**
+ * Cờ câu đố dùng chung của đồ thị khu Mê cung Hoạ âm (tin "zf" — lib/world/zoneId.ts zfMerge): cảnh đăng ký `apply` (nhận cờ của
+ * phòng) + `local` (cờ máy mình — gửi lại sau mỗi lần vào phòng, để phòng mới / server khởi động lại không làm mất tiến độ).
+ * Server cũ bỏ qua tin này → chơi như cũ (cờ chỉ cục bộ).
+ */
+let zfFns: { apply: (f: Record<string, number>) => void; local: () => Record<string, number> } | null = null;
+let zfLast: Record<string, number> | null = null;
+export function setNetZoneFlags(fns: typeof zfFns) {
+  zfFns = fns;
+  if (fns && zfLast) fns.apply(zfLast);
+}
+export function netZoneFlag(k: string, v: number) {
+  if (ws?.readyState === 1 && realm === "siren") ws.send(JSON.stringify({ t: "zf", k, v }));
+}
+function zfResend() {
+  if (!zfFns || realm !== "siren") return;
+  for (const [k, v] of Object.entries(zfFns.local())) netZoneFlag(k, v);
+}
 export function netBossHit(d: number, node?: 0 | 1) {
   if (ws?.readyState === 1) ws.send(JSON.stringify({ t: "bh", d: Math.round(d), n: node ?? -1 }));
 }
@@ -182,7 +200,14 @@ function open() {
       sub.sent = new Set();
       sub.cx = sub.cz = NaN;
       encFn?.({ t: "breset" });
+      zfLast = null;
+      zfResend();
       emit();
+    } else if (m.t === "zf") {
+      if (m.f && typeof m.f === "object") {
+        zfLast = m.f as Record<string, number>;
+        zfFns?.apply(zfLast);
+      }
     } else if (m.t === "peer") {
       if (m.id === selfId) return;
       const old = peers.get(m.id as string);

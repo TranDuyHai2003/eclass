@@ -2,13 +2,43 @@
 /** Hook dùng chung cho nội dung khu (tách riêng để các khu không import vòng SirenZones) */
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { useTexture } from "@react-three/drei";
+import { useGLTF, useTexture } from "@react-three/drei";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import * as THREE from "three";
 import { worldAsset } from "@/lib/world/avatars";
 import type { ZoneId } from "@/lib/world/zoneGraph";
 import { ZONE_RT } from "./zoneRuntime";
 
 export const CUT_TEX = worldAsset("siren/zones_cut.webp");
+/** bộ hình dựng tay trong Blender (blender-src/siren-src/zone_kit_build.py → zone_kit.blend): phím sứ / phím đen / phím-đồi,
+ * cồn cát lưỡi liềm, lan can + bậc + sàn đài + cần gạt bằng đồng, cột sảnh chờ — chỉ lấy HÌNH (vật liệu do khu tự đặt) */
+export const ZONE_KIT = worldAsset("siren/zone_kit.glb");
+export type KitPart = "zk_key_w" | "zk_key_b" | "zk_hill" | "zk_dune" | "zk_rail" | "zk_step" | "zk_disc" | "zk_lever_b" | "zk_lever_a" | "zk_column";
+useGLTF.preload(ZONE_KIT);
+
+/** hình (bản sao riêng — khu tự dispose) của các phần trong bộ hình */
+export function useKit<K extends KitPart>(names: readonly K[]): Record<K, THREE.BufferGeometry> {
+  const gltf = useGLTF(ZONE_KIT);
+  const key = names.join(",");
+  return useMemo(() => {
+    const out = {} as Record<K, THREE.BufferGeometry>;
+    for (const n of key.split(",") as K[]) {
+      const o = gltf.scene.getObjectByName(n) as THREE.Mesh | undefined;
+      if (!o?.geometry) throw new Error(`zone_kit thiếu ${n}`);
+      out[n] = o.geometry.clone();
+    }
+    return out;
+  }, [gltf, key]);
+}
+
+/** gộp nhiều bản đặt (ma trận) của các hình tĩnh thành MỘT hình (1 lệnh vẽ, không cần instancing) */
+export function bakeParts(parts: { geo: THREE.BufferGeometry; at: THREE.Matrix4[] }[]): THREE.BufferGeometry {
+  const list: THREE.BufferGeometry[] = [];
+  for (const p of parts) for (const m of p.at) list.push(p.geo.clone().applyMatrix4(m));
+  const g = mergeGeometries(list, false);
+  list.forEach((x) => x.dispose());
+  return g;
+}
 export const zoneTexUrl = (name: "terrazzo" | "bronze" | "sand" | "carbon" | "porcelain") => worldAsset(`siren/${name}.webp`);
 
 /** atlas hình cắt giấy của các khu (sRGB) */

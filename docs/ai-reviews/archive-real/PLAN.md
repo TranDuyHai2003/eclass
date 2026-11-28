@@ -86,3 +86,39 @@ tam giác desktop; texture KTX2 / WebP khi đóng gói.
   - Ô "tối" vẫn khá sáng (lightmap nướng với các ô hàng xóm sáng) và vệt đèn pin chưa nổi rõ → tăng cường độ đèn pin / giảm lightmap ô tối, thêm ảnh so trước / sau với cảnh hoạt hình.
   - CPU ~22 ms/khung ở mức mid (giới hạn FPS): cân nhắc tắt N8AO mặc định ở mức mid trên máy này, gộp vật liệu cửa hầm (6 lệnh vẽ).
   - Âm nền (ù huỳnh quang), thử WebGPU.
+
+- 28/11 tối (vòng 3 — ánh sáng kinh dị, hiệu năng, nội dung; đo trên GPU thật Iris Xe / ANGLE D3D11, 1094 × 615, mức "mid"):
+  - **Ánh sáng nướng theo ô** (không cần nướng lại): mỗi instance nhân lightmap với hệ số đèn quanh nó (instanceColor dùng
+    chung cho mọi vật liệu của một mô-đun, shader chỉ nhân vào lightmap, không vào albedo — lưu ý: shader mảnh chỉ có
+    `USE_COLOR`, không có `USE_INSTANCING_COLOR`). Ô đèn hỏng: sàn × spill² (spill = tỉ lệ ô sáng trong 8 ô kề), tường / kệ /
+    cửa × 0,06 · spill; cột × 0,6 · trung bình 4 ô. Màu theo độ sâu (`depthTint`: tối + lạnh dần). Tỉ lệ ô hỏng 10 % → 62 %
+    theo độ sâu → vũng sáng huỳnh quang ngăn bởi bóng tối. Đèn chập chờn làm CẢ Ô (sàn, trần, tường, kệ, cửa) chớp tắt cùng
+    bóng đèn (trước đây chỉ bóng đèn chớp và thực ra không chạy vì sai define) + tiếng tách điện; tiếng ù 100 Hz + rè chấn lưu
+    theo đèn quanh chỗ đứng (`setHum`), tiếng động xa ngẫu nhiên (`sfx.distant`).
+  - **Đèn pin là nguồn sáng chính** (`ArchiveTorch.tsx`): lỗi cũ — cookie vẽ bằng canvas sRGB + vệt bẩn nhân chồng làm tâm
+    còn ~14 % → gần như tắt; giờ cookie tuyến tính, 600 cd, chúc ~10° và lệch phải 6° (vũng sáng không bị chính nhân vật che),
+    lắc theo bước, thỉnh thoảng chập pin; bóng PCF 768 px (mid); nhân vật của người chơi không đổ bóng đèn pin (đèn ở vai bị
+    tóc bao kín). Nón sáng thể tích giải tích (điểm gần nhất tia nhìn ↔ trục chùm, nhiễu bụi; đúng cả khi nhìn dọc chùm) cắt ở
+    tường / sàn; 420 hạt bụi chỉ sáng trong nón (1 lệnh vẽ).
+  - **Hiệu năng**: gộp primitive cùng vật liệu của VRM trong `Avatar.tsx` (không gộp lưới có morph target): cute-girl −104 lưới,
+    school-girl −46 → Quảng trường 467 → 258 lệnh vẽ, CPU ~39 → ~21–23 ms (cùng tư thế). N8AO chỉ khi bật AO (mức Siêu, như
+    các cảnh khác) → lượt render 24 → 12. Cửa hầm / tủ / bàn: chỉ thân đổ bóng; đèn tường sảnh thành 2 InstancedMesh.
+    Thư khố: **41 → 51–54 FPS, CPU 22 → 13–14 ms, GPU 11–15 → 10–12 ms, 139–154 → 80–102 lệnh vẽ, 305k → 186–230k tam giác**.
+    Riêng môi trường + hậu kỳ ≈ 44 + 11 = 55 lệnh (≤ 60); phần còn lại là nhân vật (20 lưới × 2 vì viền MToon).
+  - **Nội dung mới** (Blender chạy nền trên `archive.blend`, bản trước: `archive.before-mods2.blend`; nướng GPU server CUDA
+    1024 mẫu, 8–11 s/mô-đun): `mod_cabinet` (2 dãy tủ hồ sơ thép sơn, ngăn kéo hé, giấy — biến thể 30 % của ô kệ, cùng va
+    chạm) và `mod_desk` (phòng đọc: bàn gỗ, ghế kéo lùi, đèn bàn chụp xanh, giấy rơi — 60 % ô phòng tối không kệ; lightmap
+    nướng với đèn bàn sợi đốt + ô giữa tối; vũng sáng ấm trên sàn là decal cộng màu). Vật liệu dùng lại texture sẵn có.
+  - **Móc truyện / toán**: 5 trang "Hồi âm" trên sàn hành lang (ô luôn mở) — ghép thành chứng minh Thư khố luôn liên thông
+    (đồ thị, lưới hành lang, bất biến, ngưỡng thấm ≈ 0,593); nhặt đủ → Ghi chép thực địa `archivegraph`. "Người thủ thư":
+    bóng người cao không mặt, chỉ di chuyển khi không bị nhìn (ngoài khung / bị tường che), không lại gần hơn 3 ô, rọi đèn thẳng
+    ~1 s thì đèn chập và nó biến mất (an toàn cho học sinh, không tấn công). Logic thuần + test trong `archiveLayout.ts`.
+  - Test mới (`archiveLayout.test.ts`): tủ / bàn, hệ số ánh sáng ô, trang đi tới được, hiện diện (đứng yên khi bị nhìn, ≤ 1 ô
+    mỗi bước, không lại gần quá, xuất hiện lại sau lưng); liên thông vẫn giữ với bàn đọc giữa ô.
+  - Ảnh: `shots/10-entrance.jpg` … `16-echo-page.jpg`, so sánh trước / sau / hoạt hình: `17-before-after-toon.jpg`.
+- Còn:
+  - Đường nối sáng / tối ở mép ô (hệ số theo instance là hằng trong ô) → nội suy theo lưới đèn (texture nhỏ lấy mẫu theo vị trí
+    thế giới) hoặc nướng thêm biến thể "cạnh ô tối".
+  - Cầu thang xuống tầng sâu hơn, kệ đổ, phòng ngập nước, cửa SCP có bàn phím; hành lang lặp thật (vòng Penrose).
+  - Viền MToon của nhân vật trong cảnh tả thực (20 lệnh vẽ) — cân nhắc tắt riêng ở Thư khố.
+  - Thử WebGPU riêng cảnh này (chưa làm).

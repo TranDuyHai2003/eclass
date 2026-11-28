@@ -49,6 +49,7 @@ import {
 } from "@/lib/world/sirenMusic";
 import { CUBE, HOLE, MOON, PLANET, WORM } from "@/lib/world/sirenGravity";
 import { synth } from "./sirenSynth";
+import { offHub } from "./zones/zoneRuntime";
 
 type Lang = "vi" | "en";
 const L = (vi: string, en: string) => (useWorld.getState().lang === "vi" ? vi : en);
@@ -183,6 +184,7 @@ function Gates() {
   );
   useEffect(() => () => mat.dispose(), [mat]);
   useFrame((_, dt) => {
+    if (offHub()) return; // đang ở khu khác của đồ thị khu
     mat.uniforms.uTime.value += dt;
   });
   return (
@@ -259,6 +261,7 @@ function Pendulum() {
   const T = pendulumPeriod();
   const top = PENDULUM.len + 1.6;
   useFrame((_, dt) => {
+    if (offHub()) return; // đang ở khu khác của đồ thị khu
     const now = performance.now();
     PEND.A = pendulumDecay(PEND.A, dt);
     const t = (now - PEND.t0) / 1000;
@@ -303,6 +306,7 @@ function ChordPlates() {
   const mats = useRef<(THREE.MeshBasicMaterial | null)[]>([]);
   const was = useRef([false, false, false]);
   useFrame(() => {
+    if (offHub()) return; // đang ở khu khác của đồ thị khu
     const now = performance.now();
     const p = useWorld.getState().player;
     for (const i of [0, 1] as const) {
@@ -364,6 +368,7 @@ function StandingString() {
   );
   const lastMode = useRef(0);
   useFrame(() => {
+    if (offHub()) return; // đang ở khu khác của đồ thị khu
     const t = performance.now() / 1000;
     const n = 1 + (Math.floor(t / 6) % 4);
     const pos = geo.attributes.position as THREE.BufferAttribute;
@@ -475,6 +480,7 @@ export function SirenPlay() {
   const lastStep = useRef("");
   const hintAt = useRef(0);
   useFrame(() => {
+    if (offHub()) return; // đang ở khu khác của đồ thị khu
     const p = useWorld.getState().player;
     if (motion.grounded) {
       const s = surfAt(p.x, p.z, p.y);

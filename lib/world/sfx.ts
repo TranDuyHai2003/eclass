@@ -468,6 +468,26 @@ export const sfx = {
       noise(v, i * 0.14, 0.07, 0.18, 2600, 900, 2);
     }
   },
+  /** Bóng huỳnh quang chập: tiếng tách điện ngắn + rè 100 Hz (Thư khố) — vol 0…1 theo khoảng cách */
+  zap(vol = 1) {
+    const v = voice("ambient", 0.25, 1, 0.12);
+    if (!v) return;
+    noise(v, 0, 0.035, 0.16 * vol, 7000, 2500, 1.5);
+    tone(v, 100, 0, 0.12, "square", 0.035 * vol, 100);
+  },
+  /** Tiếng động xa trong Thư khố (không hình): tủ thép đóng sập / bước chân trên trần / ống nước gõ — kind 0…2 */
+  distant(kind = 0, vol = 0.5) {
+    const v = voice("ambient", 2.2, 1, 0.9);
+    if (!v) return;
+    if (kind === 0) {
+      tone(v, 62, 0, 0.6, "sine", 0.18 * vol, 40);
+      noise(v, 0, 0.5, 0.12 * vol, 700, 120, 1);
+    } else if (kind === 1) {
+      for (let i = 0; i < 3; i++) noise(v, i * 0.62, 0.12, 0.09 * vol, 500, 160, 2);
+    } else {
+      for (let i = 0; i < 4; i++) tone(v, 880 + i * 7, i * 0.28, 0.35, "triangle", 0.025 * vol, 860);
+    }
+  },
   /** Cửa sân khấu kẽo kẹt mở */
   creak() {
     const v = voice("ui", 0.6, 1, 0.15);
@@ -571,4 +591,67 @@ export function setWind(level: number) {
   const L = Math.max(0, Math.min(1, level));
   wind.g.gain.setTargetAtTime(L * 0.45, c.currentTime, 0.25);
   wind.bp.frequency.setTargetAtTime(260 + L * 1500, c.currentTime, 0.3);
+}
+
+/**
+ * Tiếng ù đèn huỳnh quang (Thư khố): 100 Hz (lưới điện 50 Hz) + hoạ âm + rè chấn lưu cao tần.
+ * level 0…1 — gọi mỗi khung được (chỉ đặt mục tiêu). 0 = tắt dần.
+ */
+let hum: { g: GainNode; ctx: AudioContext; nodes: AudioScheduledSourceNode[] } | null = null;
+export function setHum(level: number) {
+  const k = level > 0.01 || hum ? audioCore() : null;
+  if (!k || k.ctx.state !== "running") return;
+  const c = k.ctx;
+  if (!hum || hum.ctx !== c) {
+    const g = c.createGain();
+    g.gain.value = 0;
+    g.connect(k.sfx);
+    const nodes: AudioScheduledSourceNode[] = [];
+    for (const [f, a] of [
+      [100, 0.5],
+      [200, 0.28],
+      [300, 0.12],
+      [500, 0.05],
+    ] as const) {
+      const o = c.createOscillator();
+      o.frequency.value = f;
+      const og = c.createGain();
+      og.gain.value = a;
+      o.connect(og);
+      og.connect(g);
+      o.start();
+      nodes.push(o);
+    }
+    // rè chấn lưu: nhiễu lọc dải hẹp ~6 kHz rất nhỏ
+    const len = c.sampleRate;
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const bp = c.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 6200;
+    bp.Q.value = 6;
+    const ng = c.createGain();
+    ng.gain.value = 0.05;
+    src.connect(bp);
+    bp.connect(ng);
+    ng.connect(g);
+    src.start();
+    nodes.push(src);
+    hum = { g, ctx: c, nodes };
+  }
+  const L = Math.max(0, Math.min(1, level));
+  hum.g.gain.setTargetAtTime(L * 0.05, c.currentTime, 0.12);
+  if (L <= 0.01) {
+    // tắt hẳn sau khi tắt dần (rời cảnh)
+    const h = hum;
+    hum = null;
+    setTimeout(() => {
+      h.nodes.forEach((n) => n.stop());
+      h.g.disconnect();
+    }, 700);
+  }
 }

@@ -22,6 +22,7 @@ import { DISSOLVE_GONE, SIREN_EPI, STANDING_DANGER_EXPR, bossLook, epicycleJoint
 import { worldAsset } from "@/lib/world/avatars";
 import { toonize, cloneWithOwnMaterials } from "../../fx/glbToon";
 import { reduceMotion } from "./SirenGravity";
+import { offHub } from "./zones/zoneRuntime";
 
 const SIREN_GLB = worldAsset("boss/siren.glb");
 /** scale mô hình (như bản cũ) */
@@ -132,6 +133,7 @@ export function BossBody({ boss }: { boss: React.RefObject<BossSim> }) {
     };
   }, []);
   useFrame((_, rawDt) => {
+    if (offHub()) return; // đang ở khu khác của đồ thị khu
     const b = boss.current;
     if (!g.current || !model || !b) return;
     const dt = Math.min(rawDt, 0.05);

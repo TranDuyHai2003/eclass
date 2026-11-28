@@ -24,10 +24,17 @@ export const ZONE_RT = {
   /** khu đã sẵn sàng (tài sản tải xong + shader biên dịch) */
   ready: new Set<ZoneId>(["hub"]),
   visited: new Set<ZoneId>(["hub"]),
+  /** lúc rời hub (performance.now; −1 = đang ở hub) */
+  leftHubAt: -1,
 };
 
-/** Cho React: khu hiện tại + danh sách khu đang gắn (đổi hiếm) */
-export const useZones = create<{ zone: ZoneId; mount: ZoneId[]; visited: ZoneId[]; hint: { text: string; at: number } | null }>(() => ({ zone: "hub", mount: [], visited: ["hub"], hint: null }));
+/** Ngoài hub? — useFrame của phần hub còn gắn (logic / trạng thái cần giữ) trả về sớm khi đang ở khu khác */
+export const offHub = () => ZONE_RT.id !== "hub";
+/** rời hub quá lâu thì gỡ hẳn phần THUẦN HÌNH của hub (HubVisual) — quay về thì gắn lại ngay (màn che phủ khung đầu) */
+export const HUB_KEEP_MS = 4000;
+
+/** Cho React: khu hiện tại + danh sách khu đang gắn (đổi hiếm); hubAway: đã rời hub > HUB_KEEP_MS */
+export const useZones = create<{ zone: ZoneId; mount: ZoneId[]; visited: ZoneId[]; hint: { text: string; at: number } | null; hubAway: boolean }>(() => ({ zone: "hub", mount: [], visited: ["hub"], hint: null, hubAway: false }));
 
 export function zoneHint(text: string) {
   const h = useZones.getState().hint;

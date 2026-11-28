@@ -70,6 +70,18 @@ export const GXI = {
 // ───────────── Quy luật sóng dừng ─────────────
 
 /** dạng mode chuẩn hoá sin(nπu/L) (có dấu) */
+/** chiều dài vách theo bán kính sân (m) — dùng chung cho hình (GoiXepIm.tsx) và va chạm vách (zones/bronzeDesert.ts) */
+export const gxiWallLength = (radius: number) => Math.min(GXI.L, Math.max(7, 1.8 * (radius - 1.4)));
+/** cục bộ sân (lx dọc vách, lz: vách ở lz = −D/2, người chơi phía +lz) → thế giới (x, z) với tâm (ox, oz), hướng yaw — cùng phép
+ * biến đổi với nhóm `rotation-y = yaw` của GoiXepIm.tsx */
+export function gxiToWorld(ox: number, oz: number, yaw: number, lx: number, lz: number): [number, number] {
+  const c = Math.cos(yaw);
+  const s = Math.sin(yaw);
+  return [ox + lx * c + lz * s, oz - lx * s + lz * c];
+}
+/** HUD phù thuỷ chỉ hiện khi đã giao chiến (khác "ngủ") hoặc khi người chơi tới gần gối (≤ WAKE_R + 3 m) — không hiện ngay lúc vào khu */
+export const gxiHudOn = (stage: Stage, dist: number) => stage !== "dormant" || dist <= GXI.WAKE_R + 3;
+
 export function modeShape(u: number, n: number, L: number = GXI.L): number {
   return Math.sin((3.141592653589793 * n * u) / L);
 }

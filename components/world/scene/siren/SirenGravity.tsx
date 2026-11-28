@@ -46,6 +46,7 @@ import {
 import { carryHorizontal } from "./SirenPortals";
 import { synth } from "./sirenSynth";
 import { setNetTilt } from "../../net";
+import { offHub } from "./zones/zoneRuntime";
 
 /** Trạng thái dùng chung giữa Player (drive) và bộ điều khiển sau Player */
 export const GF = {
@@ -326,6 +327,7 @@ function Planet() {
   const mat = useMemo(() => new THREE.ShaderMaterial({ vertexShader: SH_VERT, fragmentShader: PLANET_FRAG, uniforms: { uTime: { value: 0 }, uSun: { value: new THREE.Vector3(12, 20, 8).normalize() } } }), []);
   useEffect(() => () => mat.dispose(), [mat]);
   useFrame((_, dt) => {
+    if (offHub()) return; // đang ở khu khác của đồ thị khu
     mat.uniforms.uTime.value += dt;
   });
   return (
@@ -371,6 +373,10 @@ function BlackHole() {
     [disk, ring],
   );
   useFrame((_, dt) => {
+    if (offHub()) {
+      LENS.on = 0;
+      return;
+    }
     disk.uniforms.uTime.value += dt;
     // thấu kính hấp dẫn (hậu kỳ, chỉ uốn bầu trời phía sau): tâm = hình chiếu hố đen
     VA.set(...HOLE.c);
@@ -473,6 +479,7 @@ function Wormholes() {
     shot.current = performance.now() + 1500;
   }, [parts]);
   useFrame((_, dt) => {
+    if (offHub()) return; // đang ở khu khác của đồ thị khu
     for (const p of parts) p.mat.uniforms.uTime.value += dt;
     if (!shot.current || performance.now() < shot.current || quality === "low") return;
     shot.current = 0;

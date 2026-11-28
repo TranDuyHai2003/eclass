@@ -17,6 +17,7 @@ import { PILLARS, PIPES, RENDER_SINK, SURFS, WALLS, ZONES, renderLayers, type Zo
 import { HARMONIC } from "@/lib/world/harmonicState";
 import { KEY_MAX, keyLift, resetKeys, stepKeys } from "@/lib/world/sirenFloor";
 import { reduceMotion } from "./SirenGravity";
+import { offHub } from "./zones/zoneRuntime";
 
 /** Bảng màu theo khu: mặt sàn / thân / điểm nhấn */
 export const PALETTE: Record<Zone, { deck: string; side: string; acc: string }> = {
@@ -393,6 +394,7 @@ export function MazeGeometry() {
   // phím sàn: MỘT chỗ bước lò xo mỗi khung (va chạm CPU đọc cùng KEYS), rồi chép độ nhô (m) vào uniform
   const rm = useMemo(() => ({ on: false, at: -1 }), []);
   useFrame((_, dt) => {
+    if (offHub()) return; // đang ở khu khác của đồ thị khu
     if (HARMONIC.time - rm.at > 1 || HARMONIC.time < rm.at) {
       rm.at = HARMONIC.time;
       rm.on = reduceMotion();

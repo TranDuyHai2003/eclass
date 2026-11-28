@@ -7,6 +7,7 @@
  * Lệnh vẽ: biển 1 · phím trắng + bến 1 · phím đen + đê 1 · đồi phím 1 · hình cắt giấy 1 (+ cửa: DoorSet).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { create } from "zustand";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { HARMONIC, springStep, type Spring } from "@/lib/world/harmonicState";
@@ -14,17 +15,31 @@ import { fmtNum, t as tt, type Lang } from "@/lib/world/i18n";
 import { ZONE_DEFS, ZONE_DYN, ZONE_FLAGS, type V3 } from "@/lib/world/zoneGraph";
 import { CRAB_Z, DIKE, KB, KEY_DYN0, KEY_N, KEYS_HALF, OCTAVE_ROUNDS, PIER_E, PIER_W, SEA_Y, isBlack, isOctave, keyAt, keyFreq, keyX, noteName, pitchClass } from "@/lib/world/zones/keySea";
 import { useWorld } from "../../../store";
+import { netZoneFlag } from "../../../net";
 import { registerAction } from "../../../actions";
 import { rollDrops } from "../../../combat/items";
 import { floatText, Label3D } from "../../../ui/Labels";
 import { reduceMotion } from "../SirenGravity";
 import { synth } from "../sirenSynth";
 import { CutoutBatch, createCutoutMat, type CutItem } from "./zoneMats";
-import { useCutTex, useRepTex, useZoneGroup } from "./zoneHooks";
+import { useCutTex, useKit, useRepTex, useZoneGroup } from "./zoneHooks";
 import { ZONE_RT, zoneHint } from "./zoneRuntime";
 
 const O = ZONE_DEFS.keys.origin;
 const KY = { round: 0, done: false, meter: "", here: -1 };
+const useKeysUi = create<{ round: number }>(() => ({ round: KY.round }));
+
+/** đê đã hạ ở máy khác cùng phòng (tin "zf" — net.ts) → giải xong tại chỗ (không thưởng lại); chạy được cả khi khu chưa gắn */
+export function keysShared() {
+  if (KY.done) return;
+  KY.done = true;
+  KY.round = OCTAVE_ROUNDS.length;
+  ZONE_FLAGS.dike = true;
+  useKeysUi.setState({ round: KY.round });
+  if (ZONE_RT.id === "keys") zoneHint(tt(useWorld.getState().lang === "vi" ? "vi" : "en", "znShared"));
+}
+/** cờ của máy mình (gửi lại khi vào phòng) */
+export const keysLocal = (): Record<string, number> => (KY.done ? { dike: 1 } : {});
 
 function standingKey(l: V3): number {
   const k = keyAt(l[0], l[2]);
@@ -85,7 +100,7 @@ export function ZoneKeys() {
   const rm = useMemo(() => reduceMotion(), []);
   const lang = useWorld((s) => (s.lang === "vi" ? "vi" : "en"));
   const [meter, setMeter] = useState("");
-  const [round, setRound] = useState(KY.round);
+  const round = useKeysUi((u) => u.round);
 
   const seaMat = useMemo(
     () => new THREE.ShaderMaterial({ vertexShader: SEA_VERT, fragmentShader: SEA_FRAG, fog: true, uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uMap: { value: null }, uTime: { value: 0 } }]) }),
@@ -95,20 +110,25 @@ export function ZoneKeys() {
     seaMat.uniforms.uMap.value = carbon;
   }, [seaMat, carbon]);
 
-  // ── phím trắng (+ 2 bến + nền đê) và phím đen (+ đê): hộp đơn vị co giãn theo instance
+  // ── phím trắng (+ 2 bến + nền đê) và phím đen (+ đê): hình dựng tay (Blender — zoneHooks.useKit) có mũi phím bo, rãnh khắc,
+  //    thân phím đen vát thon; bến / đê là "phím" phóng to (co giãn theo kích thước dựng: trắng 3,3 × 1,4 × 9, đen 2,1 × 1,6 × 5,5)
+  const kit = useKit(["zk_key_w", "zk_key_b", "zk_hill"] as const);
   const { white, black, hills, M } = useMemo(() => {
-    const box = new THREE.BoxGeometry(1, 1, 1);
-    box.translate(0, -0.5, 0);
+    const KW = [3.3, 1.4, 9] as const;
+    const KBk = [2.1, 1.6, 5.5] as const;
     const wm = new THREE.MeshLambertMaterial({ map: porc });
     const bm = new THREE.MeshLambertMaterial({ color: "#ffffff" });
     const whites = [...Array(KEY_N).keys()].filter((k) => !isBlack(k));
     const blacks = [...Array(KEY_N).keys()].filter((k) => isBlack(k));
-    const white = new THREE.InstancedMesh(box, wm, whites.length + 3);
-    const black = new THREE.InstancedMesh(box, bm, blacks.length + 1);
+    const white = new THREE.InstancedMesh(kit.zk_key_w, wm, whites.length + 3);
+    const black = new THREE.InstancedMesh(kit.zk_key_b, bm, blacks.length + 1);
     const M = new THREE.Matrix4();
     const C = new THREE.Color();
+    const Q0 = new THREE.Quaternion();
+    const P = new THREE.Vector3();
+    const SC = new THREE.Vector3();
     whites.forEach((k, i) => {
-      white.setMatrixAt(i, M.compose(new THREE.Vector3(keyX(k), KB.top, 0), new THREE.Quaternion(), new THREE.Vector3(KB.W - 0.08, 1.4, KB.LEN)));
+      white.setMatrixAt(i, M.compose(P.set(keyX(k), KB.top, 0), Q0, SC.set((KB.W - 0.08) / KW[0], 1, KB.LEN / KW[2])));
       white.setColorAt(i, glaze(pitchClass(k), false, C));
     });
     const piers: [number, number, number][] = [
@@ -117,17 +137,19 @@ export function ZoneKeys() {
       [DIKE.x, 2.6, 9],
     ];
     piers.forEach(([x, sx, sz], j) => {
-      white.setMatrixAt(whites.length + j, M.compose(new THREE.Vector3(x, 0, 0), new THREE.Quaternion(), new THREE.Vector3(sx, 1.6, sz)));
+      white.setMatrixAt(whites.length + j, M.compose(P.set(x, 0, 0), Q0, SC.set(sx / KW[0], 1.6 / KW[1], sz / KW[2])));
       white.setColorAt(whites.length + j, C.set("#f4efe6"));
     });
     blacks.forEach((k, i) => {
-      black.setMatrixAt(i, M.compose(new THREE.Vector3(keyX(k), KB.blackTop, (KB.blackZ0 + KB.blackZ1) / 2), new THREE.Quaternion(), new THREE.Vector3(KB.blackW, 1.6, KB.blackZ1 - KB.blackZ0)));
+      black.setMatrixAt(i, M.compose(P.set(keyX(k), KB.blackTop, (KB.blackZ0 + KB.blackZ1) / 2), Q0, SC.set(KB.blackW / KBk[0], 1, (KB.blackZ1 - KB.blackZ0) / KBk[2])));
       black.setColorAt(i, glaze(pitchClass(k), true, C));
     });
-    black.setMatrixAt(blacks.length, M.compose(new THREE.Vector3(DIKE.x, DIKE.h, 0), new THREE.Quaternion(), new THREE.Vector3(1.2, DIKE.h + 2, DIKE.hz * 2)));
+    // đê sứ = một phím đen khổng lồ dựng ngang lối đi
+    black.setMatrixAt(blacks.length, M.compose(P.set(DIKE.x, DIKE.h, 0), Q0, SC.set(1.2 / KBk[0], (DIKE.h + 2) / KBk[1], (DIKE.hz * 2) / KBk[2])));
     black.setColorAt(blacks.length, C.set("#2a1d3a"));
-    // đồi phím sứ hai bên: chiều cao lặp đúng chu kỳ 12 phím (mắt "nghe" được quãng tám)
-    const H: [number, number, number, number][] = [];
+    // đồi phím sứ hai bên: phím-đồi (mặt trên lõm dâng thành đỉnh sóng ở phía xa bàn phím) — chiều cao lặp đúng chu kỳ 12 phím
+    // (mắt "nghe" được quãng tám); hàng xa cao dần như khán đài, đỉnh sóng quay lưng ra biển
+    const H: [number, number, number, number, number][] = [];
     for (const side of [-1, 1])
       for (let r = 0; r < 4; r++)
         for (let i = 0; i < 52; i++) {
@@ -135,16 +157,19 @@ export function ZoneKeys() {
           const x = -88 + i * 3.4;
           const z = side * (17 + r * 10);
           const hgt = 1.2 + r * 2.4 + 3.2 * (0.5 + 0.5 * Math.cos((2 * Math.PI * k) / 12)) + (isBlack(k) ? 1.2 : 0);
-          H.push([x, z, hgt, k]);
+          H.push([x, z, hgt, k, side]);
         }
-    const hills = new THREE.InstancedMesh(box, wm, H.length);
-    H.forEach(([x, z, hgt, k], i) => {
-      hills.setMatrixAt(i, M.compose(new THREE.Vector3(x, SEA_Y + hgt - 0.6, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0.05 * Math.sin(k), 0, 0.04 * Math.cos(k * 1.7))), new THREE.Vector3(isBlack(k) ? 2.0 : 3.2, hgt, 8)));
+    const hills = new THREE.InstancedMesh(kit.zk_hill, wm, H.length);
+    const E = new THREE.Euler();
+    H.forEach(([x, z, hgt, k, side], i) => {
+      // hình dựng: mặt trước thấp ở +z, đỉnh sóng ở −z → bờ Bắc (side −1) giữ nguyên, bờ Nam quay π
+      E.set(0.05 * Math.sin(k), side > 0 ? Math.PI : 0, 0.04 * Math.cos(k * 1.7));
+      hills.setMatrixAt(i, M.compose(P.set(x, SEA_Y + hgt - 0.6, z), new THREE.Quaternion().setFromEuler(E), SC.set(isBlack(k) ? 2.0 / 3.2 : 1, hgt, 1)));
       hills.setColorAt(i, glaze(pitchClass(k), isBlack(k), C));
     });
     for (const m of [white, black, hills]) m.frustumCulled = false;
     return { white, black, hills, M, whites, blacks };
-  }, [porc]);
+  }, [porc, kit]);
   const keySlot = useMemo(() => {
     // bán âm → (mesh, chỉ số instance)
     const s: [THREE.InstancedMesh, number][] = [];
@@ -179,6 +204,8 @@ export function ZoneKeys() {
       mat.dispose();
       seaMat.dispose();
       white.geometry.dispose();
+      black.geometry.dispose();
+      hills.geometry.dispose();
       (white.material as THREE.Material).dispose();
       (black.material as THREE.Material).dispose();
       [white, black, hills].forEach((m) => m.dispose());
@@ -205,10 +232,11 @@ export function ZoneKeys() {
       if (isOctave(k1, k2)) {
         floatText(at, tt(lg, "kyRight"), "crit");
         KY.round++;
-        setRound(KY.round);
+        useKeysUi.setState({ round: KY.round });
         if (KY.round >= OCTAVE_ROUNDS.length) {
           KY.done = true;
           ZONE_FLAGS.dike = true;
+          netZoneFlag("dike", 1);
           zoneHint(tt(lg, "kyDone"));
           setTimeout(() => synth.chord(keyFreq(12), [1, 2, 3, 4], 0.5), 500);
           for (let i = 0; i < 3; i++) rollDrops("mite", at.clone().add(new THREE.Vector3(i - 1, 0, 0)));
@@ -260,7 +288,8 @@ export function ZoneKeys() {
       const [mesh, i] = keySlot[k];
       const b = isBlack(k);
       P.set(keyX(k), (b ? KB.blackTop : KB.top) - sp.x, b ? (KB.blackZ0 + KB.blackZ1) / 2 : 0);
-      SC.set(b ? KB.blackW : KB.W - 0.08, b ? 1.6 : 1.4, b ? KB.blackZ1 - KB.blackZ0 : KB.LEN);
+      // tỉ lệ so với kích thước dựng của hình (zk_key_w 3,3 × 1,4 × 9 · zk_key_b 2,1 × 1,6 × 5,5)
+      SC.set(b ? KB.blackW / 2.1 : (KB.W - 0.08) / 3.3, 1, b ? (KB.blackZ1 - KB.blackZ0) / 5.5 : KB.LEN / 9);
       mesh.setMatrixAt(i, M.compose(P, Q, SC));
       glaze(pitchClass(k), b, C);
       if (k === clamp) C.multiplyScalar(1.25 + 0.25 * Math.sin(HARMONIC.beatPhase * Math.PI * 2));
@@ -277,7 +306,7 @@ export function ZoneKeys() {
     if (ZONE_FLAGS.dike || Math.abs(dk.v) > 1e-3) {
       springStep(dk, ZONE_FLAGS.dike ? DIKE.h + 2.4 : 0, 4, 0.8, dt);
       P.set(DIKE.x, DIKE.h - dk.x, 0);
-      SC.set(1.2, DIKE.h + 2, DIKE.hz * 2);
+      SC.set(1.2 / 2.1, (DIKE.h + 2) / 1.6, (DIKE.hz * 2) / 5.5);
       black.setMatrixAt(black.count - 1, M.compose(P, Q, SC));
       bd = true;
     }

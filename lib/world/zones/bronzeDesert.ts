@@ -7,6 +7,7 @@
  * Toạ độ cục bộ (gốc khu: lib/world/zoneGraph.ts). Thuần — test: tests/world/sirenZones.test.ts.
  */
 import { chladni } from "../harmonicState";
+import { GXI, gxiToWorld, gxiWallLength } from "../witchGoiXepIm";
 import { zbox, zdisc, zstairs, zwall, type ZoneColliders } from "./types";
 
 export const DESERT_HALF = { x: 52, z: 42 };
@@ -89,7 +90,17 @@ export const SHORE_E = { x: 42, hx: 10.05, hz: 20 };
 export const TOWER = { x: -42, z: -13, top: 6 };
 export const LEVER = { x: -38.5, z: -6.5 };
 /** sân phù thuỷ Gối Xếp Im (vách vải dài 6 m — WITCHES_CODEX §2) */
-export const WITCH_ARENA = { x: 42, z: -10, r: 8 };
+export const WITCH_ARENA = { x: 42, z: -10, r: 8, yaw: -Math.PI / 2 };
+/**
+ * Vách vải của Gối Xếp Im (dài gxiWallLength(r) ≈ 11,9 m, cao D = 5 m) ở lz = −D/2 của sân → tường chặn (cờ "gxiWall": chỉ chặn
+ * khi vách đang dựng — GoiXepIm báo qua onWall). Hai đầu vách = gxiToWorld(±L/2, −D/2); dày 2 × 0,3 m.
+ */
+export const WITCH_WALL = (() => {
+  const L = gxiWallLength(WITCH_ARENA.r);
+  const a = gxiToWorld(WITCH_ARENA.x, WITCH_ARENA.z, WITCH_ARENA.yaw, -L / 2, -GXI.D / 2);
+  const b = gxiToWorld(WITCH_ARENA.x, WITCH_ARENA.z, WITCH_ARENA.yaw, L / 2, -GXI.D / 2);
+  return { a, b, L, x: (a[0] + b[0]) / 2, z: (a[1] + b[1]) / 2, half: 0.3, flag: "gxiWall" };
+})();
 
 /** tường bờ ở mép tấm (khoét đúng cổng) + cồn cát bao quanh */
 function edgeWalls(id: string, x: number, gateV: number) {
@@ -121,6 +132,8 @@ export const DESERT_COLLIDERS: ZoneColliders = {
     zwall("dEs", SHORE_E.x, SHORE_E.hz + 0.5, SHORE_E.hx, 0.5, -1, 3),
     zwall("dWw", -DESERT_HALF.x - 0.5, 0, 0.5, SHORE_W.hz + 1, -1, 3),
     zwall("dEe", DESERT_HALF.x + 0.5, 0, 0.5, SHORE_E.hz + 1, -1, 3),
+    // vách vải phù thuỷ (dọc trục z vì yaw = −π/2): chỉ chặn khi dựng
+    { ...zwall("gxiWall", WITCH_WALL.x, WITCH_WALL.z, WITCH_WALL.half, WITCH_WALL.L / 2, -1, GXI.D + 1), need: WITCH_WALL.flag },
   ],
   cyls: [{ id: "tower", x: TOWER.x, z: TOWER.z, r: 1.2, y0: -1, y1: TOWER.top - 0.6 }],
 };

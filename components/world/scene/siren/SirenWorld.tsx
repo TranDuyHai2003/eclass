@@ -15,14 +15,22 @@ export function SirenWorld() {
   return (
     <>
       <Barrier />
+      {/* DEV: window.__witch("goixepim") — thử phù thuỷ hoạ âm trong mê cung (khu chính thức gắn <GoiXepIm/> riêng) */}
+      <WitchDev />
+    </>
+  );
+}
+
+/** Phần thuần hình (trời cắt dán, thác ký hiệu, đĩa than, vùng nghỉ Dấu lặng) — Siren.tsx gắn trong HubVisual (gỡ khi ở khu khác) */
+export function SirenWorldSky() {
+  return (
+    <>
       <RestZone />
       <Suspense fallback={null}>
         <CollageSky />
         <NotationFalls />
         <VinylSun />
       </Suspense>
-      {/* DEV: window.__witch("goixepim") — thử phù thuỷ hoạ âm trong mê cung (khu chính thức gắn <GoiXepIm/> riêng) */}
-      <WitchDev />
     </>
   );
 }

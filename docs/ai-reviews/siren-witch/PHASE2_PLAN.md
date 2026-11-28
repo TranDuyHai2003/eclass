@@ -139,3 +139,65 @@ cửa + bản đồ đồ thị khu (DOM, gọn cho điện thoại), giảm chu
 - Thẩm mỹ: đồi phím / khối đồng còn là hộp; cồn cát bán cầu; tháp quan sát vừa dời ra sau sàn — cần xem lại ảnh.
 - Trạng thái câu đố (đê, vé) chỉ cục bộ mỗi máy (chưa đồng bộ server); mất khi rời cảnh.
 - La bàn đè nhau khi cửa và mốc cùng hướng (đã tách 2 hàng — chưa chụp lại).
+
+## 11. Giai đoạn 2b (28/11 chiều — chưa commit)
+
+**1. Sửa các lỗi đã biết**
+- (a) Hub chạy ngầm khi ở khu khác: tách `Siren.tsx` thành `HubOnly` (phần phải GIỮ gắn: trạng thái câu đố hub, quái, trọng lực,
+  cổng, thân boss, kết giới — ẩn + mọi `useFrame` của chúng trả về sớm bằng `offHub()` trong `zoneRuntime.ts`) và `HubVisual`
+  (phần THUẦN HÌNH: trời, đĩa than, thác ký hiệu, rối giấy, cầu khuông, sàn đấu trường, FX boss, nhãn… — rời hub > 4 s thì gỡ hẳn;
+  quay về gắn lại ngay). Đo ở Biển Phím: số `useFrame` 82 → 65; vật thể trong cảnh của hub không còn; la bàn khu bỏ đọc
+  `clientWidth` sau khi ghi style (ép dựng bố cục mỗi dấu) + chỉ ghi khi đổi: 0,58 → ~0,1 ms/khung. Cổng hub cũ: bỏ 4 cấp phát
+  mỗi khung (`usePortalDriver`).
+- (b) Gối Xếp Im: vách vải 12 m có va chạm — tường `gxiWall` (lib `WITCH_WALL`, cờ mới `need`: chỉ chặn khi vách dựng; GoiXepIm
+  báo qua `onWall`, vách dựng lên trùng chỗ đứng → đẩy ra trước vách). HUD chỉ hiện khi tới gần (≤ WAKE_R + 3 m) hoặc đã giao
+  chiến (`gxiHudOn`). Trình duyệt: giữ W chạy vào vách → dừng ở 0,65 m (0,3 + bán kính thân 0,35).
+- (c) "Cú nhảy xa" qua cửa đồ thị khu mà `usePortalDriver` thấy ở khung sau (đoạn prev → cur dài ~2000 m: vận tốc ảo ~10⁵ m/s cho
+  trọng lực kỳ dị, có thể cắt nhầm lỗ cổng / lỗ sâu): hàm thuần `zoneJump` (khác khu hoặc dời > 25 m) → chỉ đồng bộ lại. Test:
+  mọi cửa, cả hai chiều; bước thường không bị nhận nhầm.
+- (d) Ảnh `shots/phase2b/`: tên khu có dấu (02), la bàn 2 hàng (01, 04, 05), terrazzo + cột (06), men phím theo lớp cao độ (03 trước
+  / 07 sau), vân đồng + đài quan sát + vành lỗ vé tròn (04, 05).
+
+**2. Thẩm mỹ — hình dựng tay (Blender, `blender-src/siren-src/zone_kit_build.py` → `zone_kit.blend` → `public/world/siren/zone_kit.glb`
+142 KB, chỉ hình; vật liệu do khu đặt; `zoneHooks.useKit` / `bakeParts`)**
+- Biển Phím: phím trắng có mũi bo + rãnh khắc, phím đen thân vát thon; bến / đê = phím phóng to; **đồi phím** thành phím-đồi có mặt
+  trên lõm dâng lên đỉnh sóng, quay lưng ra biển (416 cái, ~108 tam giác/cái). Trời: tinh vân fbm, **rèm cực quang sóng dừng**
+  (8 bụng quanh chân trời, nút luôn tối, sáng theo phách), **trần phím úp ngược** rất cao (vênh tỉ lệ).
+- Sa Mạc: cồn cát **lưỡi liềm (barchan)** có sống sắc + sườn trượt (lưới bám đường đỉnh ~570 tam giác/cồn); lan can đồng có cột,
+  núm cầu, vòng guilloche; bậc có mũi; sàn đài tròn; cần gạt = đế máy đếm nhịp + cần có quả nặng — gộp thành 1 hình tĩnh + 1 cần.
+- Phòng Chờ: cột terrazzo có bệ, thân phình, đầu cột loe.
+- Chưa làm: lớp bóng xa nhiều tầng / collage chuyển động 12-8-4 Hz cho từng khu; sheet cắt dán Codex mới.
+
+**3. Đồng bộ câu đố qua server (co-op)** — tin `zf` (phòng "siren"): `{dike, ticket}` chốt 0/1 (đã mở thì giữ), `desert` = mode 0…15;
+≤ 8 khoá, ≤ 4 tin/giây; server gửi cờ hiện tại cho người vào sau; client gửi lại cờ của mình sau mỗi lần vào phòng (desert chỉ
+khi chính mình đã gạt). Luật gộp `zfMerge` (lib/world/zoneId.ts) = bản trong `realtime/server.mjs`. Server cũ bỏ qua → cục bộ
+như trước. **Đã sửa `realtime/server.mjs` + `selftest.mjs` → cần deploy lại server realtime.** Chưa thử hai trình duyệt thật.
+
+**4. Phù thuỷ #4 Khoảng Trừ (giao thoa, trừu tượng)** — `lib/world/witchKhoangTru.ts` + `tests/world/witchKhoangTru.test.ts` (7 test:
+R = √(A₁²+A₂²+2A₁A₂cos φ) khớp đỉnh thật; vùng hiểm VẼ (`KTR_DANGER_EXPR`, GLSL-cũng-là-JS) == LUẬT ở 57k điểm; R = 0 → cả dải an
+toàn, R = ½ vẫn còn hiểm; dập 1 lần / chu kỳ ở phách 6, báo trước 5 phách, núm khoá lúc chốt; 3 vòng: đảo pha → tăng biên độ
+(đã đảo mà nửa biên độ vẫn còn sóng) → dự đoán (che dải tổng); trúng / tha đúng chỗ; tất định; rời lâu → ngủ lại).
+Hình `components/world/scene/siren/witches/KhoangTru.tsx`: 3 lệnh vẽ (3 dải giấy khắc uốn bằng cùng biểu thức, sàn báo đòn,
+sứ giả Nêm Biên Độ / Vạch Đảo Pha), vân in lật 10 Hz, HUD riêng (2 sóng thành phần + tổng, công thức, "? ? ?" khi dự đoán),
+núm = phím F ở hai đầu dải. Gắn ở góc Đông Bắc **Phòng Chờ** (tầng "Bản nháp": căn phòng in bản sao để xoá bản trước).
+Thắng → Ghi chép mới `cancel` (Giao thoa triệt tiêu) + rơi đồ. Ảnh 08–11. Dev: `window.__ktr.turn("amp"|"phase")`, `__ktr.tp(lx, lz)`.
+
+**Đo `__perf` (Iris Xe thật, DPR 1,25, 1536 × 703, bản dev; máy đang chạy song song agent khác → nhiễu ±30 %)**
+
+| Khu | Trước (đầu phiên) | Sau |
+|---|---|---|
+| Hub | 32 fps · cpu 17,4 ms · gpu 6,7 · 109 lệnh · 156k tam giác | 32 fps · cpu 16–21 · gpu 6,7 · 109 · 156k (không đổi) |
+| Biển Phím | 41–47 fps · cpu 15–16,5 · gpu 6,8 · 59 · 128k · 82 useFrame | 42–58 fps · cpu 10,7–16 · gpu 6,5 · 58 · 178k · 65 useFrame |
+| Phòng Chờ | — | 54–60 fps · cpu 7–12 · gpu 5,4–5,9 · 58 (61 khi Khoảng Trừ thức) · 121k |
+| Sa Mạc | — | 48–54 fps · cpu 11–14 · gpu 5,5–6,7 · 59–60 · 202k |
+
+Lệnh vẽ nội dung khu (≤ 20) giữ nguyên: Sa Mạc gộp đồ đồng thành 1 hình; Khoảng Trừ +3.
+Khung dài nhất lúc dịch chuyển giữa khu (dev): 90–550 ms ở cả hai chiều, có / không gắn lại hub — chủ yếu do gắn khu đích + tải
+texture, không riêng việc gỡ hub; cần đo lại bản production.
+
+**Còn lại**
+- Thẩm mỹ: bóng xa nhiều tầng + collage chuyển động theo khu, sheet Codex cho Khoảng Trừ (hiện dải / sứ giả vẽ thủ tục), ghế /
+  máy phát số 3D cho Phòng Chờ; xem lại ở điện thoại dọc / ngang.
+- Đo production + điện thoại thật; thử co-op hai client (cờ `zf`, người vào sau, kết nối lại).
+- `tests/world/assetBase.test.ts` đang đỏ (do commit d2d0927 “mọi asset /world qua CDN” — test cũ chưa cập nhật; giai đoạn này không đụng `avatars.ts`), `ktx2.test.ts` như cũ.
+- Khu kế tiếp theo BRAINSTORM (Đại Sảnh Treo Ngược / Đô Thị Nếp Khuông) và phù thuỷ Thoi Lệch Phách (phách) — chưa bắt đầu.

@@ -12,23 +12,58 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { CHLADNI_GLSL, HARMONIC, springStep, type Spring } from "@/lib/world/harmonicState";
 import { t as tt, type Lang } from "@/lib/world/i18n";
-import { ZONE_DEFS, ZONE_DYN, type V3 } from "@/lib/world/zoneGraph";
-import { DANGER, DESERT_COLLIDERS, DESERT_HALF, GATE_E, GATE_W, LEVER, MODES, PLATE, SAND, SINK_S, TOWER, WITCH_ARENA, beetleStep, nodalConnected, onPlate, plateF } from "@/lib/world/zones/bronzeDesert";
+import { ZONE_DEFS, ZONE_DYN, ZONE_FLAGS, type V3 } from "@/lib/world/zoneGraph";
+import { DANGER, DESERT_COLLIDERS, DESERT_HALF, GATE_E, GATE_W, LEVER, MODES, PLATE, SAND, SINK_S, TOWER, WITCH_ARENA, WITCH_WALL, beetleStep, nodalConnected, onPlate, plateF } from "@/lib/world/zones/bronzeDesert";
+import { create } from "zustand";
 import { useWorld } from "../../../store";
+import { netZoneFlag } from "../../../net";
 import { registerAction } from "../../../actions";
 import { motion } from "../../../combat/combat";
 import { floatText, Label3D } from "../../../ui/Labels";
 import { reduceMotion } from "../SirenGravity";
 import { synth } from "../sirenSynth";
 import { CutoutBatch, createCutoutMat, type CutItem } from "./zoneMats";
-import { useCutTex, useRepTex, useZoneGroup } from "./zoneHooks";
+import { bakeParts, useCutTex, useKit, useRepTex, useZoneGroup } from "./zoneHooks";
 import { ZONE_RT, teleportLocal, useZones, zoneHint } from "./zoneRuntime";
 
 const O = ZONE_DEFS.desert.origin;
 /** mode hiện tại (trời + lỗ cửa đọc) */
 export const DESERT_SKY = { m: MODES[0][0], n: MODES[0][1] };
 const DS = { mode: 0, prev: 0, at: -1e9, dangerT: 0, told: -1 };
+const useDesertUi = create<{ mode: number }>(() => ({ mode: DS.mode }));
+
+/** đổi mode tấm đồng (cần gạt của mình hoặc của người khác cùng phòng — tin "zf") */
+function setDesertMode(i: number) {
+  if (i === DS.mode) return;
+  DS.prev = DS.mode;
+  DS.mode = i;
+  DS.at = performance.now();
+  DS.told = -1;
+  const [m, n] = MODES[i];
+  DESERT_SKY.m = m;
+  DESERT_SKY.n = n;
+  useDesertUi.setState({ mode: i });
+}
+/** mode do người khác gạt (đã kẹp vào danh sách MODES) */
+export function desertShared(i: number) {
+  if (!Number.isInteger(i) || i < 0 || i >= MODES.length || i === DS.mode) return;
+  setDesertMode(i);
+  if (ZONE_RT.id === "desert") synth.impact("metal", 5);
+}
+/** chỉ gửi lại khi chính mình đã từng gạt (người mới vào không ghi đè mode của phòng) */
+export const desertLocal = (): Record<string, number> => (DS.at > 0 ? { desert: DS.mode } : {});
 const BEETLES = 8;
+
+/** vách vải phù thuỷ dựng / hạ → bật tường chặn (lib: WITCH_WALL); vách dựng lên ngay chỗ người chơi đứng → đẩy ra phía trước vách */
+function witchWall(up: boolean) {
+  ZONE_FLAGS[WITCH_WALL.flag] = up;
+  if (!up) return;
+  const p = useWorld.getState().player;
+  const lx = p.x - O[0];
+  const lz = p.z - O[2];
+  // vách dọc trục z ở x = WITCH_WALL.x; người chơi đánh từ phía Tây (−x)
+  if (Math.abs(lx - WITCH_WALL.x) < WITCH_WALL.half + 0.45 && Math.abs(lz - WITCH_WALL.z) < WITCH_WALL.L / 2 + 0.45) p.x = O[0] + WITCH_WALL.x - WITCH_WALL.half - 0.5;
+}
 
 export function desertNearby(l: V3, lang: Lang) {
   if (Math.hypot(l[0] - LEVER.x, l[2] - LEVER.z) > 2.2 || l[1] > 1) return null;
@@ -121,7 +156,7 @@ export function ZoneDesert() {
   const lang = useWorld((s) => (s.lang === "vi" ? "vi" : "en"));
   const here = useZones((s) => s.zone === "desert");
   const [witchFail, setWitchFail] = useState(false);
-  const [modeIdx, setModeIdx] = useState(DS.mode);
+  const modeIdx = useDesertUi((u) => u.mode);
 
   const plateMat = useMemo(() => {
     const m = new THREE.ShaderMaterial({
@@ -138,41 +173,59 @@ export function ZoneDesert() {
     return m;
   }, [bronzeTex, sandTex]);
 
-  // ── khối đồng: lan can mép tấm (khoét cổng), bậc thang + sàn đài, cần gạt (2 khối cuối)
-  const { bronze, leverIdx } = useMemo(() => {
-    const B: [number, number, number, number, number, number, number][] = [];
-    for (const w of DESERT_COLLIDERS.walls) if (w.id.startsWith("e")) B.push([w.x, 0.6, w.z, w.hx * 2, 1.2, w.hz * 2, 0]);
-    for (const s of DESERT_COLLIDERS.surfs) if (s.id.startsWith("towerSt")) B.push([s.x, s.y - 0.17, s.z, (s.hx ?? 1) * 2, 0.35, (s.hz ?? 0.3) * 2, s.yaw ?? 0]);
-    B.push([TOWER.x, TOWER.top - 0.25, TOWER.z, 5.2, 0.5, 5.2, 0]);
-    const leverIdx = B.length;
-    B.push([LEVER.x, 0.6, LEVER.z, 0.5, 1.2, 0.5, 0]);
-    B.push([LEVER.x, 1.4, LEVER.z, 0.16, 1.6, 0.16, 0]);
-    const box = new THREE.BoxGeometry(1, 1, 1);
-    const mesh = new THREE.InstancedMesh(box, new THREE.MeshLambertMaterial({ color: "#e6b27a", map: bronzeTex }), B.length);
-    const M = new THREE.Matrix4();
-    const Q = new THREE.Quaternion();
-    B.forEach(([x, y, z, sx, sy, sz, yaw], i) => mesh.setMatrixAt(i, M.compose(new THREE.Vector3(x, y, z), Q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw), new THREE.Vector3(sx, sy, sz))));
-    mesh.frustumCulled = false;
-    return { bronze: mesh, leverIdx };
-  }, [bronzeTex]);
-  // ── cồn cát dọc tường cồn (vỏ bán cầu dẹt)
+  // ── đồ đồng dựng tay (Blender — zoneHooks.useKit): lan can mép tấm (đoạn 2 m có cột + vòng guilloche, khoét cổng), bậc có mũi,
+  //    sàn đài tròn, đế máy đếm nhịp của cần gạt → GỘP thành 1 hình tĩnh (1 lệnh vẽ); cần gạt riêng (lắc lò xo)
+  const kit = useKit(["zk_rail", "zk_step", "zk_disc", "zk_lever_b", "zk_lever_a", "zk_dune"] as const);
+  const { bronze, arm } = useMemo(() => {
+    const M = (x: number, y: number, z: number, yaw = 0, sx = 1, sy = 1, sz = 1) =>
+      new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw), new THREE.Vector3(sx, sy, sz));
+    const rails: THREE.Matrix4[] = [];
+    for (const w of DESERT_COLLIDERS.walls)
+      if (w.id.startsWith("e")) {
+        // tường dọc z → lan can quay π/2; chia đoạn 2 m (co nhẹ cho khít chiều dài)
+        const L = Math.max(w.hx, w.hz) * 2;
+        const n = Math.max(1, Math.round(L / 2));
+        const along = w.hz > w.hx;
+        for (let i = 0; i < n; i++) {
+          const t = (i + 0.5) / n - 0.5;
+          rails.push(M(w.x + (along ? 0 : t * L), -0.05, w.z + (along ? t * L : 0), along ? Math.PI / 2 : 0, L / n / 2, 1, 1));
+        }
+      }
+    const steps: THREE.Matrix4[] = [];
+    for (const st of DESERT_COLLIDERS.surfs) if (st.id.startsWith("towerSt")) steps.push(M(st.x, st.y, st.z, st.yaw ?? 0, (st.hx ?? 1) * 2, 0.35, (st.hz ?? 0.3) * 2));
+    const geo = bakeParts([
+      { geo: kit.zk_rail, at: rails },
+      { geo: kit.zk_step, at: steps },
+      { geo: kit.zk_disc, at: [M(TOWER.x, TOWER.top, TOWER.z)] },
+      { geo: kit.zk_lever_b, at: [M(LEVER.x, 0, LEVER.z)] },
+    ]);
+    const mat = new THREE.MeshLambertMaterial({ color: "#e6b27a", map: bronzeTex });
+    const bronze = new THREE.Mesh(geo, mat);
+    bronze.name = "perf:desert:bronze";
+    const arm = new THREE.Mesh(kit.zk_lever_a, mat);
+    arm.position.set(LEVER.x, 1.2, LEVER.z);
+    return { bronze, arm };
+  }, [bronzeTex, kit]);
+  // ── cồn cát lưỡi liềm (barchan, Blender): gió Tây → sừng chỉ về phía Đông; to nhỏ + lệch hướng nhẹ cho khỏi lặp
   const dunes = useMemo(() => {
-    const pts: [number, number, number][] = [];
+    const pts: [number, number, number, number][] = [];
     for (const w of DESERT_COLLIDERS.walls)
       if (w.id.startsWith("d")) {
         const L = Math.max(w.hx, w.hz) * 2;
         const n = Math.max(2, Math.round(L / 7));
         for (let i = 0; i < n; i++) {
           const t = (i + 0.5) / n - 0.5;
-          pts.push([w.x + (w.hx > w.hz ? t * L : 0), w.z + (w.hx > w.hz ? 0 : t * L), 3 + ((i * 7) % 5)]);
+          pts.push([w.x + (w.hx > w.hz ? t * L : 0), w.z + (w.hx > w.hz ? 0 : t * L), 3 + ((i * 7) % 5), Math.sin(i * 2.3 + w.x) * 0.35]);
         }
       }
-    const mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ map: sandFloor }), pts.length);
+    const mesh = new THREE.InstancedMesh(kit.zk_dune, new THREE.MeshLambertMaterial({ map: sandFloor }), pts.length);
     const M = new THREE.Matrix4();
-    pts.forEach(([x, z, s], i) => mesh.setMatrixAt(i, M.compose(new THREE.Vector3(x, -0.3, z), new THREE.Quaternion(), new THREE.Vector3(s * 1.4, s * 0.55, s))));
+    const E = new THREE.Euler();
+    pts.forEach(([x, z, s, yaw], i) => mesh.setMatrixAt(i, M.compose(new THREE.Vector3(x, -0.22, z), new THREE.Quaternion().setFromEuler(E.set(0, yaw, 0)), new THREE.Vector3(s * 1.7, s * 0.62, s * 1.15))));
     mesh.frustumCulled = false;
+    mesh.name = "perf:desert:dunes";
     return mesh;
-  }, [sandFloor]);
+  }, [sandFloor, kit]);
 
   // ── hình cắt giấy: đài quan sát, bọ gom cát, cánh gà ở hai cổng, dấu chờ sân phù thuỷ, bóng xa
   const { batch, mat, iBeetle, iWitch } = useMemo(() => {
@@ -203,25 +256,24 @@ export function ZoneDesert() {
       plateMat.dispose();
       bronze.geometry.dispose();
       (bronze.material as THREE.Material).dispose();
-      bronze.dispose();
+      arm.geometry.dispose();
+      kit.zk_rail.dispose();
+      kit.zk_step.dispose();
+      kit.zk_disc.dispose();
+      kit.zk_lever_b.dispose();
       dunes.geometry.dispose();
       (dunes.material as THREE.Material).dispose();
       dunes.dispose();
     },
-    [batch, mat, plateMat, bronze, dunes],
+    [batch, mat, plateMat, bronze, arm, dunes, kit],
   );
 
   // ── cần gạt
   useEffect(() => {
     const off = registerAction("zone:desert:lever", () => {
-      DS.prev = DS.mode;
-      DS.mode = (DS.mode + 1) % MODES.length;
-      DS.at = performance.now();
-      DS.told = -1;
-      setModeIdx(DS.mode);
+      setDesertMode((DS.mode + 1) % MODES.length);
+      netZoneFlag("desert", DS.mode);
       const [m, n] = MODES[DS.mode];
-      DESERT_SKY.m = m;
-      DESERT_SKY.n = n;
       const lg: Lang = useWorld.getState().lang === "vi" ? "vi" : "en";
       floatText(new THREE.Vector3(LEVER.x + O[0], 2.6, LEVER.z + O[2]), `(${m}, ${n})`, "crit");
       zoneHint(tt(lg, "dsMode", { m, n }));
@@ -246,11 +298,6 @@ export function ZoneDesert() {
     beat: -1,
     introAt: -1e9,
   });
-  const M = useMemo(() => new THREE.Matrix4(), []);
-  const P = useMemo(() => new THREE.Vector3(), []);
-  const Q = useMemo(() => new THREE.Quaternion(), []);
-  const SC = useMemo(() => new THREE.Vector3(), []);
-  const AX = useMemo(() => new THREE.Vector3(1, 0, 0), []);
   useFrame((_, rawDt) => {
     if (ZONE_RT.id !== "desert") return;
     const dt = Math.min(0.05, rawDt);
@@ -322,11 +369,7 @@ export function ZoneDesert() {
     batch.needs();
     // ── cần gạt: lò xo vượt đích mỗi lần gạt
     springStep(st.lever, DS.mode % 2 ? 0.7 : -0.7, 14, 0.3, dt);
-    P.set(LEVER.x, 1.4, LEVER.z);
-    Q.setFromAxisAngle(AX, st.lever.x);
-    SC.set(0.16, 1.6, 0.16);
-    bronze.setMatrixAt(leverIdx + 1, M.compose(P, Q, SC));
-    bronze.instanceMatrix.needsUpdate = true;
+    arm.rotation.x = st.lever.x;
     // ── âm nền: tiếng đồng ngân theo mode mỗi 2 ô nhịp, bọ lách cách theo phách
     const bi = Math.floor(HARMONIC.beat);
     if (bi !== st.beat) {
@@ -348,6 +391,7 @@ export function ZoneDesert() {
         <planeGeometry args={[PLATE.half * 2, PLATE.half * 2]} />
       </mesh>
       <primitive object={bronze} />
+      <primitive object={arm} />
       <primitive object={dunes} />
       <primitive object={batch.mesh} />
       <Label3D text={`${tt(lang, "dsTower")} · (${mm}, ${nn})`} position={[TOWER.x, TOWER.top + 4.2, TOWER.z]} maxDist={90} />
@@ -358,7 +402,7 @@ export function ZoneDesert() {
       {here && !witchFail && (
         <WitchGuard onFail={() => setWitchFail(true)}>
           <Suspense fallback={null}>
-            <GoiXepIm origin={{ x: WITCH_ARENA.x + O[0], y: O[1], z: WITCH_ARENA.z + O[2] }} radius={WITCH_ARENA.r} yaw={-Math.PI / 2} />
+            <GoiXepIm origin={{ x: WITCH_ARENA.x + O[0], y: O[1], z: WITCH_ARENA.z + O[2] }} radius={WITCH_ARENA.r} yaw={WITCH_ARENA.yaw} onWall={witchWall} />
           </Suspense>
         </WitchGuard>
       )}

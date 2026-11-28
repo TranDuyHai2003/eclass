@@ -15,19 +15,36 @@ import { t as tt, type Lang } from "@/lib/world/i18n";
 import { ZONE_DEFS, ZONE_FLAGS, type V3 } from "@/lib/world/zoneGraph";
 import { BELL, BOARD, CHAIRS, LCM_ROUNDS, MACHINE, PILLARS, TIMELINE, WAIT_HALF, bellAt, demoAt, lcm, machineTarget, stampAt, tileAt, tileX } from "@/lib/world/zones/waitHall";
 import { useWorld } from "../../../store";
+import { netZoneFlag } from "../../../net";
 import { registerAction } from "../../../actions";
 import { rollDrops } from "../../../combat/items";
 import { floatText, Label3D } from "../../../ui/Labels";
 import { reduceMotion } from "../SirenGravity";
 import { synth } from "../sirenSynth";
 import { CutoutBatch, createCutoutMat, type CutItem } from "./zoneMats";
-import { useCutTex, useRepTex, useZoneGroup } from "./zoneHooks";
-import { ZONE_RT, zoneHint } from "./zoneRuntime";
+import { useCutTex, useKit, useRepTex, useZoneGroup } from "./zoneHooks";
+import { ZONE_RT, useZones, zoneHint } from "./zoneRuntime";
+import { KhoangTru } from "../witches/KhoangTru";
+
+/** sân phù thuỷ Khoảng Trừ (cục bộ khu): tâm dải sàn; dải 8 m dọc z, chân dải treo ở x + 0,75 */
+export const KTR_SPOT = { x: 26.5, z: -8 };
 
 const O = ZONE_DEFS.wait.origin;
 /** trạng thái câu đố (giữ khi gắn lại khu; mất khi rời cảnh) */
 const WT = { round: 0, mark: -1, start: -1, lastTile: -2, done: false };
 const useWaitUi = create<{ round: number; done: boolean }>(() => ({ round: 0, done: false }));
+
+/** tấm vé đã mở ở máy khác cùng phòng (tin "zf") → giải xong tại chỗ (không thưởng lại) */
+export function waitShared() {
+  if (WT.done) return;
+  WT.done = true;
+  WT.round = LCM_ROUNDS.length;
+  WT.start = -1;
+  ZONE_FLAGS.ticket = true;
+  useWaitUi.setState({ round: WT.round, done: true });
+  if (ZONE_RT.id === "wait") zoneHint(tt(useWorld.getState().lang === "vi" ? "vi" : "en", "znShared"));
+}
+export const waitLocal = (): Record<string, number> => (WT.done ? { ticket: 1 } : {});
 
 export function waitNearby(l: V3, lang: Lang) {
   if (WT.done || WT.start >= 0) return WT.start >= 0 && tileAt(l[0], l[2]) >= 0 ? { kind: "action" as const, id: "zone:wait:busy", label: tt(lang, "wtBusy") } : null;
@@ -74,6 +91,7 @@ export function ZoneWait() {
   const rm = useMemo(() => reduceMotion(), []);
   const lang = useWorld((s) => (s.lang === "vi" ? "vi" : "en"));
   const ui = useWaitUi();
+  const here = useZones((z) => z.zone === "wait");
 
   // ── hình cắt giấy (một lệnh vẽ)
   const { batch, mat, idx } = useMemo(() => {
@@ -126,13 +144,16 @@ export function ZoneWait() {
     t.colorSpace = THREE.SRGBColorSpace;
     return { c, g: c.getContext("2d")!, t, last: "" };
   }, []);
+  // cột terrazzo dựng tay (Blender — zk_column: bệ, thân phình, cổ, đầu cột loe; cao 15, tâm y = 0)
+  const kit = useKit(["zk_column"] as const);
   const pillars = useMemo(() => {
-    const m = new THREE.InstancedMesh(new THREE.CylinderGeometry(1.1, 1.25, 15, 20, 1, true), new THREE.MeshLambertMaterial({ map: pillarTex }), PILLARS.length);
+    const m = new THREE.InstancedMesh(kit.zk_column, new THREE.MeshLambertMaterial({ map: pillarTex }), PILLARS.length);
     const M = new THREE.Matrix4();
     PILLARS.forEach(([x, z], i) => m.setMatrixAt(i, M.makeTranslation(x, 7.5 - 1, z)));
     m.frustumCulled = false;
+    m.name = "perf:wait:pillars";
     return m;
-  }, [pillarTex]);
+  }, [pillarTex, kit]);
   useEffect(
     () => () => {
       batch.dispose();
@@ -222,6 +243,7 @@ export function ZoneWait() {
           if (WT.round >= LCM_ROUNDS.length) {
             WT.done = true;
             ZONE_FLAGS.ticket = true;
+            netZoneFlag("ticket", 1);
             zoneHint(tt(lg, "wtDone"));
             synth.resolve(392);
             for (let i = 0; i < 3; i++) rollDrops("mite", at.clone().add(new THREE.Vector3(i - 1, 0, 1)));
@@ -281,6 +303,7 @@ export function ZoneWait() {
 
   const [ra, rb] = LCM_ROUNDS[Math.min(ui.round, LCM_ROUNDS.length - 1)];
   return (
+    <>
     <group ref={g} position={O}>
       <mesh rotation-x={-Math.PI / 2} position-y={0} name="perf:wait:floor">
         <planeGeometry args={[WAIT_HALF.x * 2 + 1, WAIT_HALF.z * 2 + 1]} />
@@ -300,5 +323,8 @@ export function ZoneWait() {
       <Label3D text={ui.done ? tt(lang, "wtDone") : tt(lang, "wtRound", { r: ui.round + 1, a: ra, b: rb })} position={[BELL.x, 5, BELL.z]} maxDist={40} />
       <Label3D text={tt(lang, "wtBoard")} position={[BOARD.x, BOARD.y0 + 12.4, BOARD.z]} maxDist={70} />
     </group>
+      {/* phù thuỷ #4 Khoảng Trừ (giao thoa) — góc Đông Bắc sảnh, dải dọc trục z, người chơi đứng phía Tây (chỉ gắn khi đang ở đây) */}
+      {here && <KhoangTru origin={{ x: KTR_SPOT.x + O[0], y: O[1], z: KTR_SPOT.z + O[2] }} yaw={-Math.PI / 2} />}
+    </>
   );
 }

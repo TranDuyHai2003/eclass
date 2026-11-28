@@ -34,6 +34,8 @@ import {
   GXI,
   TILT_EXPR,
   gxiPhase,
+  gxiHudOn,
+  gxiWallLength,
   gxiText,
   gxiVisual,
   hitGxi,
@@ -70,6 +72,8 @@ export interface WitchArenaProps {
   seed?: number;
   /** gọi một lần khi phù thuỷ ngủ say (thắng) */
   onDefeat?: () => void;
+  /** vách vải dựng / hạ (khu chứa dùng để bật va chạm vách — chỉ gọi khi đổi) */
+  onWall?: (up: boolean) => void;
 }
 
 export function GoiXepIm(props: WitchArenaProps) {
@@ -410,16 +414,25 @@ type St = ReturnType<typeof makeState>;
 const TMP = new THREE.Vector3();
 const TMP2 = new THREE.Vector3();
 
-function GoiXepImInner({ origin, radius, yaw = 0, seed = 1, onDefeat }: WitchArenaProps) {
+function GoiXepImInner({ origin, radius, yaw = 0, seed = 1, onDefeat, onWall: onWallUp }: WitchArenaProps) {
   const tex = useTexture(worldAsset(GX_ATLAS));
-  const L = Math.min(GXI.L, Math.max(7, 1.8 * (radius - 1.4)));
+  const L = gxiWallLength(radius);
   const zW = -GXI.D / 2;
   const [S0m] = useState(() => makeState(seed, L));
   const st = useRef<St>(S0m);
   const defeatRef = useRef(onDefeat);
+  const wallRef = useRef(onWallUp);
+  const wallUp = useRef(false);
   useEffect(() => {
     defeatRef.current = onDefeat;
-  }, [onDefeat]);
+    wallRef.current = onWallUp;
+  }, [onDefeat, onWallUp]);
+  useEffect(
+    () => () => {
+      if (wallUp.current) wallRef.current?.(false);
+    },
+    [],
+  );
 
   const parts = useMemo(() => {
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -576,7 +589,8 @@ function GoiXepImInner({ origin, radius, yaw = 0, seed = 1, onDefeat }: WitchAre
     host.appendChild(el);
     const root: Root = createRoot(el);
     root.render(<WitchHud />);
-    useWitchUi.setState({ on: true, stage: "dormant", L, hp: 1, maxHp: 1 });
+    // HUD chỉ hiện khi tới gần / đã giao chiến (gxiHudOn) — vòng khung bật lên
+    useWitchUi.setState({ on: false, stage: "dormant", L, hp: 1, maxHp: 1 });
     return () => {
       useWitchUi.setState({ on: false });
       // gỡ sau lượt render hiện tại (tránh cảnh báo unmount đồng bộ)
@@ -747,6 +761,12 @@ function GoiXepImInner({ origin, radius, yaw = 0, seed = 1, onDefeat }: WitchAre
     const xs = GXI.PILLOW_W / L + (1 - GXI.PILLOW_W / L) * unf;
     const hgt = GXI.PILLOW_H * 0.85 + (GXI.D - GXI.PILLOW_H * 0.85) * Math.max(0, S0.rise.x);
     parts.wall.visible = V.wall > 0.5;
+    // va chạm vách (khu chứa bật / tắt tường chặn): vách dựng và đã mở quá nửa
+    const up = V.wall > 0.5 && unf > 0.6;
+    if (up !== wallUp.current) {
+      wallUp.current = up;
+      wallRef.current?.(up);
+    }
     wu.uN.value = V.n;
     wu.uAmp.value = V.amp;
     wu.uOsc.value = V.osc;
@@ -806,8 +826,9 @@ function GoiXepImInner({ origin, radius, yaw = 0, seed = 1, onDefeat }: WitchAre
       const p2 = Math.min(1, s.pins[2] / GXI.PIN_HITS);
       const atk = s.stage === "fight" && V.tele > 0.3 ? s.atk : null;
       const u0 = useWitchUi.getState();
-      if (u0.stage !== s.stage || u0.n !== n || u0.hp !== s.hp || u0.atk !== atk || u0.count !== V.count || P[0] !== p0 || P[1] !== p1 || P[2] !== p2 || u0.prevN !== s.prevN)
-        useWitchUi.setState({ on: true, stage: s.stage, n, prevN: s.prevN, phase: gxiPhase(s), hp: s.hp, maxHp: s.maxHp, atk, count: V.count, pins: [p0, p1, p2], L });
+      const on = gxiHudOn(s.stage, dist);
+      if (u0.on !== on || u0.stage !== s.stage || u0.n !== n || u0.hp !== s.hp || u0.atk !== atk || u0.count !== V.count || P[0] !== p0 || P[1] !== p1 || P[2] !== p2 || u0.prevN !== s.prevN)
+        useWitchUi.setState({ on, stage: s.stage, n, prevN: s.prevN, phase: gxiPhase(s), hp: s.hp, maxHp: s.maxHp, atk, count: V.count, pins: [p0, p1, p2], L });
     }
   });
 

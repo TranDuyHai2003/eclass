@@ -19,6 +19,7 @@ import { emitBurst, emitHit } from "../../fx/Sparks";
 import { floatText } from "../../ui/Labels";
 import { MONSTER_DEFS, MONSTER_SPAWNS, OFFKEY_PERIOD, DISSONANCE_START, ROOT, monsterDamage, nameInterval, noisePhase, onBeat, tuneUp, type MonsterKind } from "@/lib/world/sirenMusic";
 import { synth } from "./sirenSynth";
+import { offHub } from "./zones/zoneRuntime";
 
 interface MState {
   kind: MonsterKind;
@@ -102,6 +103,7 @@ export function MazeMonsters() {
     };
   }, []);
   useFrame((_, rawDt) => {
+    if (offHub()) return; // đang ở khu khác của đồ thị khu
     const dt = Math.min(0.05, rawDt);
     const now = performance.now();
     const t = now / 1000;

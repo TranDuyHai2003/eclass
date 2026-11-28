@@ -27,11 +27,14 @@ import {
   zoneGround,
   zoneGroundLinear,
   zoneIndex,
+  zoneJump,
+  JUMP_MAX,
   type Door,
   type V3,
   type ZoneId,
 } from "@/lib/world/zoneGraph";
 import { mazeBlocked, mazeGround } from "@/lib/world/sirenMaze";
+import { zfMerge, type ZoneFlags } from "@/lib/world/zoneId";
 import { WORM } from "@/lib/world/sirenGravity";
 import type { ZoneColliders } from "@/lib/world/zones/types";
 
@@ -203,4 +206,61 @@ test("nhiều người chơi: id khu chuẩn hoá (thiếu = hub), cùng khu, đ
   assert.ok(!ZONE_WIRE.test("Hub"));
   assert.ok(!ZONE_WIRE.test("a".repeat(17)));
   for (const z of ZONE_IDS) assert.ok(ZONE_DOORS[z].length >= 1);
+});
+
+test("cú nhảy xa qua cửa đồ thị khu: bộ điều khiển cổng cũ của hub nhận ra (zoneJump) ở CẢ HAI chiều, bước thường thì không", () => {
+  // Kịch bản: khung k, ZoneDriver đưa người chơi qua cửa (dời ~2000 m); khung k+1, usePortalDriver (chạy TRƯỚC ZoneDriver) thấy
+  // đoạn prev (trước cửa, khu cũ) → cur (sau cửa, khu mới). Không có chốt chặn, đoạn này được kiểm như đường đi thật.
+  for (const d of DOORS) {
+    const dst = DOOR_BY_ID[d.to];
+    const s = Math.sin(d.yaw);
+    const c = Math.cos(d.yaw);
+    const yb = d.shape === "circle" ? (d.cy ?? 1.7) : 0.9;
+    // vị trí thế giới ngay trước mặt cửa nguồn và ngay sau khi ra cửa đích (tâm thân)
+    const preL: V3 = [d.x + 0.2 * c + 0.1 * s, d.y + yb, d.z - 0.2 * s + 0.1 * c];
+    const postL = doorTraverse(d, dst, [preL[0] - 0.2 * s, preL[1], preL[2] - 0.2 * c], [0, 0, 0]).pos;
+    const pre = toWorld(d.zone, preL);
+    const post = toWorld(dst.zone, postL);
+    assert.notEqual(zoneAtWorld(pre[0], pre[2]), zoneAtWorld(post[0], post[2]), `${d.id}: hai đầu khác khu`);
+    assert.ok(zoneJump(pre[0], pre[2], post[0], post[2]), `${d.id}: phải nhận ra cú nhảy xa`);
+    // vận tốc ảo nếu không chặn (dt = 1/60): ≫ mọi tốc độ thật
+    const vFake = Math.hypot(post[0] - pre[0], post[2] - pre[2]) * 60;
+    assert.ok(vFake > 1e4, `${d.id}: vận tốc ảo ${vFake.toFixed(0)} m/s`);
+    // bước thường quanh cửa (≤ 2 m) và trong cùng khu: không phải cú nhảy
+    for (const [dx, dz] of [
+      [0.3, 0],
+      [0, -1.5],
+      [1.4, 1.4],
+    ])
+      assert.ok(!zoneJump(pre[0], pre[2], pre[0] + dx, pre[2] + dz), `${d.id}: bước thường bị nhận nhầm`);
+  }
+  // hồi sinh trong hub (dời > JUMP_MAX) cũng là cú nhảy; quấn biên trong cùng khung không bao giờ tới đây (prev đặt sau quấn)
+  assert.ok(zoneJump(0, 10, 0, 10 + JUMP_MAX + 1));
+  assert.ok(!zoneJump(0, 10, 0, 10 + JUMP_MAX - 1));
+});
+
+test("co-op: cờ câu đố dùng chung (zfMerge — cùng luật với server) chốt đê / vé, nhận mode 0…15, lọc rác, ≤ 8 khoá", () => {
+  const f: ZoneFlags = {};
+  assert.equal(zfMerge(f, "dike", true), true);
+  assert.equal(zfMerge(f, "dike", 1), false, "không đổi → không phát lại");
+  assert.equal(zfMerge(f, "dike", 0), false, "đê đã hạ không dựng lại");
+  assert.equal(f.dike, 1);
+  assert.equal(zfMerge(f, "desert", 2), true);
+  assert.equal(zfMerge(f, "desert", 0), true, "mode sa mạc đổi qua lại được");
+  for (const [k, v] of [
+    ["Bad Key", 1],
+    ["desert", 16],
+    ["desert", -1],
+    ["desert", 1.5],
+    ["desert", "2"],
+    [42, 1],
+    ["__proto__", 1],
+  ] as [unknown, unknown][])
+    assert.equal(zfMerge(f, k, v), false, `rác bị bỏ: ${String(k)}=${String(v)}`);
+  // tên trùng thuộc tính Object.prototype không lách được giới hạn số khoá
+  zfMerge(f, "constructor", 1);
+  zfMerge(f, "tostring", 1);
+  for (let i = 0; i < 10; i++) zfMerge(f, `k${i}`, 1);
+  assert.equal(Object.keys(f).length, 8, "≤ 8 khoá mỗi phòng");
+  assert.equal(zfMerge(f, "desert", 3), true, "khoá có sẵn vẫn đổi được khi đã đủ 8");
 });

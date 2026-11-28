@@ -184,6 +184,9 @@ uniform float uCalm;
 ${CHLADNI_GLSL}
 float hsh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float band(float x, float w){ float f = fwidth(x) + 1e-4; return 1.0 - smoothstep(w - f, w + f, abs(x)); }
+float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hsh(i), hsh(i + vec2(1.0, 0.0)), f.x), mix(hsh(i + vec2(0.0, 1.0)), hsh(i + vec2(1.0, 1.0)), f.x), f.y); }
+float fbm(vec2 p){ float a = 0.5; float s = 0.0; for (int i = 0; i < 4; i++) { s += a * vn(p); p = p * 2.03 + 7.1; a *= 0.5; } return s; }
 vec3 zoneSky(vec3 d, float z){
   float y = d.y;
   float a = atan(d.z, d.x);
@@ -196,6 +199,26 @@ vec3 zoneSky(vec3 d, float z){
   } else if (z < 1.5) {
     // Biển Phím: đêm chàm, năm dòng kẻ khuông vắt ngang trời, sao = đầu nốt, trăng sứ nứt men
     col = mix(vec3(0.16, 0.08, 0.22), vec3(0.015, 0.012, 0.05), smoothstep(-0.05, 0.65, y));
+    // tinh vân giấy than (fbm) — trôi rất chậm
+    float neb = fbm(vec2(a * 2.2, y * 5.0) + vec2(uTime * 0.01 * (1.0 - uCalm), 0.0));
+    col += vec3(0.32, 0.12, 0.42) * smoothstep(0.45, 0.85, neb) * smoothstep(-0.05, 0.25, y) * (1.0 - smoothstep(0.5, 0.9, y)) * 0.55;
+    // rèm cực quang SÓNG DỪNG: 8 bụng quanh chân trời, nút (|sin| = 0) luôn tối — sáng lên theo phách (96 BPM), tắt khi giảm chuyển động
+    float beat = uTime * 1.6;
+    float pulse = uCalm > 0.5 ? 0.55 : 0.45 + 0.55 * exp(-fract(beat) * 3.0);
+    float env = abs(sin(a * 4.0));
+    float cy = 0.16 + 0.05 * sin(a * 2.0 + 1.3);
+    float curtain = smoothstep(cy - 0.02, cy + 0.03, y) * (1.0 - smoothstep(cy + 0.05, cy + 0.28 * env, y));
+    float rays = 0.6 + 0.4 * sin(a * 90.0 + fbm(vec2(a * 9.0, uTime * 0.15)) * 6.0);
+    col += mix(vec3(0.25, 0.95, 0.85), vec3(1.0, 0.45, 0.75), smoothstep(cy, cy + 0.25, y)) * curtain * env * rays * pulse * 0.55;
+    // trần phím úp ngược rất cao (vênh tỉ lệ): dải phím trắng / đen chiếu lên mặt phẳng trời
+    if (y > 0.42) {
+      vec2 q = d.xz / y * 1.6;
+      float kx = fract(q.x * 0.5 + 0.5);
+      float wk = band(fract(q.x * 3.5) - 0.5, 0.47);
+      float bk = step(0.5, fract(floor(q.x * 3.5) * 0.4286 + 0.2)) * step(0.0, sin(q.y * 1.3));
+      float ceil = smoothstep(0.42, 0.75, y);
+      col = mix(col, mix(vec3(0.55, 0.52, 0.7), vec3(0.06, 0.04, 0.1), bk), (1.0 - wk * 0.4) * 0.16 * ceil * (0.6 + 0.4 * kx));
+    }
     float s = y - 0.3 - 0.05 * sin(a * 3.0 + uTime * 0.05);
     float lines = 0.0;
     for (int i = 0; i < 5; i++) lines += band(s - float(i - 2) * 0.03, 0.0016);

@@ -8,6 +8,7 @@ import { useFrame } from "@react-three/fiber";
 import { Outlines } from "@react-three/drei";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { VRMLoaderPlugin, VRMUtils, type VRM, type VRMHumanBoneName } from "@pixiv/three-vrm";
 import { toonMaterial } from "../fx/shaders";
 import { timeScale, useWorld, type ActClip } from "../store";
@@ -78,6 +79,52 @@ function addOutlinePass(mesh: THREE.Mesh) {
   g.clearGroups();
   g.addGroup(0, count, 0);
   g.addGroup(0, count, 1);
+}
+/**
+ * Gộp các primitive CÙNG vật liệu của một lưới VRM: VRoid xuất tóc / thân thành hàng chục primitive dùng chung một vật liệu
+ * (kokia 167, cute-girl 125 primitive → ~15 cặp lưới × vật liệu) → mỗi primitive một lệnh vẽ, ×2 với viền MToon.
+ * Chỉ gộp lưới KHÔNG có morph target (biểu cảm trỏ tới từng primitive của mặt), cùng cha / skeleton / bindMatrix / biến đổi
+ * cục bộ / bộ thuộc tính → hình giữ nguyên (thứ tự tam giác theo thứ tự primitive, như thứ tự vẽ cũ khi cùng vị trí).
+ * Trả số lưới đã bỏ.
+ */
+function mergeVrmPrimitives(root: THREE.Object3D): number {
+  const groups = new Map<string, THREE.SkinnedMesh[]>();
+  root.traverse((o) => {
+    const m = o as THREE.SkinnedMesh;
+    if (!m.isSkinnedMesh || Array.isArray(m.material) || !m.parent || !m.skeleton) return;
+    const g = m.geometry;
+    if (Object.keys(g.morphAttributes).length || g.groups.length) return;
+    const sig = Object.keys(g.attributes)
+      .sort()
+      .map((k) => {
+        const a = g.attributes[k] as THREE.BufferAttribute;
+        return `${k}:${a.itemSize}:${a.normalized}:${a.array.constructor.name}`;
+      })
+      .join(",");
+    const key = `${m.parent.uuid}|${m.material.uuid}|${m.skeleton.uuid}|${g.index ? "i" : "n"}|${sig}`;
+    const list = groups.get(key);
+    if (list) list.push(m);
+    else groups.set(key, [m]);
+  });
+  let removed = 0;
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const a = list[0];
+    if (!list.every((m) => m.bindMatrix.equals(a.bindMatrix) && m.matrix.equals(a.matrix) && m.renderOrder === a.renderOrder && m.visible === a.visible)) continue;
+    const merged = mergeGeometries(
+      list.map((m) => m.geometry),
+      false,
+    );
+    if (!merged) continue;
+    a.geometry.dispose();
+    a.geometry = merged;
+    for (const m of list.slice(1)) {
+      m.removeFromParent();
+      m.geometry.dispose();
+    }
+    removed += list.length - 1;
+  }
+  return removed;
 }
 const NPC_POS = new THREE.Vector3();
 // ── Đặt vũ khí vào nắm tay: dựng trục từ xương ngón (không phụ thuộc trục xương riêng của từng model)
@@ -240,6 +287,9 @@ function loadVrm(url: string, instance = ""): Promise<VRM> {
         const vrm = gltf.userData.vrm as VRM;
         VRMUtils.removeUnnecessaryVertices(gltf.scene);
         VRMUtils.combineSkeletons(gltf.scene);
+        // hàng chục primitive tóc / thân cùng vật liệu → một lưới (giảm lệnh vẽ ở mọi cảnh; hình không đổi)
+        const merged = mergeVrmPrimitives(gltf.scene);
+        if (process.env.NODE_ENV !== "production" && merged) console.debug("[world] VRM gộp primitive", url.split("/").pop(), "−" + merged);
         VRMUtils.rotateVRM0(vrm); // VRM0 nhìn về -Z → quay về +Z như VRM1
         vrm.scene.traverse((o) => {
           const mesh = o as THREE.Mesh;

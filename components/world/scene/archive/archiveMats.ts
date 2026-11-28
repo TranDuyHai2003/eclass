@@ -39,7 +39,12 @@ export const ARCHIVE_MATS: Record<string, ArchiveMat> = {
   pbr_metal: { color: [0.25,0.22,0.2], rough: 0.5, metal: 1 },
   glass: { color: [0.8,0.85,0.9], rough: 0.08, metal: 0, transmission: 1 },
   emit_moonsky: { emissive: [0.45,0.58,0.85], emissiveIntensity: 6 },
+  // mô-đun 29/11 (tủ hồ sơ, phòng đọc) — vật liệu tay, dùng lại texture có sẵn
+  bk_cabinet: { color: [0.1,0.12,0.11], rough: 1, metal: 0, roughnessMap: "rusty_painted_metal_rough_r.webp", normalMap: "rusty_painted_metal_nor_gl_n.webp", normalScale: 0.5 },
+  bk_paper: { color: [0.72,0.68,0.58], rough: 0.9, metal: 0 },
+  bk_shade: { color: [0.04,0.22,0.1], rough: 0.25, metal: 0, emissive: [0.05,0.4,0.14], emissiveIntensity: 1.4 },
+  emit_lamp: { color: [1,0.85,0.6], rough: 0.3, metal: 0, emissive: [1,0.72,0.42], emissiveIntensity: 10 },
 };
 
 /** thang lightmap (giá trị thật = texel sRGB→tuyến tính × thang) — public/world/archive/_scales.json */
-export const LM_SCALE: Record<string, number> = { mod_cell: 8.5869, mod_cell_dark: 1.0335, mod_wall: 2.3382, mod_pillar: 31.1007, mod_door: 2.18, mod_shelf: 3.874, arch_hall: 4.7788 };
+export const LM_SCALE: Record<string, number> = { mod_cell: 8.5869, mod_cell_dark: 1.0335, mod_wall: 2.3382, mod_pillar: 31.1007, mod_door: 2.18, mod_shelf: 3.874, mod_cabinet: 3.6923, mod_desk: 1.3888, arch_hall: 4.7788 };

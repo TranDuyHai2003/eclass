@@ -24,7 +24,8 @@ import { synth } from "./sirenSynth";
 import { setWind, sfx } from "@/lib/world/sfx";
 import { ARENA_R } from "@/lib/world/boss";
 import { portalPassOrder, portalPeriodMs, portalSlots } from "@/lib/world/perfGate";
-import { zoneAtWorld } from "@/lib/world/zoneGraph";
+import { zoneAtWorld, zoneJump } from "@/lib/world/zoneGraph";
+import { offHub } from "./zones/zoneRuntime";
 import {
   BODY,
   DRAG_AIR,
@@ -244,6 +245,7 @@ export function PortalSurfaces({ group }: { group: React.RefObject<THREE.Group |
     [faces, frames, faceMat],
   );
   useFrame((_, dt) => {
+    if (offHub()) return; // đang ở khu khác của đồ thị khu
     faceMat.uniforms.uTime.value += dt;
     // mở cổng khi người chơi tới gần: vẽ vành 1,3 s rồi mống mắt nở 0,6 s; đã mở thì giữ nguyên
     const pl = useWorld.getState().player;
@@ -378,6 +380,7 @@ function PortalViews({ hide }: { hide: React.RefObject<THREE.Group | null> }) {
 
   // chạy sau Player (máy quay đã đặt) và trước EffectComposer (ưu tiên 1)
   useFrame((_, dt) => {
+    if (offHub()) return; // đang ở khu khác của đồ thị khu
     if (!slots.length) return;
     const cam = camera as THREE.PerspectiveCamera;
     cam.updateMatrixWorld();
@@ -533,6 +536,12 @@ export function carryHorizontal(vx: number, vz: number) {
   } else LAUNCH.speed = 0;
 }
 
+// đệm dùng lại mỗi khung (không cấp phát)
+const D_CUR = new THREE.Vector3();
+const D_SHIFT = new THREE.Vector3();
+const D_A: V3 = [0, 0, 0];
+const D_B: V3 = [0, 0, 0];
+
 export function usePortalDriver() {
   const st = useRef({ prev: new THREE.Vector3(), init: false, lock: "" as string, lockAt: 0, cool: 0, wraps: 0, launch: LAUNCH });
   useEffect(() => {
@@ -557,14 +566,18 @@ export function usePortalDriver() {
     FLIGHT.enabled = !inArena;
     if (motion.vy < -TERMINAL) motion.vy = -TERMINAL;
     if (motion.grounded) S.wraps = 0;
-    const cur = new THREE.Vector3(p.x, p.y + BODY, p.z);
-    if (!S.init) {
+    const cur = D_CUR.set(p.x, p.y + BODY, p.z);
+    // khung đầu, hoặc vừa có cú nhảy xa (qua cửa đồ thị khu / hồi sinh): đoạn prev → cur không phải đường đi thật → chỉ đồng bộ lại
+    if (!S.init || zoneJump(S.prev.x, S.prev.z, cur.x, cur.z)) {
       S.init = true;
       S.prev.copy(cur);
       S.launch.last.copy(p);
+      S.launch.speed = 0;
+      S.lock = "";
+      GF.prevOk = false;
       return;
     }
-    const shift = new THREE.Vector3();
+    const shift = D_SHIFT.set(0, 0, 0);
     // ── giữ đà ngang sau cú bắn (dùng kênh lướt của Player: dashDir / dashSpeed / dashUntil)
     const L = S.launch;
     if (L.speed > 0) {
@@ -595,8 +608,14 @@ export function usePortalDriver() {
       if (l[2] > REARM || !inAperture(lp, l[0], l[1], 1.6) || now - S.lockAt > 2500) S.lock = "";
     }
     if (now > S.cool && GF.st.mode === "world") {
-      const a: V3 = [S.prev.x, S.prev.y, S.prev.z];
-      const b: V3 = [cur.x, cur.y, cur.z];
+      const a = D_A;
+      const b = D_B;
+      a[0] = S.prev.x;
+      a[1] = S.prev.y;
+      a[2] = S.prev.z;
+      b[0] = cur.x;
+      b[1] = cur.y;
+      b[2] = cur.z;
       for (const src of PORTALS) {
         if (src.id === S.lock) continue;
         const hit = crossing(src, a, b);

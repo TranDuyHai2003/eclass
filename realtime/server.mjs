@@ -6,7 +6,8 @@
  * - Hầm Bổ đề (realm "vault"): phòng TỔ ĐỘI ≤ 4 người vào bằng mã 4 ký tự, ghế theo uid (kết nối lại giữ ghế),
  *   câu đố do server quyết (realtime/vault.mjs, sinh từ lib/world/vault/*.ts); trạng thái gửi kèm ảnh chụp ở trường "v"
  *   (chỉ khi đổi). Bộ ảnh chụp p giữ nguyên thứ tự [id, ...state(7), name, avatar, tilt] (+ zone ở vị trí 11 khi người đó
- *   đang ở một khu khác hub của Mê cung Hoạ âm — đồ thị khu, docs/ai-reviews/siren-witch/PHASE2_PLAN.md).
+ *   đang ở một khu khác hub của Mê cung Hoạ âm — đồ thị khu, docs/ai-reviews/siren-witch/PHASE2_PLAN.md). Cờ câu đố của đồ thị khu
+ *   (tin "zf": đê / vé / mode sa mạc) giữ theo phòng "siren", gửi người vào sau.
  * - Boss / sự kiện Vùng Kỳ quan nhiều người: chỗ trận theo phòng, "chủ trận" giữ mô phỏng (bfight / bstate / bhit / bhost / bend).
  * Never grants coins/XP — rewards only go through the web app's server actions + database.
  */
@@ -21,6 +22,22 @@ const ALLOW_ANON = process.env.ALLOW_ANON === "1";
 const MAX_PER_ROOM = 40;
 /** id khu hợp lệ (đồ thị khu Mê cung Hoạ âm — cùng mẫu với lib/world/zoneId.ts ZONE_WIRE) */
 const ZONE_WIRE = /^[a-z][a-z0-9_-]{0,15}$/;
+/**
+ * Cờ câu đố dùng chung của đồ thị khu Mê cung Hoạ âm (phòng "siren"): { dike, ticket: 0/1 — đã mở thì giữ (chốt), desert: mode 0…15 }.
+ * Cùng luật với lib/world/zoneId.ts zfMerge (test: tests/world/zoneGraph.test.ts + selftest). ≤ 8 khoá mỗi phòng.
+ */
+const ZF_KEY = /^[a-z][a-z0-9_]{0,15}$/;
+const ZF_LATCH = new Set(["dike", "ticket"]);
+function zfMerge(f, k, v) {
+  if (typeof k !== "string" || !ZF_KEY.test(k)) return false;
+  const n = v === true ? 1 : v === false ? 0 : typeof v === "number" ? v : NaN;
+  if (!Number.isInteger(n) || n < 0 || n > 15) return false;
+  if (!Object.prototype.hasOwnProperty.call(f, k) && Object.keys(f).length >= 8) return false;
+  if (ZF_LATCH.has(k) && f[k] === 1) return false;
+  if (f[k] === n) return false;
+  f[k] = n;
+  return true;
+}
 const TICK_MS = 100;
 import { newBoss, tickBoss, hitBoss, hitNode, packBoss } from "./boss.mjs";
 import { newRun, seatJoin, seatLeave, tickRun, actRun, packRun, validCode, makeCode, MAX_SEATS } from "./vault.mjs";
@@ -309,6 +326,9 @@ wss.on("connection", (ws) => {
       // Phó bản: boss do server giữ (máu theo số người lúc mở trận)
       if (r.realm === "siren" && (!r.boss || r.boss.deadAt)) r.boss = newBoss(r.clients.size, Date.now());
       ws.hitBudget = { tokens: 12, at: Date.now() };
+      // cờ câu đố của đồ thị khu (đê đã hạ, vé đã mở, mode sa mạc) → người vào sau thấy ngay; client cũ bỏ qua tin "zf"
+      ws.zfBudget = { tokens: 4, at: Date.now() };
+      if (r.realm === "siren" && r.zf && Object.keys(r.zf).length) send(ws, { t: "zf", f: r.zf });
       return;
     }
     if (m.t === "name" && ws.room && ws.profile) {
@@ -338,6 +358,18 @@ wss.on("connection", (ws) => {
       const d = Math.max(0, Math.min(150, Number(m.d) || 0));
       if (m.n === 0 || m.n === 1) hitNode(ws.room.boss, m.n, d, now);
       else hitBoss(ws.room.boss, d, now);
+      return;
+    }
+    if (m.t === "zf" && ws.room?.realm === "siren" && ws.zfBudget) {
+      // cờ câu đố dùng chung (≤ 4 tin / giây): hợp lệ + đổi thật → phát cho cả phòng (kể cả người gửi — xác nhận)
+      const now = Date.now();
+      const zb = ws.zfBudget;
+      zb.tokens = Math.min(4, zb.tokens + ((now - zb.at) / 1000) * 4);
+      zb.at = now;
+      if (zb.tokens < 1) return;
+      zb.tokens -= 1;
+      ws.room.zf ??= {};
+      if (zfMerge(ws.room.zf, m.k, m.v)) broadcast(ws.room, { t: "zf", f: ws.room.zf });
       return;
     }
     if (m.t === "s" && ws.room && Array.isArray(m.s) && m.s.length <= 10) {
