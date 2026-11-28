@@ -75,7 +75,7 @@ export default async function Header() {
             {/* Desktop Quick Nav */}
             <nav className="hidden lg:flex items-center gap-1.5 mr-2">
               <Link
-                href="/courses"
+                href="/courses" prefetch={false}
                 className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-blue-600 font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl hover:bg-blue-50 transition-all"
               >
                 <BookOpen className="w-4 h-4" />
@@ -84,7 +84,7 @@ export default async function Header() {
 
               {isTeacher && (
                 <Link
-                  href="/teacher/courses"
+                  href="/teacher/courses" prefetch={false}
                   className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-orange-600 font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl hover:bg-orange-50 transition-all"
                 >
                   <LayoutDashboard className="w-4 h-4" />
@@ -99,7 +99,7 @@ export default async function Header() {
                   {showPoints && headerPoints && (
                     <>
                     <Link
-                      href={canUseShop(session.user) ? "/rewards" : "/profile"}
+                      href={canUseShop(session.user) ? "/rewards" : "/profile"} prefetch={false}
                       data-wallet-chip
                       title={`${pointsLevel?.icon} ${pointsLevel?.name} · ${headerPoints.balance.toLocaleString("vi-VN")} xu · ${headerPoints.gems} ngọc · tiệm quà`}
                       className="h-10 sm:h-11 px-2.5 sm:px-3 inline-flex items-center gap-1.5 rounded-2xl border-2 border-amber-200 bg-amber-50 text-amber-700 shadow-[0_3px_0_0_#fde68a] hover:bg-amber-100 active:translate-y-[2px] active:shadow-[0_1px_0_0_#fde68a] transition-all"
@@ -125,7 +125,7 @@ export default async function Header() {
                   </div>
 
                   <Link
-                    href="/profile"
+                    href="/profile" prefetch={false}
                     className="group relative h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-white flex items-center justify-center transition-all border border-slate-200 shadow-sm overflow-hidden hover:border-blue-200 hover:shadow-blue-500/10 active:scale-95"
                   >
                     {session.user.image ? (

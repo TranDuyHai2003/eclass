@@ -27,7 +27,7 @@ export function useRun() {
           play("coin");
           if (res.message) toast.success(res.message);
           after?.();
-          router.refresh();
+          // Không router.refresh(): mọi action ở đây đã revalidatePath("/rewards") → Next tự làm mới (gọi thêm = dựng lại tiệm 2 lần)
         } else {
           play("error");
           toast.error(res.error || "Có lỗi xảy ra");

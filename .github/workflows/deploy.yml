@@ -98,10 +98,23 @@ jobs:
             exit 1
           fi
 
+      # Heroku build đôi khi lỗi chập chờn khi tải phông Google (28/11: "next/font/google queries have exactly one entry")
+      # → thử lại tối đa 3 lần. Build lỗi thì Heroku không nhận bản mới (web vẫn chạy bản cũ), đẩy lại là build lại.
       - name: Đẩy code lên Heroku (Heroku tự build + chạy migration ở bước release)
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-        run: git push "https://heroku:${HEROKU_API_KEY}@git.heroku.com/eclass-vps.git" HEAD:refs/heads/master --force
+        run: |
+          for attempt in 1 2 3; do
+            echo "::group::Lần $attempt"
+            if git push "https://heroku:${HEROKU_API_KEY}@git.heroku.com/eclass-vps.git" HEAD:refs/heads/master --force; then
+              echo "::endgroup::"; exit 0
+            fi
+            echo "::endgroup::"
+            echo "::warning::Heroku build / push lỗi ở lần $attempt"
+            [ "$attempt" -lt 3 ] && sleep 30
+          done
+          echo "::error::Heroku build lỗi 3 lần liền — xem log bước này"
+          exit 1
 
       - name: Kiểm tra web sau deploy
         run: |

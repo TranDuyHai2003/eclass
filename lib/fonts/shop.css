@@ -1,0 +1,3 @@
+/* Biến phông — xem lib/fonts/*.ts */
+.font-var-mali { --font-mali: "Mali"; }
+.font-var-nunito { --font-nunito: "Nunito Variable", "Nunito"; }

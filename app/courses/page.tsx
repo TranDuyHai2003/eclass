@@ -5,7 +5,7 @@ import { CourseTile } from "@/components/course/CourseTile";
 import { HomeSidebar } from "@/components/home/HomeSidebar";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { beVietnam } from "@/lib/fonts";
+import { beVietnam } from "@/lib/fonts/be-vietnam";
 import { cn } from "@/lib/utils";
 import { COURSE_GROUPS, getCourseGroup, groupCover, groupOrder, type CourseGroup } from "@/lib/course-grade";
 

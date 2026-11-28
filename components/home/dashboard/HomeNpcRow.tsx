@@ -22,7 +22,7 @@ export function HomeNpcRow({ lines, top3, grade, currentUserId }: { lines: strin
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-amber-950"><Crown className="h-4 w-4" /></span>
               <span className="truncate">Bảng Vàng khối {grade}</span>
             </h2>
-            <Link href={`/leaderboard?tab=g${grade}`} className="inline-flex shrink-0 items-center text-xs font-black text-blue-600 hover:text-blue-700">
+            <Link href={`/leaderboard?tab=g${grade}`} prefetch={false} className="inline-flex shrink-0 items-center text-xs font-black text-blue-600 hover:text-blue-700">
               Xem bảng <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </div>

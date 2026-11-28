@@ -3,7 +3,7 @@ import Image from "next/image"
 import { unstable_cache } from "next/cache"
 import LoginForm from "@/components/auth/LoginForm"
 import { prismaBase } from "@/lib/prisma"
-import { beVietnam } from "@/lib/fonts"
+import { beVietnam } from "@/lib/fonts/be-vietnam";
 import { isPointsEnabled } from "@/lib/points/config"
 import { cn } from "@/lib/utils"
 

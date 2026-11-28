@@ -8,7 +8,7 @@ import { CourseTile, type CourseTileData } from "@/components/course/CourseTile"
 import { usePointsEnabled } from "@/components/points/PointsFlag";
 import { EXAM_DATE } from "@/components/home/HomePromo";
 import { useCountdown } from "@/hooks/use-countdown";
-import { beVietnam } from "@/lib/fonts";
+import { beVietnam } from "@/lib/fonts/be-vietnam";
 import { cn } from "@/lib/utils";
 import { COURSE_GROUPS, getCourseGroup, groupOrder, type CourseGroup } from "@/lib/course-grade";
 import { POINTS } from "@/lib/points/config";

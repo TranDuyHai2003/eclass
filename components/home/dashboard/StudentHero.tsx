@@ -59,6 +59,7 @@ export function StudentHero({ name, points, lastLesson, stats, startHref, aside,
               {/* Vào game Thế giới Toán 3D (trang riêng, toàn màn hình) — tạm ẩn theo cờ WORLD_GAME_VISIBLE */}
               {WORLD_GAME_VISIBLE && <Link
                 href="/world"
+                prefetch={false}
                 data-testid="hero-game"
                 className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-300 to-orange-400 px-3.5 py-1.5 text-xs font-black text-indigo-950 shadow-[0_3px_0_0_#b45309] ring-1 ring-white/40 transition-transform hover:scale-105 active:translate-y-0.5 active:shadow-none"
               >

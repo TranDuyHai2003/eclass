@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { mali, nunito } from "@/lib/fonts";
+import { mali, nunito } from "@/lib/fonts/shop";
 import "./ah/theme.css";
 import { cancelRedemption, redeemReward, setGoalReward } from "@/actions/points";
 import { buyItem, saveAvatar } from "@/actions/avatar";

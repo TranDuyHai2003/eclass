@@ -5,6 +5,18 @@ import authConfig from "@/auth.config";
 import { compare } from "bcryptjs";
 import Credentials from "next-auth/providers/credentials";
 import { Role } from "@prisma/client";
+import { cache } from "react";
+
+/**
+ * Thông tin người dùng làm mới phiên (tên, ảnh, quyền…). Gộp trong MỘT request: layout, Header, trang, component đều gọi
+ * auth() → trước đây mỗi lần là một truy vấn DB (28/11: tối ưu hiệu năng). Ngoài lúc dựng React (route handler, action) cache() gọi thẳng.
+ */
+const sessionUser = cache((id: string) =>
+  prisma.user.findUnique({
+    where: { id },
+    select: { name: true, image: true, role: true, studentType: true, level: true, isApproved: true, isDemo: true },
+  }),
+);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -79,10 +91,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       // Fetch fresh data from DB to ensure profile changes (name, image) reflect immediately
       if (token.sub) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.sub },
-          select: { name: true, image: true, role: true, studentType: true, level: true, isApproved: true, isDemo: true }
-        });
+        const dbUser = await sessionUser(token.sub);
         if (dbUser) {
           session.user.name = dbUser.name;
           session.user.image = dbUser.image;

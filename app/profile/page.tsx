@@ -11,7 +11,7 @@ import { getLevel } from "@/lib/points/levels";
 import { getAvatar, getHotHair } from "@/lib/game/inventory";
 import type { DecorStudioProps } from "@/components/profile/DecorStudio";
 import { ITEM_BY_ID } from "@/lib/game/items";
-import { beVietnam } from "@/lib/fonts";
+import { beVietnam } from "@/lib/fonts/be-vietnam";
 import { loadGameConfig } from "@/lib/game/game-config";
 
 export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ try?: string }> }) {

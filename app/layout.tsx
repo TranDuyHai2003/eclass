@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, Outfit } from "next/font/google";
+import { headingFont, sansFont } from "@/lib/fonts/base";
 import { Toaster } from "sonner";
 import Header from "@/components/layout/Header";
 import { HideOnStandalone } from "@/components/layout/HideOnRoutes";
@@ -9,16 +9,8 @@ import AntiInspectLayout from "@/components/layout/AntiInspectLayout";
 import { WatchRouteTracker } from "@/components/layout/WatchRouteTracker";
 import "./globals.css";
 import { isPointsEnabled } from "@/lib/points/config";
+import { auth } from "@/auth";
 
-const sansFont = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
-  subsets: ["latin", "vietnamese"],
-});
-
-const headingFont = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://teacherduc.me"),
@@ -86,7 +78,7 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -132,7 +124,8 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${sansFont.variable} ${headingFont.variable} antialiased text-[15px] sm:text-base leading-relaxed`}
       >
-        <Providers pointsEnabled={isPointsEnabled()}>
+        {/* Phiên đăng nhập truyền từ server (Header đã gọi auth() — cùng request, có cache) → trình duyệt không phải gọi /api/auth/session */}
+        <Providers pointsEnabled={isPointsEnabled()} session={await auth()}>
           <WatchRouteTracker />
           <AntiInspectLayout>
             <Toaster position="top-right" richColors toastOptions={{ className: "p-4" }} gap={12} />

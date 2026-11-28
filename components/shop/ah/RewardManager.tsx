@@ -141,7 +141,7 @@ function CatalogTab({ data }: { data: ShopAdminData }) {
         play("coin");
         if (res.message) toast.success(res.message);
         after?.();
-        router.refresh();
+        // saveReward / archiveReward / thêm mẫu đã revalidatePath("/rewards") → Next tự làm mới
       } else {
         play("error");
         toast.error(res.error || "Có lỗi xảy ra");

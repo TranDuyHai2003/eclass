@@ -141,6 +141,8 @@ export function HomeSidebar({ user: propUser, onClick }: HomeSidebarProps) {
           key={item.label}
           href={item.href}
           target={item.target}
+          // Không tải trước: mỗi lần tải trước bắt server dựng thật cả trang động (Tiệm quà, BXH, game…) — 28/11 đo được 2–4 lần / link / trang
+          prefetch={false}
           aria-current={isActive ? "page" : undefined}
           rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
           onClick={(e) => {
