@@ -893,8 +893,12 @@ try {
       expect(await a.ev(`return document.querySelectorAll('[data-testid="reward-card"]').length >= 1`), "admin không thấy quà hiện vật");
       // Quản lý quà ngay trong tiệm: thêm → thấy trong khu quản lý + DB → ẩn → xoá (bấm 2 lần)
       await a.ev(`document.querySelector('[data-testid="manage-toggle"]').click()`);
-      await sleep(400);
-      expect(await a.ev(`return !!document.querySelector('[data-testid="reward-manager"]')`), "admin không mở được khu quản lý quà");
+      let opened = false;
+      for (let i = 0; i < 20 && !opened; i++) {
+        opened = await a.ev(`return !!document.querySelector('[data-testid="reward-manager"]')`);
+        if (!opened) await sleep(200);
+      }
+      expect(opened, "admin không mở được khu quản lý quà");
       expect(await a.ev(`return !!document.querySelector('[data-testid="mgr-tab-prices"]') && !!document.querySelector('[data-testid="mgr-tab-earning"]')`), "admin thiếu mục giá đồ / mức xu");
       await a.ev(`document.querySelector('[data-testid="mgr-tab-rewards"]').click()`);
       await sleep(300);
