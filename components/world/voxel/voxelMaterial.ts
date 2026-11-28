@@ -53,6 +53,7 @@ function voxelTiles(): THREE.DataArrayTexture {
       data.set(g.getImageData(0, 0, img.width, img.height).data);
       t.needsUpdate = true;
     };
+    img.crossOrigin = "anonymous"; // CDN khác nguồn: cần CORS để getImageData không bị "tainted"
     img.src = worldAsset("voxel/tiles.png");
   }
   return t;

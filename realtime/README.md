@@ -14,6 +14,7 @@ ssh <user>@<host> 'cd <install-dir> && docker compose --profile tunnel up -d --b
 - `TUNNEL_TOKEN=<token>` lives only in the server's `.env` (copied by the account owner from the dashboard; never committed).
 - Routing is local (`cloudflared.yml`): `eclass-rt.<domain>` → `realtime:2567`, `eclass-cdn.<domain>` → `assets:80`; DNS = proxied CNAMEs to `<tunnel-id>.cfargotunnel.com`.
 - A Cache Rule (`https://eclass-cdn.<domain>/world/*` → eligible for cache) keeps the server sending each model once per edge location.
+- After any change under `public/world`: run `node scripts/world-asset-versions.mjs` (content hashes → `?v=` on CDN URLs, so the 7-day Cloudflare cache never serves a stale file), commit `lib/world/assetVersions.json`, then upload assets BEFORE pushing master (push = deploy).
 - Upload assets (after every change under `public/world`, including the git-ignored VRM/KTX2 files): `cd public && tar cf - world | ssh <user>@<host> 'tar xf - -C <install-dir>/assets'`.
 - Web app (Heroku, read at runtime — no rebuild when it changes): `WORLD_RT_URL=wss://eclass-rt.<domain>`, `WORLD_HEAVY_ASSET_BASE=https://eclass-cdn.<domain>/world`. With it set, ALL world assets load from the CDN (`worldAsset()` in `lib/world/avatars.ts`); without it (dev) they load from the app's own `/world`.
 

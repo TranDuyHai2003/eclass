@@ -1,3 +1,4 @@
+import ASSET_VERSIONS from "./assetVersions.json";
 /**
  * Danh mục nhân vật VRM (VRoid Hub). Nguồn + điều kiện sử dụng: public/world/CREDITS.md
  * npcOnly: điều kiện của model KHÔNG cho phép cảnh bạo lực → chỉ dùng làm NPC (không vào trận thuần hoá).
@@ -29,7 +30,10 @@ export function setHeavyAssetBase(base: string | null | undefined) {
  */
 export const worldAsset = (path: string) => {
   const p = path.replace(/^\/?(world\/)?/, "");
-  return `${heavyBase ?? WORLD_ASSET_BASE}/${p}`;
+  if (!heavyBase) return `${WORLD_ASSET_BASE}/${p}`;
+  // kho CDN cache 7 ngày theo URL → gắn dấu nội dung (scripts/world-asset-versions.mjs) để file đổi là tải bản mới
+  const v = (ASSET_VERSIONS as Record<string, string>)[p];
+  return `${heavyBase}/${p}${v ? `?v=${v}` : ""}`;
 };
 
 export const AVATARS: AvatarDef[] = [

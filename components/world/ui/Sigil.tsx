@@ -27,6 +27,7 @@ const runeTint = new Map<SpellId, HTMLCanvasElement>();
 function loadRunes() {
   if (runeImg || typeof Image === "undefined") return;
   runeImg = new Image();
+  runeImg.crossOrigin = "anonymous"; // CDN khác nguồn
   runeImg.src = worldAsset("fx/tex/spell_runes.png");
 }
 function tintedRune(id: SpellId): HTMLCanvasElement | null {
